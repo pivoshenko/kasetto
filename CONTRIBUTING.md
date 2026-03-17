@@ -35,9 +35,10 @@ Use conventional-ish prefixes:
 Before opening a PR:
 
 ```bash
-go test ./...
-go vet ./...
-go build ./...
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+cargo build --release
 ```
 
 Include:

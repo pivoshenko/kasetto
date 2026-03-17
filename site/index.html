@@ -31,8 +31,8 @@
       <div class="card"><strong>Safe</strong><p>Dry-run mode and archive extraction guards.</p></div>
     </section>
     <h3>Quick start</h3>
-    <pre>go build -o sukiro ./cmd/sukiro
-./sukiro --config skills.config.yaml --dry-run</pre>
+    <pre>cargo build --release
+./target/release/sukiro sync --config skills.config.yaml --dry-run</pre>
     <footer>2026 Volodymyr Pivoshenko</footer>
   </div>
 </body>
