@@ -9,9 +9,9 @@ fi
 
 VERSION="$1"
 SHA="$2"
-FORMULA="Formula/sukiru.rb"
+FORMULA="Formula/kasetto.rb"
 
-sed -i "s#url \"https://github.com/pivoshenko/sukiru/archive/refs/tags/v[^"]*\.tar\.gz\"#url \"https://github.com/pivoshenko/sukiru/archive/refs/tags/${VERSION}.tar.gz\"#" "$FORMULA"
+sed -i "s#url \"https://github.com/pivoshenko/kasetto/archive/refs/tags/v[^"]*\.tar\.gz\"#url \"https://github.com/pivoshenko/kasetto/archive/refs/tags/${VERSION}.tar.gz\"#" "$FORMULA"
 sed -i "s#sha256 \"[^"]*\"#sha256 \"${SHA}\"#" "$FORMULA"
 
 echo "Updated ${FORMULA} -> ${VERSION}"

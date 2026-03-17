@@ -1,4 +1,4 @@
-# Contributing to Sukiru
+# Contributing to Kasetto
 
 Thanks for contributing.
 
@@ -17,7 +17,7 @@ cargo build --release
 ## Project structure
 
 - `src/main.rs`: CLI entrypoint + core MVP logic
-- `Formula/sukiru.rb`: Homebrew formula
+- `Formula/kasetto.rb`: Homebrew formula
 - `site/`: project landing page
 
 ## Commit style

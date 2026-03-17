@@ -21,10 +21,10 @@ jobs:
           cargo build --release --target aarch64-unknown-linux-gnu
           cargo build --release --target x86_64-apple-darwin
           cargo build --release --target aarch64-apple-darwin
-          cp target/x86_64-unknown-linux-gnu/release/sukiru dist/sukiru-linux-amd64
-          cp target/aarch64-unknown-linux-gnu/release/sukiru dist/sukiru-linux-arm64
-          cp target/x86_64-apple-darwin/release/sukiru dist/sukiru-darwin-amd64
-          cp target/aarch64-apple-darwin/release/sukiru dist/sukiru-darwin-arm64
+          cp target/x86_64-unknown-linux-gnu/release/kasetto dist/kasetto-linux-amd64
+          cp target/aarch64-unknown-linux-gnu/release/kasetto dist/kasetto-linux-arm64
+          cp target/x86_64-apple-darwin/release/kasetto dist/kasetto-darwin-amd64
+          cp target/aarch64-apple-darwin/release/kasetto dist/kasetto-darwin-arm64
 
       - name: Checksums
         run: |

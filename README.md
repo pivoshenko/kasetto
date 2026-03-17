@@ -1,13 +1,13 @@
-# sukiru
+# kasetto
 
 <p align="center">
-  <img alt="Sukiru logo" src="assets/branding/logo.svg" width="520" />
+  <img alt="Kasetto logo" src="assets/branding/logo.svg" width="520" />
 </p>
 
 <p align="center">
-  <img alt="License" src="https://img.shields.io/github/license/pivoshenko/sukiru?style=flat-square&logo=opensourceinitiative&logoColor=white&color=0A6847">
+  <img alt="License" src="https://img.shields.io/github/license/pivoshenko/kasetto?style=flat-square&logo=opensourceinitiative&logoColor=white&color=0A6847">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-white?style=flat-square&logo=rust&logoColor=white&labelColor=0A6847&color=0A6847">
-  <img alt="Release" src="https://img.shields.io/github/v/release/pivoshenko/sukiru?style=flat-square&logo=github&logoColor=white&color=4856CD&label=Release">
+  <img alt="Release" src="https://img.shields.io/github/v/release/pivoshenko/kasetto?style=flat-square&logo=github&logoColor=white&color=4856CD&label=Release">
   <img alt="Support Ukraine" src="https://img.shields.io/badge/Support-Ukraine-FFC93C?style=flat-square&labelColor=07689F">
 </p>
 
@@ -15,7 +15,7 @@ An extremely fast AI skills and workflow manager, written in Rust.
 
 ## Why
 
-`sukiru` is built for high-speed, deterministic skill syncing:
+`kasetto` is built for high-speed, deterministic skill syncing:
 - local + GitHub sources
 - wildcard or explicit skill selection
 - hash-based install/update detection
@@ -29,22 +29,22 @@ An extremely fast AI skills and workflow manager, written in Rust.
 
 ```bash
 cargo build --release
-./target/release/sukiru sync --config skills.config.yaml --dry-run
+./target/release/kasetto sync --config skills.config.yaml --dry-run
 ```
 
 ### Homebrew (tap)
 
 ```bash
-brew tap pivoshenko/sukiru
-brew install sukiru
+brew tap pivoshenko/kasetto
+brew install kasetto
 ```
 
 ## Usage
 
 ```bash
-./sukiru sync --config skills.config.yaml
-./sukiru sync --config skills.config.yaml --dry-run
-./sukiru sync --config skills.config.yaml --json
+./kasetto sync --config skills.config.yaml
+./kasetto sync --config skills.config.yaml --dry-run
+./kasetto sync --config skills.config.yaml --json
 ```
 
 ## Session-start hooks (Claude/Cursor)
@@ -52,11 +52,11 @@ brew install sukiru
 Install auto-sync hooks:
 
 ```bash
-./sukiru install-hooks --config skills.config.yaml
+./kasetto install-hooks --config skills.config.yaml
 ```
 
 This installs:
-- `~/.sukiru/hooks/session-start.sh` (runner with lock + timeout + cache TTL)
+- `~/.kasetto/hooks/session-start.sh` (runner with lock + timeout + cache TTL)
 - `~/.claude/hooks/session-start.sh`
 - `~/.cursor/hooks/session-start.sh`
 
@@ -67,7 +67,7 @@ Defaults:
 Override:
 
 ```bash
-./sukiru install-hooks --config skills.config.yaml --timeout-seconds 15 --cache-ttl-seconds 120
+./kasetto install-hooks --config skills.config.yaml --timeout-seconds 15 --cache-ttl-seconds 120
 ```
 
 ## Config

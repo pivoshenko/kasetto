@@ -16,7 +16,7 @@
   </defs>
   <rect x="0" y="0" width="720" height="220" rx="16" fill="url(#bg)"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" text-anchor="middle">
-    <text x="360" y="128" font-size="132" fill="url(#jp)" letter-spacing="1">スキル</text>
+    <text x="360" y="128" font-size="132" fill="url(#jp)" letter-spacing="1">カセット</text>
     <text x="360" y="198" font-size="28" fill="url(#en)" letter-spacing="8">S U K I R U</text>
   </g>
 </svg>

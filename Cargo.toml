@@ -1,5 +1,5 @@
 [package]
-name = "sukiru"
+name = "kasetto"
 version = "0.1.0"
 edition = "2021"
 description = "Fast binary CLI to sync AI skills from local and GitHub sources"

@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
-#[command(name = "sukiru")]
+#[command(name = "kasetto")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -127,8 +127,8 @@ const BANNER: &str = r#"
   ____) | |_| |   <| | | | (_) |
  |_____/ \__,_|_|\_\_|_|  \___/
 
-              スキル
-              sukiru
+              カセット
+              kasetto
 "#;
 
 fn main() -> Result<()> {
@@ -175,7 +175,7 @@ fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Res
     let mut actions = Vec::new();
 
     for (i, src) in cfg.skills.iter().enumerate() {
-        let stage = std::env::temp_dir().join(format!("sukiru-{}-{}", now_unix(), i));
+        let stage = std::env::temp_dir().join(format!("kasetto-{}-{}", now_unix(), i));
         match materialize_source(src, cfg_dir, &stage) {
             Ok((root, rev, available)) => {
                 let targets = select_targets(&src.skills, &available)?;
@@ -325,7 +325,7 @@ fn install_hooks(config_path: &str, timeout: u64, ttl: u64) -> Result<()> {
     let cfg_abs = fs::canonicalize(config_path)
         .with_context(|| format!("config not found: {config_path}"))?;
     let home = dirs_home()?;
-    let runner_dir = home.join(".sukiru/hooks");
+    let runner_dir = home.join(".kasetto/hooks");
     fs::create_dir_all(&runner_dir)?;
     let runner = runner_dir.join("session-start.sh");
 
@@ -333,11 +333,11 @@ fn install_hooks(config_path: &str, timeout: u64, ttl: u64) -> Result<()> {
         r#"#!/usr/bin/env bash
 set -euo pipefail
 CONFIG="{}"
-LOCK_FILE="${{HOME}}/.sukiru/hooks/sync.lock"
-STAMP_FILE="${{HOME}}/.sukiru/hooks/last_sync_unix"
+LOCK_FILE="${{HOME}}/.kasetto/hooks/sync.lock"
+STAMP_FILE="${{HOME}}/.kasetto/hooks/last_sync_unix"
 TIMEOUT={}
 TTL={}
-mkdir -p "${{HOME}}/.sukiru/hooks"
+mkdir -p "${{HOME}}/.kasetto/hooks"
 if [[ -f "$STAMP_FILE" ]]; then
   last=$(cat "$STAMP_FILE" || echo 0)
   now=$(date +%s)
@@ -345,7 +345,7 @@ if [[ -f "$STAMP_FILE" ]]; then
 fi
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then exit 0; fi
-if timeout "$TIMEOUT" sukiru sync --config "$CONFIG" --quiet; then date +%s > "$STAMP_FILE"; fi
+if timeout "$TIMEOUT" kasetto sync --config "$CONFIG" --quiet; then date +%s > "$STAMP_FILE"; fi
 "#,
         cfg_abs.to_string_lossy(),
         timeout,
