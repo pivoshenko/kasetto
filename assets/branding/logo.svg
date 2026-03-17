@@ -1,7 +1,22 @@
 <svg width="720" height="220" viewBox="0 0 720 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="720" height="220" rx="16" fill="#0C0A09"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="720" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#0C0A09"/>
+    </linearGradient>
+    <linearGradient id="jp" x1="180" y1="40" x2="540" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="0.5" stop-color="#C084FC"/>
+      <stop offset="1" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="en" x1="250" y1="120" x2="470" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34D399"/>
+      <stop offset="1" stop-color="#FBBF24"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="220" rx="16" fill="url(#bg)"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" text-anchor="middle">
-    <text x="360" y="95" font-size="72" fill="#F5F5F4" letter-spacing="2">スキロ</text>
-    <text x="360" y="145" font-size="34" fill="#A8A29E" letter-spacing="8">S U K I R O</text>
+    <text x="360" y="95" font-size="72" fill="url(#jp)" letter-spacing="2">スキロ</text>
+    <text x="360" y="145" font-size="34" fill="url(#en)" letter-spacing="8">S U K I R O</text>
   </g>
 </svg>

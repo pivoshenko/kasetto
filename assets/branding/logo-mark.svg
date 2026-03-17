@@ -1,4 +1,15 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" rx="32" fill="#0C0A09"/>
-  <text x="128" y="154" font-size="120" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#F5F5F4">ス</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#0C0A09"/>
+    </linearGradient>
+    <linearGradient id="fg" x1="70" y1="60" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="0.5" stop-color="#C084FC"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="32" fill="url(#bg)"/>
+  <text x="128" y="154" font-size="120" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="url(#fg)">ス</text>
 </svg>

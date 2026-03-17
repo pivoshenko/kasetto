@@ -1,10 +1,10 @@
 # sukiro
 
-<p align="left">
-  <img alt="Sukiro logo" src="assets/branding/logo.svg" width="360" />
+<p align="center">
+  <img alt="Sukiro logo" src="assets/branding/logo.svg" width="420" />
 </p>
 
-<p align="left">
+<p align="center">
   <img alt="Support Ukraine" src="https://img.shields.io/badge/Support-Ukraine-FFC93C?style=flat-square&labelColor=07689F">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-black?style=flat-square&logo=rust&logoColor=white&color=B7410E">
   <img alt="License" src="https://img.shields.io/github/license/pivoshenko/sukiro?style=flat-square&logo=opensourceinitiative&logoColor=white&color=0A6847">
