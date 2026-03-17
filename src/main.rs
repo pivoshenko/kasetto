@@ -153,18 +153,36 @@ fn main() -> Result<()> {
     }
 }
 
-fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Result<()> {
-    if !quiet && !as_json {
-        print!("{}", BANNER);
+fn load_config_any(config_path: &str) -> Result<(Config, PathBuf, String)> {
+    if config_path.starts_with("http://") || config_path.starts_with("https://") {
+        let text = reqwest::blocking::get(config_path)
+            .with_context(|| format!("failed to fetch remote config: {config_path}"))?
+            .error_for_status()
+            .with_context(|| format!("remote config returned non-success status: {config_path}"))?
+            .text()?;
+        let cfg: Config = serde_yaml::from_str(&text)?;
+        let cfg_dir = std::env::current_dir().context("failed to get current directory")?;
+        return Ok((cfg, cfg_dir, config_path.to_string()));
     }
 
     let cfg_abs = fs::canonicalize(config_path)
         .with_context(|| format!("config not found: {config_path}"))?;
     let cfg_text = fs::read_to_string(&cfg_abs)?;
     let cfg: Config = serde_yaml::from_str(&cfg_text)?;
+    let cfg_dir = cfg_abs
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| anyhow!("invalid config path"))?;
+    Ok((cfg, cfg_dir, cfg_abs.to_string_lossy().to_string()))
+}
 
-    let cfg_dir = cfg_abs.parent().unwrap();
-    let destination = resolve_path(cfg_dir, &cfg.destination);
+fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Result<()> {
+    if !quiet && !as_json {
+        print!("{}", BANNER);
+    }
+
+    let (cfg, cfg_dir, cfg_label) = load_config_any(config_path)?;
+    let destination = resolve_path(&cfg_dir, &cfg.destination);
     if !dry_run {
         fs::create_dir_all(&destination)?;
     }
@@ -176,7 +194,7 @@ fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Res
 
     for (i, src) in cfg.skills.iter().enumerate() {
         let stage = std::env::temp_dir().join(format!("kasetto-{}-{}", now_unix(), i));
-        match materialize_source(src, cfg_dir, &stage) {
+        match materialize_source(src, &cfg_dir, &stage) {
             Ok((root, rev, available)) => {
                 let targets = select_targets(&src.skills, &available)?;
                 for (skill_name, skill_path) in targets {
@@ -292,7 +310,7 @@ fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Res
 
     let report = Report {
         run_id: format!("{}", now_unix()),
-        config: cfg_abs.to_string_lossy().to_string(),
+        config: cfg_label,
         destination: destination.to_string_lossy().to_string(),
         dry_run,
         summary,
@@ -322,8 +340,7 @@ fn run_sync(config_path: &str, dry_run: bool, quiet: bool, as_json: bool) -> Res
 
 fn install_hooks(config_path: &str, timeout: u64, ttl: u64) -> Result<()> {
     print!("{}", BANNER);
-    let cfg_abs = fs::canonicalize(config_path)
-        .with_context(|| format!("config not found: {config_path}"))?;
+    let (_cfg, _cfg_dir, cfg_label) = load_config_any(config_path)?;
     let home = dirs_home()?;
     let runner_dir = home.join(".kasetto/hooks");
     fs::create_dir_all(&runner_dir)?;
@@ -347,9 +364,7 @@ exec 9>"$LOCK_FILE"
 if ! flock -n 9; then exit 0; fi
 if timeout "$TIMEOUT" kasetto sync --config "$CONFIG" --quiet; then date +%s > "$STAMP_FILE"; fi
 "#,
-        cfg_abs.to_string_lossy(),
-        timeout,
-        ttl
+        cfg_label, timeout, ttl
     );
 
     fs::write(&runner, script)?;

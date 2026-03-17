@@ -45,6 +45,7 @@ brew install kasetto
 ./kasetto sync --config skills.config.yaml
 ./kasetto sync --config skills.config.yaml --dry-run
 ./kasetto sync --config skills.config.yaml --json
+./kasetto sync --config https://example.com/skills.config.yaml
 ```
 
 ## Session-start hooks (Claude/Cursor)
