@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pivoshenko/skills-manager/internal/config"
-	"github.com/pivoshenko/skills-manager/internal/hashing"
-	"github.com/pivoshenko/skills-manager/internal/source"
-	"github.com/pivoshenko/skills-manager/internal/state"
-	"github.com/pivoshenko/skills-manager/internal/util"
+	"github.com/pivoshenko/sukiro/internal/config"
+	"github.com/pivoshenko/sukiro/internal/hashing"
+	"github.com/pivoshenko/sukiro/internal/source"
+	"github.com/pivoshenko/sukiro/internal/state"
+	"github.com/pivoshenko/sukiro/internal/util"
 )
 
 type Summary struct {

@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pivoshenko/skills-manager/internal/config"
+	"github.com/pivoshenko/sukiro/internal/config"
 )
 
 type Handle struct {

@@ -1,4 +1,4 @@
-module github.com/pivoshenko/skills-manager
+module github.com/pivoshenko/sukiro
 
 go 1.22
 

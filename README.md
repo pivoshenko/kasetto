@@ -1,10 +1,10 @@
-# skills-manager
+# sukiro
 
 Fast binary CLI to sync AI skills from local paths and GitHub repositories.
 
 ## Why
 
-`skills-manager` is built for high-speed, deterministic skill syncing:
+`sukiro` is built for high-speed, deterministic skill syncing:
 - local + GitHub sources
 - wildcard or explicit skill selection
 - hash-based install/update detection
@@ -15,15 +15,15 @@ Fast binary CLI to sync AI skills from local paths and GitHub repositories.
 ## Install
 
 ```bash
-go build -o skills ./cmd/skills
+go build -o sukiro ./cmd/sukiro
 ```
 
 ## Usage
 
 ```bash
-./skills --config skills.config.yaml
-./skills --config skills.config.yaml --dry-run
-./skills --config skills.config.yaml --json
+./sukiro --config skills.config.yaml
+./sukiro --config skills.config.yaml --dry-run
+./sukiro --config skills.config.yaml --json
 ```
 
 ## Config

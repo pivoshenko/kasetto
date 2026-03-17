@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pivoshenko/skills-manager/internal/syncer"
+	"github.com/pivoshenko/sukiro/internal/syncer"
 )
 
 func SaveDefault(runID string, r syncer.Result) (string, error) {
