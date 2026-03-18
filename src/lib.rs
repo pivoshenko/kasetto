@@ -4,6 +4,7 @@ mod cli;
 mod commands;
 mod error;
 mod fsops;
+mod home;
 mod list;
 mod model;
 mod profile;

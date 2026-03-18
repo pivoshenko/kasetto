@@ -9,7 +9,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error::{err, Result};
 use crate::model::{
-    Agent, Config, FailedInstall, Report, SkillEntry, SkillTarget, SkillsField, SourceSpec, State,
+    Config, FailedInstall, Report, SkillEntry, SkillTarget, SkillsField, SourceSpec, State,
 };
 
 pub fn load_config_any(config_path: &str) -> Result<(Config, PathBuf, String)> {
@@ -193,16 +193,11 @@ pub fn resolve_destination(base: &Path, cfg: &Config) -> Result<PathBuf> {
 
     if let Some(agent) = cfg.agent {
         let home = dirs_home()?;
-        let preset = match agent {
-            Agent::Codex => home.join(".codex/skills"),
-            Agent::Claude => home.join(".claude/skills"),
-            Agent::Cursor => home.join(".cursor/skills"),
-        };
-        return Ok(preset);
+        return Ok(agent.global_path(&home));
     }
 
     Err(err(
-        "config must define either destination or agent (codex|claude|cursor)",
+        "config must define either destination or a supported agent preset",
     ))
 }
 
@@ -551,7 +546,7 @@ fn http_client() -> Result<Client> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{SkillTarget, SkillsField, SourceSpec};
+    use crate::model::{Agent, Config, SkillTarget, SkillsField, SourceSpec};
 
     fn temp_dir(prefix: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -642,5 +637,43 @@ mod tests {
         assert_eq!(targets[0].1, skill_dir);
 
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn agent_global_paths_cover_supported_presets() {
+        let home = Path::new("/tmp/kasetto-home");
+
+        assert_eq!(Agent::Codex.global_path(home), home.join(".codex/skills"));
+        assert_eq!(
+            Agent::Amp.global_path(home),
+            home.join(".config/agents/skills")
+        );
+        assert_eq!(
+            Agent::Antigravity.global_path(home),
+            home.join(".gemini/antigravity/skills")
+        );
+        assert_eq!(
+            Agent::OpenClaw.global_path(home),
+            home.join(".openclaw/skills")
+        );
+        assert_eq!(
+            Agent::Windsurf.global_path(home),
+            home.join(".codeium/windsurf/skills")
+        );
+        assert_eq!(
+            Agent::TraeCn.global_path(home),
+            home.join(".trae-cn/skills")
+        );
+    }
+
+    #[test]
+    fn config_agent_parses_hyphenated_names_and_legacy_aliases() {
+        let hyphenated: Config =
+            serde_yaml::from_str("agent: command-code\nskills: []\n").expect("parse config");
+        assert_eq!(hyphenated.agent, Some(Agent::CommandCode));
+
+        let legacy_alias: Config =
+            serde_yaml::from_str("agent: claude\nskills: []\n").expect("parse config");
+        assert_eq!(legacy_alias.agent, Some(Agent::ClaudeCode));
     }
 }

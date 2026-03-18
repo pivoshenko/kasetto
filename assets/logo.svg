@@ -1,101 +1,99 @@
-<svg width="660" height="360" viewBox="40 20 660 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="650" height="320" viewBox="175 90 650 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="frontShell" x1="70" y1="40" x2="630" y2="290" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#3A3442"/>
-      <stop offset="0.5" stop-color="#1E1A25"/>
-      <stop offset="1" stop-color="#494251"/>
+    <linearGradient id="shell" x1="180" y1="90" x2="820" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#322C37" />
+      <stop offset="0.52" stop-color="#191520" />
+      <stop offset="1" stop-color="#433C47" />
     </linearGradient>
 
-    <linearGradient id="bottomFace" x1="70" y1="290" x2="630" y2="340" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#17131C"/>
-      <stop offset="1" stop-color="#2A2430"/>
+    <linearGradient id="shellEdge" x1="140" y1="90" x2="860" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4A4252" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#0F0D14" stop-opacity="0.65" />
     </linearGradient>
 
-    <linearGradient id="rightFace" x1="600" y1="90" x2="630" y2="340" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#302A38"/>
-      <stop offset="1" stop-color="#1B1720"/>
+    <linearGradient id="window" x1="185" y1="120" x2="813" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D0A12" />
+      <stop offset="1" stop-color="#171220" />
     </linearGradient>
 
-    <linearGradient id="windowGrad" x1="98" y1="68" x2="598" y2="172" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0E0B13"/>
-      <stop offset="1" stop-color="#181322"/>
+    <linearGradient id="windowGloss" x1="220" y1="110" x2="760" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.16" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
     </linearGradient>
 
-    <linearGradient id="windowGloss" x1="130" y1="76" x2="560" y2="140" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFFFF" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="label" x1="305" y1="255" x2="695" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9FF" />
+      <stop offset="1" stop-color="#F1E0FF" />
     </linearGradient>
 
-    <linearGradient id="reelMetal" x1="175" y1="78" x2="268" y2="170" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D2CBD6"/>
-      <stop offset="1" stop-color="#9B92A2"/>
+    <linearGradient id="labelSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF95DC" />
+      <stop offset="0.55" stop-color="#FF5DB9" />
+      <stop offset="1" stop-color="#BF66FF" />
     </linearGradient>
 
-    <linearGradient id="reelMetalR" x1="433" y1="78" x2="526" y2="170" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D2CBD6"/>
-      <stop offset="1" stop-color="#9B92A2"/>
+    <linearGradient id="tape" x1="360" y1="174" x2="640" y2="174" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#27222D" />
+      <stop offset="0.5" stop-color="#383040" />
+      <stop offset="1" stop-color="#27222D" />
     </linearGradient>
 
-    <linearGradient id="labelGrad" x1="130" y1="180" x2="570" y2="268" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF9FF"/>
-      <stop offset="1" stop-color="#F1E2FF"/>
-    </linearGradient>
-
-    <linearGradient id="sideStripe" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FF9BE0"/>
-      <stop offset="0.52" stop-color="#FF5EBB"/>
-      <stop offset="1" stop-color="#BE69FF"/>
-    </linearGradient>
-
-    <linearGradient id="ink" x1="280" y1="206" x2="430" y2="247" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6B4BC3"/>
-      <stop offset="1" stop-color="#4F3AA8"/>
-    </linearGradient>
+    <filter id="shadow" x="90" y="60" width="820" height="420" filterUnits="userSpaceOnUse"
+      color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix" />
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+        result="hardAlpha" />
+      <feOffset dy="10" />
+      <feGaussianBlur stdDeviation="10" />
+      <feComposite in2="hardAlpha" operator="out" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.45 0" />
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1" />
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape" />
+    </filter>
   </defs>
 
-  <ellipse cx="360" cy="345" rx="240" ry="14" fill="#000000" fill-opacity="0.28"/>
-
-  <path d="M70 290H630L600 340H100L70 290Z" fill="url(#bottomFace)"/>
-  <path d="M630 40V290L600 340V90L630 40Z" fill="url(#rightFace)"/>
-
-  <rect x="70" y="40" width="560" height="250" rx="24" fill="url(#frontShell)"/>
-  <rect x="70" y="40" width="560" height="250" rx="24" stroke="#5A5262" stroke-opacity="0.55" stroke-width="1.5"/>
-
-  <rect x="98" y="68" width="500" height="104" rx="16" fill="url(#windowGrad)"/>
-  <rect x="118" y="76" width="460" height="34" rx="12" fill="url(#windowGloss)"/>
-
-  <path d="M270 123H430" stroke="#3A3341" stroke-width="9" stroke-linecap="round"/>
-
   <g>
-    <circle cx="220" cy="122" r="46" fill="#2A2430"/>
-    <circle cx="220" cy="122" r="30" fill="url(#reelMetal)"/>
-    <circle cx="220" cy="122" r="10" fill="#8B8191"/>
-    <circle cx="220" cy="122" r="3" fill="#645D6D"/>
-    <path d="M220 96V111" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M242 122H227" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M205 139L215 129" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
+    <rect x="175" y="90" width="650" height="320" rx="24" fill="url(#shell)" />
+    <rect x="175" y="90" width="650" height="320" rx="24" stroke="url(#shellEdge)" stroke-width="2" />
+
+    <rect x="198" y="112" width="604" height="132" rx="18" fill="url(#window)" />
+    <rect x="214" y="120" width="572" height="42" rx="14" fill="url(#windowGloss)" />
+
+    <path d="M360 174H640" stroke="url(#tape)" stroke-width="10" stroke-linecap="round" />
+
+    <g>
+      <circle cx="350" cy="178" r="56" fill="#241F2B" />
+      <circle cx="350" cy="178" r="36" fill="#BBB2C2" />
+      <circle cx="350" cy="178" r="12" fill="#8E8592" />
+      <circle cx="350" cy="178" r="4" fill="#6C6573" />
+      <path d="M350 146V164" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+      <path d="M377 178H359" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+      <path d="M331 198L343 186" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <g>
+      <circle cx="650" cy="178" r="56" fill="#241F2B" />
+      <circle cx="650" cy="178" r="36" fill="#BBB2C2" />
+      <circle cx="650" cy="178" r="12" fill="#8E8592" />
+      <circle cx="650" cy="178" r="4" fill="#6C6573" />
+      <path d="M650 146V164" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+      <path d="M677 178H659" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+      <path d="M631 198L643 186" stroke="#7E7685" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <rect x="440" y="160" width="120" height="30" rx="7" fill="#100C14" />
+
+    <circle cx="208" cy="122" r="6" fill="#7A727E" />
+    <circle cx="792" cy="122" r="6" fill="#7A727E" />
+    <circle cx="208" cy="378" r="6" fill="#7A727E" />
+    <circle cx="792" cy="378" r="6" fill="#7A727E" />
+
+    <rect x="255" y="260" width="490" height="114" rx="16" fill="url(#label)" />
+    <rect x="272" y="272" width="16" height="90" rx="8" fill="url(#labelSide)" />
+    <rect x="712" y="272" width="16" height="90" rx="8" fill="url(#labelSide)" />
+
+    <text x="500" y="337" text-anchor="middle" fill="#5D49B4" font-size="74" font-weight="700"
+      transform="rotate(-2 500 337)"
+      font-family="'Yuji Boku', 'Klee One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', 'Noto Sans JP', cursive">カセット</text>
   </g>
-
-  <g>
-    <circle cx="478" cy="122" r="46" fill="#2A2430"/>
-    <circle cx="478" cy="122" r="30" fill="url(#reelMetalR)"/>
-    <circle cx="478" cy="122" r="10" fill="#8B8191"/>
-    <circle cx="478" cy="122" r="3" fill="#645D6D"/>
-    <path d="M478 96V111" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M500 122H485" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M463 139L473 129" stroke="#756C7D" stroke-width="2.8" stroke-linecap="round"/>
-  </g>
-
-  <rect x="292" y="109" width="114" height="26" rx="6" fill="#120E16"/>
-
-  <rect x="130" y="180" width="440" height="88" rx="14" fill="url(#labelGrad)"/>
-  <rect x="148" y="190" width="14" height="68" rx="7" fill="url(#sideStripe)"/>
-  <rect x="538" y="190" width="14" height="68" rx="7" fill="url(#sideStripe)"/>
-
-  <text x="350" y="242" text-anchor="middle" fill="url(#ink)" font-size="66" font-weight="600" transform="rotate(-1.7 350 242)" font-family="'Yuji Syuku', 'Klee One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', 'Noto Sans JP', cursive">カセット</text>
-
-  <circle cx="88" cy="58" r="5" fill="#746D79"/>
-  <circle cx="612" cy="58" r="5" fill="#746D79"/>
-  <circle cx="88" cy="272" r="5" fill="#746D79"/>
-  <circle cx="612" cy="272" r="5" fill="#746D79"/>
 </svg>

@@ -3,7 +3,7 @@ class Kasetto < Formula
   homepage "https://github.com/pivoshenko/kasetto"
   url "https://github.com/pivoshenko/kasetto/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "REPLACE_WITH_RELEASE_SHA256"
-  license "MIT"
+  license any_of: ["MIT", "Apache-2.0"]
 
   depends_on "rust" => :build
 
