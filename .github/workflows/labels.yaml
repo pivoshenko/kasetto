@@ -9,6 +9,7 @@ on:
     paths:
       - ".github/labels.yaml"
       - ".github/workflows/labels.yaml"
+  workflow_dispatch:
 
 jobs:
   labels:
