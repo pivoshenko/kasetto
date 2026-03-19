@@ -26,10 +26,12 @@ jobs:
 
       - name: Commit and tag
         run: |
+          VERSION="${{ github.event.inputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Cargo.toml Cargo.lock
-          git diff --cached --quiet && echo "No version change" && exit 0
-          git commit -m "release: v${{ github.event.inputs.version }}"
-          git tag "v${{ github.event.inputs.version }}"
+          if ! git diff --cached --quiet; then
+            git commit -m "release: v${VERSION}"
+          fi
+          git tag "v${VERSION}"
           git push origin main --tags
