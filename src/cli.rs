@@ -18,7 +18,7 @@ fn cli_styles() -> Styles {
     styles = cli_styles(),
     about = "sync and maintain local AI skill packs",
     long_about = "An extremely fast AI skills manager, written in Rust.",
-    after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto\x1b[0m\n  \x1b[90mkasetto --config skills.config.yaml --dry-run\x1b[0m\n  \x1b[90mkasetto sync --config https://example.com/skills.config.yaml --verbose\x1b[0m\n  \x1b[90mkasetto list\x1b[0m\n  \x1b[90mkasetto list --json\x1b[0m\n  \x1b[90mkasetto doctor\x1b[0m\n  \x1b[90mkasetto doctor --json\x1b[0m"
+    after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto\x1b[0m\n  \x1b[90mkasetto --config skills.config.yaml --dry-run\x1b[0m\n  \x1b[90mkasetto sync --config https://example.com/skills.config.yaml --verbose\x1b[0m\n  \x1b[90mkasetto list\x1b[0m\n  \x1b[90mkasetto list --json\x1b[0m\n  \x1b[90mkasetto doctor\x1b[0m\n  \x1b[90mkasetto doctor --json\x1b[0m\n  \x1b[90mkasetto self-update\x1b[0m"
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -76,7 +76,8 @@ pub enum Commands {
     },
     #[command(
         about = "List installed skills from manifest database",
-        long_about = "Read installed skills from the local manifest database.\n\nIn interactive terminals, kasetto opens a navigable skill browser with a banner, list pane, and detail pane. Use --json for scripting."
+        long_about = "Read installed skills from the local manifest database.\n\nIn interactive terminals, kasetto opens a navigable skill browser with a banner, list pane, and detail pane. Use --json for scripting.",
+        after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto list\x1b[0m\n  \x1b[90mkasetto list --json\x1b[0m"
     )]
     List {
         #[arg(long)]
@@ -91,6 +92,17 @@ pub enum Commands {
     Doctor {
         #[arg(long)]
         #[arg(help = "print diagnostic output as JSON")]
+        json: bool,
+    },
+    #[command(
+        name = "self-update",
+        about = "Update kasetto to the latest release",
+        long_about = "Check GitHub for the latest kasetto release. If a newer version is available, download the matching binary and replace the current executable in-place.",
+        after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto self-update\x1b[0m\n  \x1b[90mkasetto self-update --json\x1b[0m"
+    )]
+    SelfUpdate {
+        #[arg(long)]
+        #[arg(help = "print update output as JSON")]
         json: bool,
     },
 }

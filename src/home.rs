@@ -32,6 +32,7 @@ pub fn run(program_name: &str, default_config: &str) -> Result<()> {
         ),
         HomeAction::List => crate::commands::list::run(false),
         HomeAction::Doctor => crate::commands::doctor::run(false),
+        HomeAction::SelfUpdate => crate::commands::self_update::run(false),
         HomeAction::Quit => Ok(()),
     }
 }
@@ -40,6 +41,7 @@ enum HomeAction {
     Sync(SyncArgs),
     List,
     Doctor,
+    SelfUpdate,
     Quit,
 }
 
@@ -48,6 +50,7 @@ enum HomeItemAction {
     Sync,
     List,
     Doctor,
+    SelfUpdate,
     Quit,
 }
 
@@ -59,7 +62,7 @@ struct HomeItem {
     action: HomeItemAction,
 }
 
-const HOME_ITEMS: [HomeItem; 4] = [
+const HOME_ITEMS: [HomeItem; 5] = [
     HomeItem {
         title: "sync",
         command: "--config <path-or-url> [--dry-run] [--verbose]",
@@ -77,6 +80,12 @@ const HOME_ITEMS: [HomeItem; 4] = [
         command: "kasetto doctor",
         detail: "Inspect version, paths, and the latest sync state.",
         action: HomeItemAction::Doctor,
+    },
+    HomeItem {
+        title: "update",
+        command: "kasetto self-update",
+        detail: "Check for a newer release and update in-place.",
+        action: HomeItemAction::SelfUpdate,
     },
     HomeItem {
         title: "quit",
@@ -120,6 +129,7 @@ fn browse(program_name: &str, default_config: &str) -> Result<HomeAction> {
                     }
                     KeyCode::Char('l') => return Ok(HomeAction::List),
                     KeyCode::Char('d') => return Ok(HomeAction::Doctor),
+                    KeyCode::Char('u') => return Ok(HomeAction::SelfUpdate),
                     KeyCode::Enter => match HOME_ITEMS[selected].action {
                         HomeItemAction::Sync => {
                             if let Some(sync) =
@@ -130,6 +140,7 @@ fn browse(program_name: &str, default_config: &str) -> Result<HomeAction> {
                         }
                         HomeItemAction::List => return Ok(HomeAction::List),
                         HomeItemAction::Doctor => return Ok(HomeAction::Doctor),
+                        HomeItemAction::SelfUpdate => return Ok(HomeAction::SelfUpdate),
                         HomeItemAction::Quit => return Ok(HomeAction::Quit),
                     },
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(HomeAction::Quit),
@@ -292,7 +303,7 @@ fn draw(
         stdout,
         MoveTo(0, footer_row),
         SetForegroundColor(Color::DarkGrey),
-        Print("Use ↑/↓ or j/k to move, Enter to run, s/l/d for shortcuts, q to quit."),
+        Print("Use ↑/↓ or j/k to move, Enter to run, s/l/d/u for shortcuts, q to quit."),
         ResetColor
     )?;
 
@@ -515,6 +526,7 @@ fn print_sleeping_hint(program_name: &str, default_config: &str) {
     println!("  {} sync --config {}", program_name, default_config);
     println!("  {} list", program_name);
     println!("  {} doctor", program_name);
+    println!("  {} self-update", program_name);
 }
 
 fn command_text(program_name: &str, item: &HomeItem) -> String {

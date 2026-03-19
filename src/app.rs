@@ -21,6 +21,7 @@ pub fn run() -> Result<()> {
             ),
             Commands::List { json } => crate::commands::list::run(json),
             Commands::Doctor { json } => crate::commands::doctor::run(json),
+            Commands::SelfUpdate { json } => crate::commands::self_update::run(json),
         },
         StartupMode::Home => crate::home::run(&program_name, DEFAULT_CONFIG),
     }

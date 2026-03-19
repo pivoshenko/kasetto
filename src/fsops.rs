@@ -534,7 +534,7 @@ fn chrono_like_now() -> String {
     format!("{}", now)
 }
 
-fn http_client() -> Result<Client> {
+pub fn http_client() -> Result<Client> {
     Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))

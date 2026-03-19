@@ -71,6 +71,12 @@ fn synced_label(label: &str) -> String {
     if let Some(rest) = label.strip_prefix("Syncing ") {
         return format!("Synced {}", rest);
     }
+    if let Some(rest) = label.strip_prefix("Checking ") {
+        return format!("Checked {}", rest);
+    }
+    if let Some(rest) = label.strip_prefix("Updating ") {
+        return format!("Updated {}", rest);
+    }
     label.to_string()
 }
 
@@ -97,8 +103,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn synced_label_rewrites_syncing_prefix() {
+    fn synced_label_rewrites_known_prefixes() {
         assert_eq!(synced_label("Syncing demo"), "Synced demo");
+        assert_eq!(synced_label("Checking for updates"), "Checked for updates");
+        assert_eq!(synced_label("Updating 1.0.0 -> 1.1.0"), "Updated 1.0.0 -> 1.1.0");
         assert_eq!(synced_label("Loading source"), "Loading source");
     }
 

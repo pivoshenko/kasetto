@@ -3,7 +3,23 @@ name = "kasetto"
 version = "1.0.0"
 edition = "2021"
 description = "An extremely fast AI skills manager, written in Rust."
+authors = ["Volodymyr Pivoshenko"]
 license = "MIT OR Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/pivoshenko/kasetto"
+repository = "https://github.com/pivoshenko/kasetto"
+documentation = "https://docs.rs/kasetto"
+keywords = ["ai", "cli", "skills", "agents", "sync"]
+categories = ["command-line-utilities", "config", "development-tools"]
+default-run = "kasetto"
+
+[[bin]]
+name = "kasetto"
+path = "src/main.rs"
+
+[[bin]]
+name = "kst"
+path = "src/bin/kst.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -18,3 +34,21 @@ sha2 = "0.10"
 shlex = "1"
 tar = "0.4"
 unicode-width = "0.1"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = "symbols"
