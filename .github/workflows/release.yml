@@ -82,6 +82,12 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: kasetto-aarch64-apple-darwin.tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: kasetto-x86_64-pc-windows-msvc.zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: kasetto-aarch64-pc-windows-msvc.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -104,13 +110,23 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
         run: |
           mkdir -p staging
           cp target/${{ matrix.target }}/release/kasetto staging/
           cp target/${{ matrix.target }}/release/kst staging/ 2>/dev/null || cp staging/kasetto staging/kst
           cd staging
           tar czf ../${{ matrix.archive }} kasetto kst
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path staging -Force | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/kasetto.exe" staging/
+          Copy-Item "target/${{ matrix.target }}/release/kst.exe" staging/
+          Compress-Archive -Path staging/kasetto.exe, staging/kst.exe -DestinationPath "${{ matrix.archive }}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -136,7 +152,7 @@ jobs:
       - name: Checksums
         run: |
           cd dist
-          sha256sum *.tar.gz > checksums.txt
+          sha256sum *.tar.gz *.zip > checksums.txt
 
       - name: Generate Changelog
         uses: orhun/git-cliff-action@v4
@@ -239,5 +255,75 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/kasetto.rb
+          git commit -m "kasetto ${VERSION}"
+          git push
+
+  update-scoop:
+    needs: [tag, release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Update Scoop Manifest
+        env:
+          SCOOP_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          VERSION="${{ needs.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          SHA256_AMD64=$(sha256sum dist/kasetto-x86_64-pc-windows-msvc.zip | cut -d' ' -f1)
+          SHA256_ARM64=$(sha256sum dist/kasetto-aarch64-pc-windows-msvc.zip | cut -d' ' -f1)
+
+          REPO="https://github.com/pivoshenko/kasetto/releases/download/v${VERSION}"
+
+          cat > kasetto.json << MANIFEST
+          {
+            "version": "${VERSION}",
+            "description": "An extremely fast AI skills manager",
+            "homepage": "https://github.com/pivoshenko/kasetto",
+            "license": "MIT|Apache-2.0",
+            "architecture": {
+              "64bit": {
+                "url": "${REPO}/kasetto-x86_64-pc-windows-msvc.zip",
+                "hash": "${SHA256_AMD64}"
+              },
+              "arm64": {
+                "url": "${REPO}/kasetto-aarch64-pc-windows-msvc.zip",
+                "hash": "${SHA256_ARM64}"
+              }
+            },
+            "bin": ["kasetto.exe", "kst.exe"],
+            "checkver": {
+              "github": "https://github.com/pivoshenko/kasetto"
+            },
+            "autoupdate": {
+              "architecture": {
+                "64bit": {
+                  "url": "https://github.com/pivoshenko/kasetto/releases/download/v\$version/kasetto-x86_64-pc-windows-msvc.zip"
+                },
+                "arm64": {
+                  "url": "https://github.com/pivoshenko/kasetto/releases/download/v\$version/kasetto-aarch64-pc-windows-msvc.zip"
+                }
+              },
+              "hash": {
+                "url": "\$baseurl/checksums.txt"
+              }
+            }
+          }
+          MANIFEST
+
+          git clone "https://x-access-token:${SCOOP_TOKEN}@github.com/pivoshenko/scoop-bucket.git" bucket
+          cp kasetto.json bucket/kasetto.json
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add kasetto.json
           git commit -m "kasetto ${VERSION}"
           git push

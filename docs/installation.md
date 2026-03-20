@@ -59,6 +59,15 @@ Kasetto is available via a Homebrew tap.
 $ brew install pivoshenko/tap/kasetto
 ```
 
+### Scoop
+
+Kasetto is available via a Scoop bucket (Windows).
+
+```console
+$ scoop bucket add kasetto https://github.com/pivoshenko/scoop-bucket
+$ scoop install kasetto
+```
+
 ### Cargo
 
 Kasetto is available via [crates.io](https://crates.io).
