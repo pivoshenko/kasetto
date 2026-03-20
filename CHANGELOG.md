@@ -2,11 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-03-20
+
+### Documentation
+
+- Add usage descriptions for each commit prefix in contribution guidelines
+
+### Perf
+
+- Use mimalloc, fat LTO, streaming I/O, and SQLite tuning
+
 ## [1.2.0] - 2026-03-20
 
 ### Features
 
 - Add Windows builds and Scoop distribution
+
+### Release
+
+- V1.2.0
 
 ## [1.1.0] - 2026-03-20
 
