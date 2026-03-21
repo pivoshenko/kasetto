@@ -23,6 +23,7 @@ pub fn run() -> Result<()> {
             Commands::List { json } => crate::commands::list::run(json),
             Commands::Doctor { json } => crate::commands::doctor::run(json),
             Commands::SelfUpdate { json } => crate::commands::self_update::run(json),
+            Commands::Init { force } => crate::commands::init::run(force),
             Commands::Completions { shell } => {
                 let mut cmd = Cli::command();
                 let bin = program_name;

@@ -107,6 +107,16 @@ pub enum Commands {
         json: bool,
     },
     #[command(
+        about = "Create a new skills.config.yaml interactively",
+        long_about = "Launch an interactive wizard to scaffold skills.config.yaml.\n\nGuides you through choosing an agent and adding skill sources.",
+        after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto init\x1b[0m\n  \x1b[90mkasetto init --force\x1b[0m"
+    )]
+    Init {
+        #[arg(long, short = 'f')]
+        #[arg(help = "overwrite existing config")]
+        force: bool,
+    },
+    #[command(
         about = "Generate shell completions",
         long_about = "Generate shell completion scripts for kasetto.\n\nThe output is written to stdout so it can be sourced directly or redirected to a file.",
         after_help = "\x1b[1;35mExamples:\x1b[0m\n  \x1b[90mkasetto completions bash\x1b[0m\n  \x1b[90mkasetto completions zsh\x1b[0m\n  \x1b[90mkasetto completions fish\x1b[0m\n  \x1b[90mkasetto completions powershell\x1b[0m"
