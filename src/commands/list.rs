@@ -1,23 +1,23 @@
 use std::io::IsTerminal;
 
+use crate::banner::print_banner;
+use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
 use crate::error::Result;
-use crate::fsops::load_state;
-use crate::list::browse as browse_list;
-use crate::model::InstalledSkill;
+use crate::list::{browse as browse_list, mcp_asset_entries, BrowseInput};
+use crate::lock::load_lock;
+use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, list_color_enabled, read_skill_profile};
+use crate::ui::{print_json, print_section_header};
 
-pub fn run(as_json: bool) -> Result<()> {
-    let state = load_state()?;
-    if state.skills.is_empty() {
-        if as_json {
-            println!("[]");
-            return Ok(());
-        }
-        println!("No installed skills.");
-        return Ok(());
-    }
+pub(crate) fn run(as_json: bool, scope_override: Option<Scope>) -> Result<()> {
+    let scope = resolve_scope(scope_override, None);
+    let project_root = std::env::current_dir().unwrap_or_default();
+    let lock = load_lock(scope, &project_root)?;
 
-    let mut items = Vec::new();
+    let state = lock.state();
+    let managed_mcps = lock.list_installed_mcps();
+
+    let mut skills = Vec::new();
     for (id, entry) in &state.skills {
         let (name, fallback_description) = read_skill_profile(&entry.destination, &entry.skill);
         let description = if entry.description.trim().is_empty() {
@@ -26,7 +26,7 @@ pub fn run(as_json: bool) -> Result<()> {
             entry.description.clone()
         };
         let updated_ago = format_updated_ago(&entry.updated_at);
-        items.push(InstalledSkill {
+        skills.push(InstalledSkill {
             id: id.clone(),
             name,
             description,
@@ -39,41 +39,61 @@ pub fn run(as_json: bool) -> Result<()> {
             updated_ago,
         });
     }
-
-    items.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    skills.sort_by_cached_key(|s| s.name.to_lowercase());
 
     if as_json {
-        println!("{}", serde_json::to_string_pretty(&items)?);
+        let output = serde_json::json!({
+            "skills": skills,
+            "mcps": managed_mcps,
+        });
+        return print_json(&output);
+    }
+
+    let has_anything = !skills.is_empty() || !managed_mcps.is_empty();
+
+    if !has_anything {
+        print_banner();
+        println!("Nothing installed.");
         return Ok(());
     }
 
     if std::io::stdout().is_terminal() && std::env::var_os("NO_TUI").is_none() {
-        browse_list(&items)?;
-    } else {
-        print_list_text(&items);
+        let mcps = mcp_asset_entries(&managed_mcps);
+        browse_list(&BrowseInput { skills, mcps })?;
+        return Ok(());
     }
-    Ok(())
-}
 
-fn print_list_text(items: &[InstalledSkill]) {
+    print_banner();
     let color = list_color_enabled();
-    println!("Installed skills: {}", items.len());
-    println!();
-    for item in items {
-        if color {
-            println!(
-                "\x1b[1;33m{}\x1b[0m  \x1b[90mupdated {} ({})\x1b[0m",
-                item.name, item.updated_ago, item.updated_at
-            );
-        } else {
-            println!(
-                "{}  updated {} ({})",
-                item.name, item.updated_ago, item.updated_at
-            );
+
+    if !skills.is_empty() {
+        print_section_header("Skills", skills.len(), color);
+        println!();
+        for item in &skills {
+            if color {
+                println!(
+                    "  {WARNING_EMPHASIS}{}{RESET}  {SECONDARY}updated {} ({}){RESET}",
+                    item.name, item.updated_ago, item.updated_at
+                );
+            } else {
+                println!(
+                    "  {}  updated {} ({})",
+                    item.name, item.updated_ago, item.updated_at
+                );
+            }
+            println!("    {}", item.description);
+            println!("    source: {}", item.source);
+            println!();
         }
-        println!("  {}", item.description);
-        println!("  source: {}", item.source);
-        println!("  path: {}", item.destination);
+    }
+
+    if !managed_mcps.is_empty() {
+        print_section_header("MCP Servers", managed_mcps.len(), color);
+        for name in &managed_mcps {
+            println!("  {name}");
+        }
         println!();
     }
+
+    Ok(())
 }

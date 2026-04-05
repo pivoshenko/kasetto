@@ -90,7 +90,7 @@ cargo install --path .
 kst sync --config https://example.com/team-skills.yaml
 
 # from a local file
-kst sync --config skills.config.yaml
+kst sync --config kasetto.yaml
 ```
 
 That's it. Kasetto reads the config, pulls the skills, and installs them into the right agent directory. Next time you run `sync`, only changed skills are updated.
@@ -114,7 +114,7 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 
 | Flag        | What it does                                                       |
 | ----------- | ------------------------------------------------------------------ |
-| `--config`  | Path or HTTPS URL to a YAML config (default: `skills.config.yaml`) |
+| `--config`  | Path or HTTPS URL to a YAML config (default: `kasetto.yaml`) |
 | `--dry-run` | Preview what would change without writing anything                 |
 | `--quiet`   | Suppress non-error output                                          |
 | `--json`    | Print the sync report as JSON                                      |
@@ -141,17 +141,25 @@ Prints local diagnostics: version, manifest DB path, installation paths, last sy
 kst doctor [--json]
 ```
 
-### `kst self-update`
+### `kst self update`
 
 Checks GitHub for the latest release and replaces the current binary in-place.
 
 ```bash
-kst self-update [--json]
+kst self update [--json]
+```
+
+### `kst self uninstall`
+
+Removes installed skills, local Kasetto config and data, and the binary.
+
+```bash
+kst self uninstall [--yes]
 ```
 
 ## Configuration
 
-Pass a config via `--config` or let Kasetto pick up `skills.config.yaml` in the current directory.
+Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory.
 
 ```yaml
 # Choose an agent preset...
@@ -242,8 +250,6 @@ Set the `agent` field and Kasetto handles the rest.
 | Warp           | `warp`           | `~/.agents/skills/`             |
 | Windsurf       | `windsurf`       | `~/.codeium/windsurf/skills/`   |
 | Zencoder       | `zencoder`       | `~/.zencoder/skills/`           |
-
-`claude` is accepted as a legacy alias for `claude-code`.
 
 </details>
 

@@ -51,10 +51,6 @@ are installed to the correct directory for each agent.
 | Windsurf | `windsurf` | `~/.codeium/windsurf/skills/` |
 | Zencoder | `zencoder` | `~/.zencoder/skills/` |
 
-!!! note
-
-    `claude` is accepted as a legacy alias for `claude-code`.
-
 ## Custom paths
 
 Need an agent that isn't listed? Use the `destination` field to point at any path:

@@ -1,6 +1,6 @@
 # Configuration
 
-Pass a config via `--config` or let Kasetto pick up `skills.config.yaml` in the current directory.
+Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory.
 
 ## Example
 

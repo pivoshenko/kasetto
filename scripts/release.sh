@@ -11,7 +11,7 @@ set -euo pipefail
 
 BUMP="${1:-}"
 
-# --- resolve next version -------------------------------------------------- #
+# Resolve next version
 
 if [[ -z "$BUMP" ]]; then
     NEXT=$(git-cliff --bumped-version)
@@ -29,14 +29,14 @@ TAG="v${VERSION}"
 
 echo "releasing ${TAG}"
 
-# --- check for clean working tree ------------------------------------------ #
+# Check for clean working tree
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "error: working tree is dirty — commit or stash changes first" >&2
     exit 1
 fi
 
-# --- bump Cargo.toml ------------------------------------------------------- #
+# Bump Cargo.toml
 
 if [[ "$(uname)" == "Darwin" ]]; then
     sed -i '' "s/^version = .*/version = \"${VERSION}\"/" Cargo.toml
@@ -46,11 +46,11 @@ fi
 
 cargo update --workspace 2>/dev/null
 
-# --- generate changelog ---------------------------------------------------- #
+# Generate changelog
 
 git-cliff --tag "$TAG" --output CHANGELOG.md
 
-# --- commit and tag -------------------------------------------------------- #
+# Commit and tag
 
 git add Cargo.toml Cargo.lock CHANGELOG.md
 git commit -m "release: ${TAG}"

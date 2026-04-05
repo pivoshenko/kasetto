@@ -4,11 +4,14 @@ use std::path::Path;
 
 use crate::fsops::now_unix;
 
-pub fn read_skill_profile(destination: &str, fallback_name: &str) -> (String, String) {
+pub(crate) fn read_skill_profile(destination: &str, fallback_name: &str) -> (String, String) {
     read_skill_profile_from_dir(Path::new(destination), fallback_name)
 }
 
-pub fn read_skill_profile_from_dir(skill_dir: &Path, fallback_name: &str) -> (String, String) {
+pub(crate) fn read_skill_profile_from_dir(
+    skill_dir: &Path,
+    fallback_name: &str,
+) -> (String, String) {
     let skill_md = skill_dir.join("SKILL.md");
     let body = match fs::read_to_string(skill_md) {
         Ok(v) => v,
@@ -86,7 +89,7 @@ pub fn read_skill_profile_from_dir(skill_dir: &Path, fallback_name: &str) -> (St
     )
 }
 
-pub fn format_updated_ago(updated_at: &str) -> String {
+pub(crate) fn format_updated_ago(updated_at: &str) -> String {
     let ts = match updated_at.parse::<u64>() {
         Ok(v) => v,
         Err(_) => return "unknown".to_string(),
@@ -108,7 +111,7 @@ pub fn format_updated_ago(updated_at: &str) -> String {
     }
 }
 
-pub fn list_color_enabled() -> bool {
+pub(crate) fn list_color_enabled() -> bool {
     std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
 }
 

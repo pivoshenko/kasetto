@@ -1,25 +1,35 @@
-use std::io::IsTerminal;
 use std::path::Path;
 
 use crate::banner::print_banner;
+use crate::colors::{ACCENT, RESET, SECONDARY};
 use crate::error::Result;
-use crate::fsops::{load_latest_failed_installs, load_state, manifest_db_path};
-use crate::model::FailedInstall;
+use crate::lock::{load_lock, lock_path};
+use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
+use crate::ui::{print_field, print_json, print_label};
 
 #[derive(serde::Serialize)]
 struct DoctorOutput {
     version: String,
-    manifest_db: String,
+    lock_file: String,
+    scope: String,
+    skills: Vec<String>,
     installation_path: String,
     last_sync: Option<String>,
-    failed_skills: Vec<FailedInstall>,
+    failures: Vec<SyncFailure>,
+    mcps: Vec<String>,
 }
 
-pub fn run(as_json: bool) -> Result<()> {
+pub(crate) fn run(as_json: bool, scope_override: Option<Scope>, program_name: &str) -> Result<()> {
+    let scope = resolve_scope(scope_override, None);
+    let project_root = std::env::current_dir().unwrap_or_default();
+    let lock = load_lock(scope, &project_root)?;
+
     let version = env!("CARGO_PKG_VERSION").to_string();
-    let manifest_path = manifest_db_path()?;
-    let state = load_state()?;
+    let lock_file_path = lock_path(scope, &project_root)?;
+
+    let state = lock.state();
+
     let mut install_paths: Vec<String> = state
         .skills
         .values()
@@ -38,23 +48,36 @@ pub fn run(as_json: bool) -> Result<()> {
         install_paths.join(", ")
     };
 
-    let failed_skills = load_latest_failed_installs()?;
+    let mut skills: Vec<String> = state.skills.values().map(|e| e.skill.clone()).collect();
+    skills.sort();
+
+    let failures = lock.load_latest_failures();
     let last_sync = state.last_run.clone();
+
+    let managed_mcps = lock.list_installed_mcps();
+
+    let scope_label = match scope {
+        Scope::Global => "global".to_string(),
+        Scope::Project => "project".to_string(),
+    };
+
     let output = DoctorOutput {
         version,
-        manifest_db: manifest_path.to_string_lossy().to_string(),
+        lock_file: lock_file_path.to_string_lossy().to_string(),
+        scope: scope_label,
+        skills,
         installation_path,
         last_sync,
-        failed_skills,
+        failures,
+        mcps: managed_mcps,
     };
 
     if as_json {
-        println!("{}", serde_json::to_string_pretty(&output)?);
-        return Ok(());
+        return print_json(&output);
     }
 
     let color = list_color_enabled();
-    if std::io::stdout().is_terminal() {
+    if std::io::IsTerminal::is_terminal(&std::io::stdout()) {
         if color {
             print_banner();
         } else {
@@ -67,39 +90,38 @@ pub fn run(as_json: bool) -> Result<()> {
         None => "none".to_string(),
     };
 
-    if color {
-        println!("\x1b[1;35mVersion:\x1b[0m {}", output.version);
-        println!("\x1b[1;35mManifest DB:\x1b[0m {}", output.manifest_db);
-        println!(
-            "\x1b[1;35mInstallation Path:\x1b[0m {}",
-            output.installation_path
-        );
-        println!("\x1b[1;35mLast Sync:\x1b[0m {}", last_sync_text);
-        println!("\x1b[1;35mFailed Skills:\x1b[0m");
-        if output.failed_skills.is_empty() {
-            println!("none");
-        } else {
-            for failed in &output.failed_skills {
-                println!(
-                    "\x1b[1;33m{}\x1b[0m {} \x1b[90m{}\x1b[0m",
-                    failed.skill, failed.reason, failed.source
-                );
-            }
-        }
+    print_field("Version", &output.version, color);
+    print_field("Lock File", &output.lock_file, color);
+    print_field("Scope", &output.scope, color);
+    print_field("Installation Path", &output.installation_path, color);
+    print_field("Last Sync", &last_sync_text, color);
+
+    print_label("Failures", color);
+    if output.failures.is_empty() {
+        println!("  none");
     } else {
-        println!("Version: {}", output.version);
-        println!("Manifest DB: {}", output.manifest_db);
-        println!("Installation Path: {}", output.installation_path);
-        println!("Last Sync: {}", last_sync_text);
-        println!("Failed Skills:");
-        if output.failed_skills.is_empty() {
-            println!("none");
-        } else {
-            for failed in &output.failed_skills {
-                println!("{} {} {}", failed.skill, failed.reason, failed.source);
+        for f in &output.failures {
+            if color {
+                println!(
+                    "  {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
+                    f.name, f.reason, f.source
+                );
+            } else {
+                println!("  {} {} {}", f.name, f.reason, f.source);
             }
         }
     }
+
+    print_field(
+        "Skills",
+        &format!("{} ({program_name} list)", output.skills.len()),
+        color,
+    );
+    print_field(
+        "MCP Servers",
+        &format!("{} ({program_name} list)", output.mcps.len()),
+        color,
+    );
 
     Ok(())
 }

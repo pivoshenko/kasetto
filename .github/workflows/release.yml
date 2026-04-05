@@ -16,7 +16,8 @@ jobs:
     outputs:
       tag: v${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -92,11 +93,13 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -138,7 +141,8 @@ jobs:
     needs: [tag, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag }}
           fetch-depth: 0
@@ -172,11 +176,13 @@ jobs:
     needs: [tag, release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Publish to Crates.io
         run: cargo publish
@@ -187,7 +193,8 @@ jobs:
     needs: [tag, release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
@@ -197,7 +204,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Update Homebrew Formula
+      - name: Update Homebrew formula
         env:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
@@ -262,17 +269,18 @@ jobs:
     needs: [tag, release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
-      - name: Download Artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
 
-      - name: Update Scoop Manifest
+      - name: Update Scoop manifest
         env:
           SCOOP_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
         run: |

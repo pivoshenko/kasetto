@@ -16,7 +16,7 @@ You should see a help menu listing the available commands.
 
 ## Creating a config
 
-Create a `skills.config.yaml` in your project to declare the skills you want:
+Create a `kasetto.yaml` in your project to declare the skills you want:
 
 ```yaml
 agent: claude-code

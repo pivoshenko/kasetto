@@ -1,160 +1,51 @@
 use std::cmp::{max, min};
-use std::io::{stdout, Stdout, Write};
+use std::io::{Stdout, Write};
+use std::time::Duration;
 
-use crossterm::cursor::{
-    Hide, MoveRight, MoveToColumn, MoveToNextLine, MoveUp, RestorePosition, SavePosition, Show,
-};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::cursor::{position, MoveRight, MoveToColumn, MoveToNextLine, RestorePosition};
 use crossterm::queue;
 use crossterm::style::{
     Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
 };
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType};
-use crossterm::{execute, terminal::size};
+use crossterm::terminal::size;
+use crossterm::terminal::{Clear, ClearType};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::banner::{banner_lines, banner_width};
+use crate::colors::term;
 use crate::error::Result;
 use crate::model::InstalledSkill;
+use crate::tui::draw_stars;
 
-pub fn browse(items: &[InstalledSkill]) -> Result<()> {
-    let mut guard = TerminalGuard::enter()?;
-    let mut stdout = stdout();
-    let mut state = ListState::default();
+use super::session::{ListState, PaneRect, TerminalGuard};
+use super::tab::Tab;
+use super::types::{AssetEntry, BrowseInput};
 
-    loop {
-        draw(&mut stdout, items, &mut state, &mut guard)?;
-        match event::read()? {
-            Event::Key(key) if key.kind != KeyEventKind::Release => match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => break,
-                KeyCode::Up | KeyCode::Char('k') => state.move_by(-1, items.len()),
-                KeyCode::Down | KeyCode::Char('j') => state.move_by(1, items.len()),
-                KeyCode::PageUp => state.page_up(items.len()),
-                KeyCode::PageDown => state.page_down(items.len()),
-                KeyCode::Home | KeyCode::Char('g') => state.jump_to(0, items.len()),
-                KeyCode::End | KeyCode::Char('G') => {
-                    state.jump_to(items.len().saturating_sub(1), items.len())
-                }
-                _ => {}
-            },
-            Event::Resize(_, _) => {}
-            _ => {}
-        }
-    }
-
-    Ok(())
+/// Trait for items that can be displayed in a list pane.
+trait ListItem {
+    fn display_name(&self) -> &str;
 }
 
-#[derive(Default)]
-struct ListState {
-    selected: usize,
-    scroll: usize,
-    last_page_size: usize,
-}
-
-impl ListState {
-    fn move_by(&mut self, delta: isize, len: usize) {
-        if len == 0 {
-            self.selected = 0;
-            self.scroll = 0;
-            return;
-        }
-        let next = self.selected as isize + delta;
-        self.selected = next.clamp(0, len as isize - 1) as usize;
-    }
-
-    fn jump_to(&mut self, index: usize, len: usize) {
-        if len == 0 {
-            self.selected = 0;
-            self.scroll = 0;
-            return;
-        }
-        self.selected = min(index, len - 1);
-    }
-
-    fn page_up(&mut self, len: usize) {
-        let step = max(1, self.last_page_size.saturating_sub(1));
-        self.move_by(-(step as isize), len);
-    }
-
-    fn page_down(&mut self, len: usize) {
-        let step = max(1, self.last_page_size.saturating_sub(1));
-        self.move_by(step as isize, len);
-    }
-
-    fn keep_visible(&mut self, visible_rows: usize, len: usize) {
-        self.last_page_size = visible_rows;
-        if len == 0 || visible_rows == 0 {
-            self.scroll = 0;
-            return;
-        }
-        if self.selected < self.scroll {
-            self.scroll = self.selected;
-        }
-        let max_scroll = len.saturating_sub(visible_rows);
-        if self.selected >= self.scroll + visible_rows {
-            self.scroll = self.selected + 1 - visible_rows;
-        }
-        self.scroll = min(self.scroll, max_scroll);
+impl ListItem for InstalledSkill {
+    fn display_name(&self) -> &str {
+        &self.name
     }
 }
 
-struct TerminalGuard {
-    height: u16,
-}
-
-#[derive(Clone, Copy)]
-struct PaneRect {
-    left: usize,
-    top: usize,
-    width: usize,
-    height: usize,
-}
-
-impl TerminalGuard {
-    fn enter() -> Result<Self> {
-        let (_, term_height) = size()?;
-        let height = term_height.clamp(10, 26);
-        enable_raw_mode()?;
-        execute!(stdout(), Hide)?;
-
-        if height > 1 {
-            for _ in 1..height {
-                println!();
-            }
-            execute!(stdout(), MoveUp(height - 1))?;
-        }
-        execute!(stdout(), SavePosition)?;
-
-        Ok(Self { height })
-    }
-
-    fn refresh_size(&mut self) -> Result<()> {
-        let (_, term_height) = size()?;
-        self.height = term_height.clamp(10, 26);
-        Ok(())
+impl ListItem for AssetEntry {
+    fn display_name(&self) -> &str {
+        &self.name
     }
 }
 
-impl Drop for TerminalGuard {
-    fn drop(&mut self) {
-        let _ = disable_raw_mode();
-        let _ = execute!(
-            stdout(),
-            RestorePosition,
-            MoveToNextLine(self.height),
-            Clear(ClearType::CurrentLine),
-            Show
-        );
-        println!();
-    }
-}
-
-fn draw(
+pub(super) fn draw(
     stdout: &mut Stdout,
-    items: &[InstalledSkill],
+    input: &BrowseInput,
     state: &mut ListState,
     guard: &mut TerminalGuard,
+    tabs: &[Tab],
+    active_tab: usize,
+    elapsed: Duration,
 ) -> Result<()> {
     guard.refresh_size()?;
     let (width, _) = size()?;
@@ -173,11 +64,31 @@ fn draw(
     let mut row = 0usize;
     let show_ascii_banner = width >= banner_width() && panel_height >= 16;
     if show_ascii_banner {
-        row += draw_banner(stdout, width, row, &colors)?;
+        move_to(stdout, 0, 0)?;
+        stdout.flush()?;
+        let (_, banner_origin_y) = position()?;
+        let banner_h = draw_banner(stdout, width, 0, &colors)?;
+        stdout.flush()?;
+        if panel_height >= 22 {
+            draw_stars(stdout, elapsed, banner_origin_y)?;
+        }
+        row += banner_h;
     } else {
         row += draw_compact_banner(stdout, width, row, &colors)?;
     }
-    row = draw_header(stdout, width, row, items.len(), &colors)?;
+
+    // Draw tab bar
+    if tabs.len() > 1 {
+        row = draw_tab_bar(stdout, width, row, tabs, active_tab, &colors)?;
+    }
+
+    let current_tab = tabs[active_tab];
+    let item_count = match current_tab {
+        Tab::Skills => input.skills.len(),
+        Tab::Mcps => input.mcps.len(),
+    };
+
+    row = draw_header(stdout, width, row, item_count, current_tab.label(), &colors)?;
 
     let footer_height = 2usize;
     let content_top = row;
@@ -189,79 +100,106 @@ fn draw(
         return Ok(());
     }
 
-    let two_pane = content_height >= 8;
-    let side_by_side = two_pane && width >= 80;
-    if two_pane && !side_by_side {
-        let list_height = max(5, content_height / 2);
-        state.keep_visible(list_height.saturating_sub(2), items.len());
-        draw_list_pane(
-            stdout,
-            PaneRect {
-                left: 0,
-                top: content_top,
-                width,
-                height: list_height,
-            },
-            items,
-            state,
-            &colors,
-        )?;
-        draw_detail_pane(
-            stdout,
-            0,
-            content_top + list_height,
-            width,
-            content_height.saturating_sub(list_height),
-            items.get(state.selected),
-            &colors,
-        )?;
-    } else if side_by_side {
-        let list_width = (width / 3).clamp(34, 46);
-        let detail_width = width.saturating_sub(list_width + 1);
-        state.keep_visible(content_height.saturating_sub(2), items.len());
-        draw_list_pane(
-            stdout,
-            PaneRect {
-                left: 0,
-                top: content_top,
-                width: list_width,
-                height: content_height,
-            },
-            items,
-            state,
-            &colors,
-        )?;
-        draw_detail_pane(
-            stdout,
-            list_width + 1,
-            content_top,
-            detail_width,
-            content_height,
-            items.get(state.selected),
-            &colors,
-        )?;
-    } else {
-        state.keep_visible(content_height.saturating_sub(2), items.len());
-        draw_list_pane(
-            stdout,
-            PaneRect {
-                left: 0,
-                top: content_top,
-                width,
-                height: content_height,
-            },
-            items,
-            state,
-            &colors,
-        )?;
+    match current_tab {
+        Tab::Skills => {
+            let two_pane = content_height >= 8;
+            let side_by_side = two_pane && width >= 80;
+            if two_pane && !side_by_side {
+                let list_height = max(5, content_height / 2);
+                state.keep_visible(list_height.saturating_sub(2), input.skills.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width,
+                        height: list_height,
+                    },
+                    &input.skills,
+                    state,
+                    "Installed Skills",
+                    &colors,
+                )?;
+                draw_skill_detail_pane(
+                    stdout,
+                    0,
+                    content_top + list_height,
+                    width,
+                    content_height.saturating_sub(list_height),
+                    input.skills.get(state.selected),
+                    &colors,
+                )?;
+            } else if side_by_side {
+                let list_width = (width / 3).clamp(34, 46);
+                let detail_width = width.saturating_sub(list_width + 1);
+                state.keep_visible(content_height.saturating_sub(2), input.skills.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width: list_width,
+                        height: content_height,
+                    },
+                    &input.skills,
+                    state,
+                    "Installed Skills",
+                    &colors,
+                )?;
+                draw_skill_detail_pane(
+                    stdout,
+                    list_width + 1,
+                    content_top,
+                    detail_width,
+                    content_height,
+                    input.skills.get(state.selected),
+                    &colors,
+                )?;
+            } else {
+                state.keep_visible(content_height.saturating_sub(2), input.skills.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width,
+                        height: content_height,
+                    },
+                    &input.skills,
+                    state,
+                    "Installed Skills",
+                    &colors,
+                )?;
+            }
+        }
+        Tab::Mcps => {
+            state.keep_visible(content_height.saturating_sub(2), input.mcps.len());
+            draw_list_pane(
+                stdout,
+                PaneRect {
+                    left: 0,
+                    top: content_top,
+                    width,
+                    height: content_height,
+                },
+                &input.mcps,
+                state,
+                "MCP Servers",
+                &colors,
+            )?;
+        }
     }
 
+    let tab_hint = if tabs.len() > 1 {
+        "Tab switch tabs   "
+    } else {
+        ""
+    };
     draw_footer(
         stdout,
         width,
         panel_height.saturating_sub(2),
-        items.get(state.selected),
-        two_pane,
+        tab_hint,
         &colors,
     )?;
     stdout.flush()?;
@@ -296,9 +234,9 @@ fn draw_small_terminal(
     let lines = [
         "kasetto list",
         "",
-        "Terminal too small for the skill browser.",
+        "Terminal too small for the browser.",
         "Resize the window to at least 72x20.",
-        "Press q to exit.",
+        "q quit",
     ];
     for (index, line) in lines.iter().enumerate() {
         if index >= height {
@@ -310,8 +248,9 @@ fn draw_small_terminal(
 }
 
 fn draw_banner(stdout: &mut Stdout, width: usize, top: usize, colors: &Colors) -> Result<usize> {
+    let lines = banner_lines();
     if width >= banner_width() {
-        for (offset, line) in banner_lines().iter().enumerate() {
+        for (offset, line) in lines.iter().enumerate() {
             move_to(stdout, 0, top + offset)?;
             queue!(
                 stdout,
@@ -320,7 +259,7 @@ fn draw_banner(stdout: &mut Stdout, width: usize, top: usize, colors: &Colors) -
                 ResetColor
             )?;
         }
-        Ok(banner_lines().len() + 1)
+        Ok(lines.len() + 1)
     } else {
         write_line(stdout, 0, top, width, "kasetto", colors, Style::Title)?;
         Ok(2)
@@ -345,23 +284,64 @@ fn draw_compact_banner(
     Ok(1)
 }
 
+fn draw_tab_bar(
+    stdout: &mut Stdout,
+    _width: usize,
+    top: usize,
+    tabs: &[Tab],
+    active: usize,
+    colors: &Colors,
+) -> Result<usize> {
+    move_to(stdout, 0, top)?;
+    for (i, tab) in tabs.iter().enumerate() {
+        if i == active {
+            queue!(
+                stdout,
+                SetForegroundColor(colors.accent),
+                SetAttribute(Attribute::Bold),
+                Print(format!(" {} ", tab.label())),
+                SetAttribute(Attribute::Reset),
+                ResetColor
+            )?;
+        } else {
+            queue!(
+                stdout,
+                SetForegroundColor(colors.secondary),
+                Print(format!(" {} ", tab.label())),
+                ResetColor
+            )?;
+        }
+        if i < tabs.len() - 1 {
+            queue!(
+                stdout,
+                SetForegroundColor(colors.border),
+                Print("│"),
+                ResetColor
+            )?;
+        }
+    }
+    Ok(top + 1)
+}
+
 fn draw_header(
     stdout: &mut Stdout,
     width: usize,
     top: usize,
     count: usize,
+    label: &str,
     colors: &Colors,
 ) -> Result<usize> {
-    let summary = format!("{} installed  |  Navigate with ↑ ↓ j k PgUp PgDn", count);
-    write_line(stdout, 0, top, width, &summary, colors, Style::Muted)?;
+    let summary = format!("{count} {label}");
+    write_line(stdout, 0, top, width, &summary, colors, Style::Secondary)?;
     Ok(top + 1)
 }
 
-fn draw_list_pane(
+fn draw_list_pane<T: ListItem>(
     stdout: &mut Stdout,
     rect: PaneRect,
-    items: &[InstalledSkill],
+    items: &[T],
     state: &ListState,
+    title: &str,
     colors: &Colors,
 ) -> Result<()> {
     let PaneRect {
@@ -374,7 +354,7 @@ fn draw_list_pane(
         return Ok(());
     }
 
-    draw_box(stdout, left, top, width, height, "Installed Skills", colors)?;
+    draw_box(stdout, left, top, width, height, title, colors)?;
     let inner_width = width.saturating_sub(2);
     let visible_rows = height.saturating_sub(2);
     let start = state.scroll;
@@ -389,7 +369,7 @@ fn draw_list_pane(
         }
 
         let item = &items[item_index];
-        let label = truncate_width(&item.name, inner_width);
+        let label = truncate_width(item.display_name(), inner_width);
 
         move_to(stdout, left + 1, y)?;
         queue!(
@@ -412,7 +392,7 @@ fn draw_list_pane(
     Ok(())
 }
 
-fn draw_detail_pane(
+fn draw_skill_detail_pane(
     stdout: &mut Stdout,
     left: usize,
     top: usize,
@@ -465,34 +445,22 @@ fn draw_footer(
     stdout: &mut Stdout,
     width: usize,
     top: usize,
-    item: Option<&InstalledSkill>,
-    show_detail_help: bool,
+    tab_hint: &str,
     colors: &Colors,
 ) -> Result<()> {
-    write_line(
-        stdout,
-        0,
-        top,
-        width,
-        "q quit   ↑/↓ or j/k move   PgUp/PgDn page   g/G jump",
-        colors,
-        Style::Muted,
-    )?;
-    let second_line = if show_detail_help {
-        "Use --json for machine-readable output.".to_string()
-    } else if let Some(item) = item {
-        format!("Selected: {}  |  Updated {}", item.name, item.updated_ago)
-    } else {
-        "Use --json for machine-readable output.".to_string()
-    };
+    let hint = format!(
+        "q quit   ↑/↓ or j/k move   PgUp/PgDn page   g/G jump   {}",
+        tab_hint
+    );
+    write_line(stdout, 0, top, width, &hint, colors, Style::Secondary)?;
     write_line(
         stdout,
         0,
         top + 1,
         width,
-        &second_line,
+        "Use --json for machine-readable output.",
         colors,
-        Style::Muted,
+        Style::Secondary,
     )?;
     Ok(())
 }
@@ -594,7 +562,7 @@ fn write_styled_line(
             SetForegroundColor(colors.accent),
             SetAttribute(Attribute::Bold)
         )?,
-        Style::Muted => queue!(stdout, SetForegroundColor(colors.muted))?,
+        Style::Secondary => queue!(stdout, SetForegroundColor(colors.secondary))?,
         Style::Value => queue!(stdout, SetForegroundColor(colors.text))?,
     }
     queue!(
@@ -612,7 +580,7 @@ fn wrap_lines(lines: &[Line], width: usize) -> Vec<StyledLine> {
     for line in lines {
         match line {
             Line::LabelValue(label, value) => {
-                wrapped.push(StyledLine::new(Style::Muted, format!("{label}:")));
+                wrapped.push(StyledLine::new(Style::Secondary, format!("{label}:")));
                 wrapped.extend(wrap_text(value, width, Style::Value));
                 wrapped.push(StyledLine::new(Style::Value, String::new()));
             }
@@ -694,7 +662,7 @@ fn pad_width(text: &str, width: usize) -> String {
 #[derive(Clone, Copy)]
 enum Style {
     Title,
-    Muted,
+    Secondary,
     Value,
 }
 
@@ -724,7 +692,7 @@ struct Colors {
     accent: Color,
     border: Color,
     text: Color,
-    muted: Color,
+    secondary: Color,
     background: Color,
     selection_bg: Color,
     selection_fg: Color,
@@ -734,25 +702,25 @@ impl Colors {
     fn active() -> Self {
         if std::env::var_os("NO_COLOR").is_some() {
             Self {
-                banner: Color::White,
-                accent: Color::White,
-                border: Color::White,
-                text: Color::White,
-                muted: Color::White,
+                banner: term::TEXT,
+                accent: term::TEXT,
+                border: term::TEXT,
+                text: term::TEXT,
+                secondary: term::TEXT,
                 background: Color::Reset,
-                selection_bg: Color::Grey,
-                selection_fg: Color::Black,
+                selection_bg: term::MONO_SEL_BG,
+                selection_fg: term::MONO_SEL_FG,
             }
         } else {
             Self {
-                banner: Color::Magenta,
-                accent: Color::Yellow,
-                border: Color::DarkGrey,
-                text: Color::White,
-                muted: Color::DarkGrey,
+                banner: term::BANNER,
+                accent: term::ACCENT,
+                border: term::SECONDARY,
+                text: term::TEXT,
+                secondary: term::SECONDARY,
                 background: Color::Reset,
-                selection_bg: Color::DarkYellow,
-                selection_fg: Color::Black,
+                selection_bg: term::ACCENT,
+                selection_fg: term::TEXT,
             }
         }
     }

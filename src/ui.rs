@@ -4,13 +4,72 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use crate::colors::{
+    ACCENT, CHIP_ERROR, CHIP_NEUTRAL, CHIP_SUCCESS, CHIP_WARNING, CLEAR_LINE, ERROR, RESET,
+    SECONDARY, SUCCESS,
+};
 use crate::error::Result;
 
-pub fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
+/// Braille spinner frames shared across all TUI surfaces.
+pub(crate) const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+/// Unicode symbols for success and failure indicators.
+pub(crate) const SYM_OK: &str = "✓";
+pub(crate) const SYM_FAIL: &str = "✗";
+
+pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
     !quiet && !as_json && !plain && std::io::stderr().is_terminal()
 }
 
-pub fn with_spinner<T, F>(
+// ---------------------------------------------------------------------------
+// Shared output helpers
+// ---------------------------------------------------------------------------
+
+/// Print a serializable value as pretty JSON.
+pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
+    println!("{}", serde_json::to_string_pretty(val)?);
+    Ok(())
+}
+
+/// Print `Label: value` with optional ANSI color.
+pub(crate) fn print_field(label: &str, value: &str, color: bool) {
+    if color {
+        println!("{ACCENT}{label}: {RESET}{value}");
+    } else {
+        println!("{label}: {value}");
+    }
+}
+
+/// Print `Label:` header with optional ANSI color.
+pub(crate) fn print_label(label: &str, color: bool) {
+    if color {
+        println!("{ACCENT}{label}:{RESET}");
+    } else {
+        println!("{label}:");
+    }
+}
+
+/// Print `Label: count` section header with optional ANSI color.
+pub(crate) fn print_section_header(title: &str, count: usize, color: bool) {
+    if color {
+        println!("{ACCENT}{title}: {count}{RESET}");
+    } else {
+        println!("{title}: {count}");
+    }
+}
+
+/// Print a failure line to stderr with optional ANSI color.
+pub(crate) fn eprint_fail(name: &str, source: &str, plain: bool) {
+    if plain {
+        eprintln!("{SYM_FAIL} Failed {name} {source}");
+    } else {
+        eprintln!(
+            "{ERROR}{SYM_FAIL}{RESET} Failed {ACCENT}{name}{RESET} {SECONDARY}{source}{RESET}"
+        );
+    }
+}
+
+pub(crate) fn with_spinner<T, F>(
     enabled: bool,
     plain: bool,
     label: impl Into<String>,
@@ -29,14 +88,14 @@ where
     let stop_flag = Arc::clone(&stop);
     let thread_label = label.clone();
     let handle = thread::spawn(move || {
-        let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
         let mut idx = 0usize;
         let mut stderr = std::io::stderr();
         while !stop_flag.load(Ordering::Relaxed) {
             let _ = write!(
                 stderr,
-                "\r\x1b[2K{} {}",
-                frames[idx % frames.len()],
+                "{}{} {}",
+                CLEAR_LINE,
+                SPINNER_FRAMES[idx % SPINNER_FRAMES.len()],
                 thread_label
             );
             let _ = stderr.flush();
@@ -50,7 +109,7 @@ where
     let _ = handle.join();
 
     let mut stderr = std::io::stderr();
-    let symbol = if result.is_ok() { "✓" } else { "✗" };
+    let symbol = if result.is_ok() { SYM_OK } else { SYM_FAIL };
     if plain {
         if result.is_ok() {
             let _ = writeln!(stderr, "{} {}", symbol, ok_label);
@@ -58,9 +117,17 @@ where
             let _ = writeln!(stderr, "{} {}", symbol, label);
         }
     } else if result.is_ok() {
-        let _ = writeln!(stderr, "\r\x1b[2K\x1b[32m{}\x1b[0m {}", symbol, ok_label);
+        let _ = writeln!(
+            stderr,
+            "{}{}{}{} {}",
+            CLEAR_LINE, SUCCESS, symbol, RESET, ok_label
+        );
     } else {
-        let _ = writeln!(stderr, "\r\x1b[2K\x1b[31m{}\x1b[0m {}", symbol, label);
+        let _ = writeln!(
+            stderr,
+            "{}{}{}{} {}",
+            CLEAR_LINE, ERROR, symbol, RESET, label
+        );
     }
     let _ = stderr.flush();
 
@@ -80,21 +147,21 @@ fn synced_label(label: &str) -> String {
     label.to_string()
 }
 
-pub fn status_chip(status: &str, plain: bool) -> String {
+pub(crate) fn status_chip(status: &str, plain: bool) -> String {
     if plain {
         return match status {
-            "broken" | "source_error" => "[X]".to_string(),
+            "broken" | "source_error" => format!("[{SYM_FAIL}]"),
             _ => format!("[{}]", status.to_uppercase()),
         };
     }
     match status {
-        "installed" | "updated" | "removed" => format!("\x1b[30;42m {} \x1b[0m", status),
-        "unchanged" => format!("\x1b[30;47m {} \x1b[0m", status),
+        "installed" | "updated" | "removed" => format!("{} {status} {}", CHIP_SUCCESS, RESET),
+        "unchanged" => format!("{} {status} {}", CHIP_NEUTRAL, RESET),
         "would_install" | "would_update" | "would_remove" => {
-            format!("\x1b[30;43m {} \x1b[0m", status)
+            format!("{} {status} {}", CHIP_WARNING, RESET)
         }
-        "broken" | "source_error" => "\x1b[30;41m x \x1b[0m".to_string(),
-        _ => format!("\x1b[30;41m {} \x1b[0m", status),
+        "broken" | "source_error" => format!("{} {SYM_FAIL} {}", CHIP_ERROR, RESET),
+        _ => format!("{} {status} {}", CHIP_ERROR, RESET),
     }
 }
 
@@ -114,9 +181,9 @@ mod tests {
     }
 
     #[test]
-    fn status_chip_plain_for_broken_is_x() {
-        assert_eq!(status_chip("broken", true), "[X]");
-        assert_eq!(status_chip("source_error", true), "[X]");
+    fn status_chip_plain_for_broken_is_fail_symbol() {
+        assert_eq!(status_chip("broken", true), "[✗]");
+        assert_eq!(status_chip("source_error", true), "[✗]");
     }
 
     #[test]

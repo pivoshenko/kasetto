@@ -2,10 +2,11 @@ use std::fs;
 use std::io::IsTerminal;
 
 use crate::banner::print_banner;
+use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::http_client;
 use crate::profile::list_color_enabled;
-use crate::ui::{animations_enabled, with_spinner};
+use crate::ui::{animations_enabled, print_json, with_spinner, SYM_OK};
 
 const GITHUB_REPO: &str = "pivoshenko/kasetto";
 
@@ -28,7 +29,7 @@ struct UpdateOutput {
     status: String,
 }
 
-pub fn run(as_json: bool) -> Result<()> {
+pub(crate) fn run(as_json: bool) -> Result<()> {
     let current_version = env!("CARGO_PKG_VERSION");
     let color = list_color_enabled();
     let animate = animations_enabled(false, as_json, !color);
@@ -55,14 +56,13 @@ pub fn run(as_json: bool) -> Result<()> {
             status: "up_to_date".to_string(),
         };
         if as_json {
-            println!("{}", serde_json::to_string_pretty(&output)?);
+            print_json(&output)?;
         } else if color {
             println!(
-                "\x1b[32m✓\x1b[0m Already on the latest version \x1b[1;35m{}\x1b[0m",
-                current_version
+                "{SUCCESS}{SYM_OK}{RESET} Already on the latest version {ACCENT}{current_version}{RESET}"
             );
         } else {
-            println!("✓ Already on the latest version {}", current_version);
+            println!("{SYM_OK} Already on the latest version {current_version}");
         }
         return Ok(());
     }
@@ -79,8 +79,8 @@ pub fn run(as_json: bool) -> Result<()> {
 
     let update_label = if color {
         format!(
-            "Updating \x1b[1;35m{}\x1b[0m \x1b[90m→\x1b[0m \x1b[1;35m{}\x1b[0m",
-            current_version, latest_version
+            "Updating {}{}{} {}{}{} {}{}{}",
+            ACCENT, current_version, RESET, SECONDARY, "→", RESET, ACCENT, latest_version, RESET,
         )
     } else {
         format!("Updating {} -> {}", current_version, latest_version)
@@ -97,14 +97,11 @@ pub fn run(as_json: bool) -> Result<()> {
     };
 
     if as_json {
-        println!("{}", serde_json::to_string_pretty(&output)?);
+        print_json(&output)?;
     } else if color {
-        println!(
-            "\n\x1b[32m✓\x1b[0m Updated to \x1b[1;35m{}\x1b[0m",
-            latest_version
-        );
+        println!("\n{SUCCESS}{SYM_OK}{RESET} Updated to {ACCENT}{latest_version}{RESET}");
     } else {
-        println!("\n✓ Updated to {}", latest_version);
+        println!("\n{SYM_OK} Updated to {latest_version}");
     }
 
     Ok(())

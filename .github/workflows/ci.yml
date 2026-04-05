@@ -10,19 +10,20 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Fmt
-        run: cargo fmt --check
+      - name: Install just
+        uses: taiki-e/install-action@just
 
-      - name: Clippy
-        run: cargo clippy -- -D warnings
+      - name: Run linters
+        run: just lint
 
-      - name: Test
-        run: cargo test
+      - name: Run tests
+        run: just test
 
       - name: Build
-        run: cargo build --release
+        run: just build

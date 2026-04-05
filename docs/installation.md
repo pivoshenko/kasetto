@@ -101,7 +101,7 @@ $ cargo install --path .
 When Kasetto is installed via the standalone installer, it can update itself on-demand:
 
 ```console
-$ kst self-update
+$ kst self update
 ```
 
 When another installation method is used, use the package manager's upgrade method instead.

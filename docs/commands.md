@@ -12,7 +12,7 @@ $ kst sync [OPTIONS]
 
 | Flag | Description |
 | --- | --- |
-| `--config <path-or-url>` | Path or HTTPS URL to a YAML config (default: `skills.config.yaml`) |
+| `--config <path-or-url>` | Path or HTTPS URL to a YAML config (default: `kasetto.yaml`) |
 | `--dry-run` | Preview what would change without writing anything |
 | `--quiet` | Suppress non-error output |
 | `--json` | Print the sync report as JSON |
@@ -62,15 +62,19 @@ $ kst doctor [OPTIONS]
 | --- | --- |
 | `--json` | Output as JSON |
 
-## `kst self-update`
+## `kst self`
+
+Manage the running Kasetto installation (update or uninstall).
+
+### `kst self update`
 
 Checks GitHub for the latest release and replaces the current binary in-place.
 
 ```console
-$ kst self-update [OPTIONS]
+$ kst self update [OPTIONS]
 ```
 
-### Options
+#### Options
 
 | Flag | Description |
 | --- | --- |
@@ -80,3 +84,17 @@ $ kst self-update [OPTIONS]
 
     Self-update is only available when Kasetto was installed via the standalone installer.
     When installed via Homebrew or Cargo, use their respective upgrade commands.
+
+### `kst self uninstall`
+
+Removes installed skills and MCP configs, deletes Kasetto config and data directories, and removes the binary.
+
+```console
+$ kst self uninstall [OPTIONS]
+```
+
+#### Options
+
+| Flag | Description |
+| --- | --- |
+| `--yes` | Skip the confirmation prompt (required in non-interactive use) |
