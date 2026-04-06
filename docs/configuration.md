@@ -1,7 +1,6 @@
 # Configuration
 
-Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory.
-You can also run `kst init` to generate a starter config.
+Kasetto looks for `kasetto.yaml` in the current directory by default. Point it at a specific file or URL with `--config`, or run `kst init` to generate a starter.
 
 ## Example
 
@@ -104,16 +103,13 @@ Kasetto can fetch configs from any HTTPS URL:
 $ kst sync --config https://example.com/team-skills.yaml
 ```
 
-This is useful for sharing a single config across a team without checking it into every repository.
+Great for sharing a single config across a team without checking it into every repository.
 
-If the remote config is hosted on a private repo, Kasetto applies the same token-based
-authentication used for skill sources. See [authentication](./authentication.md) for the full list
-of supported environment variables.
+If the URL points to a private repo, Kasetto uses the same token-based authentication as skill sources. See [authentication](./authentication.md) for the full list of supported environment variables.
 
 ## Multiple Agents
 
-The `agent` field accepts a single value or a list. When a list is provided, skills are installed
-to every agent's directory and MCP servers are merged into every agent's settings file:
+The `agent` field accepts a single value or a list. With a list, Kasetto installs skills to every agent's directory and merges MCP servers into every agent's settings file:
 
 ```yaml
 agent:
@@ -126,13 +122,11 @@ skills:
     skills: "*"
 ```
 
-This is useful when you work with several agents and want them all to share the same skills.
+Handy when you juggle multiple agents and want them all to share the same skill set.
 
 ## Agent vs Destination
 
-If both `agent` and `destination` are set, `destination` takes priority. Use `agent` for
-convenience with [supported presets](./agents.md), or `destination` for full control over the
-install path.
+If you set both, `destination` wins. Use `agent` for convenience with [supported presets](./agents.md), or `destination` when you need full control over the install path.
 
 !!! tip
 
@@ -140,8 +134,6 @@ install path.
 
 ## Scope: Global vs Project
 
-By default, Kasetto installs skills globally (into the agent's home-directory path). Set
-`scope: project` in the config or pass `--project` on the command line to install into the
-current project directory instead.
+By default, skills are installed globally into the agent's home-directory path. Add `scope: project` to your config, or pass `--project` on the command line, to install into the current project directory instead.
 
-The `--project` / `--global` CLI flags override the config file's `scope` field.
+The `--project` / `--global` flags always override whatever `scope` is set in the config file.

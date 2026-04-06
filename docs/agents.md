@@ -1,7 +1,6 @@
 # Supported Agents
 
-Set the `agent` field in your [config](./configuration.md) and Kasetto handles the rest - skills
-are installed to the correct directory for each agent.
+Set the `agent` field in your [config](./configuration.md) and Kasetto figures out where to put things. Each preset maps to the directory that agent expects.
 
 ## Agent Presets
 
@@ -31,11 +30,11 @@ are installed to the correct directory for each agent.
 
 ## Custom Paths
 
-Need an agent that isn't listed? Use the `destination` field to point at any path:
+Don't see your agent? Use the `destination` field to point at any path:
 
 ```yaml
 destination: ~/.my-custom-agent/skills
 ```
 
-This overrides the `agent` field if both are set. See the
+If both `agent` and `destination` are set, `destination` wins. See the
 [configuration reference](./configuration.md#agent-vs-destination) for details.

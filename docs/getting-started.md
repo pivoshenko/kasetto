@@ -1,7 +1,6 @@
 # First Steps with Kasetto
 
-After [installing Kasetto](./installation.md), you can check that it is available by running the
-`kst` command:
+Once you've [installed Kasetto](./installation.md), run `kst` to make sure it's available:
 
 ```console
 $ kst
@@ -12,9 +11,7 @@ Usage: kst <COMMAND>
 ...
 ```
 
-If no `kasetto.yaml` exists in the current directory, Kasetto opens an interactive home screen with
-a menu of available commands. Navigate with ++j++ / ++k++ or arrow keys, press ++enter++ to run the
-selected command, or use shortcut keys:
+If there's no `kasetto.yaml` in the current directory, Kasetto greets you with an interactive home screen. Navigate with ++j++ / ++k++ or arrow keys, press ++enter++ to run the selected command, or use shortcut keys:
 
 | Key                | Action                         |
 | ------------------ | ------------------------------ |
@@ -26,17 +23,17 @@ selected command, or use shortcut keys:
 | ++u++              | Self update                    |
 | ++q++ / ++escape++ | Quit                           |
 
-Set `NO_TUI=1` to disable the interactive home screen and get plain text hints instead.
+Set `NO_TUI=1` if you'd rather skip the interactive screen and get plain text hints.
 
 ## Creating a Config
 
-Generate a starter config with `kst init`:
+Run `kst init` to generate a starter config:
 
 ```console
 $ kst init
 ```
 
-Or create a `kasetto.yaml` manually:
+Or create a `kasetto.yaml` by hand:
 
 ```yaml
 agent: claude-code
@@ -56,7 +53,7 @@ skills:
 
 ## Syncing Skills
 
-Run `kst sync` to install the declared skills:
+Run `kst sync` and Kasetto does the rest:
 
 ```console
 $ kst sync
@@ -66,12 +63,11 @@ Syncing skills from 1 source...
 Synced 2 skills in 1.2s
 ```
 
-Kasetto reads the config, pulls the skills, and installs them into the right agent directory.
-Next time you run `sync`, only changed skills are updated.
+Kasetto pulls the skills and installs them into the right agent directory. Next time you run `sync`, only what changed gets updated.
 
 ## Syncing from a Remote Config
 
-Kasetto can fetch configs from any HTTPS URL - useful for sharing a single config across a team:
+Got a shared team config? Just pass it as a URL:
 
 ```console
 $ kst sync --config https://example.com/team-skills.yaml
@@ -79,7 +75,7 @@ $ kst sync --config https://example.com/team-skills.yaml
 
 ## Previewing Changes
 
-Use `--dry-run` to preview what would change without writing anything:
+Not ready to commit? Use `--dry-run` to see what would happen first:
 
 ```console
 $ kst sync --dry-run
@@ -102,11 +98,11 @@ mcps:
   - source: https://github.com/org/mcp-pack
 ```
 
-MCP servers are automatically merged into each agent's native settings file during `kst sync`.
+Kasetto merges them into each agent's native settings file during sync — nothing extra to do.
 
 ## Exploring What's Installed
 
-Browse installed skills interactively:
+Want to see what's installed? Open the browser:
 
 ```console
 $ kst list
@@ -115,17 +111,17 @@ $ kst list
 Navigate with ++j++ / ++k++, scroll with ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
 Set `NO_TUI=1` or pipe the output to get plain text instead.
 
-Check your local setup:
+Want to check your local setup:
 
 ```console
 $ kst doctor
 ```
 
-This prints version, lock file path, installation paths, last sync time, and any failed skills.
+Doctor shows your version, lock file location, install paths, last sync time, and any skills that failed.
 
 ## Using JSON Output
 
-All commands support `--json` for scripting and CI:
+Every command has a `--json` flag for scripting or CI:
 
 ```console
 $ kst sync --json

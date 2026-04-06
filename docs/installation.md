@@ -2,11 +2,11 @@
 
 ## Installation Methods
 
-Install Kasetto with our standalone installers or your package manager of choice.
+Pick whichever method works for you — standalone installer, package manager, or straight from source.
 
 ### Standalone Installer
 
-Kasetto provides a standalone installer to download and install the binary:
+The quickest way to get started — downloads and installs the binary in one command:
 
 === "macOS and Linux"
 
@@ -44,7 +44,7 @@ Kasetto provides a standalone installer to download and install the binary:
 
     Alternatively, binaries can be downloaded directly from [GitHub Releases](#github-releases).
 
-By default, the binary is placed in `~/.local/bin`. The following environment variables can customize the installation:
+The binary lands in `~/.local/bin` by default. Override it with environment variables:
 
 | Variable              | Description            | Default                                                      |
 | --------------------- | ---------------------- | ------------------------------------------------------------ |
@@ -53,7 +53,7 @@ By default, the binary is placed in `~/.local/bin`. The following environment va
 
 ### Homebrew
 
-Kasetto is available via a Homebrew tap.
+Available via a Homebrew tap:
 
 ```console
 $ brew install pivoshenko/tap/kasetto
@@ -61,7 +61,7 @@ $ brew install pivoshenko/tap/kasetto
 
 ### Scoop
 
-Kasetto is available via a Scoop bucket (Windows).
+Available via a Scoop bucket on Windows:
 
 ```console
 $ scoop bucket add kasetto https://github.com/pivoshenko/scoop-bucket
@@ -70,7 +70,7 @@ $ scoop install kasetto
 
 ### Cargo
 
-Kasetto is available via [crates.io](https://crates.io).
+Available on [crates.io](https://crates.io):
 
 ```console
 $ cargo install kasetto
@@ -78,18 +78,15 @@ $ cargo install kasetto
 
 !!! note
 
-    This method builds Kasetto from source, which requires a compatible Rust toolchain.
+    This builds from source, so you'll need a compatible Rust toolchain.
 
 ### GitHub Releases
 
-Kasetto release artifacts can be downloaded directly from
-[GitHub Releases](https://github.com/pivoshenko/kasetto/releases).
-
-Each release page includes binaries for all supported platforms.
+Prefer to grab a binary directly? Head to [GitHub Releases](https://github.com/pivoshenko/kasetto/releases) — every release includes binaries for all supported platforms.
 
 ### From Source
 
-Clone the repository and install with Cargo:
+Clone and install with Cargo:
 
 ```console
 $ git clone https://github.com/pivoshenko/kasetto && cd kasetto
@@ -98,14 +95,13 @@ $ cargo install --path .
 
 ## Upgrading
 
-When Kasetto is installed via the standalone installer, it can update itself on-demand:
+If you used the standalone installer, updating is a one-liner:
 
 ```console
 $ kst self update
 ```
 
-When another installation method is used, use the package manager's upgrade method instead.
-For example, with Cargo:
+For Homebrew or Cargo installs, use the package manager's own upgrade command. For example, with Cargo:
 
 ```console
 $ cargo install kasetto
@@ -117,7 +113,7 @@ $ cargo install kasetto
 
     You can run `echo $SHELL` to help determine your shell.
 
-To enable shell autocompletion for Kasetto commands, run one of the following:
+To get tab completions for `kst`, add one of these to your shell config:
 
 === "Bash"
 
@@ -146,9 +142,8 @@ To enable shell autocompletion for Kasetto commands, run one of the following:
     Add-Content -Path $PROFILE -Value '(& kst completions powershell) | Out-String | Invoke-Expression'
     ```
 
-Then restart the shell or source the shell config file.
+Then restart your shell or source the config file.
 
 ## Next Steps
 
-See the [quick start](./getting-started.md) or jump straight to the [configuration](./configuration.md)
-reference to start using Kasetto.
+Check out the [quick start](./getting-started.md), or jump straight to the [configuration reference](./configuration.md) if you already know what you want.

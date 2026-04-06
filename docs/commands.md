@@ -2,7 +2,7 @@
 
 ## `kst init`
 
-Generates a starter `kasetto.yaml` in the current directory.
+Generates a starter `kasetto.yaml` in the current directory — a good jumping-off point before you edit by hand.
 
 ```console
 $ kst init [OPTIONS]
@@ -16,7 +16,7 @@ $ kst init [OPTIONS]
 
 ## `kst sync`
 
-Reads the config, discovers skills, and makes the local destination match.
+Reads your config, fetches any remote skills, and brings your local install up to date.
 
 ```console
 $ kst sync [OPTIONS]
@@ -35,16 +35,15 @@ $ kst sync [OPTIONS]
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
-Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for
-source-level failures.
+Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero only for source-level failures.
 
 !!! tip
 
-    Use `--dry-run` in CI to verify configs without making changes.
+    `--dry-run` is great in CI — verify your config without touching anything on disk.
 
 ## `kst list`
 
-Shows everything currently tracked in the manifest.
+Shows everything Kasetto has installed.
 
 ```console
 $ kst list [OPTIONS]
@@ -58,17 +57,16 @@ $ kst list [OPTIONS]
 | `--project` | List project-scoped assets                        |
 | `--global`  | List globally-scoped assets (default)             |
 
-In a terminal it opens an interactive browser - navigate with ++j++ / ++k++, scroll with
+In a terminal, this opens an interactive browser — navigate with ++j++ / ++k++, scroll with
 ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
 
 !!! note
 
-    Set `NO_TUI=1` or pipe the output to get plain text instead of the interactive browser.
+    Set `NO_TUI=1` or pipe the output to get plain text instead.
 
 ## `kst doctor`
 
-Prints local diagnostics: version, lock file path, installation paths, last sync time, and any
-failed skills from the latest run.
+Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
 
 ```console
 $ kst doctor [OPTIONS]
@@ -84,7 +82,7 @@ $ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes all tracked skills and MCP configs for the given scope.
+Removes everything Kasetto installed for the given scope — skills, MCP configs, and lock file entries.
 
 ```console
 $ kst clean [OPTIONS]
@@ -101,11 +99,11 @@ $ kst clean [OPTIONS]
 
 ## `kst self`
 
-Manage the running Kasetto installation (update or uninstall).
+Manage Kasetto itself — update to a new version or remove it completely.
 
 ### `kst self update`
 
-Checks GitHub for the latest release and replaces the current binary in-place.
+Fetches the latest release from GitHub and swaps out the binary in-place.
 
 ```console
 $ kst self update [OPTIONS]
@@ -119,12 +117,12 @@ $ kst self update [OPTIONS]
 
 !!! note
 
-    Self-update is only available when Kasetto was installed via the standalone installer.
-    When installed via Homebrew or Cargo, use their respective upgrade commands.
+    Self-update only works when Kasetto was installed via the standalone installer.
+    For Homebrew or Cargo installs, use their own upgrade commands.
 
 ### `kst self uninstall`
 
-Removes installed skills and MCP configs, deletes Kasetto config and data directories, and removes the binary.
+A full teardown: removes installed skills and MCP configs, clears Kasetto's data directories, and deletes the binary.
 
 ```console
 $ kst self uninstall [OPTIONS]
@@ -138,7 +136,7 @@ $ kst self uninstall [OPTIONS]
 
 ## `kst completions`
 
-Generates shell completion scripts.
+Generates completion scripts for your shell.
 
 ```console
 $ kst completions <SHELL>

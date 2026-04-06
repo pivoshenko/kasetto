@@ -84,19 +84,19 @@ cargo install --path .
 
 ## Getting Started
 
-**1. Sync from a shared config or a local file:**
+**1. Sync from a remote config or a local file:**
 
 ```bash
-# from a remote URL (great for teams)
+# pull a shared team config from a URL
 kst sync --config https://example.com/team-skills.yaml
 
-# from a local file
+# or use a local file
 kst sync --config kasetto.yaml
 ```
 
-That's it. Kasetto reads the config, pulls the skills, and installs them into the right agent directory. Next time you run `sync`, only changed skills are updated.
+That's it. Kasetto pulls the skills and installs them into the right agent directory. The next time you run `sync`, only what changed gets updated.
 
-**2. Explore what's installed:**
+**2. See what's installed:**
 
 ```bash
 kst list      # interactive browser with vim-style navigation
@@ -136,7 +136,7 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 | `--project` | Install into the current project directory                   |
 | `--global`  | Install globally (default)                                   |
 
-Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for source-level failures.
+Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero only for source-level failures.
 
 ### `kst list`
 
@@ -146,7 +146,7 @@ Shows everything currently tracked in the manifest.
 kst list [--json] [--project | --global]
 ```
 
-In a terminal it opens an interactive browser - navigate with `j`/`k`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Set `NO_TUI=1` or pipe the output to get plain text instead.
+In a terminal, this opens an interactive browser — navigate with `j`/`k`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Set `NO_TUI=1` or pipe the output to get plain text instead.
 
 ### `kst doctor`
 
@@ -199,7 +199,7 @@ Supported shells: `bash`, `zsh`, `fish`, `powershell`.
 
 ## Configuration
 
-Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory. You can also run `kst init` to generate a starter config.
+Kasetto looks for `kasetto.yaml` in the current directory by default. Point it at a specific file or URL with `--config`, or run `kst init` to generate a starter.
 
 ```yaml
 # Choose an agent preset (single or multiple)...
@@ -258,7 +258,7 @@ mcps:
 
 ## Supported agents
 
-Set the `agent` field and Kasetto handles the rest.
+Set the `agent` field and Kasetto figures out where to put things.
 
 <details>
 <summary>Full list of supported agents</summary>
@@ -291,11 +291,11 @@ Set the `agent` field and Kasetto handles the rest.
 
 </details>
 
-Need an agent that isn't listed? Use the `destination` field to point at any path.
+Don't see your agent? Use the `destination` field to point at any path.
 
 ## Private repos & enterprise
 
-Kasetto authenticates via environment variables - set the right token and private sources just work:
+Set an environment variable and private sources just work — no login command, no credentials file:
 
 | Host                        | Environment variable                                |
 | --------------------------- | --------------------------------------------------- |
@@ -304,7 +304,7 @@ Kasetto authenticates via environment variables - set the right token and privat
 | Bitbucket Cloud             | `BITBUCKET_EMAIL` + `BITBUCKET_TOKEN`               |
 | Codeberg / Gitea / Forgejo  | `GITEA_TOKEN`, `CODEBERG_TOKEN`, or `FORGEJO_TOKEN` |
 
-GitHub Enterprise is auto-detected for any hostname with an `owner/repo` path. GitLab self-hosted instances are detected when the hostname starts with `gitlab.`.
+Kasetto auto-detects GitHub Enterprise for any hostname with an `owner/repo` path, and GitLab self-hosted when the hostname starts with `gitlab.`.
 
 ```yaml
 skills:
@@ -318,7 +318,7 @@ skills:
       - code-reviewer
 ```
 
-The same tokens apply when fetching remote configs via `--config https://...`.
+The same tokens apply when you fetch a remote config via `--config https://...`.
 
 ## Roadmap
 

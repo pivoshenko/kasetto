@@ -1,7 +1,6 @@
 # Authentication
 
-Kasetto supports pulling skills and MCP configs from private repositories and remote configs.
-Authentication is configured via environment variables - no login command or credentials file needed.
+Kasetto can pull skills and MCP configs from private repositories. No login command or credentials file needed — just set an environment variable and it works.
 
 ## Supported Git Hosts
 
@@ -18,7 +17,7 @@ Authentication is configured via environment variables - no login command or cre
 
 ### Host Detection Rules
 
-Kasetto identifies the git host from the URL's hostname:
+Kasetto identifies the git host from the URL hostname:
 
 - **GitLab** - `gitlab.com`, any subdomain of `gitlab.com` (e.g., `sub.gitlab.com`), or any
   hostname starting with `gitlab.` (e.g., `gitlab.example.com`).
@@ -51,7 +50,7 @@ Kasetto identifies the git host from the URL's hostname:
 | `GITHUB_TOKEN` | Personal access token or fine-grained token |
 | `GH_TOKEN`     | Fallback if `GITHUB_TOKEN` is not set       |
 
-Works for both `github.com` and GitHub Enterprise Server.
+Works for `github.com` and GitHub Enterprise Server alike.
 
 ```console
 $ export GITHUB_TOKEN=ghp_...
@@ -65,7 +64,7 @@ $ kst sync --config kasetto.yaml
 | `GITLAB_TOKEN` | Personal or project access token                       |
 | `CI_JOB_TOKEN` | Fallback - automatically set in GitLab CI/CD pipelines |
 
-Works for `gitlab.com` and self-hosted instances whose hostname starts with `gitlab.`.
+Works for `gitlab.com` and any self-hosted instance whose hostname starts with `gitlab.`.
 
 ```console
 $ export GITLAB_TOKEN=glpat-...
@@ -74,7 +73,7 @@ $ kst sync --config kasetto.yaml
 
 ### Bitbucket Cloud
 
-Bitbucket supports two authentication methods:
+Bitbucket has two options:
 
 **Method 1 - API token:**
 
@@ -90,7 +89,7 @@ Bitbucket supports two authentication methods:
 | `BITBUCKET_USERNAME`     | Bitbucket username                                          |
 | `BITBUCKET_APP_PASSWORD` | App password (create at Bitbucket Settings > App passwords) |
 
-Method 1 is tried first. If those variables are not set, method 2 is used.
+Method 1 is tried first; if those variables aren't set, Method 2 is used.
 
 ### Codeberg / Gitea / Forgejo
 
@@ -100,20 +99,18 @@ Method 1 is tried first. If those variables are not set, method 2 is used.
 | `CODEBERG_TOKEN` | Fallback if `GITEA_TOKEN` is not set    |
 | `FORGEJO_TOKEN`  | Fallback if neither of the above is set |
 
-All three variables are checked in order. The first one found is used for any Gitea-family host.
+All three are checked in order — the first one found is used for any Gitea-family host.
 
 ## Remote Configs
 
-Authentication also applies when fetching configs via `--config <url>`. The token is selected
-based on the URL's hostname, using the same detection rules above.
+Authentication also applies when you fetch a config via `--config <url>`. The token is chosen based on the URL hostname, using the same detection rules above.
 
 ```console
 $ export GITHUB_TOKEN=ghp_...
 $ kst sync --config https://github.com/org/private-repo/raw/main/kasetto.yaml
 ```
 
-If the remote config URL points to a private resource and no matching token is set, Kasetto
-reports an HTTP error with a hint about which environment variable to set.
+If the URL points to a private resource and no matching token is set, Kasetto reports an HTTP error with a hint about which variable to set.
 
 ## Display Variables
 
