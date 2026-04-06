@@ -119,14 +119,14 @@ fn bitbucket_basic_credentials() -> Option<(String, String)> {
     None
 }
 
+fn first_env_var(keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|k| std::env::var(k).ok())
+}
+
 fn gitea_auth_headers() -> Vec<(String, String)> {
-    let token = std::env::var("GITEA_TOKEN")
-        .or_else(|_| std::env::var("CODEBERG_TOKEN"))
-        .or_else(|_| std::env::var("FORGEJO_TOKEN"));
-    if let Ok(token) = token {
-        vec![("Authorization".to_string(), format!("token {token}"))]
-    } else {
-        Vec::new()
+    match first_env_var(&["GITEA_TOKEN", "CODEBERG_TOKEN", "FORGEJO_TOKEN"]) {
+        Some(token) => vec![("Authorization".to_string(), format!("token {token}"))],
+        None => Vec::new(),
     }
 }
 
@@ -140,17 +140,10 @@ fn gitlab_auth_headers() -> Vec<(String, String)> {
     }
 }
 
-fn github_token() -> Option<String> {
-    std::env::var("GITHUB_TOKEN")
-        .ok()
-        .or_else(|| std::env::var("GH_TOKEN").ok())
-}
-
 fn github_auth_headers() -> Vec<(String, String)> {
-    if let Some(token) = github_token() {
-        vec![("Authorization".to_string(), format!("Bearer {token}"))]
-    } else {
-        Vec::new()
+    match first_env_var(&["GITHUB_TOKEN", "GH_TOKEN"]) {
+        Some(token) => vec![("Authorization".to_string(), format!("Bearer {token}"))],
+        None => Vec::new(),
     }
 }
 

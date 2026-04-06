@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::banner::print_banner;
+use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ERROR, RESET, SUCCESS, WARNING};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config};
@@ -26,11 +26,7 @@ pub(crate) fn run(
 ) -> Result<()> {
     let animate = animations_enabled(quiet, as_json, plain);
     if !as_json && !quiet {
-        if plain || !animate {
-            println!("kasetto | カセット");
-        } else {
-            print_banner();
-        }
+        print_banner_or_plain(plain || !animate);
     }
 
     let scope = resolve_scope(scope_override, None);
