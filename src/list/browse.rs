@@ -1,4 +1,3 @@
-use std::io::stdout;
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -6,13 +5,13 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crate::error::Result;
 
 use super::render;
-use super::session::{ListState, TerminalGuard};
+use super::session::ListState;
 use super::tab::Tab;
 use super::types::BrowseInput;
+use crate::tui::TuiGuard;
 
 pub(crate) fn browse(input: &BrowseInput) -> Result<()> {
-    let mut guard = TerminalGuard::enter()?;
-    let mut stdout = stdout();
+    let mut guard = TuiGuard::enter()?;
     let started = Instant::now();
     let mut state = ListState::default();
 
@@ -31,10 +30,9 @@ pub(crate) fn browse(input: &BrowseInput) -> Result<()> {
             Tab::Mcps => input.mcps.len(),
         };
         render::draw(
-            &mut stdout,
+            &mut guard.stdout,
             input,
             &mut state,
-            &mut guard,
             &tabs,
             active_tab,
             started.elapsed(),

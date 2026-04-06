@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 use std::io::{Stdout, Write};
 use std::time::Duration;
 
-use crossterm::cursor::{position, MoveRight, MoveToColumn, MoveToNextLine, RestorePosition};
+use crossterm::cursor::{position, MoveTo};
 use crossterm::queue;
 use crossterm::style::{
     Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
@@ -17,7 +17,7 @@ use crate::error::Result;
 use crate::model::InstalledSkill;
 use crate::tui::draw_stars;
 
-use super::session::{ListState, PaneRect, TerminalGuard};
+use super::session::{ListState, PaneRect};
 use super::tab::Tab;
 use super::types::{AssetEntry, BrowseInput};
 
@@ -42,18 +42,16 @@ pub(super) fn draw(
     stdout: &mut Stdout,
     input: &BrowseInput,
     state: &mut ListState,
-    guard: &mut TerminalGuard,
     tabs: &[Tab],
     active_tab: usize,
     elapsed: Duration,
 ) -> Result<()> {
-    guard.refresh_size()?;
-    let (width, _) = size()?;
+    let (width, height) = size()?;
     let width = width as usize;
-    let panel_height = guard.height as usize;
+    let panel_height = height as usize;
     let colors = Colors::active();
 
-    clear_panel(stdout, guard.height)?;
+    clear_panel(stdout)?;
 
     if width < 72 || panel_height < 8 {
         draw_small_terminal(stdout, width, panel_height, &colors)?;
@@ -90,11 +88,11 @@ pub(super) fn draw(
 
     row = draw_header(stdout, width, row, item_count, current_tab.label(), &colors)?;
 
-    let footer_height = 2usize;
+    let footer_height = 1usize;
     let content_top = row;
     let content_height = panel_height.saturating_sub(content_top + footer_height);
     if content_height < 4 {
-        clear_panel(stdout, guard.height)?;
+        clear_panel(stdout)?;
         draw_small_terminal(stdout, width, panel_height, &colors)?;
         stdout.flush()?;
         return Ok(());
@@ -198,7 +196,7 @@ pub(super) fn draw(
     draw_footer(
         stdout,
         width,
-        panel_height.saturating_sub(2),
+        panel_height.saturating_sub(1),
         tab_hint,
         &colors,
     )?;
@@ -207,21 +205,12 @@ pub(super) fn draw(
 }
 
 fn move_to(stdout: &mut Stdout, left: usize, top: usize) -> Result<()> {
-    queue!(stdout, RestorePosition, MoveToColumn(0))?;
-    if top > 0 {
-        queue!(stdout, MoveToNextLine(top as u16))?;
-    }
-    if left > 0 {
-        queue!(stdout, MoveRight(left as u16))?;
-    }
+    queue!(stdout, MoveTo(left as u16, top as u16))?;
     Ok(())
 }
 
-fn clear_panel(stdout: &mut Stdout, height: u16) -> Result<()> {
-    for offset in 0..height {
-        move_to(stdout, 0, offset as usize)?;
-        queue!(stdout, Clear(ClearType::CurrentLine))?;
-    }
+fn clear_panel(stdout: &mut Stdout) -> Result<()> {
+    queue!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
     Ok(())
 }
 
@@ -369,24 +358,33 @@ fn draw_list_pane<T: ListItem>(
         }
 
         let item = &items[item_index];
-        let label = truncate_width(item.display_name(), inner_width);
+        let is_selected = item_index == state.selected;
+        let pointer = if is_selected { "› " } else { "  " };
+        let label_width = inner_width.saturating_sub(2);
+        let label = truncate_width(item.display_name(), label_width);
 
         move_to(stdout, left + 1, y)?;
-        queue!(
-            stdout,
-            SetBackgroundColor(if item_index == state.selected {
-                colors.selection_bg
-            } else {
-                colors.background
-            }),
-            SetForegroundColor(if item_index == state.selected {
-                colors.selection_fg
-            } else {
-                colors.text
-            }),
-            Print(pad_width(&label, inner_width)),
-            ResetColor
-        )?;
+        if is_selected {
+            queue!(
+                stdout,
+                SetForegroundColor(colors.accent),
+                SetAttribute(Attribute::Bold),
+                Print(pointer),
+                SetForegroundColor(colors.text),
+                Print(pad_width(&label, label_width)),
+                SetAttribute(Attribute::Reset),
+                ResetColor
+            )?;
+        } else {
+            queue!(
+                stdout,
+                SetForegroundColor(colors.secondary),
+                Print(pointer),
+                SetForegroundColor(colors.text),
+                Print(pad_width(&label, label_width)),
+                ResetColor
+            )?;
+        }
     }
 
     Ok(())
@@ -453,15 +451,6 @@ fn draw_footer(
         tab_hint
     );
     write_line(stdout, 0, top, width, &hint, colors, Style::Secondary)?;
-    write_line(
-        stdout,
-        0,
-        top + 1,
-        width,
-        "Use --json for machine-readable output.",
-        colors,
-        Style::Secondary,
-    )?;
     Ok(())
 }
 
@@ -694,8 +683,6 @@ struct Colors {
     text: Color,
     secondary: Color,
     background: Color,
-    selection_bg: Color,
-    selection_fg: Color,
 }
 
 impl Colors {
@@ -708,8 +695,6 @@ impl Colors {
                 text: term::TEXT,
                 secondary: term::TEXT,
                 background: Color::Reset,
-                selection_bg: term::MONO_SEL_BG,
-                selection_fg: term::MONO_SEL_FG,
             }
         } else {
             Self {
@@ -719,8 +704,6 @@ impl Colors {
                 text: term::TEXT,
                 secondary: term::SECONDARY,
                 background: Color::Reset,
-                selection_bg: term::ACCENT,
-                selection_fg: term::TEXT,
             }
         }
     }

@@ -33,10 +33,6 @@ pub(crate) mod term {
     pub(crate) const ERROR: Color = Color::Red;
     /// Primary body text on colored TUI backgrounds.
     pub(crate) const TEXT: Color = Color::White;
-
-    /// List browser when `NO_COLOR` is set: selection highlight (no palette hues).
-    pub(crate) const MONO_SEL_BG: Color = Color::Grey;
-    pub(crate) const MONO_SEL_FG: Color = Color::Black;
 }
 
 // --- clap: same roles as string constants above (clap uses its own `AnsiColor` API).

@@ -79,8 +79,8 @@ pub(crate) fn run(
         };
         println!();
         println!(
-            "  {label_color}{prefix}{RESET}: {}   {label_color}MCP configs{RESET}: {}",
-            skills_count, mcps_count
+            "  {label_color}{prefix}{RESET}: {}",
+            skills_count + mcps_count
         );
 
         if !dry_run {

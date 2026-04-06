@@ -16,7 +16,6 @@ use crate::cli::SyncArgs;
 use crate::colors::term;
 use crate::error::Result;
 use crate::tui::{draw_banner_or_fallback, draw_stars, TuiGuard};
-use crate::ui::SPINNER_FRAMES;
 
 use prompt::prompt_sync_args;
 
@@ -198,8 +197,6 @@ fn draw(
     let (width, height) = terminal::size()?;
     let width = width as usize;
     let height = height as usize;
-    let frame = SPINNER_FRAMES[((elapsed.as_millis() / 80) as usize) % SPINNER_FRAMES.len()];
-
     execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
 
     let title = format!("{program_name} | カセット");
@@ -207,28 +204,6 @@ fn draw(
     if width >= banner_width() && height >= 22 {
         draw_stars(stdout, elapsed, 0)?;
     }
-
-    execute!(
-        stdout,
-        MoveTo(0, row),
-        SetForegroundColor(term::SECONDARY),
-        Print(frame),
-        ResetColor,
-        Print(" "),
-        SetForegroundColor(term::INFO),
-        SetAttribute(Attribute::Bold),
-        Print("Sleeping"),
-        SetAttribute(Attribute::Reset),
-        ResetColor
-    )?;
-    row = row.saturating_add(1);
-
-    execute!(
-        stdout,
-        MoveTo(0, row),
-        Print("No config provided. Pick a command to continue.")
-    )?;
-    row = row.saturating_add(2);
 
     for (index, item) in HOME_ITEMS.iter().enumerate() {
         if row as usize >= height.saturating_sub(3) {
@@ -238,7 +213,7 @@ fn draw(
         if index == selected {
             execute!(
                 stdout,
-                SetForegroundColor(term::INFO),
+                SetForegroundColor(term::ACCENT),
                 SetAttribute(Attribute::Bold),
                 Print("› "),
                 Print(format!("{:<12}", item.title)),

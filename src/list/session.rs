@@ -1,11 +1,4 @@
 use std::cmp::{max, min};
-use std::io::stdout;
-
-use crossterm::cursor::{Hide, MoveToNextLine, MoveUp, RestorePosition, SavePosition, Show};
-use crossterm::execute;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
-
-use crate::error::Result;
 
 #[derive(Default)]
 pub(super) struct ListState {
@@ -61,53 +54,10 @@ impl ListState {
     }
 }
 
-pub(super) struct TerminalGuard {
-    pub(super) height: u16,
-}
-
 #[derive(Clone, Copy)]
 pub(super) struct PaneRect {
     pub(super) left: usize,
     pub(super) top: usize,
     pub(super) width: usize,
     pub(super) height: usize,
-}
-
-impl TerminalGuard {
-    pub(super) fn enter() -> Result<Self> {
-        let (_, term_height) = size()?;
-        let height = term_height.clamp(10, 26);
-        enable_raw_mode()?;
-        execute!(stdout(), Hide)?;
-
-        if height > 1 {
-            for _ in 1..height {
-                println!();
-            }
-            execute!(stdout(), MoveUp(height - 1))?;
-        }
-        execute!(stdout(), SavePosition)?;
-
-        Ok(Self { height })
-    }
-
-    pub(super) fn refresh_size(&mut self) -> Result<()> {
-        let (_, term_height) = size()?;
-        self.height = term_height.clamp(10, 26);
-        Ok(())
-    }
-}
-
-impl Drop for TerminalGuard {
-    fn drop(&mut self) {
-        let _ = disable_raw_mode();
-        let _ = execute!(
-            stdout(),
-            RestorePosition,
-            MoveToNextLine(self.height),
-            Clear(ClearType::CurrentLine),
-            Show
-        );
-        println!();
-    }
 }
