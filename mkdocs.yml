@@ -83,5 +83,6 @@ nav:
   - Reference:
       - Configuration: configuration.md
       - Commands: commands.md
+      - How sync works: how-sync-works.md
       - Supported agents: agents.md
   - Roadmap: roadmap.md

@@ -20,8 +20,9 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 
 - **Declarative** - one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds.
 - Syncs skills from **GitHub repos** or **local directories** into any agent environment.
-- **35+ built-in agent presets**: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents).
-- Tracks every install in a local SQLite manifest - knows what changed and why.
+- **21 built-in agent presets**: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents).
+- **MCP server management**: declare MCP servers in the same config and Kasetto merges them into each agent's native settings file.
+- Tracks every install in a local manifest - knows what changed and why.
 - `--dry-run`, `--json`, and `--verbose` flags for scripting and CI.
 - Ships as a single binary - install as `kasetto`, run as `kst`.
 
@@ -33,7 +34,7 @@ Kasetto is a **community-first** project that solves a different problem: **decl
 
 - **Team consistency** - commit a YAML file, everyone gets the same skills.
 - **Multi-source** - pull from multiple GitHub repos and local folders in one config.
-- **Agent-agnostic** - one config field switches between 35+ agent environments.
+- **Agent-agnostic** - one config field switches between 21 agent environments.
 - **Traceable** - every install is tracked, diffable, and inspectable.
 - **CI-friendly** - `--json` output and non-zero exit codes for automation.
 
@@ -104,12 +105,24 @@ kst doctor    # version, paths, last sync status
 
 ## Commands
 
+### `kst init`
+
+Generates a starter `kasetto.yaml` in the current directory.
+
+```bash
+kst init [--force]
+```
+
+| Flag      | What it does                                        |
+| --------- | --------------------------------------------------- |
+| `--force` | Overwrite an existing `kasetto.yaml` without asking |
+
 ### `kst sync`
 
 Reads the config, discovers skills, and makes the local destination match.
 
 ```bash
-kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--verbose]
+kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--verbose] [--project | --global]
 ```
 
 | Flag        | What it does                                                       |
@@ -120,6 +133,8 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 | `--json`    | Print the sync report as JSON                                      |
 | `--plain`   | Disable colors and spinner animations                              |
 | `--verbose` | Show per-skill action details                                      |
+| `--project` | Install into the current project directory                         |
+| `--global`  | Install globally (default)                                         |
 
 Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for source-level failures.
 
@@ -128,18 +143,33 @@ Missing skills are reported as broken but don't stop the run. The exit code is n
 Shows everything currently tracked in the manifest.
 
 ```bash
-kst list [--json]
+kst list [--json] [--project | --global]
 ```
 
 In a terminal it opens an interactive browser - navigate with `j`/`k`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Set `NO_TUI=1` or pipe the output to get plain text instead.
 
 ### `kst doctor`
 
-Prints local diagnostics: version, manifest DB path, installation paths, last sync time, and any failed skills from the latest run.
+Prints local diagnostics: version, lock file path, installation paths, last sync time, and any failed skills from the latest run.
 
 ```bash
-kst doctor [--json]
+kst doctor [--json] [--project | --global]
 ```
+
+### `kst clean`
+
+Removes all tracked skills and MCP configs for the given scope.
+
+```bash
+kst clean [--dry-run] [--json] [--project | --global]
+```
+
+| Flag        | What it does                           |
+| ----------- | -------------------------------------- |
+| `--dry-run` | Preview what would be removed          |
+| `--json`    | Print output as JSON                   |
+| `--project` | Clean project-scoped assets            |
+| `--global`  | Clean globally-scoped assets (default) |
 
 ### `kst self update`
 
@@ -151,15 +181,25 @@ kst self update [--json]
 
 ### `kst self uninstall`
 
-Removes installed skills, local Kasetto config and data, and the binary.
+Removes installed skills, MCP configs, Kasetto data, and the binary.
 
 ```bash
 kst self uninstall [--yes]
 ```
 
+### `kst completions`
+
+Generates shell completion scripts.
+
+```bash
+kst completions <shell>
+```
+
+Supported shells: `bash`, `zsh`, `fish`, `powershell`.
+
 ## Configuration
 
-Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory.
+Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory. You can also run `kst init` to generate a starter config.
 
 ```yaml
 # Choose an agent preset...
@@ -167,6 +207,9 @@ agent: codex
 
 # ...or set an explicit path (overrides agent)
 # destination: ./my-skills
+
+# Install scope: "global" (default) or "project"
+# scope: project
 
 skills:
   # Pull specific skills from a GitHub repo
@@ -180,76 +223,68 @@ skills:
   - source: ~/Development/my-skills
     skills: "*"
 
-  # Override the subdirectory inside a repo
-  - source: https://github.com/acme/monorepo
+  # Pin to a git tag or commit
+  - source: https://github.com/acme/stable-skills
+    ref: v1.2.0
     skills:
       - name: custom-skill
         path: tools/skills
+
+# MCP servers (optional)
+mcps:
+  - source: https://github.com/org/mcp-pack
+  - source: https://github.com/org/monorepo
+    path: mcps/my-server/pack.json
 ```
 
 | Key               | Required | Description                                                         |
 | ----------------- | -------- | ------------------------------------------------------------------- |
 | `agent`           | no       | One of the [supported agent presets](#supported-agents)             |
 | `destination`     | no       | Explicit install path - overrides `agent` if both are set           |
+| `scope`           | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`          | **yes**  | List of skill sources                                               |
 | `skills[].source` | **yes**  | GitHub URL or local path                                            |
 | `skills[].branch` | no       | Branch for remote sources (default: `main`, falls back to `master`) |
+| `skills[].ref`    | no       | Git tag, commit SHA, or ref (takes priority over `branch`)          |
 | `skills[].skills` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects        |
+| `mcps`            | no       | List of MCP server sources                                          |
+| `mcps[].source`   | **yes**  | GitHub URL or local path containing MCP config                      |
+| `mcps[].branch`   | no       | Branch for remote sources                                           |
+| `mcps[].ref`      | no       | Git tag, commit SHA, or ref                                         |
+| `mcps[].path`     | no       | Explicit path to MCP JSON file within the source                    |
 
 ## Supported agents
 
 Set the `agent` field and Kasetto handles the rest.
 
 <details>
-<summary>Full list of 35+ supported agents</summary>
+<summary>Full list of supported agents</summary>
 
 <br />
 
 | Agent          | Config value     | Install path                    |
 | -------------- | ---------------- | ------------------------------- |
-| AdaL           | `adal`           | `~/.adal/skills/`               |
 | Amp            | `amp`            | `~/.config/agents/skills/`      |
 | Antigravity    | `antigravity`    | `~/.gemini/antigravity/skills/` |
 | Augment        | `augment`        | `~/.augment/skills/`            |
 | Claude Code    | `claude-code`    | `~/.claude/skills/`             |
 | Cline          | `cline`          | `~/.agents/skills/`             |
-| CodeBuddy      | `codebuddy`      | `~/.codebuddy/skills/`          |
 | Codex          | `codex`          | `~/.codex/skills/`              |
-| Command Code   | `command-code`   | `~/.commandcode/skills/`        |
 | Continue       | `continue`       | `~/.continue/skills/`           |
-| Cortex Code    | `cortex`         | `~/.snowflake/cortex/skills/`   |
-| Crush          | `crush`          | `~/.config/crush/skills/`       |
 | Cursor         | `cursor`         | `~/.cursor/skills/`             |
-| Deep Agents    | `deepagents`     | `~/.deepagents/agent/skills/`   |
-| Droid          | `droid`          | `~/.factory/skills/`            |
 | Gemini CLI     | `gemini-cli`     | `~/.gemini/skills/`             |
 | GitHub Copilot | `github-copilot` | `~/.copilot/skills/`            |
 | Goose          | `goose`          | `~/.config/goose/skills/`       |
-| iFlow CLI      | `iflow-cli`      | `~/.iflow/skills/`              |
 | Junie          | `junie`          | `~/.junie/skills/`              |
-| Kilo Code      | `kilo`           | `~/.kilocode/skills/`           |
-| Kimi Code CLI  | `kimi-cli`       | `~/.config/agents/skills/`      |
 | Kiro CLI       | `kiro-cli`       | `~/.kiro/skills/`               |
-| Kode           | `kode`           | `~/.kode/skills/`               |
-| MCPJam         | `mcpjam`         | `~/.mcpjam/skills/`             |
-| Mistral Vibe   | `mistral-vibe`   | `~/.vibe/skills/`               |
-| Mux            | `mux`            | `~/.mux/skills/`                |
-| Neovate        | `neovate`        | `~/.neovate/skills/`            |
 | OpenClaw       | `openclaw`       | `~/.openclaw/skills/`           |
 | OpenCode       | `opencode`       | `~/.config/opencode/skills/`    |
 | OpenHands      | `openhands`      | `~/.openhands/skills/`          |
-| Pi             | `pi`             | `~/.pi/agent/skills/`           |
-| Pochi          | `pochi`          | `~/.pochi/skills/`              |
-| Qoder          | `qoder`          | `~/.qoder/skills/`              |
-| Qwen Code      | `qwen-code`      | `~/.qwen/skills/`               |
 | Replit         | `replit`         | `~/.config/agents/skills/`      |
 | Roo Code       | `roo`            | `~/.roo/skills/`                |
 | Trae           | `trae`           | `~/.trae/skills/`               |
-| Trae CN        | `trae-cn`        | `~/.trae-cn/skills/`            |
-| Universal      | `universal`      | `~/.config/agents/skills/`      |
 | Warp           | `warp`           | `~/.agents/skills/`             |
 | Windsurf       | `windsurf`       | `~/.codeium/windsurf/skills/`   |
-| Zencoder       | `zencoder`       | `~/.zencoder/skills/`           |
 
 </details>
 
@@ -257,7 +292,6 @@ Need an agent that isn't listed? Use the `destination` field to point at any pat
 
 ## Roadmap
 
-- MCP servers management
 - Agents management
 - Hooks management
 - Your idea? [Open an issue](https://github.com/pivoshenko/kasetto/issues)

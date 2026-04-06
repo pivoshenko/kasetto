@@ -16,7 +16,13 @@ You should see a help menu listing the available commands.
 
 ## Creating a config
 
-Create a `kasetto.yaml` in your project to declare the skills you want:
+Generate a starter config with `kst init`:
+
+```console
+$ kst init
+```
+
+Or create a `kasetto.yaml` manually:
 
 ```yaml
 agent: claude-code
@@ -31,7 +37,7 @@ skills:
 
 !!! tip
 
-    Use the `agent` field to target any of the [35+ supported agents](./agents.md), or use the
+    Use the `agent` field to target any of the [supported agents](./agents.md), or use the
     `destination` field for a custom install path.
 
 ## Syncing skills
@@ -67,6 +73,23 @@ Would install: code-reviewer, design-system
 Would remove: old-skill
 ```
 
+## MCP servers
+
+Kasetto can also manage MCP server configs. Add an `mcps` section to your config:
+
+```yaml
+agent: claude-code
+
+skills:
+  - source: https://github.com/org/skill-pack
+    skills: "*"
+
+mcps:
+  - source: https://github.com/org/mcp-pack
+```
+
+MCP servers are automatically merged into each agent's native settings file during `kst sync`.
+
 ## Exploring what's installed
 
 Browse installed skills interactively:
@@ -84,7 +107,7 @@ Check your local setup:
 $ kst doctor
 ```
 
-This prints version, manifest DB path, installation paths, last sync time, and any failed skills.
+This prints version, lock file path, installation paths, last sync time, and any failed skills.
 
 ## Using JSON output
 
@@ -94,6 +117,7 @@ All commands support `--json` for scripting and CI:
 $ kst sync --json
 $ kst list --json
 $ kst doctor --json
+$ kst clean --json
 ```
 
 ## Next steps

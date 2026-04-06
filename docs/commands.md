@@ -1,5 +1,19 @@
 # Commands
 
+## `kst init`
+
+Generates a starter `kasetto.yaml` in the current directory.
+
+```console
+$ kst init [OPTIONS]
+```
+
+### Options
+
+| Flag | Description |
+| --- | --- |
+| `--force` | Overwrite an existing `kasetto.yaml` without prompting |
+
 ## `kst sync`
 
 Reads the config, discovers skills, and makes the local destination match.
@@ -18,6 +32,8 @@ $ kst sync [OPTIONS]
 | `--json` | Print the sync report as JSON |
 | `--plain` | Disable colors and spinner animations |
 | `--verbose` | Show per-skill action details |
+| `--project` | Install into the current project directory |
+| `--global` | Install globally (default) |
 
 Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for
 source-level failures.
@@ -39,6 +55,8 @@ $ kst list [OPTIONS]
 | Flag | Description |
 | --- | --- |
 | `--json` | Output as JSON instead of the interactive browser |
+| `--project` | List project-scoped assets |
+| `--global` | List globally-scoped assets (default) |
 
 In a terminal it opens an interactive browser — navigate with ++j++ / ++k++, scroll with
 ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
@@ -49,7 +67,7 @@ In a terminal it opens an interactive browser — navigate with ++j++ / ++k++, s
 
 ## `kst doctor`
 
-Prints local diagnostics: version, manifest DB path, installation paths, last sync time, and any
+Prints local diagnostics: version, lock file path, installation paths, last sync time, and any
 failed skills from the latest run.
 
 ```console
@@ -61,6 +79,25 @@ $ kst doctor [OPTIONS]
 | Flag | Description |
 | --- | --- |
 | `--json` | Output as JSON |
+| `--project` | Show project-scoped diagnostics |
+| `--global` | Show globally-scoped diagnostics (default) |
+
+## `kst clean`
+
+Removes all tracked skills and MCP configs for the given scope.
+
+```console
+$ kst clean [OPTIONS]
+```
+
+### Options
+
+| Flag | Description |
+| --- | --- |
+| `--dry-run` | Preview what would be removed |
+| `--json` | Print output as JSON |
+| `--project` | Clean project-scoped assets |
+| `--global` | Clean globally-scoped assets (default) |
 
 ## `kst self`
 
@@ -98,3 +135,17 @@ $ kst self uninstall [OPTIONS]
 | Flag | Description |
 | --- | --- |
 | `--yes` | Skip the confirmation prompt (required in non-interactive use) |
+
+## `kst completions`
+
+Generates shell completion scripts.
+
+```console
+$ kst completions <SHELL>
+```
+
+Supported shells: `bash`, `zsh`, `fish`, `powershell`.
+
+!!! tip
+
+    Example for Fish: `kst completions fish > ~/.config/fish/completions/kst.fish`
