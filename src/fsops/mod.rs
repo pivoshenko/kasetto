@@ -206,8 +206,8 @@ pub(crate) fn resolve_mcp_settings_targets(
 pub(crate) fn now_unix() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 pub(crate) fn now_iso() -> String {
@@ -403,10 +403,10 @@ skills:
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
         assert_eq!(cfg.skills[0].git_ref.as_deref(), Some("v3.0"));
         assert_eq!(cfg.skills[0].branch.as_deref(), Some("develop"));
-        match cfg.skills[0].git_pin() {
-            GitPin::Ref(r) => assert_eq!(r, "v3.0"),
-            _ => panic!("expected GitPin::Ref when both ref and branch are set"),
-        }
+        assert!(
+            matches!(cfg.skills[0].git_pin(), GitPin::Ref(r) if r == "v3.0"),
+            "ref should win when both ref and branch are set"
+        );
     }
 
     #[test]
@@ -417,10 +417,10 @@ skills:
             git_ref: Some("v1.0".into()),
             skills: SkillsField::Wildcard("*".into()),
         };
-        match spec.git_pin() {
-            GitPin::Ref(r) => assert_eq!(r, "v1.0"),
-            _ => panic!("ref should take priority over branch"),
-        }
+        assert!(
+            matches!(spec.git_pin(), GitPin::Ref(r) if r == "v1.0"),
+            "ref should take priority over branch"
+        );
     }
 
     #[test]
@@ -431,10 +431,10 @@ skills:
             git_ref: None,
             skills: SkillsField::Wildcard("*".into()),
         };
-        match spec.git_pin() {
-            GitPin::Branch(b) => assert_eq!(b, "dev"),
-            _ => panic!("expected branch pin"),
-        }
+        assert!(
+            matches!(spec.git_pin(), GitPin::Branch(b) if b == "dev"),
+            "expected branch pin"
+        );
     }
 
     #[test]

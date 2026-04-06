@@ -36,6 +36,7 @@ pub(crate) fn browse(input: &BrowseInput) -> Result<()> {
             &tabs,
             active_tab,
             started.elapsed(),
+            input.plain,
         )?;
         if !event::poll(Duration::from_millis(120))? {
             continue;

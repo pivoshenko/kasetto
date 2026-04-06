@@ -14,7 +14,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use crate::banner::{banner_lines, banner_width};
 use crate::colors::term;
 use crate::error::Result;
-use crate::model::InstalledSkill;
+use crate::model::{InstalledSkill, Scope};
 use crate::tui::draw_stars;
 
 use super::session::{ListState, PaneRect};
@@ -45,11 +45,12 @@ pub(super) fn draw(
     tabs: &[Tab],
     active_tab: usize,
     elapsed: Duration,
+    plain: bool,
 ) -> Result<()> {
     let (width, height) = size()?;
     let width = width as usize;
     let panel_height = height as usize;
-    let colors = Colors::active();
+    let colors = Colors::active(plain);
 
     clear_panel(stdout)?;
 
@@ -171,25 +172,80 @@ pub(super) fn draw(
             }
         }
         Tab::Mcps => {
-            state.keep_visible(content_height.saturating_sub(2), input.mcps.len());
-            draw_list_pane(
-                stdout,
-                PaneRect {
-                    left: 0,
-                    top: content_top,
+            let two_pane = content_height >= 8;
+            let side_by_side = two_pane && width >= 80;
+            if two_pane && !side_by_side {
+                let list_height = max(5, content_height / 2);
+                state.keep_visible(list_height.saturating_sub(2), input.mcps.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width,
+                        height: list_height,
+                    },
+                    &input.mcps,
+                    state,
+                    "MCP Servers",
+                    &colors,
+                )?;
+                draw_mcp_detail_pane(
+                    stdout,
+                    0,
+                    content_top + list_height,
                     width,
-                    height: content_height,
-                },
-                &input.mcps,
-                state,
-                "MCP Servers",
-                &colors,
-            )?;
+                    content_height.saturating_sub(list_height),
+                    input.mcps.get(state.selected),
+                    &colors,
+                )?;
+            } else if side_by_side {
+                let list_width = (width / 3).clamp(34, 46);
+                let detail_width = width.saturating_sub(list_width + 1);
+                state.keep_visible(content_height.saturating_sub(2), input.mcps.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width: list_width,
+                        height: content_height,
+                    },
+                    &input.mcps,
+                    state,
+                    "MCP Servers",
+                    &colors,
+                )?;
+                draw_mcp_detail_pane(
+                    stdout,
+                    list_width + 1,
+                    content_top,
+                    detail_width,
+                    content_height,
+                    input.mcps.get(state.selected),
+                    &colors,
+                )?;
+            } else {
+                state.keep_visible(content_height.saturating_sub(2), input.mcps.len());
+                draw_list_pane(
+                    stdout,
+                    PaneRect {
+                        left: 0,
+                        top: content_top,
+                        width,
+                        height: content_height,
+                    },
+                    &input.mcps,
+                    state,
+                    "MCP Servers",
+                    &colors,
+                )?;
+            }
         }
     }
 
     let tab_hint = if tabs.len() > 1 {
-        "Tab switch tabs   "
+        "h/l or Tab switch tabs   "
     } else {
         ""
     };
@@ -420,6 +476,7 @@ fn draw_skill_detail_pane(
         item.description.as_str()
     };
     lines.push(Line::label_value("Name", &item.name));
+    lines.push(Line::label_value("Scope", scope_label(item.scope)));
     lines.push(Line::label_value(
         "Updated",
         &format!("{} ({})", item.updated_ago, item.updated_at),
@@ -437,6 +494,67 @@ fn draw_skill_detail_pane(
     }
 
     Ok(())
+}
+
+fn draw_mcp_detail_pane(
+    stdout: &mut Stdout,
+    left: usize,
+    top: usize,
+    width: usize,
+    height: usize,
+    item: Option<&AssetEntry>,
+    colors: &Colors,
+) -> Result<()> {
+    if width < 10 || height < 4 {
+        return Ok(());
+    }
+
+    draw_box(stdout, left, top, width, height, "Details", colors)?;
+    let inner_left = left + 1;
+    let inner_top = top + 1;
+    let inner_width = width.saturating_sub(2);
+    let inner_height = height.saturating_sub(2);
+
+    let Some(item) = item else {
+        return Ok(());
+    };
+
+    let pack = if item.pack_file.is_empty() {
+        "—"
+    } else {
+        item.pack_file.as_str()
+    };
+    let source = if item.source.is_empty() {
+        "—"
+    } else {
+        item.source.as_str()
+    };
+
+    let lines = vec![
+        Line::label_value("Server", &item.name),
+        Line::label_value("Scope", scope_label(item.scope)),
+        Line::label_value("Pack file", pack),
+        Line::label_value("Source", source),
+    ];
+
+    let wrapped = wrap_lines(&lines, inner_width);
+    for row in 0..inner_height {
+        let y = inner_top + row;
+        if let Some(line) = wrapped.get(row) {
+            write_styled_line(stdout, inner_left, y, inner_width, line, colors)?;
+        } else {
+            write_fill(stdout, inner_left, y, inner_width, colors.background)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn scope_label(scope: Scope) -> &'static str {
+    match scope {
+        Scope::Global => "global",
+        Scope::Project => "project",
+    }
 }
 
 fn draw_footer(
@@ -686,8 +804,8 @@ struct Colors {
 }
 
 impl Colors {
-    fn active() -> Self {
-        if std::env::var_os("NO_COLOR").is_some() {
+    fn active(plain: bool) -> Self {
+        if plain || std::env::var_os("NO_COLOR").is_some() {
             Self {
                 banner: term::TEXT,
                 accent: term::TEXT,

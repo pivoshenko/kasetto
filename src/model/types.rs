@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use super::Scope;
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub(crate) struct SkillEntry {
     pub destination: String,
@@ -11,6 +13,9 @@ pub(crate) struct SkillEntry {
     pub source: String,
     pub source_revision: String,
     pub updated_at: String,
+    /// Scope this entry was installed under (present for locks written by newer kasetto).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<Scope>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,6 +66,7 @@ pub(crate) struct Report {
 #[derive(Debug, Serialize, Clone)]
 pub(crate) struct InstalledSkill {
     pub id: String,
+    pub scope: Scope,
     pub name: String,
     pub description: String,
     pub source: String,

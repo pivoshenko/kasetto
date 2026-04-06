@@ -120,85 +120,92 @@ mod tests {
 
     #[test]
     fn parse_repo_url_github() {
-        match parse_repo_url("https://github.com/openai/skills").expect("parse") {
-            RepoUrl::GitHub { host, owner, repo } => {
-                assert_eq!(host, "github.com");
-                assert_eq!(owner, "openai");
-                assert_eq!(repo, "skills");
-            }
-            _ => panic!("expected GitHub variant"),
-        }
+        let url = parse_repo_url("https://github.com/openai/skills").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::GitHub { host, owner, repo }
+                    if host == "github.com" && owner == "openai" && repo == "skills"
+            ),
+            "expected GitHub URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_github_enterprise_two_segment_path() {
-        match parse_repo_url("https://ghe.example.com/acme/skill-pack").expect("parse") {
-            RepoUrl::GitHub { host, owner, repo } => {
-                assert_eq!(host, "ghe.example.com");
-                assert_eq!(owner, "acme");
-                assert_eq!(repo, "skill-pack");
-            }
-            _ => panic!("expected GitHub variant"),
-        }
+        let url = parse_repo_url("https://ghe.example.com/acme/skill-pack").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::GitHub { host, owner, repo }
+                    if host == "ghe.example.com" && owner == "acme" && repo == "skill-pack"
+            ),
+            "expected GitHub Enterprise-style URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_github_trims_git_and_trailing_slash() {
-        match parse_repo_url("https://github.com/pivoshenko/kasetto.git/").expect("parse") {
-            RepoUrl::GitHub { host, owner, repo } => {
-                assert_eq!(host, "github.com");
-                assert_eq!(owner, "pivoshenko");
-                assert_eq!(repo, "kasetto");
-            }
-            _ => panic!("expected GitHub variant"),
-        }
+        let url = parse_repo_url("https://github.com/pivoshenko/kasetto.git/").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::GitHub { host, owner, repo }
+                    if host == "github.com" && owner == "pivoshenko" && repo == "kasetto"
+            ),
+            "expected trimmed GitHub URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_gitlab() {
-        match parse_repo_url("https://gitlab.example.com/group/subgroup/repo").expect("parse") {
-            RepoUrl::GitLab { host, project_path } => {
-                assert_eq!(host, "gitlab.example.com");
-                assert_eq!(project_path, "group/subgroup/repo");
-            }
-            _ => panic!("expected GitLab variant"),
-        }
+        let url = parse_repo_url("https://gitlab.example.com/group/subgroup/repo").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::GitLab { host, project_path }
+                    if host == "gitlab.example.com" && project_path == "group/subgroup/repo"
+            ),
+            "expected GitLab URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_gitlab_com_two_segments() {
-        match parse_repo_url("https://gitlab.com/group/project").expect("parse") {
-            RepoUrl::GitLab { host, project_path } => {
-                assert_eq!(host, "gitlab.com");
-                assert_eq!(project_path, "group/project");
-            }
-            _ => panic!("expected GitLab variant"),
-        }
+        let url = parse_repo_url("https://gitlab.com/group/project").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::GitLab { host, project_path }
+                    if host == "gitlab.com" && project_path == "group/project"
+            ),
+            "expected gitlab.com URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_bitbucket_cloud() {
-        match parse_repo_url("https://bitbucket.org/workspace/skill-repo").expect("parse") {
-            RepoUrl::Bitbucket {
-                workspace,
-                repo_slug,
-            } => {
-                assert_eq!(workspace, "workspace");
-                assert_eq!(repo_slug, "skill-repo");
-            }
-            _ => panic!("expected Bitbucket variant"),
-        }
+        let url = parse_repo_url("https://bitbucket.org/workspace/skill-repo").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::Bitbucket { workspace, repo_slug }
+                    if workspace == "workspace" && repo_slug == "skill-repo"
+            ),
+            "expected Bitbucket URL"
+        );
     }
 
     #[test]
     fn parse_repo_url_codeberg() {
-        match parse_repo_url("https://codeberg.org/someone/skills").expect("parse") {
-            RepoUrl::Gitea { host, owner, repo } => {
-                assert_eq!(host, "codeberg.org");
-                assert_eq!(owner, "someone");
-                assert_eq!(repo, "skills");
-            }
-            _ => panic!("expected Gitea (Codeberg) variant"),
-        }
+        let url = parse_repo_url("https://codeberg.org/someone/skills").expect("parse");
+        assert!(
+            matches!(
+                url,
+                RepoUrl::Gitea { host, owner, repo }
+                    if host == "codeberg.org" && owner == "someone" && repo == "skills"
+            ),
+            "expected Codeberg (Gitea) URL"
+        );
     }
 }

@@ -166,6 +166,7 @@ fn process_single_skill(
                 source: source.to_string(),
                 source_revision: source_revision.to_string(),
                 updated_at: now_iso(),
+                scope: Some(ctx.scope),
             },
         );
         actions.push(Action {

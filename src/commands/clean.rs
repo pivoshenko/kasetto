@@ -7,7 +7,8 @@ use crate::fsops::{dirs_home, dirs_kasetto_config};
 use crate::lock::{load_lock, save_lock};
 use crate::mcps::remove_mcp_server;
 use crate::model::{all_mcp_project_targets, all_mcp_settings_targets, resolve_scope, Scope};
-use crate::ui::{print_json, SYM_OK};
+use crate::profile::list_color_enabled;
+use crate::ui::{animations_enabled, print_json, SYM_OK};
 
 #[derive(serde::Serialize)]
 struct CleanOutput {
@@ -20,10 +21,16 @@ pub(crate) fn run(
     dry_run: bool,
     as_json: bool,
     quiet: bool,
+    plain: bool,
     scope_override: Option<Scope>,
 ) -> Result<()> {
+    let animate = animations_enabled(quiet, as_json, plain);
     if !as_json && !quiet {
-        print_banner();
+        if plain || !animate {
+            println!("kasetto | カセット");
+        } else {
+            print_banner();
+        }
     }
 
     let scope = resolve_scope(scope_override, None);
@@ -72,6 +79,7 @@ pub(crate) fn run(
     if as_json {
         print_json(&output)?;
     } else if !quiet {
+        let color = list_color_enabled() && !plain;
         let (label_color, prefix) = if dry_run {
             (WARNING, "Would remove")
         } else {
@@ -82,6 +90,50 @@ pub(crate) fn run(
             "  {label_color}{prefix}{RESET}: {}",
             skills_count + mcps_count
         );
+
+        if dry_run {
+            println!();
+            if !state.skills.is_empty() {
+                println!("  Skills:");
+                for entry in state.skills.values() {
+                    if color {
+                        println!(
+                            "    {ACCENT}skill{RESET}  {}  ({})",
+                            entry.destination, entry.skill
+                        );
+                    } else {
+                        println!("    skill  {}  ({})", entry.destination, entry.skill);
+                    }
+                }
+            }
+            let mcp_packs: Vec<_> = lock
+                .assets
+                .iter()
+                .filter(|(_, a)| a.kind == "mcp")
+                .collect();
+            if !mcp_packs.is_empty() {
+                println!("  MCP packs (server names merged from kasetto):");
+                for (_, a) in mcp_packs {
+                    let servers: String = a
+                        .destination
+                        .split(',')
+                        .filter(|s| !s.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    if color {
+                        println!(
+                            "    {ACCENT}mcp{RESET}    {}  (pack: {}, source: {})",
+                            servers, a.name, a.source
+                        );
+                    } else {
+                        println!(
+                            "    mcp    {}  (pack: {}, source: {})",
+                            servers, a.name, a.source
+                        );
+                    }
+                }
+            }
+        }
 
         if !dry_run {
             println!();

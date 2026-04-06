@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::lock::{load_lock, lock_path};
 use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
-use crate::ui::{print_field, print_json, print_label};
+use crate::ui::{animations_enabled, print_field, print_json, print_label};
 
 #[derive(serde::Serialize)]
 struct DoctorOutput {
@@ -20,7 +20,17 @@ struct DoctorOutput {
     mcps: Vec<String>,
 }
 
-pub(crate) fn run(as_json: bool, scope_override: Option<Scope>, program_name: &str) -> Result<()> {
+pub(crate) fn run(
+    as_json: bool,
+    plain: bool,
+    quiet: bool,
+    scope_override: Option<Scope>,
+    program_name: &str,
+) -> Result<()> {
+    if quiet && !as_json {
+        return Ok(());
+    }
+
     let scope = resolve_scope(scope_override, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let lock = load_lock(scope, &project_root)?;
@@ -76,9 +86,10 @@ pub(crate) fn run(as_json: bool, scope_override: Option<Scope>, program_name: &s
         return print_json(&output);
     }
 
-    let color = list_color_enabled();
+    let animate = animations_enabled(false, false, plain);
+    let color = list_color_enabled() && !plain;
     if std::io::IsTerminal::is_terminal(&std::io::stdout()) {
-        if color {
+        if color && animate {
             print_banner();
         } else {
             println!("kasetto | カセット");

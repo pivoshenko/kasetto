@@ -140,20 +140,20 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 
 ### `kst list`
 
-Shows everything currently tracked in the manifest.
+Shows skills and MCP servers from the lock file(s). **Without** `--project` or `--global`, both scopes are merged so you can tell global and project installs apart (scope is shown per row / in JSON).
 
 ```bash
-kst list [--json] [--project | --global]
+kst list [--json] [--quiet] [--plain] [--project | --global]
 ```
 
-In a terminal, this opens an interactive browser — navigate with `j`/`k`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Set `NO_TUI=1` or pipe the output to get plain text instead.
+In a terminal (and without `--plain`), this opens an interactive browser — Skills and MCPs tabs with detail panes. Navigate with `j`/`k`, switch tabs with Tab or `h`/`l`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Use `--plain`, set `NO_TUI=1`, or pipe stdout for a plain text listing.
 
 ### `kst doctor`
 
 Prints local diagnostics: version, lock file path, installation paths, last sync time, and any failed skills from the latest run.
 
 ```bash
-kst doctor [--json] [--project | --global]
+kst doctor [--json] [--quiet] [--plain] [--project | --global]
 ```
 
 ### `kst clean`
@@ -161,15 +161,17 @@ kst doctor [--json] [--project | --global]
 Removes all tracked skills and MCP configs for the given scope.
 
 ```bash
-kst clean [--dry-run] [--json] [--project | --global]
+kst clean [--dry-run] [--json] [--quiet] [--plain] [--project | --global]
 ```
 
-| Flag        | What it does                           |
-| ----------- | -------------------------------------- |
-| `--dry-run` | Preview what would be removed          |
-| `--json`    | Print output as JSON                   |
-| `--project` | Clean project-scoped assets            |
-| `--global`  | Clean globally-scoped assets (default) |
+| Flag        | What it does                                               |
+| ----------- | ---------------------------------------------------------- |
+| `--dry-run` | Preview what would be removed (prints paths and MCP packs) |
+| `--json`    | Print output as JSON                                       |
+| `--quiet`   | Suppress non-error output                                  |
+| `--plain`   | Disable colors and banner-style header                     |
+| `--project` | Clean project-scoped assets                                |
+| `--global`  | Clean globally-scoped assets (default)                     |
 
 ### `kst self update`
 

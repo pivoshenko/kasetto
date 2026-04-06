@@ -43,7 +43,7 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 
 ## `kst list`
 
-Shows everything Kasetto has installed.
+Shows everything Kasetto has installed (skills and MCP servers from the lock file).
 
 ```console
 $ kst list [OPTIONS]
@@ -51,18 +51,22 @@ $ kst list [OPTIONS]
 
 ### Options
 
-| Flag        | Description                                       |
-| ----------- | ------------------------------------------------- |
-| `--json`    | Output as JSON instead of the interactive browser |
-| `--project` | List project-scoped assets                        |
-| `--global`  | List globally-scoped assets (default)             |
+| Flag        | Description                                                              |
+| ----------- | ------------------------------------------------------------------------ |
+| `--json`    | Output as JSON instead of the interactive browser                        |
+| `--quiet`   | Do not print anything (unless `--json` is set)                           |
+| `--plain`   | Disable colors; use plain text output instead of the full-screen browser |
+| `--project` | Only read the project lock (`./kasetto.lock`) in the current directory   |
+| `--global`  | Only read the global lock (under XDG data)                               |
 
-In a terminal, this opens an interactive browser — navigate with ++j++ / ++k++, scroll with
-++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
+With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each skill row includes a **scope** field (in JSON and in the browser detail pane). JSON also includes `"merged_scopes": true` in that mode; MCP entries are objects with `name`, `scope`, `pack_file`, and `source`.
+
+In a terminal (and without `--plain`), this opens an interactive browser — **Skills** and **MCPs** tabs, each with a detail pane. Navigate with ++j++ / ++k++, scroll with
+++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++. Switch tabs with ++tab++ or ++h++ / ++l++.
 
 !!! note
 
-    Set `NO_TUI=1` or pipe the output to get plain text instead.
+    Set `NO_TUI=1` or pipe stdout to force a non-browser text listing. For a **local** plain listing without disabling all TUIs, use `--plain`.
 
 ## `kst doctor`
 
@@ -77,6 +81,8 @@ $ kst doctor [OPTIONS]
 | Flag        | Description                                |
 | ----------- | ------------------------------------------ |
 | `--json`    | Output as JSON                             |
+| `--quiet`   | Do not print anything (unless `--json`)    |
+| `--plain`   | Disable colors and the banner-style header |
 | `--project` | Show project-scoped diagnostics            |
 | `--global`  | Show globally-scoped diagnostics (default) |
 
@@ -90,12 +96,14 @@ $ kst clean [OPTIONS]
 
 ### Options
 
-| Flag        | Description                            |
-| ----------- | -------------------------------------- |
-| `--dry-run` | Preview what would be removed          |
-| `--json`    | Print output as JSON                   |
-| `--project` | Clean project-scoped assets            |
-| `--global`  | Clean globally-scoped assets (default) |
+| Flag        | Description                                                     |
+| ----------- | --------------------------------------------------------------- |
+| `--dry-run` | Preview what would be removed (lists skill paths and MCP packs) |
+| `--json`    | Print output as JSON                                            |
+| `--quiet`   | Suppress non-error output                                       |
+| `--plain`   | Disable colors and banner-style header                          |
+| `--project` | Clean project-scoped assets                                     |
+| `--global`  | Clean globally-scoped assets (default)                          |
 
 ## `kst self`
 

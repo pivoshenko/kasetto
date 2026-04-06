@@ -40,10 +40,10 @@ pub(crate) fn run(program_name: &str, default_config: &str) -> Result<()> {
             })
         }
         HomeAction::Init => crate::commands::init::run(false),
-        HomeAction::List => crate::commands::list::run(false, None),
-        HomeAction::Doctor => crate::commands::doctor::run(false, None, program_name),
+        HomeAction::List => crate::commands::list::run(false, false, false, None),
+        HomeAction::Doctor => crate::commands::doctor::run(false, false, false, None, program_name),
         HomeAction::SelfUpdate => crate::commands::self_update::run(false),
-        HomeAction::Clean => crate::commands::clean::run(false, false, false, None),
+        HomeAction::Clean => crate::commands::clean::run(false, false, false, false, None),
         HomeAction::Quit => Ok(()),
     }
 }
@@ -206,7 +206,7 @@ fn draw(
     }
 
     for (index, item) in HOME_ITEMS.iter().enumerate() {
-        if row as usize >= height.saturating_sub(3) {
+        if (row as usize) >= height.saturating_sub(3) {
             break;
         }
         execute!(stdout, MoveTo(0, row))?;
@@ -253,11 +253,15 @@ fn draw(
     }
 
     let footer_row = height.saturating_sub(2) as u16;
+    let hint = format!(
+        "q quit   ↑/↓ or j/k move   Enter run   i/s/l/d/c/u   sync args: {} [flags]",
+        command_text(program_name, &HOME_ITEMS[1])
+    );
     execute!(
         stdout,
         MoveTo(0, footer_row),
         SetForegroundColor(term::SECONDARY),
-        Print("q quit   ↑/↓ or j/k move   Enter run   i/s/l/d/c/u shortcuts"),
+        Print(hint),
         ResetColor
     )?;
 

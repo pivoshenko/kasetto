@@ -10,6 +10,7 @@ use crossterm::terminal::{self, Clear, ClearType};
 use crate::cli::{Cli, Commands, SyncArgs};
 use crate::colors::term;
 use crate::error::Result;
+use crate::model::{resolve_scope, Scope};
 use crate::tui::draw_banner_or_fallback;
 
 pub(super) fn prompt_sync_args(
@@ -115,6 +116,19 @@ fn draw_sync_prompt(
         )),
         ResetColor
     )?;
+    row = row.saturating_add(1);
+
+    let cfg_scope = resolve_scope(None, None);
+    execute!(
+        stdout,
+        MoveTo(0, row),
+        SetForegroundColor(term::SECONDARY),
+        Print(format!(
+            "Default scope from config: {} — append --global or --project to override.",
+            scope_label(cfg_scope)
+        )),
+        ResetColor
+    )?;
     row = row.saturating_add(2);
 
     execute!(
@@ -196,6 +210,13 @@ fn parse_sync_args(program_name: &str, input: &str) -> std::result::Result<SyncA
     }
 }
 
+fn scope_label(scope: Scope) -> &'static str {
+    match scope {
+        Scope::Global => "global",
+        Scope::Project => "project",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::parse_sync_args;
@@ -213,5 +234,15 @@ mod tests {
             parse_sync_args("kasetto", "sync --config remote.yaml --verbose").expect("sync args");
         assert_eq!(sync.config.as_deref(), Some("remote.yaml"));
         assert!(sync.verbose);
+    }
+
+    #[test]
+    fn parse_sync_args_accepts_scope_flags() {
+        let sync =
+            parse_sync_args("kasetto", "--config foo.yaml --project --dry-run").expect("sync");
+        assert_eq!(sync.config.as_deref(), Some("foo.yaml"));
+        assert!(sync.dry_run);
+        assert!(sync.scope.project);
+        assert!(!sync.scope.global);
     }
 }

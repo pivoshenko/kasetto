@@ -52,6 +52,17 @@ impl ScopeArgs {
     }
 }
 
+/// Shared output flags for commands that print to the terminal (matches `sync` where applicable).
+#[derive(Args, Clone, Debug, Default)]
+pub(crate) struct OutputArgs {
+    #[arg(long)]
+    #[arg(help = "suppress non-error output")]
+    pub quiet: bool,
+    #[arg(long)]
+    #[arg(help = "disable colors and animations")]
+    pub plain: bool,
+}
+
 #[derive(Args, Clone, Debug, Default)]
 pub(crate) struct SyncArgs {
     #[arg(long)]
@@ -127,6 +138,8 @@ pub(crate) enum Commands {
         #[arg(help = "print installed assets as JSON")]
         json: bool,
         #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
         scope: ScopeArgs,
     },
     #[command(
@@ -138,6 +151,8 @@ pub(crate) enum Commands {
         #[arg(long)]
         #[arg(help = "print diagnostic output as JSON")]
         json: bool,
+        #[command(flatten)]
+        output: OutputArgs,
         #[command(flatten)]
         scope: ScopeArgs,
     },
@@ -154,6 +169,8 @@ pub(crate) enum Commands {
         #[arg(long)]
         #[arg(help = "print output as JSON")]
         json: bool,
+        #[command(flatten)]
+        output: OutputArgs,
         #[command(flatten)]
         scope: ScopeArgs,
     },

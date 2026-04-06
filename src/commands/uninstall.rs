@@ -31,7 +31,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
     }
 
     println!("{ACCENT}Removing installed assets...{RESET}");
-    if let Err(e) = crate::commands::clean::run(false, false, true, None) {
+    if let Err(e) = crate::commands::clean::run(false, false, true, false, None) {
         eprintln!("{WARNING}{SYM_FAIL}{RESET} Clean failed: {e}");
     }
 

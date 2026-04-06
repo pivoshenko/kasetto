@@ -269,6 +269,7 @@ mod tests {
                 source: "src".into(),
                 source_revision: "rev1".into(),
                 updated_at: "100".into(),
+                scope: None,
             },
         );
         lock.save_tracked_asset(

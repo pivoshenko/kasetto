@@ -119,6 +119,8 @@ Removes everything tracked in the lock file for the given scope:
 - Removes all tracked MCP server entries from every agent's settings file
 - Clears the lock file
 
+`--dry-run` prints what would be removed (skill destinations and MCP pack lines) without changing disk.
+
 Anything you added by hand outside the lock is never touched.
 
 ## Edge Cases

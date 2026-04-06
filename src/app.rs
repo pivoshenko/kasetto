@@ -26,17 +26,36 @@ pub fn run() -> Result<()> {
                     show_banner: true,
                 })
             }
-            Commands::List { json, scope } => {
-                crate::commands::list::run(json, scope.scope_override())
+            Commands::List {
+                json,
+                output,
+                scope,
+            } => {
+                crate::commands::list::run(json, output.plain, output.quiet, scope.scope_override())
             }
-            Commands::Doctor { json, scope } => {
-                crate::commands::doctor::run(json, scope.scope_override(), &program_name)
-            }
+            Commands::Doctor {
+                json,
+                output,
+                scope,
+            } => crate::commands::doctor::run(
+                json,
+                output.plain,
+                output.quiet,
+                scope.scope_override(),
+                &program_name,
+            ),
             Commands::Clean {
                 dry_run,
                 json,
+                output,
                 scope,
-            } => crate::commands::clean::run(dry_run, json, false, scope.scope_override()),
+            } => crate::commands::clean::run(
+                dry_run,
+                json,
+                output.quiet,
+                output.plain,
+                scope.scope_override(),
+            ),
             Commands::ManageSelf { action } => match action {
                 SelfAction::Update { json } => crate::commands::self_update::run(json),
                 SelfAction::Uninstall { yes } => crate::commands::uninstall::run(yes),

@@ -108,8 +108,8 @@ Want to see what's installed? Open the browser:
 $ kst list
 ```
 
-Navigate with ++j++ / ++k++, scroll with ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
-Set `NO_TUI=1` or pipe the output to get plain text instead.
+Navigate with ++j++ / ++k++, switch tabs with ++tab++ or ++h++ / ++l++, scroll with ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
+With no `--project` or `--global`, **global and project** installs are shown together (each row is labeled by scope). Use `--plain`, set `NO_TUI=1`, or pipe stdout for plain text instead of the full-screen browser.
 
 Want to check your local setup:
 
@@ -121,7 +121,7 @@ Doctor shows your version, lock file location, install paths, last sync time, an
 
 ## Using JSON Output
 
-Every command has a `--json` flag for scripting or CI:
+`sync`, `list`, `doctor`, `clean`, and `self update` support `--json` for scripting or CI:
 
 ```console
 $ kst sync --json

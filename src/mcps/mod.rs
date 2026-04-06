@@ -173,7 +173,7 @@ mod tests {
         .unwrap();
         fs::write(
             &source,
-            r#"{"mcpServers":{"airflow":{"command":"uvx","env":{"AIRFLOW_PASSWORD":"${TODO}"}}}}"#,
+            r#"{"mcpServers":{"airflow":{"command":"uvx","env":{"AIRFLOW_PASSWORD":"__FROM_SOURCE_PACK__"}}}}"#,
         )
         .unwrap();
 
