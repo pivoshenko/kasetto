@@ -237,18 +237,45 @@
 }
 
 .kst-feature {
-  padding: 1.5rem;
+  padding: 0.75rem 1.5rem;
   border: 1px solid rgba(127, 127, 127, 0.25);
   border-radius: 8px;
   text-align: center;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.25rem;
   transition: border-color 0.2s ease;
 }
 
 .kst-feature:hover {
   border-color: var(--kst-purple);
+}
+
+.kst-feature-icon {
+  display: block;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.kst-feature-icon svg,
+.kst-feature-icon img {
+  width: 2rem !important;
+  height: 2rem !important;
+  fill: var(--kst-purple);
+}
+
+.kst-feature .twemoji {
+  height: 2rem !important;
+  width: 2rem !important;
+}
+
+.kst-feature .twemoji svg {
+  width: 2rem !important;
+  height: 2rem !important;
+  max-height: none !important;
+  fill: var(--kst-purple);
 }
 
 .kst-feature h3 {

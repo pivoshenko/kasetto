@@ -36,11 +36,15 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 <div class="kst-feature" markdown>
 
+:material-file-document-edit-outline:{ .kst-feature-icon }
+
 ### Declarative
 
 </div>
 
 <div class="kst-feature" markdown>
+
+:material-source-branch:{ .kst-feature-icon }
 
 ### Multi-source
 
@@ -48,11 +52,15 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 <div class="kst-feature" markdown>
 
+:material-robot-outline:{ .kst-feature-icon }
+
 ### Agent-agnostic
 
 </div>
 
 <div class="kst-feature" markdown>
+
+:material-file-search-outline:{ .kst-feature-icon }
 
 ### Traceable
 
@@ -60,11 +68,15 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 <div class="kst-feature" markdown>
 
+:material-cog-outline:{ .kst-feature-icon }
+
 ### CI-friendly
 
 </div>
 
 <div class="kst-feature" markdown>
+
+:material-package-variant-closed:{ .kst-feature-icon }
 
 ### Single binary
 
