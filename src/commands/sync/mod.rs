@@ -102,39 +102,77 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     if opts.as_json {
         print_json(&report)?;
     } else if !opts.quiet {
+        // Column widths align labels and right-align counts across the two summary rows.
+        const L1: usize = 12;
+        const L2: usize = 9;
+        const L3: usize = 9;
+        const NW: usize = 5;
+
         if opts.plain {
             println!();
-            println!("  Installed: {}", report.summary.installed);
-            println!("  Updated:   {}", report.summary.updated);
-            println!("  Removed:   {}", report.summary.removed);
-            println!("  Unchanged: {}", report.summary.unchanged);
-            println!("  Broken:    {}", report.summary.broken);
-            println!("  Failed:    {}", report.summary.failed);
+            println!(
+                "  {:<L1$} {:>NW$}   {:<L2$} {:>NW$}   {:<L3$} {:>NW$}",
+                "Installed:",
+                report.summary.installed,
+                "Updated:",
+                report.summary.updated,
+                "Removed:",
+                report.summary.removed,
+                L1 = L1,
+                L2 = L2,
+                L3 = L3,
+                NW = NW
+            );
+            println!(
+                "  {:<L1$} {:>NW$}   {:<L2$} {:>NW$}   {:<L3$} {:>NW$}",
+                "Unchanged:",
+                report.summary.unchanged,
+                "Broken:",
+                report.summary.broken,
+                "Failed:",
+                report.summary.failed,
+                L1 = L1,
+                L2 = L2,
+                L3 = L3,
+                NW = NW
+            );
         } else {
+            const W1: usize = 10;
+            const W2: usize = 7;
+            const W3: usize = 7;
+
             println!();
             println!(
-                "  {}Installed{}: {}   {}Updated{}: {}   {}Removed{}: {}",
+                "  {}Installed{}{}: {:>NW$}   {}Updated{}{}: {:>NW$}   {}Removed{}{}: {:>NW$}",
                 SUCCESS,
                 RESET,
+                " ".repeat(W1.saturating_sub("Installed".len())),
                 report.summary.installed,
                 INFO,
                 RESET,
+                " ".repeat(W2.saturating_sub("Updated".len())),
                 report.summary.updated,
                 WARNING,
                 RESET,
-                report.summary.removed
+                " ".repeat(W3.saturating_sub("Removed".len())),
+                report.summary.removed,
+                NW = NW
             );
             println!(
-                "  {}Unchanged{}: {}   {}Broken{}: {}   {}Failed{}: {}",
+                "  {}Unchanged{}{}: {:>NW$}   {}Broken{}{}: {:>NW$}   {}Failed{}{}: {:>NW$}",
                 SECONDARY,
                 RESET,
+                " ".repeat(W1.saturating_sub("Unchanged".len())),
                 report.summary.unchanged,
                 ATTENTION,
                 RESET,
+                " ".repeat(W2.saturating_sub("Broken".len())),
                 report.summary.broken,
                 ERROR,
                 RESET,
-                report.summary.failed
+                " ".repeat(W3.saturating_sub("Failed".len())),
+                report.summary.failed,
+                NW = NW
             );
         }
 
