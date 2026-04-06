@@ -32,7 +32,7 @@ echo "releasing ${TAG}"
 # Check for clean working tree
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "error: working tree is dirty — commit or stash changes first" >&2
+    echo "error: working tree is dirty - commit or stash changes first" >&2
     exit 1
 fi
 
@@ -56,4 +56,4 @@ git add Cargo.toml Cargo.lock CHANGELOG.md
 git commit -m "release: ${TAG}"
 git tag -a "$TAG" -m "release: ${TAG}"
 
-echo "done — run 'git push origin main --tags' when ready"
+echo "done - run 'git push origin main --tags' when ready"

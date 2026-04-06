@@ -31,14 +31,14 @@ CLI args → resolve_command() → StartupMode
 
 ### Module Layout
 
-- **`commands/`** — Each subcommand: `sync/` (split into `skills.rs` + `mcps.rs`), `list`, `doctor`, `init`, `clean`, `self_update`, `uninstall`, `completions`
-- **`model/`** — Core types: `Agent` enum (35+ presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `Report`, `Summary`
-- **`source/`** — Remote handling: URL parsing (`parse.rs`), archive download/extraction (`remote.rs`), auth token resolution (`auth.rs`), git host URL rewriting (`hosts.rs`)
-- **`fsops/`** — File operations: config loading from file/HTTP (`mod.rs`), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`)
-- **`mcps/`** — MCP server management: pack discovery (`pack.rs`), format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). Supports 4 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML
-- **`lock.rs`** — Manifest persistence: tracks installed skills + MCP assets, stores latest sync report as JSON blob
-- **`home/`** — Interactive welcome screen with `prompt.rs` for sync arg input
-- **`list/`** — Interactive TUI browser: `browse.rs` (event loop), `render.rs` (frame drawing), `session.rs` (state/guard), `tab.rs`, `types.rs`
+- **`commands/`** - Each subcommand: `sync/` (split into `skills.rs` + `mcps.rs`), `list`, `doctor`, `init`, `clean`, `self_update`, `uninstall`, `completions`
+- **`model/`** - Core types: `Agent` enum (35+ presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `Report`, `Summary`
+- **`source/`** - Remote handling: URL parsing (`parse.rs`), archive download/extraction (`remote.rs`), auth token resolution (`auth.rs`), git host URL rewriting (`hosts.rs`)
+- **`fsops/`** - File operations: config loading from file/HTTP (`mod.rs`), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`)
+- **`mcps/`** - MCP server management: pack discovery (`pack.rs`), format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). Supports 4 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML
+- **`lock.rs`** - Manifest persistence: tracks installed skills + MCP assets, stores latest sync report as JSON blob
+- **`home/`** - Interactive welcome screen with `prompt.rs` for sync arg input
+- **`list/`** - Interactive TUI browser: `browse.rs` (event loop), `render.rs` (frame drawing), `session.rs` (state/guard), `tab.rs`, `types.rs`
 
 ### Sync Data Flow
 
@@ -50,7 +50,7 @@ CLI args → resolve_command() → StartupMode
 
 ### UI System
 
-**Color palette** (`colors.rs`): Semantic ANSI constants — `ACCENT` (bold magenta), `SUCCESS` (green), `ERROR` (red), `WARNING` (yellow), `SECONDARY` (grey), `INFO` (cyan). The `term` submodule maps these to crossterm `Color` values for TUI rendering. `clap_styles()` applies the palette to CLI help text. The `cli_examples!` macro renders help footers.
+**Color palette** (`colors.rs`): Semantic ANSI constants - `ACCENT` (bold magenta), `SUCCESS` (green), `ERROR` (red), `WARNING` (yellow), `SECONDARY` (grey), `INFO` (cyan). The `term` submodule maps these to crossterm `Color` values for TUI rendering. `clap_styles()` applies the palette to CLI help text. The `cli_examples!` macro renders help footers.
 
 **Shared helpers** (`ui.rs`): `SPINNER_FRAMES` (braille animation), `SYM_OK`/`SYM_FAIL` (✓/✗), `with_spinner()` (threaded progress animation), `print_json()`, `print_field()`, `print_label()`, `print_section_header()`, `print_name_list()`, `eprint_fail()`, `status_chip()`. All commands use these rather than direct `println!` with inline ANSI codes.
 
@@ -62,4 +62,4 @@ CLI args → resolve_command() → StartupMode
 - **Agent as exhaustive enum**: `model::Agent` with serde aliases, maps to install paths and MCP settings targets. Adding an agent = add enum variant + path mappings.
 - **Skill discovery by convention**: Skills found in `root/` or `root/skills/` by directory listing (no manifest needed). Each skill dir must contain a `SKILL.md`.
 - **Output modes**: Most commands support `--plain` (no ANSI), `--json` (structured), and default (colors + animations). Check `animations_enabled()` and the `as_json`/`plain`/`quiet` flags.
-- **`ListItem` trait** in `list/render.rs`: Generic list pane rendering — both `InstalledSkill` and `AssetEntry` implement it, eliminating duplicate pane code.
+- **`ListItem` trait** in `list/render.rs`: Generic list pane rendering - both `InstalledSkill` and `AssetEntry` implement it, eliminating duplicate pane code.

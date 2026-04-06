@@ -25,7 +25,7 @@ pub(crate) mod term {
     pub(crate) const ACCENT: Color = Color::Magenta;
     /// [`super::BANNER`].
     pub(crate) const BANNER: Color = Color::AnsiValue(13);
-    /// [`super::SECONDARY`] — standard grey, lighter than `DarkGrey` on typical terminals.
+    /// [`super::SECONDARY`] - standard grey, lighter than `DarkGrey` on typical terminals.
     pub(crate) const SECONDARY: Color = Color::Grey;
     /// [`super::INFO`].
     pub(crate) const INFO: Color = Color::Cyan;
@@ -44,7 +44,7 @@ const CLAP_HEADER_USAGE: AnsiColor = AnsiColor::Magenta; // [`ACCENT`]
 const CLAP_LITERAL: AnsiColor = AnsiColor::Yellow; // [`WARNING_EMPHASIS`]
 const CLAP_PLACEHOLDER: AnsiColor = AnsiColor::Cyan; // [`INFO`]
 
-/// Clap help styling — aligned with [`ACCENT`], [`WARNING_EMPHASIS`], [`INFO`].
+/// Clap help styling - aligned with [`ACCENT`], [`WARNING_EMPHASIS`], [`INFO`].
 pub(crate) fn clap_styles() -> Styles {
     Styles::styled()
         .header(CLAP_HEADER_USAGE.on_default().effects(Effects::BOLD))
@@ -53,12 +53,12 @@ pub(crate) fn clap_styles() -> Styles {
         .placeholder(CLAP_PLACEHOLDER.on_default())
 }
 
-/// CUU — cursor up `n` rows (ECMA-48 `CSI n A`).
+/// CUU - cursor up `n` rows (ECMA-48 `CSI n A`).
 pub(crate) fn ansi_cursor_up(rows: u16) -> String {
     format!("\x1b[{}A", rows)
 }
 
-/// CHA — cursor horizontal absolute; **1-based** column (`CSI n G`, xterm-style).
+/// CHA - cursor horizontal absolute; **1-based** column (`CSI n G`, xterm-style).
 pub(crate) fn ansi_cursor_column_1based(column: u16) -> String {
     format!("\x1b[{}G", column.max(1))
 }
@@ -66,14 +66,14 @@ pub(crate) fn ansi_cursor_column_1based(column: u16) -> String {
 /// Reset all attributes (`SGR 0`).
 pub(crate) const RESET: &str = "\x1b[0m";
 
-/// Bold accent — labels, prompts, highlighted tokens (SGR bold magenta).
+/// Bold accent - labels, prompts, highlighted tokens (SGR bold magenta).
 pub(crate) const ACCENT: &str = "\x1b[1;35m";
 /// Bright magenta for banner / large art.
 pub(crate) const BANNER: &str = "\x1b[95m";
 /// Plain magenta for secondary emphasis (e.g. “Broken” in summaries).
 pub(crate) const ATTENTION: &str = "\x1b[35m";
 
-/// Light grey foreground — hints, borders (`256-color` 248; lighter than bright-black `90m`).
+/// Light grey foreground - hints, borders (`256-color` 248; lighter than bright-black `90m`).
 pub(crate) const SECONDARY: &str = "\x1b[38;5;248m";
 
 pub(crate) const SUCCESS: &str = "\x1b[32m";
@@ -98,7 +98,7 @@ macro_rules! cli_examples {
         concat!(
             "\x1b[1;35mExamples:\x1b[0m\n",
             $(
-                // Must match [`ACCENT`] + [`RESET`] / [`SECONDARY`]; `concat!` rejects `const` refs — see `palette_tests::cli_examples_literals_match_acc_and_secondary`.
+                // Must match [`ACCENT`] + [`RESET`] / [`SECONDARY`]; `concat!` rejects `const` refs - see `palette_tests::cli_examples_literals_match_acc_and_secondary`.
                 concat!("  \x1b[38;5;248m", $line, "\x1b[0m\n"),
             )*
         )

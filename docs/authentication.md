@@ -1,18 +1,18 @@
 # Authentication
 
 Kasetto supports pulling skills and MCP configs from private repositories and remote configs.
-Authentication is configured via environment variables — no login command or credentials file needed.
+Authentication is configured via environment variables - no login command or credentials file needed.
 
 ## Supported git hosts
 
-| Host | Example URL |
-| --- | --- |
-| GitHub (including Enterprise) | `https://github.com/org/repo` |
-| GitLab (including self-hosted) | `https://gitlab.com/group/project` |
-| Bitbucket Cloud | `https://bitbucket.org/workspace/repo` |
-| Codeberg | `https://codeberg.org/owner/repo` |
-| Gitea | `https://gitea.com/owner/repo` |
-| Forgejo | `https://forgejo.org/owner/repo` |
+| Host                           | Example URL                            |
+| ------------------------------ | -------------------------------------- |
+| GitHub (including Enterprise)  | `https://github.com/org/repo`          |
+| GitLab (including self-hosted) | `https://gitlab.com/group/project`     |
+| Bitbucket Cloud                | `https://bitbucket.org/workspace/repo` |
+| Codeberg                       | `https://codeberg.org/owner/repo`      |
+| Gitea                          | `https://gitea.com/owner/repo`         |
+| Forgejo                        | `https://forgejo.org/owner/repo`       |
 
 GitHub Enterprise is auto-detected for any hostname with a standard `owner/repo` path layout.
 GitLab self-hosted instances are detected when the hostname contains `gitlab`.
@@ -21,47 +21,47 @@ GitLab self-hosted instances are detected when the hostname contains `gitlab`.
 
 ### GitHub
 
-| Variable | Description |
-| --- | --- |
+| Variable       | Description                                 |
+| -------------- | ------------------------------------------- |
 | `GITHUB_TOKEN` | Personal access token or fine-grained token |
-| `GH_TOKEN` | Fallback if `GITHUB_TOKEN` is not set |
+| `GH_TOKEN`     | Fallback if `GITHUB_TOKEN` is not set       |
 
 Works for both `github.com` and GitHub Enterprise Server.
 
 ### GitLab
 
-| Variable | Description |
-| --- | --- |
-| `GITLAB_TOKEN` | Personal or project access token |
-| `CI_JOB_TOKEN` | Fallback — automatically set in GitLab CI/CD pipelines |
+| Variable       | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `GITLAB_TOKEN` | Personal or project access token                       |
+| `CI_JOB_TOKEN` | Fallback - automatically set in GitLab CI/CD pipelines |
 
 ### Bitbucket Cloud
 
 Bitbucket supports two authentication methods:
 
-**Method 1 — API token:**
+**Method 1 - API token:**
 
-| Variable | Description |
-| --- | --- |
+| Variable          | Description           |
+| ----------------- | --------------------- |
 | `BITBUCKET_EMAIL` | Account email address |
-| `BITBUCKET_TOKEN` | Atlassian API token |
+| `BITBUCKET_TOKEN` | Atlassian API token   |
 
-**Method 2 — App password:**
+**Method 2 - App password:**
 
-| Variable | Description |
-| --- | --- |
-| `BITBUCKET_USERNAME` | Bitbucket username |
+| Variable                 | Description                                                 |
+| ------------------------ | ----------------------------------------------------------- |
+| `BITBUCKET_USERNAME`     | Bitbucket username                                          |
 | `BITBUCKET_APP_PASSWORD` | App password (create at Bitbucket Settings > App passwords) |
 
 Method 1 is tried first. If those variables are not set, method 2 is used.
 
 ### Codeberg / Gitea / Forgejo
 
-| Variable | Description |
-| --- | --- |
-| `GITEA_TOKEN` | Personal access token |
-| `CODEBERG_TOKEN` | Fallback if `GITEA_TOKEN` is not set |
-| `FORGEJO_TOKEN` | Fallback if neither of the above is set |
+| Variable         | Description                             |
+| ---------------- | --------------------------------------- |
+| `GITEA_TOKEN`    | Personal access token                   |
+| `CODEBERG_TOKEN` | Fallback if `GITEA_TOKEN` is not set    |
+| `FORGEJO_TOKEN`  | Fallback if neither of the above is set |
 
 All three variables are checked in order. The first one found is used for any Gitea-family host.
 
@@ -80,7 +80,7 @@ reports an HTTP error with a hint about which environment variable to set.
 
 ## Display variables
 
-| Variable | Effect |
-| --- | --- |
-| `NO_TUI` | Disables interactive screens (home menu, list browser). Set to any value. |
-| `NO_COLOR` | Disables colored output. Set to any value. |
+| Variable   | Effect                                                                    |
+| ---------- | ------------------------------------------------------------------------- |
+| `NO_TUI`   | Disables interactive screens (home menu, list browser). Set to any value. |
+| `NO_COLOR` | Disables colored output. Set to any value.                                |

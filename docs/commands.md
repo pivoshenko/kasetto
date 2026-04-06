@@ -10,8 +10,8 @@ $ kst init [OPTIONS]
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
+| Flag      | Description                                            |
+| --------- | ------------------------------------------------------ |
 | `--force` | Overwrite an existing `kasetto.yaml` without prompting |
 
 ## `kst sync`
@@ -24,16 +24,16 @@ $ kst sync [OPTIONS]
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
+| Flag                     | Description                                                  |
+| ------------------------ | ------------------------------------------------------------ |
 | `--config <path-or-url>` | Path or HTTPS URL to a YAML config (default: `kasetto.yaml`) |
-| `--dry-run` | Preview what would change without writing anything |
-| `--quiet` | Suppress non-error output |
-| `--json` | Print the sync report as JSON |
-| `--plain` | Disable colors and spinner animations |
-| `--verbose` | Show per-skill action details |
-| `--project` | Install into the current project directory |
-| `--global` | Install globally (default) |
+| `--dry-run`              | Preview what would change without writing anything           |
+| `--quiet`                | Suppress non-error output                                    |
+| `--json`                 | Print the sync report as JSON                                |
+| `--plain`                | Disable colors and spinner animations                        |
+| `--verbose`              | Show per-skill action details                                |
+| `--project`              | Install into the current project directory                   |
+| `--global`               | Install globally (default)                                   |
 
 Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for
 source-level failures.
@@ -52,13 +52,13 @@ $ kst list [OPTIONS]
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
-| `--json` | Output as JSON instead of the interactive browser |
-| `--project` | List project-scoped assets |
-| `--global` | List globally-scoped assets (default) |
+| Flag        | Description                                       |
+| ----------- | ------------------------------------------------- |
+| `--json`    | Output as JSON instead of the interactive browser |
+| `--project` | List project-scoped assets                        |
+| `--global`  | List globally-scoped assets (default)             |
 
-In a terminal it opens an interactive browser — navigate with ++j++ / ++k++, scroll with
+In a terminal it opens an interactive browser - navigate with ++j++ / ++k++, scroll with
 ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
 
 !!! note
@@ -76,11 +76,11 @@ $ kst doctor [OPTIONS]
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
-| `--json` | Output as JSON |
-| `--project` | Show project-scoped diagnostics |
-| `--global` | Show globally-scoped diagnostics (default) |
+| Flag        | Description                                |
+| ----------- | ------------------------------------------ |
+| `--json`    | Output as JSON                             |
+| `--project` | Show project-scoped diagnostics            |
+| `--global`  | Show globally-scoped diagnostics (default) |
 
 ## `kst clean`
 
@@ -92,12 +92,12 @@ $ kst clean [OPTIONS]
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
-| `--dry-run` | Preview what would be removed |
-| `--json` | Print output as JSON |
-| `--project` | Clean project-scoped assets |
-| `--global` | Clean globally-scoped assets (default) |
+| Flag        | Description                            |
+| ----------- | -------------------------------------- |
+| `--dry-run` | Preview what would be removed          |
+| `--json`    | Print output as JSON                   |
+| `--project` | Clean project-scoped assets            |
+| `--global`  | Clean globally-scoped assets (default) |
 
 ## `kst self`
 
@@ -113,8 +113,8 @@ $ kst self update [OPTIONS]
 
 #### Options
 
-| Flag | Description |
-| --- | --- |
+| Flag     | Description    |
+| -------- | -------------- |
 | `--json` | Output as JSON |
 
 !!! note
@@ -132,8 +132,8 @@ $ kst self uninstall [OPTIONS]
 
 #### Options
 
-| Flag | Description |
-| --- | --- |
+| Flag    | Description                                                    |
+| ------- | -------------------------------------------------------------- |
 | `--yes` | Skip the confirmation prompt (required in non-interactive use) |
 
 ## `kst completions`

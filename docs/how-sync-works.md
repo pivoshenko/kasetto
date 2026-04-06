@@ -1,6 +1,6 @@
 # How sync works
 
-This page explains what `kst sync` does under the hood — how skills are installed, how MCP
+This page explains what `kst sync` does under the hood - how skills are installed, how MCP
 configs are merged, what gets overwritten, and what stays safe.
 
 ## Sync flow
@@ -33,7 +33,7 @@ Skills are plain directories containing a `SKILL.md` file (see
 - **Copies** the entire directory to the destination, replacing any previous version.
 - **Removes** skill directories that are no longer listed in the config.
 
-Skills are fully replaced on update — there is no partial merge.
+Skills are fully replaced on update - there is no partial merge.
 
 ## MCP servers: discovery and additive merge
 
@@ -51,8 +51,8 @@ Server entries are then merged into each agent's native settings file (e.g., `.c
 
 1. **New entries are added.** If the settings file doesn't have a server with that name, it's
    inserted.
-2. **Existing entries are never overwritten.** If a server name already exists — whether added by
-   Kasetto or by hand — Kasetto leaves it untouched.
+2. **Existing entries are never overwritten.** If a server name already exists - whether added by
+   Kasetto or by hand - Kasetto leaves it untouched.
 
 This means:
 
@@ -66,12 +66,12 @@ This means:
 
 Kasetto auto-detects and writes to four formats depending on the agent:
 
-| Format | Used by | Target file example |
-| --- | --- | --- |
-| McpServers JSON | Claude Code, Cursor, Gemini CLI, Roo, and others | `.claude.json`, `.cursor/mcp.json` |
-| VS Code servers JSON | GitHub Copilot | `.vscode/mcp.json` |
-| OpenCode JSON | OpenCode | `.config/opencode/opencode.json` |
-| Codex TOML | Codex | `.codex/config.toml` |
+| Format               | Used by                                          | Target file example                |
+| -------------------- | ------------------------------------------------ | ---------------------------------- |
+| McpServers JSON      | Claude Code, Cursor, Gemini CLI, Roo, and others | `.claude.json`, `.cursor/mcp.json` |
+| VS Code servers JSON | GitHub Copilot                                   | `.vscode/mcp.json`                 |
+| OpenCode JSON        | OpenCode                                         | `.config/opencode/opencode.json`   |
+| Codex TOML           | Codex                                            | `.codex/config.toml`               |
 
 All formats follow the same additive-merge rules.
 
@@ -84,17 +84,17 @@ Kasetto uses SHA-256 hashes to detect changes:
 - **MCP packs:** The pack file is hashed. If the hash matches **and** all server names are still
   present in the target settings, the pack is skipped.
 
-This makes re-sync fast — unchanged sources require no file I/O beyond reading the lock.
+This makes re-sync fast - unchanged sources require no file I/O beyond reading the lock.
 
 ## Lock file
 
 Kasetto tracks what it installed in a YAML lock file called `kasetto.lock`. The location depends
 on the scope:
 
-| Scope | Location |
-| --- | --- |
-| Global | `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`) |
-| Project | `./kasetto.lock` in the project root |
+| Scope   | Location                                                                               |
+| ------- | -------------------------------------------------------------------------------------- |
+| Global  | `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`) |
+| Project | `./kasetto.lock` in the project root                                                   |
 
 The lock file is how Kasetto knows what to remove when a source is deleted from the config or when
 you run `kst clean`. You generally don't need to edit it by hand.
@@ -134,7 +134,7 @@ User-added entries outside the lock are never affected.
 
 **Conflicting server names across sources.** If source A and source B both define a server named
 `"my-server"`, source A wins (processed first). If you later remove source A, `"my-server"` is
-removed — even though source B also wanted it. Re-sync will then install source B's version.
+removed - even though source B also wanted it. Re-sync will then install source B's version.
 
 **Renamed servers in upstream.** If an upstream MCP pack renames a server from `"old"` to `"new"`,
 Kasetto sees this as: remove `"old"` (no longer in pack) + add `"new"` (not yet in settings). The

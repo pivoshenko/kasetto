@@ -20,7 +20,7 @@ pub(crate) enum RepoUrl {
         workspace: String,
         repo_slug: String,
     },
-    /// Gitea / Forgejo — including Codeberg (`codeberg.org`).
+    /// Gitea / Forgejo - including Codeberg (`codeberg.org`).
     Gitea {
         host: String,
         owner: String,

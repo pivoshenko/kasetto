@@ -125,16 +125,16 @@ Reads the config, discovers skills, and makes the local destination match.
 kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--verbose] [--project | --global]
 ```
 
-| Flag        | What it does                                                       |
-| ----------- | ------------------------------------------------------------------ |
+| Flag        | What it does                                                 |
+| ----------- | ------------------------------------------------------------ |
 | `--config`  | Path or HTTPS URL to a YAML config (default: `kasetto.yaml`) |
-| `--dry-run` | Preview what would change without writing anything                 |
-| `--quiet`   | Suppress non-error output                                          |
-| `--json`    | Print the sync report as JSON                                      |
-| `--plain`   | Disable colors and spinner animations                              |
-| `--verbose` | Show per-skill action details                                      |
-| `--project` | Install into the current project directory                         |
-| `--global`  | Install globally (default)                                         |
+| `--dry-run` | Preview what would change without writing anything           |
+| `--quiet`   | Suppress non-error output                                    |
+| `--json`    | Print the sync report as JSON                                |
+| `--plain`   | Disable colors and spinner animations                        |
+| `--verbose` | Show per-skill action details                                |
+| `--project` | Install into the current project directory                   |
+| `--global`  | Install globally (default)                                   |
 
 Missing skills are reported as broken but don't stop the run. The exit code is non-zero only for source-level failures.
 

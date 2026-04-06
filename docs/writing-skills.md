@@ -44,10 +44,10 @@ installed into the agent's skill directory.
 
 ### Frontmatter fields
 
-| Field | Required | Description |
-| --- | --- | --- |
-| `name` | no | Display name shown in `kst list` and `kst doctor` |
-| `description` | no | Short description shown in the interactive browser |
+| Field         | Required | Description                                        |
+| ------------- | -------- | -------------------------------------------------- |
+| `name`        | no       | Display name shown in `kst list` and `kst doctor`  |
+| `description` | no       | Short description shown in the interactive browser |
 
 Both fields are optional. If omitted, Kasetto falls back to parsing the markdown body:
 

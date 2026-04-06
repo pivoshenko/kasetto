@@ -74,9 +74,9 @@ pub(crate) fn auth_env_inline_help(url: &str) -> String {
 /// Extra context for HTTP failures when fetching remote config or repo archives (issue #11).
 pub(crate) fn http_fetch_auth_hint(url: &str, status: u16) -> String {
     match status {
-        401 | 403 => format!(" — {}", auth_env_inline_help(url)),
+        401 | 403 => format!(" - {}", auth_env_inline_help(url)),
         404 => format!(
-            " — if the repo or file is private, {}",
+            " - if the repo or file is private, {}",
             auth_env_inline_help(url)
         ),
         _ => String::new(),

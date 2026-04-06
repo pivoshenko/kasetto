@@ -46,9 +46,9 @@ Kasetto provides a standalone installer to download and install the binary:
 
 By default, the binary is placed in `~/.local/bin`. The following environment variables can customize the installation:
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `KASETTO_VERSION` | Version tag to install | Latest release |
+| Variable              | Description            | Default                                                      |
+| --------------------- | ---------------------- | ------------------------------------------------------------ |
+| `KASETTO_VERSION`     | Version tag to install | Latest release                                               |
 | `KASETTO_INSTALL_DIR` | Installation directory | `~/.local/bin` (Unix) / `%USERPROFILE%\.local\bin` (Windows) |
 
 ### Homebrew

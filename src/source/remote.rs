@@ -146,7 +146,7 @@ pub(super) fn download_extract(
     }
     if body.starts_with(b"<") || body.starts_with(b"<!") {
         return Err(err(format!(
-            "failed to download {user_source}: server returned HTML instead of a .tar.gz — {}",
+            "failed to download {user_source}: server returned HTML instead of a .tar.gz - {}",
             auth_env_inline_help(user_source)
         )));
     }

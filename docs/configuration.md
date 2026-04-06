@@ -48,40 +48,40 @@ mcps:
 
 ### Top-level fields
 
-| Key | Required | Description |
-| --- | --- | --- |
-| `agent` | no | One or more [supported agent presets](./agents.md) — string or list |
-| `destination` | no | Explicit install path — overrides `agent` if both are set |
-| `scope` | no | `"global"` (default) or `"project"` — where to install |
-| `skills` | **yes** | List of skill sources |
-| `mcps` | no | List of MCP server sources |
+| Key           | Required | Description                                                         |
+| ------------- | -------- | ------------------------------------------------------------------- |
+| `agent`       | no       | One or more [supported agent presets](./agents.md) - string or list |
+| `destination` | no       | Explicit install path - overrides `agent` if both are set           |
+| `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
+| `skills`      | **yes**  | List of skill sources                                               |
+| `mcps`        | no       | List of MCP server sources                                          |
 
 ### Skill source fields
 
-| Key | Required | Description |
-| --- | --- | --- |
-| `source` | **yes** | Git host URL or local path (GitHub, GitLab, Bitbucket, Codeberg/Gitea) |
-| `branch` | no | Branch for remote sources (default: `main`, falls back to `master`) |
-| `ref` | no | Git tag, commit SHA, or ref — takes priority over `branch` |
-| `skills` | **yes** | `"*"` for all, or a list of names / `{ name, path }` objects |
+| Key      | Required | Description                                                            |
+| -------- | -------- | ---------------------------------------------------------------------- |
+| `source` | **yes**  | Git host URL or local path (GitHub, GitLab, Bitbucket, Codeberg/Gitea) |
+| `branch` | no       | Branch for remote sources (default: `main`, falls back to `master`)    |
+| `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`             |
+| `skills` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects           |
 
 ### Skill entry fields
 
 Each entry in the `skills` list can be a string (the skill name) or an object:
 
-| Key | Required | Description |
-| --- | --- | --- |
-| `name` | **yes** | Name of the skill directory to install |
-| `path` | no | Custom subdirectory within the source to look for the skill |
+| Key    | Required | Description                                                 |
+| ------ | -------- | ----------------------------------------------------------- |
+| `name` | **yes**  | Name of the skill directory to install                      |
+| `path` | no       | Custom subdirectory within the source to look for the skill |
 
 ### MCP source fields
 
-| Key | Required | Description |
-| --- | --- | --- |
-| `source` | **yes** | Git host URL or local path containing MCP server config |
-| `branch` | no | Branch for remote sources (default: `main`, falls back to `master`) |
-| `ref` | no | Git tag, commit SHA, or ref — takes priority over `branch` |
-| `path` | no | Explicit path to the MCP JSON file within the source (skips auto-discovery) |
+| Key      | Required | Description                                                                 |
+| -------- | -------- | --------------------------------------------------------------------------- |
+| `source` | **yes**  | Git host URL or local path containing MCP server config                     |
+| `branch` | no       | Branch for remote sources (default: `main`, falls back to `master`)         |
+| `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`                  |
+| `path`   | no       | Explicit path to the MCP JSON file within the source (skips auto-discovery) |
 
 Kasetto discovers MCP config files automatically in this order:
 

@@ -1,4 +1,4 @@
-//! OpenAI Codex `~/.codex/config.toml` — `mcp_servers` map.
+//! OpenAI Codex `~/.codex/config.toml` - `mcp_servers` map.
 
 use std::fs;
 use std::path::Path;

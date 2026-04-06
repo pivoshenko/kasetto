@@ -8,7 +8,7 @@ use crate::error::{err, Result};
 use crate::ui::{SYM_FAIL, SYM_OK};
 use crate::DEFAULT_CONFIG_FILENAME;
 
-const TEMPLATE: &str = r#"# Kasetto — https://github.com/pivoshenko/kasetto
+const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
 
 # Scope: global (default) or project (install into current project)
 # scope: project

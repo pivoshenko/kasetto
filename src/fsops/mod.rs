@@ -44,7 +44,7 @@ pub(crate) fn load_config_any(config_path: &str) -> Result<(Config, PathBuf, Str
         }
         if text.trim_start().starts_with("<!DOCTYPE") || text.trim_start().starts_with("<html") {
             return Err(err(format!(
-                "remote config at {config_path} returned a login/HTML page instead of YAML — {}",
+                "remote config at {config_path} returned a login/HTML page instead of YAML - {}",
                 auth_env_inline_help(config_path)
             )));
         }
