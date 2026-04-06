@@ -19,7 +19,7 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 ## Highlights
 
 - **Declarative** - one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds.
-- Syncs skills from **GitHub repos** or **local directories** into any agent environment.
+- Syncs skills from **GitHub, GitLab, Bitbucket, Codeberg/Gitea** repos or **local directories** into any agent environment.
 - **21 built-in agent presets**: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents).
 - **MCP server management**: declare MCP servers in the same config and Kasetto merges them into each agent's native settings file.
 - Tracks every install in a local manifest - knows what changed and why.
@@ -33,7 +33,7 @@ There are good tools in this space already - [Vercel Skills](https://github.com/
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible skill management across machines and agents.**
 
 - **Team consistency** - commit a YAML file, everyone gets the same skills.
-- **Multi-source** - pull from multiple GitHub repos and local folders in one config.
+- **Multi-source** - pull from GitHub, GitLab, Bitbucket, Codeberg/Gitea repos and local folders in one config.
 - **Agent-agnostic** - one config field switches between 21 agent environments.
 - **Traceable** - every install is tracked, diffable, and inspectable.
 - **CI-friendly** - `--json` output and non-zero exit codes for automation.
@@ -202,8 +202,11 @@ Supported shells: `bash`, `zsh`, `fish`, `powershell`.
 Pass a config via `--config` or let Kasetto pick up `kasetto.yaml` in the current directory. You can also run `kst init` to generate a starter config.
 
 ```yaml
-# Choose an agent preset...
+# Choose an agent preset (single or multiple)...
 agent: codex
+# agent:
+#   - claude-code
+#   - cursor
 
 # ...or set an explicit path (overrides agent)
 # destination: ./my-skills
@@ -239,16 +242,16 @@ mcps:
 
 | Key               | Required | Description                                                         |
 | ----------------- | -------- | ------------------------------------------------------------------- |
-| `agent`           | no       | One of the [supported agent presets](#supported-agents)             |
+| `agent`           | no       | One or more [supported agent presets](#supported-agents)            |
 | `destination`     | no       | Explicit install path - overrides `agent` if both are set           |
 | `scope`           | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`          | **yes**  | List of skill sources                                               |
-| `skills[].source` | **yes**  | GitHub URL or local path                                            |
+| `skills[].source` | **yes**  | Git host URL or local path                                          |
 | `skills[].branch` | no       | Branch for remote sources (default: `main`, falls back to `master`) |
 | `skills[].ref`    | no       | Git tag, commit SHA, or ref (takes priority over `branch`)          |
 | `skills[].skills` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects        |
 | `mcps`            | no       | List of MCP server sources                                          |
-| `mcps[].source`   | **yes**  | GitHub URL or local path containing MCP config                      |
+| `mcps[].source`   | **yes**  | Git host URL or local path containing MCP config                    |
 | `mcps[].branch`   | no       | Branch for remote sources                                           |
 | `mcps[].ref`      | no       | Git tag, commit SHA, or ref                                         |
 | `mcps[].path`     | no       | Explicit path to MCP JSON file within the source                    |

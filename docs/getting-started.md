@@ -12,7 +12,21 @@ Usage: kst <COMMAND>
 ...
 ```
 
-You should see a help menu listing the available commands.
+If no `kasetto.yaml` exists in the current directory, Kasetto opens an interactive home screen with
+a menu of available commands. Navigate with ++j++ / ++k++ or arrow keys, press ++enter++ to run the
+selected command, or use shortcut keys:
+
+| Key | Action |
+| --- | --- |
+| ++i++ | Init |
+| ++s++ | Sync (prompts for config path) |
+| ++l++ | List |
+| ++d++ | Doctor |
+| ++c++ | Clean |
+| ++u++ | Self update |
+| ++q++ / ++escape++ | Quit |
+
+Set `NO_TUI=1` to disable the interactive home screen and get plain text hints instead.
 
 ## Creating a config
 

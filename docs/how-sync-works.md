@@ -23,8 +23,11 @@ configs are merged, what gets overwritten, and what stays safe.
 
 ## Skills: copy and replace
 
-Skills are plain directories. On each sync, Kasetto:
+Skills are plain directories containing a `SKILL.md` file (see
+[writing skills](./writing-skills.md)). On each sync, Kasetto:
 
+- **Discovers** skills by scanning the source root and `skills/` subdirectory for directories
+  that contain a `SKILL.md` file.
 - **Hashes** the source skill directory.
 - **Compares** the hash to the lock file. If unchanged, the skill is skipped.
 - **Copies** the entire directory to the destination, replacing any previous version.
@@ -32,9 +35,18 @@ Skills are plain directories. On each sync, Kasetto:
 
 Skills are fully replaced on update — there is no partial merge.
 
-## MCP servers: additive merge
+## MCP servers: discovery and additive merge
 
-MCP server entries are merged into each agent's native settings file (e.g., `.claude.json`,
+Kasetto discovers MCP pack files in the source automatically:
+
+1. `.mcp.json` at the source root
+2. `mcp.json` at the source root
+3. Any `.json` file inside a `mcp/` subdirectory
+
+Each file must contain a `mcpServers` JSON object. The `path` config field bypasses this discovery
+and points directly at a specific file.
+
+Server entries are then merged into each agent's native settings file (e.g., `.claude.json`,
 `.cursor/mcp.json`). The merge follows two rules:
 
 1. **New entries are added.** If the settings file doesn't have a server with that name, it's
@@ -74,10 +86,18 @@ Kasetto uses SHA-256 hashes to detect changes:
 
 This makes re-sync fast — unchanged sources require no file I/O beyond reading the lock.
 
-## Ownership tracking
+## Lock file
 
-Kasetto tracks what it installed in the lock file (`kasetto.lock`). This is how it knows what to
-remove when a source is deleted from the config or when you run `kst clean`.
+Kasetto tracks what it installed in a YAML lock file called `kasetto.lock`. The location depends
+on the scope:
+
+| Scope | Location |
+| --- | --- |
+| Global | `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`) |
+| Project | `./kasetto.lock` in the project root |
+
+The lock file is how Kasetto knows what to remove when a source is deleted from the config or when
+you run `kst clean`. You generally don't need to edit it by hand.
 
 **Skills** are tracked by a composite key (`source::skill-name`) with their destination path and
 hash.

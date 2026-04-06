@@ -6,8 +6,11 @@ You can also run `kst init` to generate a starter config.
 ## Example
 
 ```yaml
-# Choose an agent preset...
+# Choose an agent preset (single or multiple)...
 agent: codex
+# agent:
+#   - claude-code
+#   - cursor
 
 # ...or set an explicit path (overrides agent)
 # destination: ./my-skills
@@ -47,7 +50,7 @@ mcps:
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `agent` | no | One of the [supported agent presets](./agents.md) |
+| `agent` | no | One or more [supported agent presets](./agents.md) — string or list |
 | `destination` | no | Explicit install path — overrides `agent` if both are set |
 | `scope` | no | `"global"` (default) or `"project"` — where to install |
 | `skills` | **yes** | List of skill sources |
@@ -57,7 +60,7 @@ mcps:
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `source` | **yes** | GitHub URL or local path |
+| `source` | **yes** | Git host URL or local path (GitHub, GitLab, Bitbucket, Codeberg/Gitea) |
 | `branch` | no | Branch for remote sources (default: `main`, falls back to `master`) |
 | `ref` | no | Git tag, commit SHA, or ref — takes priority over `branch` |
 | `skills` | **yes** | `"*"` for all, or a list of names / `{ name, path }` objects |
@@ -75,17 +78,23 @@ Each entry in the `skills` list can be a string (the skill name) or an object:
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `source` | **yes** | GitHub URL or local path containing MCP server config |
+| `source` | **yes** | Git host URL or local path containing MCP server config |
 | `branch` | no | Branch for remote sources (default: `main`, falls back to `master`) |
 | `ref` | no | Git tag, commit SHA, or ref — takes priority over `branch` |
 | `path` | no | Explicit path to the MCP JSON file within the source (skips auto-discovery) |
 
-Kasetto discovers MCP config files automatically (looking for files like `pack.json`), but you can
-use the `path` field to point at a specific file when the source contains multiple configs or uses a
-non-standard layout.
+Kasetto discovers MCP config files automatically in this order:
 
-MCP servers are merged into each agent's native settings file (e.g., `.claude.json` for Claude Code,
-`.cursor/mcp.json` for Cursor). The `clean` command removes all managed MCP entries.
+1. `.mcp.json` at the source root
+2. `mcp.json` at the source root
+3. Any `.json` file inside a `mcp/` subdirectory
+
+Use the `path` field to point at a specific file when the source contains multiple configs or uses
+a non-standard layout.
+
+MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
+into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
+for Cursor). See [how sync works](./how-sync-works.md) for merge behavior details.
 
 ## Remote configs
 
@@ -96,6 +105,28 @@ $ kst sync --config https://example.com/team-skills.yaml
 ```
 
 This is useful for sharing a single config across a team without checking it into every repository.
+
+If the remote config is hosted on a private repo, Kasetto applies the same token-based
+authentication used for skill sources. See [authentication](./authentication.md) for the full list
+of supported environment variables.
+
+## Multiple agents
+
+The `agent` field accepts a single value or a list. When a list is provided, skills are installed
+to every agent's directory and MCP servers are merged into every agent's settings file:
+
+```yaml
+agent:
+  - claude-code
+  - cursor
+  - codex
+
+skills:
+  - source: https://github.com/org/skill-pack
+    skills: "*"
+```
+
+This is useful when you work with several agents and want them all to share the same skills.
 
 ## Agent vs destination
 

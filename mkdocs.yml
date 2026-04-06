@@ -84,5 +84,7 @@ nav:
       - Configuration: configuration.md
       - Commands: commands.md
       - How sync works: how-sync-works.md
+      - Writing skills: writing-skills.md
+      - Authentication: authentication.md
       - Supported agents: agents.md
   - Roadmap: roadmap.md
