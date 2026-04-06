@@ -54,7 +54,7 @@ pub(crate) fn draw_banner(stdout: &mut Stdout, top: usize) -> Result<usize> {
     Ok(lines.len() + 1)
 }
 
-/// Twinkling stars on the banner’s empty + subtitle rows. `banner_origin_y` is the terminal row
+/// Twinkling stars on the banner's empty + subtitle rows. `banner_origin_y` is the terminal row
 /// where banner line 0 starts (use `0` on the home alternate screen).
 pub(crate) fn draw_stars(
     stdout: &mut Stdout,

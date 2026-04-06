@@ -99,8 +99,8 @@ for Cursor). See [how sync works](./how-sync-works.md) for merge behavior detail
 
 Kasetto can fetch configs from any HTTPS URL:
 
-```console
-$ kst sync --config https://example.com/team-skills.yaml
+```bash
+kst sync --config https://example.com/team-skills.yaml
 ```
 
 Great for sharing a single config across a team without checking it into every repository.
@@ -132,7 +132,7 @@ If you set both, `destination` wins. Use `agent` for convenience with [supported
 
     Use `destination` when targeting an agent that isn't in the supported list.
 
-## Scope: Global vs Project
+## Scope: Global Vs Project
 
 By default, skills are installed globally into the agent's home-directory path. Add `scope: project` to your config, or pass `--project` on the command line, to install into the current project directory instead.
 

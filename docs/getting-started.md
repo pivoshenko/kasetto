@@ -1,9 +1,17 @@
 # First Steps with Kasetto
 
+**When you need this:** You want a quick, predictable path to "working sync" and you're not sure what Kasetto will modify.
+
+**What you'll learn:**
+
+- How to create a config and run your first sync
+- How to preview changes and avoid interactive UI
+- Where to go next for the exact sync/merge guarantees
+
 Once you've [installed Kasetto](./installation.md), run `kst` to make sure it's available:
 
-```console
-$ kst
+```bash
+kst
 An extremely fast AI skills manager
 
 Usage: kst <COMMAND>
@@ -29,8 +37,8 @@ Set `NO_TUI=1` if you'd rather skip the interactive screen and get plain text hi
 
 Run `kst init` to generate a starter config:
 
-```console
-$ kst init
+```bash
+kst init
 ```
 
 Or create a `kasetto.yaml` by hand:
@@ -55,8 +63,8 @@ skills:
 
 Run `kst sync` and Kasetto does the rest:
 
-```console
-$ kst sync
+```bash
+kst sync
 Syncing skills from 1 source...
   ✓ code-reviewer (installed)
   ✓ design-system (installed)
@@ -65,23 +73,29 @@ Synced 2 skills in 1.2s
 
 Kasetto pulls the skills and installs them into the right agent directory. Next time you run `sync`, only what changed gets updated.
 
+If you want the "exact contract" for what gets copied/removed, read [How Sync Works](./how-sync-works.md).
+
 ## Syncing from a Remote Config
 
 Got a shared team config? Just pass it as a URL:
 
-```console
-$ kst sync --config https://example.com/team-skills.yaml
+```bash
+kst sync --config https://example.com/team-skills.yaml
 ```
+
+For private configs hosted on git providers, set the right env var token first (see [Authentication](./authentication.md#remote-configs)).
 
 ## Previewing Changes
 
 Not ready to commit? Use `--dry-run` to see what would happen first:
 
-```console
-$ kst sync --dry-run
+```bash
+kst sync --dry-run
 Would install: code-reviewer, design-system
 Would remove: old-skill
 ```
+
+See [CI & automation](./ci.md) for recommended CI patterns.
 
 ## MCP Servers
 
@@ -100,12 +114,14 @@ mcps:
 
 Kasetto merges them into each agent's native settings file during sync — nothing extra to do.
 
+If you want the exact merge rules and conflict behavior, see [How Sync Works](./how-sync-works.md#mcp-servers-discovery-and-additive-merge).
+
 ## Exploring What's Installed
 
 Want to see what's installed? Open the browser:
 
-```console
-$ kst list
+```bash
+kst list
 ```
 
 Navigate with ++j++ / ++k++, switch tabs with ++tab++ or ++h++ / ++l++, scroll with ++page-up++ / ++page-down++, jump with ++g++ ++g++ / ++shift+g++.
@@ -113,8 +129,8 @@ With no `--project` or `--global`, **global and project** installs are shown tog
 
 Want to check your local setup:
 
-```console
-$ kst doctor
+```bash
+kst doctor
 ```
 
 Doctor shows your version, lock file location, install paths, last sync time, and any skills that failed.
@@ -123,14 +139,14 @@ Doctor shows your version, lock file location, install paths, last sync time, an
 
 `sync`, `list`, `doctor`, `clean`, and `self update` support `--json` for scripting or CI:
 
-```console
-$ kst sync --json
-$ kst list --json
-$ kst doctor --json
-$ kst clean --json
+```bash
+kst sync --json
+kst list --json
+kst doctor --json
+kst clean --json
 ```
 
 ## Next Steps
 
-See the [configuration reference](./configuration.md) for the full config schema, or browse the
-[commands reference](./commands.md) for all available flags.
+See the [configuration reference](./configuration.md) for the full config schema, browse the
+[commands reference](./commands.md), or grab a ready-to-use pattern from the [cookbook](./cookbook.md).

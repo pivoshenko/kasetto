@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 :material-source-branch:{ .kst-feature-icon }
 
-### Multi-source
+### Multi-Source
 
 </div>
 
@@ -54,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 :material-robot-outline:{ .kst-feature-icon }
 
-### Agent-agnostic
+### Agent-Agnostic
 
 </div>
 
@@ -70,7 +70,7 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 :material-cog-outline:{ .kst-feature-icon }
 
-### CI-friendly
+### CI-Friendly
 
 </div>
 
@@ -78,7 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/ins
 
 :material-package-variant-closed:{ .kst-feature-icon }
 
-### Single binary
+### Single Binary
 
 </div>
 

@@ -90,4 +90,9 @@ nav:
       - Writing Skills: writing-skills.md
       - Authentication: authentication.md
       - Supported Agents: agents.md
+  - Guides:
+      - CI & automation: ci.md
+      - Cookbook: cookbook.md
+      - Security model: security.md
+  - FAQ: faq.md
   - Roadmap: roadmap.md

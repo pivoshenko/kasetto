@@ -6,11 +6,11 @@
 //! |------|-----|
 //! | [`ACCENT`] | Bold labels, prompts, command names in prose |
 //! | [`BANNER`] | Large ASCII art / bright magenta blocks |
-//! | [`ATTENTION`] | Secondary emphasis (e.g. “Broken” in sync summary) |
+//! | [`ATTENTION`] | Secondary emphasis (e.g. "Broken" in sync summary) |
 //! | [`SECONDARY`] | Light grey hints, metadata, example commands in help |
 //! | [`INFO`] | Cyan emphasis |
 //! | [`SUCCESS`] | OK / installed / positive outcomes |
-//! | [`WARNING`] | Caution, “would remove”, removed counts |
+//! | [`WARNING`] | Caution, "would remove", removed counts |
 //! | [`WARNING_EMPHASIS`] | Bold yellow for highlighted warnings |
 //! | [`ERROR`] | Failures, destructive actions applied |
 //! | [`CHIP_*`] | Status chip backgrounds |
@@ -66,7 +66,7 @@ pub(crate) const RESET: &str = "\x1b[0m";
 pub(crate) const ACCENT: &str = "\x1b[1;35m";
 /// Bright magenta for banner / large art.
 pub(crate) const BANNER: &str = "\x1b[95m";
-/// Plain magenta for secondary emphasis (e.g. “Broken” in summaries).
+/// Plain magenta for secondary emphasis (e.g. "Broken" in summaries).
 pub(crate) const ATTENTION: &str = "\x1b[35m";
 
 /// Light grey foreground - hints, borders (`256-color` 248; lighter than bright-black `90m`).
@@ -87,7 +87,7 @@ pub(crate) const CHIP_NEUTRAL: &str = "\x1b[30;47m";
 pub(crate) const CHIP_WARNING: &str = "\x1b[30;43m";
 pub(crate) const CHIP_ERROR: &str = "\x1b[30;41m";
 
-/// Clap `after_help`: accent “Examples:” header and secondary example lines (compile-time only).
+/// Clap `after_help`: accent "Examples:" header and secondary example lines (compile-time only).
 #[macro_export]
 macro_rules! cli_examples {
     ($($line:literal),* $(,)?) => {

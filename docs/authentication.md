@@ -52,9 +52,9 @@ Kasetto identifies the git host from the URL hostname:
 
 Works for `github.com` and GitHub Enterprise Server alike.
 
-```console
-$ export GITHUB_TOKEN=ghp_...
-$ kst sync --config kasetto.yaml
+```bash
+export GITHUB_TOKEN=ghp_...
+kst sync --config kasetto.yaml
 ```
 
 ### GitLab
@@ -66,9 +66,9 @@ $ kst sync --config kasetto.yaml
 
 Works for `gitlab.com` and any self-hosted instance whose hostname starts with `gitlab.`.
 
-```console
-$ export GITLAB_TOKEN=glpat-...
-$ kst sync --config kasetto.yaml
+```bash
+export GITLAB_TOKEN=glpat-...
+kst sync --config kasetto.yaml
 ```
 
 ### Bitbucket Cloud
@@ -105,9 +105,9 @@ All three are checked in order — the first one found is used for any Gitea-fam
 
 Authentication also applies when you fetch a config via `--config <url>`. The token is chosen based on the URL hostname, using the same detection rules above.
 
-```console
-$ export GITHUB_TOKEN=ghp_...
-$ kst sync --config https://github.com/org/private-repo/raw/main/kasetto.yaml
+```bash
+export GITHUB_TOKEN=ghp_...
+kst sync --config https://github.com/org/private-repo/raw/main/kasetto.yaml
 ```
 
 If the URL points to a private resource and no matching token is set, Kasetto reports an HTTP error with a hint about which variable to set.

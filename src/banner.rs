@@ -93,7 +93,7 @@ pub(crate) fn banner_string(use_color: bool) -> String {
     }
 }
 
-/// Glyph for one static “star” cell (filled, outline, or dot) from animation phase.
+/// Glyph for one static "star" cell (filled, outline, or dot) from animation phase.
 fn cli_static_star_glyph(phase: u16) -> &'static str {
     match phase % 6 {
         0 | 5 => "✦",
@@ -138,7 +138,7 @@ fn cli_static_star_overlay() -> String {
         s.push_str(g);
         s.push_str(RESET);
     }
-    // Past bottom border; align with cursor after `banner_string`’s trailing newline.
+    // Past bottom border; align with cursor after `banner_string`'s trailing newline.
     s.push_str("\r\n\r\n");
     s
 }

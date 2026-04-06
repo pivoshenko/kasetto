@@ -12,8 +12,8 @@ The quickest way to get started — downloads and installs the binary in one com
 
     Use `curl` to download the script and execute it with `sh`:
 
-    ```console
-    $ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/install.sh | sh
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/install.sh | sh
     ```
 
 === "Windows"
@@ -32,8 +32,8 @@ The quickest way to get started — downloads and installs the binary in one com
 
     === "macOS and Linux"
 
-        ```console
-        $ curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/install.sh | less
+        ```bash
+        curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/install.sh | less
         ```
 
     === "Windows"
@@ -55,25 +55,25 @@ The binary lands in `~/.local/bin` by default. Override it with environment vari
 
 Available via a Homebrew tap:
 
-```console
-$ brew install pivoshenko/tap/kasetto
+```bash
+brew install pivoshenko/tap/kasetto
 ```
 
 ### Scoop
 
 Available via a Scoop bucket on Windows:
 
-```console
-$ scoop bucket add kasetto https://github.com/pivoshenko/scoop-bucket
-$ scoop install kasetto
+```bash
+scoop bucket add kasetto https://github.com/pivoshenko/scoop-bucket
+scoop install kasetto
 ```
 
 ### Cargo
 
 Available on [crates.io](https://crates.io):
 
-```console
-$ cargo install kasetto
+```bash
+cargo install kasetto
 ```
 
 !!! note
@@ -88,23 +88,23 @@ Prefer to grab a binary directly? Head to [GitHub Releases](https://github.com/p
 
 Clone and install with Cargo:
 
-```console
-$ git clone https://github.com/pivoshenko/kasetto && cd kasetto
-$ cargo install --path .
+```bash
+git clone https://github.com/pivoshenko/kasetto && cd kasetto
+cargo install --path .
 ```
 
 ## Upgrading
 
 If you used the standalone installer, updating is a one-liner:
 
-```console
-$ kst self update
+```bash
+kst self update
 ```
 
 For Homebrew or Cargo installs, use the package manager's own upgrade command. For example, with Cargo:
 
-```console
-$ cargo install kasetto
+```bash
+cargo install kasetto
 ```
 
 ## Shell Autocompletion

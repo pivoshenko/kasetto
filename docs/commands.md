@@ -4,8 +4,8 @@
 
 Generates a starter `kasetto.yaml` in the current directory — a good jumping-off point before you edit by hand.
 
-```console
-$ kst init [OPTIONS]
+```bash
+kst init [OPTIONS]
 ```
 
 ### Options
@@ -18,8 +18,8 @@ $ kst init [OPTIONS]
 
 Reads your config, fetches any remote skills, and brings your local install up to date.
 
-```console
-$ kst sync [OPTIONS]
+```bash
+kst sync [OPTIONS]
 ```
 
 ### Options
@@ -45,8 +45,8 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 
 Shows everything Kasetto has installed (skills and MCP servers from the lock file).
 
-```console
-$ kst list [OPTIONS]
+```bash
+kst list [OPTIONS]
 ```
 
 ### Options
@@ -72,8 +72,8 @@ In a terminal (and without `--plain`), this opens an interactive browser — **S
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
 
-```console
-$ kst doctor [OPTIONS]
+```bash
+kst doctor [OPTIONS]
 ```
 
 ### Options
@@ -90,8 +90,8 @@ $ kst doctor [OPTIONS]
 
 Removes everything Kasetto installed for the given scope — skills, MCP configs, and lock file entries.
 
-```console
-$ kst clean [OPTIONS]
+```bash
+kst clean [OPTIONS]
 ```
 
 ### Options
@@ -113,8 +113,8 @@ Manage Kasetto itself — update to a new version or remove it completely.
 
 Fetches the latest release from GitHub and swaps out the binary in-place.
 
-```console
-$ kst self update [OPTIONS]
+```bash
+kst self update [OPTIONS]
 ```
 
 #### Options
@@ -132,8 +132,8 @@ $ kst self update [OPTIONS]
 
 A full teardown: removes installed skills and MCP configs, clears Kasetto's data directories, and deletes the binary.
 
-```console
-$ kst self uninstall [OPTIONS]
+```bash
+kst self uninstall [OPTIONS]
 ```
 
 #### Options
@@ -146,8 +146,8 @@ $ kst self uninstall [OPTIONS]
 
 Generates completion scripts for your shell.
 
-```console
-$ kst completions <SHELL>
+```bash
+kst completions <SHELL>
 ```
 
 Supported shells: `bash`, `zsh`, `fish`, `powershell`.
