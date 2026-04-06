@@ -1,4 +1,4 @@
-# First steps with Kasetto
+# First Steps with Kasetto
 
 After [installing Kasetto](./installation.md), you can check that it is available by running the
 `kst` command:
@@ -28,7 +28,7 @@ selected command, or use shortcut keys:
 
 Set `NO_TUI=1` to disable the interactive home screen and get plain text hints instead.
 
-## Creating a config
+## Creating a Config
 
 Generate a starter config with `kst init`:
 
@@ -54,7 +54,7 @@ skills:
     Use the `agent` field to target any of the [supported agents](./agents.md), or use the
     `destination` field for a custom install path.
 
-## Syncing skills
+## Syncing Skills
 
 Run `kst sync` to install the declared skills:
 
@@ -69,7 +69,7 @@ Synced 2 skills in 1.2s
 Kasetto reads the config, pulls the skills, and installs them into the right agent directory.
 Next time you run `sync`, only changed skills are updated.
 
-## Syncing from a remote config
+## Syncing from a Remote Config
 
 Kasetto can fetch configs from any HTTPS URL - useful for sharing a single config across a team:
 
@@ -77,7 +77,7 @@ Kasetto can fetch configs from any HTTPS URL - useful for sharing a single confi
 $ kst sync --config https://example.com/team-skills.yaml
 ```
 
-## Previewing changes
+## Previewing Changes
 
 Use `--dry-run` to preview what would change without writing anything:
 
@@ -87,7 +87,7 @@ Would install: code-reviewer, design-system
 Would remove: old-skill
 ```
 
-## MCP servers
+## MCP Servers
 
 Kasetto can also manage MCP server configs. Add an `mcps` section to your config:
 
@@ -104,7 +104,7 @@ mcps:
 
 MCP servers are automatically merged into each agent's native settings file during `kst sync`.
 
-## Exploring what's installed
+## Exploring What's Installed
 
 Browse installed skills interactively:
 
@@ -123,7 +123,7 @@ $ kst doctor
 
 This prints version, lock file path, installation paths, last sync time, and any failed skills.
 
-## Using JSON output
+## Using JSON Output
 
 All commands support `--json` for scripting and CI:
 
@@ -134,7 +134,7 @@ $ kst doctor --json
 $ kst clean --json
 ```
 
-## Next steps
+## Next Steps
 
 See the [configuration reference](./configuration.md) for the full config schema, or browse the
 [commands reference](./commands.md) for all available flags.

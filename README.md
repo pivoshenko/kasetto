@@ -19,7 +19,7 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 ## Highlights
 
 - **Declarative** - one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds.
-- Syncs skills from **GitHub, GitLab, Bitbucket, Codeberg/Gitea** repos or **local directories** into any agent environment.
+- Syncs skills from **GitHub, GitLab, Bitbucket, Codeberg/Gitea** repos or **local directories** - including **GitHub Enterprise** and **self-hosted GitLab**.
 - **21 built-in agent presets**: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents).
 - **MCP server management**: declare MCP servers in the same config and Kasetto merges them into each agent's native settings file.
 - Tracks every install in a local manifest - knows what changed and why.
@@ -82,7 +82,7 @@ git clone https://github.com/pivoshenko/kasetto && cd kasetto
 cargo install --path .
 ```
 
-## Getting started
+## Getting Started
 
 **1. Sync from a shared config or a local file:**
 
@@ -292,6 +292,33 @@ Set the `agent` field and Kasetto handles the rest.
 </details>
 
 Need an agent that isn't listed? Use the `destination` field to point at any path.
+
+## Private repos & enterprise
+
+Kasetto authenticates via environment variables - set the right token and private sources just work:
+
+| Host                        | Environment variable                                |
+| --------------------------- | --------------------------------------------------- |
+| GitHub / GitHub Enterprise  | `GITHUB_TOKEN` or `GH_TOKEN`                        |
+| GitLab / GitLab self-hosted | `GITLAB_TOKEN` or `CI_JOB_TOKEN`                    |
+| Bitbucket Cloud             | `BITBUCKET_EMAIL` + `BITBUCKET_TOKEN`               |
+| Codeberg / Gitea / Forgejo  | `GITEA_TOKEN`, `CODEBERG_TOKEN`, or `FORGEJO_TOKEN` |
+
+GitHub Enterprise is auto-detected for any hostname with an `owner/repo` path. GitLab self-hosted instances are detected when the hostname starts with `gitlab.`.
+
+```yaml
+skills:
+  # GitHub Enterprise
+  - source: https://ghe.example.com/acme/skill-pack
+    skills: "*"
+
+  # Self-hosted GitLab (nested groups supported)
+  - source: https://gitlab.example.com/team/ai/skills
+    skills:
+      - code-reviewer
+```
+
+The same tokens apply when fetching remote configs via `--config https://...`.
 
 ## Roadmap
 

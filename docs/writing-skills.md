@@ -1,9 +1,9 @@
-# Writing skills
+# Writing Skills
 
 A skill is a directory containing a `SKILL.md` file. This page explains how Kasetto discovers
 skills and what format `SKILL.md` should follow.
 
-## Directory layout
+## Directory Layout
 
 Kasetto looks for skills in two locations within a source:
 
@@ -26,7 +26,7 @@ recognized as a skill. The directory name becomes the skill's identifier.
 
     A `SKILL.md` file is required. Directories without one are silently skipped.
 
-## SKILL.md format
+## SKILL.md Format
 
 `SKILL.md` is a markdown file with optional YAML frontmatter:
 
@@ -42,7 +42,7 @@ Detailed instructions for the AI agent go here. This is the content that gets
 installed into the agent's skill directory.
 ```
 
-### Frontmatter fields
+### Frontmatter Fields
 
 | Field         | Required | Description                                        |
 | ------------- | -------- | -------------------------------------------------- |
@@ -54,7 +54,7 @@ Both fields are optional. If omitted, Kasetto falls back to parsing the markdown
 - **Name:** First `#` heading in the document, or the directory name if no heading exists.
 - **Description:** First non-empty, non-heading paragraph, or `"No description."` if none found.
 
-### Minimal example
+### Minimal Example
 
 A `SKILL.md` with no frontmatter works fine:
 
@@ -66,7 +66,7 @@ You are an expert at doing X. When the user asks you to...
 
 Kasetto will use `"My Skill"` as the display name and the first paragraph as the description.
 
-## Referencing skills in config
+## Referencing Skills in Config
 
 Skills are referenced by their directory name in `kasetto.yaml`:
 
@@ -86,7 +86,7 @@ skills:
     skills: "*"
 ```
 
-## Custom source path
+## Custom Source Path
 
 If a skill lives in a non-standard location within the repo, use the `path` field:
 

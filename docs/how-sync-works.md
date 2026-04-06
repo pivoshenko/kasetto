@@ -1,9 +1,9 @@
-# How sync works
+# How Sync Works
 
 This page explains what `kst sync` does under the hood - how skills are installed, how MCP
 configs are merged, what gets overwritten, and what stays safe.
 
-## Sync flow
+## Sync Flow
 
 ```
 1. Load config (kasetto.yaml or --config URL)
@@ -21,7 +21,7 @@ configs are merged, what gets overwritten, and what stays safe.
 5. Save lock file and report (unless --dry-run)
 ```
 
-## Skills: copy and replace
+## Skills: Copy and Replace
 
 Skills are plain directories containing a `SKILL.md` file (see
 [writing skills](./writing-skills.md)). On each sync, Kasetto:
@@ -35,7 +35,7 @@ Skills are plain directories containing a `SKILL.md` file (see
 
 Skills are fully replaced on update - there is no partial merge.
 
-## MCP servers: discovery and additive merge
+## MCP Servers: Discovery and Additive Merge
 
 Kasetto discovers MCP pack files in the source automatically:
 
@@ -62,7 +62,7 @@ This means:
 - **First write wins.** If two sources define a server with the same name, only the first one is
   installed.
 
-### Supported config formats
+### Supported Config Formats
 
 Kasetto auto-detects and writes to four formats depending on the agent:
 
@@ -75,7 +75,7 @@ Kasetto auto-detects and writes to four formats depending on the agent:
 
 All formats follow the same additive-merge rules.
 
-## Change detection
+## Change Detection
 
 Kasetto uses SHA-256 hashes to detect changes:
 
@@ -86,7 +86,7 @@ Kasetto uses SHA-256 hashes to detect changes:
 
 This makes re-sync fast - unchanged sources require no file I/O beyond reading the lock.
 
-## Lock file
+## Lock File
 
 Kasetto tracks what it installed in a YAML lock file called `kasetto.lock`. The location depends
 on the scope:
@@ -110,9 +110,9 @@ hash.
     Kasetto never touches entries it didn't install. Manually added servers, skills from other
     tools, or entries from a different scope are always preserved.
 
-## Removal behavior
+## Removal Behavior
 
-### Removing a source from config
+### Removing a Source from Config
 
 When you remove a skill or MCP source from `kasetto.yaml` and re-sync:
 
@@ -130,7 +130,7 @@ Removes everything tracked in the lock file for the given scope:
 
 User-added entries outside the lock are never affected.
 
-## Edge cases
+## Edge Cases
 
 **Conflicting server names across sources.** If source A and source B both define a server named
 `"my-server"`, source A wins (processed first). If you later remove source A, `"my-server"` is

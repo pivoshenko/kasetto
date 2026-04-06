@@ -1,10 +1,10 @@
 # Installing Kasetto
 
-## Installation methods
+## Installation Methods
 
 Install Kasetto with our standalone installers or your package manager of choice.
 
-### Standalone installer
+### Standalone Installer
 
 Kasetto provides a standalone installer to download and install the binary:
 
@@ -87,7 +87,7 @@ Kasetto release artifacts can be downloaded directly from
 
 Each release page includes binaries for all supported platforms.
 
-### From source
+### From Source
 
 Clone the repository and install with Cargo:
 
@@ -96,7 +96,7 @@ $ git clone https://github.com/pivoshenko/kasetto && cd kasetto
 $ cargo install --path .
 ```
 
-## Upgrading Kasetto
+## Upgrading
 
 When Kasetto is installed via the standalone installer, it can update itself on-demand:
 
@@ -111,7 +111,7 @@ For example, with Cargo:
 $ cargo install kasetto
 ```
 
-## Shell autocompletion
+## Shell Autocompletion
 
 !!! tip
 
@@ -148,7 +148,7 @@ To enable shell autocompletion for Kasetto commands, run one of the following:
 
 Then restart the shell or source the shell config file.
 
-## Next steps
+## Next Steps
 
 See the [quick start](./getting-started.md) or jump straight to the [configuration](./configuration.md)
 reference to start using Kasetto.

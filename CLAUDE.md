@@ -17,7 +17,7 @@ The project forbids `unsafe` code and warns on `dbg!` and `todo!` (see `[lints]`
 
 ## Architecture
 
-Kasetto is a single-binary CLI tool that syncs AI agent skills from GitHub repos or local directories into 35+ agent environments. Two binaries (`kasetto` and `kst`) share the same code.
+Kasetto is a single-binary CLI tool that syncs AI agent skills from GitHub repos or local directories into 21 agent environments. Two binaries (`kasetto` and `kst`) share the same code.
 
 ### Startup Routing (`app.rs`)
 
@@ -32,7 +32,7 @@ CLI args → resolve_command() → StartupMode
 ### Module Layout
 
 - **`commands/`** - Each subcommand: `sync/` (split into `skills.rs` + `mcps.rs`), `list`, `doctor`, `init`, `clean`, `self_update`, `uninstall`, `completions`
-- **`model/`** - Core types: `Agent` enum (35+ presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `Report`, `Summary`
+- **`model/`** - Core types: `Agent` enum (21 presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `Report`, `Summary`
 - **`source/`** - Remote handling: URL parsing (`parse.rs`), archive download/extraction (`remote.rs`), auth token resolution (`auth.rs`), git host URL rewriting (`hosts.rs`)
 - **`fsops/`** - File operations: config loading from file/HTTP (`mod.rs`), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`)
 - **`mcps/`** - MCP server management: pack discovery (`pack.rs`), format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). Supports 4 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML

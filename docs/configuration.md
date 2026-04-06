@@ -46,7 +46,7 @@ mcps:
 
 ## Reference
 
-### Top-level fields
+### Top-Level Fields
 
 | Key           | Required | Description                                                         |
 | ------------- | -------- | ------------------------------------------------------------------- |
@@ -56,7 +56,7 @@ mcps:
 | `skills`      | **yes**  | List of skill sources                                               |
 | `mcps`        | no       | List of MCP server sources                                          |
 
-### Skill source fields
+### Skill Source Fields
 
 | Key      | Required | Description                                                            |
 | -------- | -------- | ---------------------------------------------------------------------- |
@@ -65,7 +65,7 @@ mcps:
 | `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`             |
 | `skills` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects           |
 
-### Skill entry fields
+### Skill Entry Fields
 
 Each entry in the `skills` list can be a string (the skill name) or an object:
 
@@ -74,7 +74,7 @@ Each entry in the `skills` list can be a string (the skill name) or an object:
 | `name` | **yes**  | Name of the skill directory to install                      |
 | `path` | no       | Custom subdirectory within the source to look for the skill |
 
-### MCP source fields
+### MCP Source Fields
 
 | Key      | Required | Description                                                                 |
 | -------- | -------- | --------------------------------------------------------------------------- |
@@ -96,7 +96,7 @@ MCP config files must contain a `mcpServers` object with server definitions. Ser
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](./how-sync-works.md) for merge behavior details.
 
-## Remote configs
+## Remote Configs
 
 Kasetto can fetch configs from any HTTPS URL:
 
@@ -110,7 +110,7 @@ If the remote config is hosted on a private repo, Kasetto applies the same token
 authentication used for skill sources. See [authentication](./authentication.md) for the full list
 of supported environment variables.
 
-## Multiple agents
+## Multiple Agents
 
 The `agent` field accepts a single value or a list. When a list is provided, skills are installed
 to every agent's directory and MCP servers are merged into every agent's settings file:
@@ -128,7 +128,7 @@ skills:
 
 This is useful when you work with several agents and want them all to share the same skills.
 
-## Agent vs destination
+## Agent vs Destination
 
 If both `agent` and `destination` are set, `destination` takes priority. Use `agent` for
 convenience with [supported presets](./agents.md), or `destination` for full control over the
@@ -138,7 +138,7 @@ install path.
 
     Use `destination` when targeting an agent that isn't in the supported list.
 
-## Scope: global vs project
+## Scope: Global vs Project
 
 By default, Kasetto installs skills globally (into the agent's home-directory path). Set
 `scope: project` in the config or pass `--project` on the command line to install into the

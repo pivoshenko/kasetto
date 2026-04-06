@@ -1,9 +1,9 @@
-# Supported agents
+# Supported Agents
 
 Set the `agent` field in your [config](./configuration.md) and Kasetto handles the rest - skills
 are installed to the correct directory for each agent.
 
-## Agent presets
+## Agent Presets
 
 | Agent          | Config value     | Install path                    |
 | -------------- | ---------------- | ------------------------------- |
@@ -29,7 +29,7 @@ are installed to the correct directory for each agent.
 | Warp           | `warp`           | `~/.agents/skills/`             |
 | Windsurf       | `windsurf`       | `~/.codeium/windsurf/skills/`   |
 
-## Custom paths
+## Custom Paths
 
 Need an agent that isn't listed? Use the `destination` field to point at any path:
 

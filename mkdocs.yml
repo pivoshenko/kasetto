@@ -80,14 +80,14 @@ plugins:
 
 nav:
   - Introduction: index.md
-  - Getting started:
+  - Getting Started:
       - Installation: installation.md
-      - Quick start: getting-started.md
+      - Quick Start: getting-started.md
   - Reference:
       - Configuration: configuration.md
       - Commands: commands.md
-      - How sync works: how-sync-works.md
-      - Writing skills: writing-skills.md
+      - How Sync Works: how-sync-works.md
+      - Writing Skills: writing-skills.md
       - Authentication: authentication.md
-      - Supported agents: agents.md
+      - Supported Agents: agents.md
   - Roadmap: roadmap.md
