@@ -19,7 +19,7 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 ## Highlights
 
 - **Declarative** - one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds.
-- Syncs skills from **GitHub, GitLab, Bitbucket, Codeberg/Gitea** repos or **local directories** - including **GitHub Enterprise** and **self-hosted GitLab**.
+- Syncs skills from **GitHub, GitLab, Bitbucket, Codeberg/Gitea** repositories or **local directories** including **GitHub Enterprise** and **self-hosted GitLab**.
 - **21 built-in agent presets**: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents).
 - **MCP server management**: declare MCP servers in the same config and Kasetto merges them into each agent's native settings file.
 - Tracks every install in a local manifest - knows what changed and why.
@@ -33,7 +33,7 @@ There are good tools in this space already - [Vercel Skills](https://github.com/
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible skill management across machines and agents.**
 
 - **Team consistency** - commit a YAML file, everyone gets the same skills.
-- **Multi-source** - pull from GitHub, GitLab, Bitbucket, Codeberg/Gitea repos and local folders in one config.
+- **Multi-source** - pull from GitHub, GitLab, Bitbucket, Codeberg/Gitea repositories and local folders in one config.
 - **Agent-agnostic** - one config field switches between 21 agent environments.
 - **Traceable** - every install is tracked, diffable, and inspectable.
 - **CI-friendly** - `--json` output and non-zero exit codes for automation.
@@ -42,7 +42,7 @@ Kasetto is a **community-first** project that solves a different problem: **decl
 
 ## Install
 
-### Standalone installer
+### Standalone Installer
 
 **macOS and Linux:**
 
@@ -75,7 +75,7 @@ brew install pivoshenko/tap/kasetto
 cargo install kasetto
 ```
 
-### From source
+### From Source
 
 ```bash
 git clone https://github.com/pivoshenko/kasetto && cd kasetto
@@ -258,7 +258,7 @@ mcps:
 | `mcps[].ref`      | no       | Git tag, commit SHA, or ref                                         |
 | `mcps[].path`     | no       | Explicit path to MCP JSON file within the source                    |
 
-## Supported agents
+## Supported Agents
 
 Set the `agent` field and Kasetto figures out where to put things.
 
@@ -295,7 +295,7 @@ Set the `agent` field and Kasetto figures out where to put things.
 
 Don't see your agent? Use the `destination` field to point at any path.
 
-## Private repos & enterprise
+## Private Repositories & Enterprise
 
 Set an environment variable and private sources just work — no login command, no credentials file:
 
