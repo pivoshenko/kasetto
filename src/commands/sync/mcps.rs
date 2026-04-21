@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 use std::fs;
+use std::io::{IsTerminal, Write};
+use std::path::PathBuf;
 
 use crate::error::Result;
 use crate::fsops::{hash_file, now_unix, resolve_mcp_settings_targets};
@@ -10,6 +12,16 @@ use crate::source::{discover_mcps, materialize_source, resolve_mcp_path};
 use crate::ui::with_spinner;
 
 use super::{file_name_str, sync_label, SyncContext};
+
+struct PendingMcp {
+    source: String,
+    mcp_path: PathBuf,
+    file_name: String,
+    hash: String,
+    server_names: Vec<String>,
+    asset_id: String,
+    is_new: bool,
+}
 
 pub(super) fn sync_mcps(
     ctx: &SyncContext,
@@ -22,6 +34,12 @@ pub(super) fn sync_mcps(
     if mcp_settings_list.is_empty() {
         return Ok(());
     }
+
+    // Phase 1: materialise all sources and collect pending operations.
+    // Temp dirs are held in `cleanup_dirs` until after the apply phase,
+    // because `PendingMcp::mcp_path` points into them.
+    let mut pending: Vec<PendingMcp> = Vec::new();
+    let mut cleanup_dirs: Vec<PathBuf> = Vec::new();
 
     for (i, src) in ctx.cfg.mcps.iter().enumerate() {
         let stage = std::env::temp_dir().join(format!("kasetto-mcp-{}-{}", now_unix(), i));
@@ -83,8 +101,10 @@ pub(super) fn sync_mcps(
             }
             continue;
         }
+
         for mcp_path in &mcps {
             let file_name = file_name_str(mcp_path);
+            let file_name_err = file_name.clone();
             let r: std::result::Result<(), crate::error::Error> = (|| {
                 let hash = hash_file(mcp_path)?;
                 let mcp_text = fs::read_to_string(mcp_path)?;
@@ -109,77 +129,134 @@ pub(super) fn sync_mcps(
                     })
                     .unwrap_or(false);
 
-                let label = sync_label("MCP", &file_name, &src.source, ctx.plain);
-                with_spinner(ctx.animate, ctx.plain, &label, || {
-                    if is_unchanged {
-                        summary.unchanged += 1;
-                        actions.push(Action {
-                            source: Some(src.source.clone()),
-                            skill: Some(format!("mcp:{file_name}")),
-                            status: "unchanged".into(),
-                            error: None,
-                        });
-                        return Ok(());
-                    }
-
-                    let status = if existing.is_some() {
-                        if ctx.dry_run {
-                            "would_update"
-                        } else {
-                            "updated"
-                        }
-                    } else if ctx.dry_run {
-                        "would_install"
-                    } else {
-                        "installed"
-                    };
-
-                    if !ctx.dry_run {
-                        for target in &mcp_settings_list {
-                            merge_mcp_config(mcp_path, target)?;
-                        }
-                        let servers_csv = server_names.join(",");
-                        lock.save_tracked_asset(
-                            "mcp",
-                            &asset_id,
-                            &file_name,
-                            &hash,
-                            &src.source,
-                            &servers_csv,
-                        );
-                    }
-
-                    if status.contains("install") {
-                        summary.installed += 1;
-                    } else {
-                        summary.updated += 1;
-                    }
+                if is_unchanged {
+                    summary.unchanged += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
                         skill: Some(format!("mcp:{file_name}")),
-                        status: status.into(),
+                        status: "unchanged".into(),
                         error: None,
                     });
-                    Ok(())
-                })?;
+                } else {
+                    pending.push(PendingMcp {
+                        source: src.source.clone(),
+                        mcp_path: mcp_path.clone(),
+                        file_name,
+                        hash,
+                        server_names,
+                        asset_id,
+                        is_new: existing.is_none(),
+                    });
+                }
                 Ok(())
             })();
             if let Err(e) = r {
                 summary.broken += 1;
                 actions.push(Action {
                     source: Some(src.source.clone()),
-                    skill: Some(format!("mcp:{file_name}")),
+                    skill: Some(format!("mcp:{file_name_err}")),
                     status: "broken".into(),
                     error: Some(e.to_string()),
                 });
             }
         }
+
         if let Some(d) = materialized.cleanup_dir {
-            let _ = fs::remove_dir_all(d);
+            cleanup_dirs.push(d);
         }
     }
 
-    // Remove MCP servers no longer in config
+    // Phase 2: prompt before registering new MCP servers (unless --no-confirm or dry-run).
+    if !ctx.dry_run && !ctx.no_confirm {
+        let new_servers: Vec<(&str, &str)> = pending
+            .iter()
+            .filter(|p| p.is_new)
+            .flat_map(|p| {
+                p.server_names
+                    .iter()
+                    .map(move |s| (s.as_str(), p.source.as_str()))
+            })
+            .collect();
+
+        if !new_servers.is_empty() && std::io::stdin().is_terminal() {
+            println!();
+            println!("New MCP servers to be registered:");
+            println!();
+            for (server, source) in &new_servers {
+                println!("  • {server}  (from {source})");
+            }
+            println!();
+            print!("Proceed? [y/N] ");
+            std::io::stdout().flush()?;
+
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            if input.trim().to_lowercase() != "y" {
+                for d in cleanup_dirs {
+                    let _ = fs::remove_dir_all(d);
+                }
+                return Ok(());
+            }
+        }
+    }
+
+    // Phase 3: apply pending operations.
+    for p in &pending {
+        let label = sync_label("MCP", &p.file_name, &p.source, ctx.plain);
+        let r: std::result::Result<(), crate::error::Error> =
+            with_spinner(ctx.animate, ctx.plain, &label, || {
+                let status = if p.is_new {
+                    if ctx.dry_run { "would_install" } else { "installed" }
+                } else if ctx.dry_run {
+                    "would_update"
+                } else {
+                    "updated"
+                };
+
+                if !ctx.dry_run {
+                    for target in &mcp_settings_list {
+                        merge_mcp_config(&p.mcp_path, target)?;
+                    }
+                    let servers_csv = p.server_names.join(",");
+                    lock.save_tracked_asset(
+                        "mcp",
+                        &p.asset_id,
+                        &p.file_name,
+                        &p.hash,
+                        &p.source,
+                        &servers_csv,
+                    );
+                }
+
+                if status.contains("install") {
+                    summary.installed += 1;
+                } else {
+                    summary.updated += 1;
+                }
+                actions.push(Action {
+                    source: Some(p.source.clone()),
+                    skill: Some(format!("mcp:{}", p.file_name)),
+                    status: status.into(),
+                    error: None,
+                });
+                Ok(())
+            });
+        if let Err(e) = r {
+            summary.broken += 1;
+            actions.push(Action {
+                source: Some(p.source.clone()),
+                skill: Some(format!("mcp:{}", p.file_name)),
+                status: "broken".into(),
+                error: Some(e.to_string()),
+            });
+        }
+    }
+
+    for d in cleanup_dirs {
+        let _ = fs::remove_dir_all(d);
+    }
+
+    // Remove MCP servers no longer in config.
     let existing_mcps: Vec<(String, String)> = lock
         .list_tracked_asset_ids("mcp")
         .iter()

@@ -1,6 +1,8 @@
 use std::fs;
 use std::io::IsTerminal;
 
+use sha2::{Digest, Sha256};
+
 use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
@@ -143,13 +145,56 @@ fn is_newer(current: &str, latest: &str) -> bool {
     parse(latest) > parse(current)
 }
 
+fn checksums_url(tarball_url: &str) -> String {
+    match tarball_url.rfind('/') {
+        Some(pos) => format!("{}/checksums.txt", &tarball_url[..pos]),
+        None => "checksums.txt".to_string(),
+    }
+}
+
+fn verify_checksum(bytes: &[u8], artifact: &str, checksums_text: &str) -> Result<()> {
+    let actual = format!("{:x}", Sha256::digest(bytes));
+    for line in checksums_text.lines() {
+        // Format: "<hash>  <filename>" (sha256sum output style)
+        let mut parts = line.splitn(2, ' ');
+        let expected = parts.next().unwrap_or("").trim();
+        let name = parts.next().unwrap_or("").trim();
+        if name == artifact {
+            if actual != expected {
+                return Err(err(format!(
+                    "checksum mismatch for {artifact}: expected {expected}, got {actual}"
+                )));
+            }
+            return Ok(());
+        }
+    }
+    // No entry found for this artifact — warn but continue, consistent with install.sh
+    eprintln!("warning: no checksum entry found for {artifact} in checksums.txt");
+    Ok(())
+}
+
 fn self_replace(url: &str, exe_path: &std::path::Path) -> Result<()> {
-    let body = http_client()?
+    let artifact = url.rsplit('/').next().unwrap_or(url).to_string();
+    let checksums_url = checksums_url(url);
+    let client = http_client()?;
+
+    let checksums_text = client
+        .get(&checksums_url)
+        .send()
+        .map_err(|e| err(format!("failed to download checksums.txt: {e}")))?
+        .error_for_status()
+        .map_err(|e| err(format!("checksums.txt download error: {e}")))?
+        .text()
+        .map_err(|e| err(format!("failed to read checksums.txt: {e}")))?;
+
+    let body = client
         .get(url)
         .send()?
         .error_for_status()
         .map_err(|e| err(format!("failed to download update: {e}")))?
         .bytes()?;
+
+    verify_checksum(&body, &artifact, &checksums_text)?;
 
     let gz = flate2::read::GzDecoder::new(body.as_ref());
     let mut archive = tar::Archive::new(gz);
@@ -238,5 +283,37 @@ mod tests {
     fn current_target_returns_nonempty_string() {
         let target = current_target();
         assert!(!target.is_empty());
+    }
+
+    #[test]
+    fn checksums_url_replaces_filename() {
+        let url = "https://github.com/pivoshenko/kasetto/releases/download/v1.0.0/kasetto-x86_64-apple-darwin.tar.gz";
+        assert_eq!(
+            checksums_url(url),
+            "https://github.com/pivoshenko/kasetto/releases/download/v1.0.0/checksums.txt"
+        );
+    }
+
+    #[test]
+    fn verify_checksum_accepts_correct_hash() {
+        let data = b"hello world";
+        let hash = format!("{:x}", sha2::Sha256::digest(data));
+        let checksums = format!("{hash}  kasetto.tar.gz\n");
+        assert!(verify_checksum(data, "kasetto.tar.gz", &checksums).is_ok());
+    }
+
+    #[test]
+    fn verify_checksum_rejects_wrong_hash() {
+        let data = b"hello world";
+        let checksums = "deadbeef  kasetto.tar.gz\n";
+        assert!(verify_checksum(data, "kasetto.tar.gz", checksums).is_err());
+    }
+
+    #[test]
+    fn verify_checksum_passes_when_artifact_missing() {
+        // No entry for our artifact — warn only, don't fail
+        let data = b"hello world";
+        let checksums = "abc123  other-artifact.tar.gz\n";
+        assert!(verify_checksum(data, "kasetto.tar.gz", checksums).is_ok());
     }
 }

@@ -22,6 +22,7 @@ pub(super) struct SyncContext<'a> {
     pub(super) plain: bool,
     pub(super) as_json: bool,
     pub(super) quiet: bool,
+    pub(super) no_confirm: bool,
 }
 
 /// Options for the `sync` command.
@@ -32,6 +33,7 @@ pub(crate) struct SyncOptions<'a> {
     pub as_json: bool,
     pub plain: bool,
     pub verbose: bool,
+    pub no_confirm: bool,
     pub scope_override: Option<Scope>,
     pub show_banner: bool,
 }
@@ -66,6 +68,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         plain: opts.plain,
         as_json: opts.as_json,
         quiet: opts.quiet,
+        no_confirm: opts.no_confirm,
     };
 
     let mut lock = load_lock(scope, &cfg_dir)?;

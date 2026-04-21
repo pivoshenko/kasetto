@@ -21,6 +21,7 @@ pub fn run() -> Result<()> {
                     as_json: sync.json,
                     plain: sync.plain,
                     verbose: sync.verbose,
+                    no_confirm: sync.no_confirm,
                     scope_override: sync.scope.scope_override(),
                     show_banner: true,
                 })
@@ -78,3 +79,4 @@ fn current_program_name() -> String {
         .filter(|name| !name.is_empty())
         .unwrap_or_else(|| "kasetto".to_string())
 }
+
