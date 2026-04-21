@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-04-21
+
+### Features
+
+- **security**: Add self-update checksum verification and MCP approval gate
+
 ## [2.1.0] - 2026-04-19
 
 ### Bug fixes
@@ -40,6 +46,10 @@ All notable changes to this project will be documented in this file.
 ### Testing
 
 - **config**: Add unit tests for config resolution priority logic
+
+### Release
+
+- V2.1.0
 
 ### Style
 
