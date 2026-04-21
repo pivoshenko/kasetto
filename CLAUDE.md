@@ -43,7 +43,7 @@ CLI args → match cli.command
 1. Load config from file or HTTP URL (with GitLab/GitHub/Gitea auth via env vars)
 2. Resolve scope (CLI flag → config field → default Global) and destination paths per agent
 3. For each skill source: materialize (download if remote) → discover available skills → select targets → hash → copy → update lock state
-4. For each MCP source: materialize → discover/resolve packs → merge into agent settings files → update lock
+4. For each MCP source: materialize → discover/resolve packs → collect pending installs → prompt for confirmation if new servers found (unless `--yes`) → merge into agent settings files → update lock
 5. Save lock file and report (unless `--dry-run`)
 
 ### UI System

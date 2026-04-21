@@ -1,6 +1,8 @@
 use std::fs;
 use std::io::IsTerminal;
 
+use sha2::{Digest, Sha256};
+
 use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
@@ -82,8 +84,15 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         format!("Updating {} -> {}", current_version, latest_version)
     };
 
+    let checksums_asset = release.assets.iter().find(|a| a.name == "checksums.txt");
+
     with_spinner(animate, !color, &update_label, || {
-        self_replace(&asset.browser_download_url, &current_exe)
+        self_replace(
+            &asset.browser_download_url,
+            &asset.name,
+            checksums_asset.map(|a| a.browser_download_url.as_str()),
+            &current_exe,
+        )
     })?;
 
     let output = UpdateOutput {
@@ -143,13 +152,30 @@ fn is_newer(current: &str, latest: &str) -> bool {
     parse(latest) > parse(current)
 }
 
-fn self_replace(url: &str, exe_path: &std::path::Path) -> Result<()> {
+fn self_replace(
+    url: &str,
+    asset_name: &str,
+    checksums_url: Option<&str>,
+    exe_path: &std::path::Path,
+) -> Result<()> {
     let body = http_client()?
         .get(url)
         .send()?
         .error_for_status()
         .map_err(|e| err(format!("failed to download update: {e}")))?
         .bytes()?;
+
+    // Verify SHA256 checksum when checksums.txt is available in the release
+    if let Some(checksums_url) = checksums_url {
+        let checksums_text = http_client()?
+            .get(checksums_url)
+            .send()
+            .and_then(|r| r.error_for_status())
+            .and_then(|r| r.text())
+            .map_err(|e| err(format!("failed to download checksums.txt: {e}")))?;
+
+        verify_checksum(&body, asset_name, &checksums_text)?;
+    }
 
     let gz = flate2::read::GzDecoder::new(body.as_ref());
     let mut archive = tar::Archive::new(gz);
@@ -205,6 +231,28 @@ fn self_replace(url: &str, exe_path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+/// Verify that the SHA256 of `data` matches the expected hash for `asset_name`
+/// found in the checksums text (one `<hash>  <filename>` per line).
+fn verify_checksum(data: &[u8], asset_name: &str, checksums_text: &str) -> Result<()> {
+    let expected = checksums_text
+        .lines()
+        .find(|line| line.ends_with(asset_name))
+        .and_then(|line| line.split_whitespace().next())
+        .ok_or_else(|| {
+            err(format!(
+                "checksum not found for {asset_name} in checksums.txt"
+            ))
+        })?;
+
+    let actual = format!("{:x}", Sha256::digest(data));
+    if actual != expected {
+        return Err(err(format!(
+            "checksum mismatch for {asset_name}: expected {expected}, got {actual}"
+        )));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,5 +286,43 @@ mod tests {
     fn current_target_returns_nonempty_string() {
         let target = current_target();
         assert!(!target.is_empty());
+    }
+
+    #[test]
+    fn verify_checksum_passes_on_match() {
+        let data = b"hello world";
+        let hash = format!("{:x}", Sha256::digest(data));
+        let checksums = format!("{hash}  kasetto-aarch64-apple-darwin.tar.gz\n");
+        verify_checksum(data, "kasetto-aarch64-apple-darwin.tar.gz", &checksums).unwrap();
+    }
+
+    #[test]
+    fn verify_checksum_fails_on_mismatch() {
+        let data = b"hello world";
+        let checksums = "0000000000000000000000000000000000000000000000000000000000000000  kasetto-aarch64-apple-darwin.tar.gz\n";
+        let result = verify_checksum(data, "kasetto-aarch64-apple-darwin.tar.gz", checksums);
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("checksum mismatch"));
+    }
+
+    #[test]
+    fn verify_checksum_fails_when_asset_not_in_checksums() {
+        let data = b"hello world";
+        let checksums = "abcdef1234567890  kasetto-x86_64-unknown-linux-gnu.tar.gz\n";
+        let result = verify_checksum(data, "kasetto-aarch64-apple-darwin.tar.gz", checksums);
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("checksum not found"));
+    }
+
+    #[test]
+    fn verify_checksum_handles_multiple_entries() {
+        let data = b"binary content";
+        let hash = format!("{:x}", Sha256::digest(data));
+        let checksums = format!(
+            "aaaa  kasetto-x86_64-unknown-linux-gnu.tar.gz\n{hash}  kasetto-aarch64-apple-darwin.tar.gz\nbbbb  kasetto-x86_64-apple-darwin.tar.gz\n"
+        );
+        verify_checksum(data, "kasetto-aarch64-apple-darwin.tar.gz", &checksums).unwrap();
     }
 }

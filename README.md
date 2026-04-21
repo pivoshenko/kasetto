@@ -121,7 +121,7 @@ kst init [--global] [--force]
 Reads the config, discovers skills, and makes the local destination match.
 
 ```bash
-kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--verbose] [--project | --global]
+kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--verbose] [--yes] [--project | --global]
 ```
 
 | Flag        | What it does                                                 |
@@ -132,6 +132,7 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 | `--json`    | Print the sync report as JSON                                |
 | `--plain`   | Disable colors and spinner animations                        |
 | `--verbose` | Show per-skill action details                                |
+| `--yes`     | Skip confirmation prompt for new MCP servers                 |
 | `--project` | Install into the current project directory                   |
 | `--global`  | Install globally (default)                                   |
 
@@ -174,7 +175,7 @@ kst clean [--dry-run] [--json] [--quiet] [--plain] [--project | --global]
 
 ### `kst self update`
 
-Checks GitHub for the latest release and replaces the current binary in-place.
+Checks GitHub for the latest release, verifies the SHA256 checksum against `checksums.txt`, and replaces the current binary in-place.
 
 ```bash
 kst self update [--json]

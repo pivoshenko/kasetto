@@ -18,6 +18,7 @@ pub(super) struct SyncContext<'a> {
     pub(super) destinations: &'a [PathBuf],
     pub(super) scope: Scope,
     pub(super) dry_run: bool,
+    pub(super) yes: bool,
     pub(super) animate: bool,
     pub(super) plain: bool,
     pub(super) as_json: bool,
@@ -32,6 +33,7 @@ pub(crate) struct SyncOptions<'a> {
     pub as_json: bool,
     pub plain: bool,
     pub verbose: bool,
+    pub yes: bool,
     pub scope_override: Option<Scope>,
     pub show_banner: bool,
 }
@@ -62,6 +64,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         destinations: &destinations,
         scope,
         dry_run: opts.dry_run,
+        yes: opts.yes,
         animate,
         plain: opts.plain,
         as_json: opts.as_json,

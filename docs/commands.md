@@ -33,6 +33,7 @@ kst sync [OPTIONS]
 | `--json`                 | Print the sync report as JSON                                |
 | `--plain`                | Disable colors and spinner animations                        |
 | `--verbose`              | Show per-skill action details                                |
+| `--yes`                  | Skip confirmation prompt for new MCP servers                 |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
@@ -112,7 +113,7 @@ Manage Kasetto itself — update to a new version or remove it completely.
 
 ### `kst self update`
 
-Fetches the latest release from GitHub and swaps out the binary in-place.
+Fetches the latest release from GitHub, verifies the SHA256 checksum against `checksums.txt` from the same release, and swaps out the binary in-place.
 
 ```bash
 kst self update [OPTIONS]

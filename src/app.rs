@@ -21,6 +21,7 @@ pub fn run() -> Result<()> {
                     as_json: sync.json,
                     plain: sync.plain,
                     verbose: sync.verbose,
+                    yes: sync.yes,
                     scope_override: sync.scope.scope_override(),
                     show_banner: true,
                 })

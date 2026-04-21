@@ -82,6 +82,9 @@ pub(crate) struct SyncArgs {
     #[arg(long)]
     #[arg(help = "print per-skill action list")]
     pub verbose: bool,
+    #[arg(long)]
+    #[arg(help = "skip confirmation prompt for new MCP servers")]
+    pub yes: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
 }
