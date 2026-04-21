@@ -167,35 +167,55 @@ pub(super) fn sync_mcps(
     }
 
     // Phase 2: prompt before registering new MCP servers (unless --no-confirm or dry-run).
+    // "New" means not yet present in any settings target — catches both first-time packs
+    // and updated packs that gain additional server entries.
     if !ctx.dry_run && !ctx.no_confirm {
         let new_servers: Vec<(&str, &str)> = pending
             .iter()
-            .filter(|p| p.is_new)
             .flat_map(|p| {
-                p.server_names
-                    .iter()
-                    .map(move |s| (s.as_str(), p.source.as_str()))
+                p.server_names.iter().filter_map(|s| {
+                    let missing_from_any = !mcp_settings_list
+                        .iter()
+                        .all(|t| servers_present_in_settings(&[s.clone()], t));
+                    if missing_from_any {
+                        Some((s.as_str(), p.source.as_str()))
+                    } else {
+                        None
+                    }
+                })
             })
             .collect();
 
-        if !new_servers.is_empty() && std::io::stdin().is_terminal() {
-            println!();
-            println!("New MCP servers to be registered:");
-            println!();
-            for (server, source) in &new_servers {
-                println!("  • {server}  (from {source})");
-            }
-            println!();
-            print!("Proceed? [y/N] ");
-            std::io::stdout().flush()?;
+        if !new_servers.is_empty() {
+            if std::io::stdin().is_terminal() {
+                println!();
+                println!("New MCP servers to be registered:");
+                println!();
+                for (server, source) in &new_servers {
+                    println!("  • {server}  (from {source})");
+                }
+                println!();
+                print!("Proceed? [y/N] ");
+                std::io::stdout().flush()?;
 
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input)?;
-            if input.trim().to_lowercase() != "y" {
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input)?;
+                if input.trim().to_lowercase() != "y" {
+                    for d in cleanup_dirs {
+                        let _ = fs::remove_dir_all(d);
+                    }
+                    return Ok(());
+                }
+            } else {
+                // Non-interactive: refuse to register new servers without explicit opt-in.
+                // This prevents CI/scripts from silently expanding the MCP attack surface.
                 for d in cleanup_dirs {
                     let _ = fs::remove_dir_all(d);
                 }
-                return Ok(());
+                return Err(crate::error::err(
+                    "new MCP servers would be registered in a non-interactive session; \
+                     pass --no-confirm to allow this",
+                ));
             }
         }
     }
