@@ -1,6 +1,6 @@
 # How Sync Works
 
-A look at what `kst sync` actually does — how skills are installed, how MCP configs are merged, what gets overwritten, and what's always left alone.
+A look at what `kst sync` actually does — how skills and commands are installed, how MCP configs are merged, what gets overwritten, and what's always left alone.
 
 ## Sync Flow
 
@@ -17,6 +17,11 @@ A look at what `kst sync` actually does — how skills are installed, how MCP co
    b. Discover MCP pack files in source
    c. For each pack: hash → compare to lock → merge into agent settings if changed
    d. Remove MCP entries no longer in config
+4. Sync commands
+   a. For each command source: materialize (download if remote)
+   b. Discover command files in source
+   c. For each command: hash → compare to lock → copy if changed
+   d. Remove command entries no longer in config
 5. Save lock file and report (unless --dry-run)
 ```
 
@@ -36,6 +41,18 @@ Skills are plain directories with a `SKILL.md` file (see [writing skills](./writ
 - **Removes** skill directories that are no longer listed in the config.
 
 Skills are fully replaced on update — no partial merges.
+
+## Commands: Copy and Replace
+
+Commands are individual `.md` or `.toml` files discovered in the source (see [configuration reference](./configuration.md#command-source-fields)). On each sync, Kasetto:
+
+- **Discovers** command files by scanning conventional directories (`commands/`, `workflows/`, `.claude/commands/`, etc.).
+- **Hashes** each command file.
+- **Compares** the hash to the lock file. If unchanged and the file still exists at every destination, the command is skipped.
+- **Copies** the file to each selected agent's command directory, replacing any previous version.
+- **Removes** command files that are no longer listed in the config.
+
+Commands are fully replaced on update — no partial merges.
 
 ## MCP Servers: Discovery and Additive Merge
 
@@ -99,6 +116,8 @@ The lock file is how Kasetto knows what to remove when you drop a source from th
 
 **Skills** are tracked by a composite key (`source::skill-name`) along with their destination path and hash.
 
+**Commands** are tracked as assets with the file name and a comma-separated list of destination paths (one per selected agent). Only these tracked files are removed during cleanup.
+
 **MCP servers** are tracked as assets with the server names they installed (e.g., `destination: "git-tools,airflow"`). Only these tracked names are removed during cleanup.
 
 !!! important
@@ -112,6 +131,7 @@ The lock file is how Kasetto knows what to remove when you drop a source from th
 Remove a source from `kasetto.yaml` and re-sync:
 
 - **Skills:** The skill directory is deleted from disk.
+- **Commands:** The specific command files that Kasetto installed are removed from every agent's command directory.
 - **MCPs:** The specific server entries that Kasetto installed are removed from the agent's settings
   file. The file itself is preserved.
 
@@ -120,6 +140,7 @@ Remove a source from `kasetto.yaml` and re-sync:
 Removes everything tracked in the lock file for the given scope:
 
 - Deletes all tracked skill directories
+- Removes all tracked command files from every agent's command directory
 - Removes all tracked MCP server entries from every agent's settings file
 - Clears the lock file
 

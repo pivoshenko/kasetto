@@ -119,6 +119,25 @@ Kasetto merges them into each agent's native settings file during sync — nothi
 
 If you want the exact merge rules and conflict behavior, see [How Sync Works](./how-sync-works.md#mcp-servers-discovery-and-additive-merge).
 
+## Commands
+
+Kasetto can also sync custom command and workflow files for supported agents. Add a `commands` section to your config:
+
+```yaml
+agent: claude-code
+
+skills:
+  - source: https://github.com/org/skill-pack
+    skills: "*"
+
+commands:
+  - source: https://github.com/org/opencode-commands
+    commands:
+      - review-changes
+```
+
+Command files (`.md` or `.toml`) are copied into each supported agent's command directory during sync. See [configuration reference](./configuration.md#command-source-fields) for discovery paths and supported agents.
+
 ## Exploring What's Installed
 
 Want to see what's installed? Open the browser:

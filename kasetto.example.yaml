@@ -9,3 +9,8 @@ skills:
     skills:
       - name: pivoshenko-brand-guidelines
       - name: skill-creator
+
+commands:
+  - source: https://github.com/acme/opencode-commands
+    commands:
+      - review-changes

@@ -246,6 +246,43 @@ pub(crate) fn resolve_mcp_entry(root: &Path, entry: &crate::model::McpEntry) -> 
     }
 }
 
+pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>> {
+    let mut out = HashMap::new();
+    discover_commands_in_subdir(&root.join("commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join("workflows"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".claude/commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".augment/commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".gemini/commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".junie/commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".roo/commands"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".windsurf/workflows"), &mut out)?;
+    discover_commands_in_subdir(&root.join(".opencode/commands"), &mut out)?;
+    Ok(out)
+}
+
+fn discover_commands_in_subdir(base: &Path, out: &mut HashMap<String, PathBuf>) -> Result<()> {
+    if !base.exists() {
+        return Ok(());
+    }
+    for e in fs::read_dir(base)? {
+        let e = e?;
+        if !e.file_type()?.is_file() {
+            continue;
+        }
+        let p = e.path();
+        let is_supported = p
+            .extension()
+            .map(|ext| ext == "md" || ext == "toml")
+            .unwrap_or(false);
+        if is_supported {
+            if let Some(stem) = p.file_stem() {
+                out.insert(stem.to_string_lossy().to_string(), p);
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,6 +527,41 @@ mod tests {
         };
         let path = resolve_mcp_entry(&root, &entry).unwrap();
         assert!(path.ends_with("mcps/server.json"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn discover_commands_finds_markdown_and_toml_variants() {
+        let root = temp_dir("kasetto-cmd-discover");
+        fs::create_dir_all(root.join("commands")).unwrap();
+        fs::create_dir_all(root.join(".gemini/commands")).unwrap();
+        fs::create_dir_all(root.join(".windsurf/workflows")).unwrap();
+
+        fs::write(root.join("commands/review.md"), "# Review\n").unwrap();
+        fs::write(root.join(".gemini/commands/triage.toml"), "name='triage'\n").unwrap();
+        fs::write(root.join(".windsurf/workflows/polish.md"), "# Polish\n").unwrap();
+
+        let commands = discover_commands(&root).unwrap();
+        assert!(commands.contains_key("review"));
+        assert!(commands.contains_key("triage"));
+        assert!(commands.contains_key("polish"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn discover_commands_prefers_later_discovery_paths() {
+        let root = temp_dir("kasetto-cmd-precedence");
+        fs::create_dir_all(root.join("commands")).unwrap();
+        fs::create_dir_all(root.join(".opencode/commands")).unwrap();
+
+        fs::write(root.join("commands/dup.md"), "# first\n").unwrap();
+        fs::write(root.join(".opencode/commands/dup.md"), "# second\n").unwrap();
+
+        let commands = discover_commands(&root).unwrap();
+        let picked = commands.get("dup").expect("dup discovered");
+        assert!(picked.ends_with(".opencode/commands/dup.md"));
 
         let _ = fs::remove_dir_all(&root);
     }

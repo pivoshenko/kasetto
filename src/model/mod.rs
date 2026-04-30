@@ -4,9 +4,12 @@ mod types;
 
 use std::path::PathBuf;
 
+#[cfg(test)]
+pub(crate) use agent::AGENT_PRESETS;
 pub(crate) use agent::{all_mcp_project_targets, all_mcp_settings_targets, Agent, AgentField};
 pub(crate) use config::{
-    resolve_scope, Config, GitPin, McpEntry, McpsField, Scope, SkillTarget, SkillsField, SourceSpec,
+    resolve_scope, CommandTarget, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,
+    SkillTarget, SkillsField, SourceSpec,
 };
 pub(crate) use types::{Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure};
 

@@ -25,7 +25,7 @@ Kasetto is a **community-first** project that solves a different problem: **decl
 - **Declarative** — one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds. The config is the source of truth — readable, auditable, version-controlled.
 - **Enterprise & private repos** — GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances out of the box. Onboard new engineers in one command. Everyone gets the exact same environment — zero drift, zero surprises.
 - **Multi-agent** — 21 built-in agent presets: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents). One config, every agent updated.
-- **Skills & MCP** — any directory with a `SKILL.md` is a skill — no registry, no boilerplate. MCP server configs are auto-merged into every supported format (Cursor JSON, Claude JSON, Copilot VS Code, Codex TOML).
+- **Skills, MCPs & Commands** — any directory with a `SKILL.md` is a skill — no registry, no boilerplate. MCP server configs are auto-merged into every supported format (Cursor JSON, Claude JSON, Copilot VS Code, Codex TOML). Custom commands and workflows are copied to the right agent harness directory.
 - **Speed** — written in Rust. SHA-256 content hashing and lock file diffing mean only what changed gets touched. Full sync across all 21 agents finishes in seconds.
 - **Universal** — single static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and proper exit codes.
 
@@ -158,7 +158,7 @@ kst doctor [--json] [--quiet] [--plain] [--project | --global]
 
 ### `kst clean`
 
-Removes all tracked skills and MCP configs for the given scope.
+Removes all tracked skills, MCP configs, and command files for the given scope.
 
 ```bash
 kst clean [--dry-run] [--json] [--quiet] [--plain] [--project | --global]
@@ -166,7 +166,7 @@ kst clean [--dry-run] [--json] [--quiet] [--plain] [--project | --global]
 
 | Flag        | What it does                                               |
 | ----------- | ---------------------------------------------------------- |
-| `--dry-run` | Preview what would be removed (prints paths and MCP packs) |
+| `--dry-run` | Preview what would be removed (prints paths, command files, and MCP packs) |
 | `--json`    | Print output as JSON                                       |
 | `--quiet`   | Suppress non-error output                                  |
 | `--plain`   | Disable colors and banner-style header                     |
@@ -183,7 +183,7 @@ kst self update [--json]
 
 ### `kst self uninstall`
 
-Removes installed skills, MCP configs, Kasetto data, and the binary.
+Removes installed skills, command files, MCP configs, Kasetto data, and the binary.
 
 ```bash
 kst self uninstall [--yes]
@@ -260,6 +260,18 @@ mcps:
     mcps:
       - github        # → mcps/github.json
       - linear        # → mcps/linear.json
+
+  # Custom directory via { name, path }
+  - source: https://github.com/org/other
+    mcps:
+      - name: my-server
+        path: tools   # → tools/my-server.json
+
+# Commands (optional)
+commands:
+  - source: https://github.com/org/opencode-commands
+    commands:
+      - review-changes
 ```
 
 | Key                  | Required | Description                                                         |
@@ -278,6 +290,11 @@ mcps:
 | `mcps[].branch`      | no       | Branch for remote sources                                           |
 | `mcps[].ref`         | no       | Git tag, commit SHA, or ref                                         |
 | `mcps[].mcps`        | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects |
+| `commands`           | no       | List of command sources                                             |
+| `commands[].source`  | **yes**  | Git host URL or local path containing command files                 |
+| `commands[].branch`  | no       | Branch for remote sources                                           |
+| `commands[].ref`     | no       | Git tag, commit SHA, or ref                                         |
+| `commands[].commands` | **yes** | `"*"` for all, or a list of names / `{ name, path }` objects       |
 
 ## Supported Agents
 

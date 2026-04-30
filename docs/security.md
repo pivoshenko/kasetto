@@ -13,13 +13,16 @@
 During `kst sync`, Kasetto may:
 
 - **Install/update skills** by copying skill directories into the chosen destination path
+- **Install/update commands** by copying command files into each supported agent's command directory
 - **Remove skills** that are no longer in your config (for the selected scope)
+- **Remove commands** that are no longer in your config (for the selected scope)
 - **Merge MCP servers** into agent-native settings files (additive merge; never overwrite existing servers)
 - **Write the lock file** for the selected scope
 
 Kasetto is designed around a "tracked-only" principle:
 
 - **Skills**: fully managed at their install paths for entries tracked in the lock
+- **Commands**: only command files that Kasetto installed (tracked in the lock) are removed during cleanup
 - **MCP servers**: only server entries that Kasetto installed (tracked in the lock) are removed during cleanup
 
 See [How Sync Works](./how-sync-works.md) for details.

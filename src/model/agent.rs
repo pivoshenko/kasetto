@@ -22,6 +22,8 @@ pub(crate) enum Agent {
     ClaudeCode,
     #[serde(rename = "cline")]
     Cline,
+    #[serde(rename = "copilot-cli")]
+    CopilotCli,
     #[serde(rename = "codex")]
     Codex,
     #[serde(rename = "continue")]
@@ -63,6 +65,7 @@ pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::Augment,
     Agent::ClaudeCode,
     Agent::Cline,
+    Agent::CopilotCli,
     Agent::Codex,
     Agent::Continue,
     Agent::Cursor,
@@ -130,23 +133,46 @@ fn mcp_servers_target(base: &Path, rel: &str) -> McpSettingsTarget {
 }
 
 impl Agent {
+    pub(crate) fn command_global_path(self, home: &Path) -> Option<PathBuf> {
+        match self {
+            Agent::Augment => Some(home.join(".augment/commands")),
+            Agent::ClaudeCode => Some(home.join(".claude/commands")),
+            Agent::GeminiCli => Some(home.join(".gemini/commands")),
+            Agent::Junie => Some(home.join(".junie/commands")),
+            Agent::Roo => Some(home.join(".roo/commands")),
+            Agent::Windsurf => Some(home.join(".windsurf/workflows")),
+            _ => Some(home.join(".agents/commands")),
+        }
+    }
+
+    pub(crate) fn command_project_path(self, project_root: &Path) -> Option<PathBuf> {
+        match self {
+            Agent::Augment => Some(project_root.join(".augment/commands")),
+            Agent::ClaudeCode => Some(project_root.join(".claude/commands")),
+            Agent::GeminiCli => Some(project_root.join(".gemini/commands")),
+            Agent::Junie => Some(project_root.join(".junie/commands")),
+            Agent::Roo => Some(project_root.join(".roo/commands")),
+            Agent::Windsurf => Some(project_root.join(".windsurf/workflows")),
+            _ => Some(project_root.join(".agents/commands")),
+        }
+    }
+
     pub(crate) fn global_path(self, home: &Path) -> PathBuf {
         match self {
             Agent::Amp | Agent::Replit => home.join(".config/agents/skills"),
             Agent::Antigravity => home.join(".gemini/antigravity/skills"),
             Agent::Augment => home.join(".augment/skills"),
             Agent::ClaudeCode => home.join(".claude/skills"),
-            Agent::Cline | Agent::Warp => home.join(".agents/skills"),
+            Agent::Cline | Agent::Warp | Agent::OpenCode => home.join(".agents/skills"),
             Agent::Codex => home.join(".codex/skills"),
             Agent::Continue => home.join(".continue/skills"),
             Agent::Cursor => home.join(".cursor/skills"),
             Agent::GeminiCli => home.join(".gemini/skills"),
-            Agent::GithubCopilot => home.join(".copilot/skills"),
+            Agent::GithubCopilot | Agent::CopilotCli => home.join(".copilot/skills"),
             Agent::Goose => home.join(".config/goose/skills"),
             Agent::Junie => home.join(".junie/skills"),
             Agent::KiroCli => home.join(".kiro/skills"),
             Agent::OpenClaw => home.join(".openclaw/skills"),
-            Agent::OpenCode => home.join(".config/opencode/skills"),
             Agent::OpenHands => home.join(".openhands/skills"),
             Agent::Roo => home.join(".roo/skills"),
             Agent::Trae => home.join(".trae/skills"),
@@ -178,6 +204,7 @@ impl Agent {
             Agent::Antigravity => mcp_servers_target(home, ".gemini/antigravity/mcp.json"),
             Agent::Augment => mcp_servers_target(home, ".augment/mcp.json"),
             Agent::Warp => mcp_servers_target(home, ".warp/mcp.json"),
+            Agent::CopilotCli => mcp_servers_target(home, ".copilot/mcp-config.json"),
             Agent::Codex => McpSettingsTarget {
                 path: home.join(".codex/config.toml"),
                 format: McpSettingsFormat::CodexToml,
@@ -202,17 +229,16 @@ impl Agent {
             Agent::Antigravity => project_root.join(".gemini/antigravity/skills"),
             Agent::Augment => project_root.join(".augment/skills"),
             Agent::ClaudeCode => project_root.join(".claude/skills"),
-            Agent::Cline | Agent::Warp => project_root.join(".agents/skills"),
+            Agent::Cline | Agent::Warp | Agent::OpenCode => project_root.join(".agents/skills"),
             Agent::Codex => project_root.join(".codex/skills"),
             Agent::Continue => project_root.join(".continue/skills"),
             Agent::Cursor => project_root.join(".cursor/skills"),
             Agent::GeminiCli => project_root.join(".gemini/skills"),
-            Agent::GithubCopilot => project_root.join(".copilot/skills"),
+            Agent::GithubCopilot | Agent::CopilotCli => project_root.join(".copilot/skills"),
             Agent::Goose => project_root.join(".goose/skills"),
             Agent::Junie => project_root.join(".junie/skills"),
             Agent::KiroCli => project_root.join(".kiro/skills"),
             Agent::OpenClaw => project_root.join(".openclaw/skills"),
-            Agent::OpenCode => project_root.join(".opencode/skills"),
             Agent::OpenHands => project_root.join(".openhands/skills"),
             Agent::Roo => project_root.join(".roo/skills"),
             Agent::Trae => project_root.join(".trae/skills"),
@@ -251,6 +277,7 @@ impl Agent {
                 path: project_root.join(".opencode/opencode.json"),
                 format: McpSettingsFormat::OpenCode,
             },
+            Agent::CopilotCli => mcp_servers_target(project_root, ".copilot/mcp-config.json"),
             Agent::Antigravity
             | Agent::Augment
             | Agent::Goose

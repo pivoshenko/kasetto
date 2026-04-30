@@ -17,7 +17,7 @@ kst init [OPTIONS]
 
 ## `kst sync`
 
-Reads your config, fetches any remote skills, and brings your local install up to date.
+Reads your config, fetches any remote skills and commands, and brings your local install up to date.
 
 ```bash
 kst sync [OPTIONS]
@@ -90,7 +90,7 @@ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes everything Kasetto installed for the given scope — skills, MCP configs, and lock file entries.
+Removes everything Kasetto installed for the given scope — skills, command files, MCP configs, and lock file entries.
 
 ```bash
 kst clean [OPTIONS]
@@ -100,7 +100,7 @@ kst clean [OPTIONS]
 
 | Flag        | Description                                                     |
 | ----------- | --------------------------------------------------------------- |
-| `--dry-run` | Preview what would be removed (lists skill paths and MCP packs) |
+| `--dry-run` | Preview what would be removed (lists skill paths, command files, and MCP packs) |
 | `--json`    | Print output as JSON                                            |
 | `--quiet`   | Suppress non-error output                                       |
 | `--plain`   | Disable colors and banner-style header                          |
@@ -132,7 +132,7 @@ kst self update [OPTIONS]
 
 ### `kst self uninstall`
 
-A full teardown: removes installed skills and MCP configs, clears Kasetto's data directories, and deletes the binary.
+A full teardown: removes installed skills, command files, and MCP configs, clears Kasetto's data directories, and deletes the binary.
 
 ```bash
 kst self uninstall [OPTIONS]

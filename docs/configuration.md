@@ -67,6 +67,12 @@ mcps:
     mcps:
       - name: my-server
         path: tools   # → tools/my-server.json
+
+# OpenCode commands (optional)
+commands:
+  - source: https://github.com/org/opencode-commands
+    commands:
+      - review-changes
 ```
 
 ## Reference
@@ -80,6 +86,7 @@ mcps:
 | `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`      | **yes**  | List of skill sources                                               |
 | `mcps`        | no       | List of MCP server sources                                          |
+| `commands`    | no       | List of OpenCode command sources                                    |
 
 ### Skill Source Fields
 
@@ -132,6 +139,43 @@ Each entry in the `mcps` list can be a plain string (name) or an object — mirr
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](./how-sync-works.md) for merge behavior details.
+
+### Command Source Fields
+
+`commands` installs custom command/workflow files for supported harnesses.
+
+| Key        | Required | Description                                                            |
+| ---------- | -------- | ---------------------------------------------------------------------- |
+| `source`   | **yes**  | Git host URL or local path containing command files                    |
+| `branch`   | no       | Branch for remote sources (default: `main`, falls back to `master`)    |
+| `ref`      | no       | Git tag, commit SHA, or ref - takes priority over `branch`             |
+| `commands` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects           |
+
+Kasetto discovers commands in these source locations:
+
+1. `commands/*.{md,toml}`
+2. `workflows/*.{md,toml}`
+3. `.claude/commands/*.{md,toml}`
+4. `.augment/commands/*.{md,toml}`
+5. `.gemini/commands/*.{md,toml}`
+6. `.junie/commands/*.{md,toml}`
+7. `.roo/commands/*.{md,toml}`
+8. `.windsurf/workflows/*.{md,toml}`
+9. `.opencode/commands/*.{md,toml}`
+
+Command names are derived from the file stem (`review-changes.md` or `review-changes.toml` -> `/review-changes`).
+
+Each command entry can be either:
+
+- a string command name (without `.md`)
+- an object with:
+  - `name` (required): command name
+  - `path` (optional): directory that contains `name.md`
+
+!!! note
+
+    Command sync currently writes to these harness directories when selected via `agent`:
+    `claude-code`, `augment`, `gemini-cli`, `junie`, `roo`, `windsurf`, and `opencode`.
 
 ## Remote Configs
 

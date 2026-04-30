@@ -1,3 +1,4 @@
+mod commands;
 mod mcps;
 mod skills;
 
@@ -7,7 +8,9 @@ use std::path::{Path, PathBuf};
 use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, RESET, SECONDARY, SUCCESS, WARNING};
 use crate::error::Result;
-use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations};
+use crate::fsops::{
+    load_config_any, now_iso, now_unix, resolve_command_destinations, resolve_destinations,
+};
 use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Config, Report, Scope, Summary};
 use crate::ui::{animations_enabled, print_json, status_chip};
@@ -51,9 +54,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     let (cfg, cfg_dir, cfg_label) = load_config_any(opts.config_path)?;
     let scope = resolve_scope(opts.scope_override, Some(&cfg));
     let destinations = resolve_destinations(&cfg_dir, &cfg, scope)?;
+    let command_destinations = resolve_command_destinations(&cfg, scope, &cfg_dir)?;
     let destination = destinations[0].clone();
     if !opts.dry_run {
         for d in &destinations {
+            fs::create_dir_all(d)?;
+        }
+        for d in &command_destinations {
             fs::create_dir_all(d)?;
         }
     }
@@ -77,6 +84,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     let mut actions = Vec::new();
 
     skills::sync_skills(&ctx, &mut state, &mut summary, &mut actions)?;
+    commands::sync_commands(
+        &ctx,
+        &mut lock,
+        &command_destinations,
+        &mut summary,
+        &mut actions,
+    )?;
     mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {

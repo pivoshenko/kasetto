@@ -38,3 +38,15 @@ destination: ~/.my-custom-agent/skills
 
 If both `agent` and `destination` are set, `destination` wins. See the
 [configuration reference](./configuration.md#agent-vs-destination) for details.
+
+## Command Support
+
+Kasetto can also sync custom command/workflow files (from the `commands:` config block) for:
+
+- `augment` -> `~/.augment/commands/` (`.augment/commands/` in project scope)
+- `claude-code` -> `~/.claude/commands/` (`.claude/commands/`)
+- `gemini-cli` -> `~/.gemini/commands/` (`.gemini/commands/`)
+- `junie` -> `~/.junie/commands/` (`.junie/commands/`)
+- `roo` -> `~/.roo/commands/` (`.roo/commands/`)
+- `windsurf` -> `~/.windsurf/workflows/` (`.windsurf/workflows/`)
+- `opencode` -> `~/.config/opencode/commands/` (`.opencode/commands/`)

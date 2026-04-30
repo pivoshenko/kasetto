@@ -22,6 +22,8 @@ pub(crate) struct Config {
     pub skills: Vec<SourceSpec>,
     #[serde(default)]
     pub mcps: Vec<McpSourceSpec>,
+    #[serde(default)]
+    pub commands: Vec<CommandSourceSpec>,
 }
 
 impl Config {
@@ -117,6 +119,27 @@ pub(crate) struct McpSourceSpec {
     pub mcps: McpsField,
 }
 
+#[derive(Debug, Deserialize)]
+pub(crate) struct CommandSourceSpec {
+    pub source: String,
+    pub branch: Option<String>,
+    #[serde(rename = "ref")]
+    pub git_ref: Option<String>,
+    pub commands: CommandsField,
+}
+
+impl CommandSourceSpec {
+    pub(crate) fn as_source_spec(&self) -> SourceSpec {
+        SourceSpec {
+            source: self.source.clone(),
+            branch: self.branch.clone(),
+            git_ref: self.git_ref.clone(),
+            sub_dir: None,
+            skills: SkillsField::Wildcard("*".to_string()),
+        }
+    }
+}
+
 impl McpSourceSpec {
     pub(crate) fn as_source_spec(&self) -> SourceSpec {
         SourceSpec {
@@ -161,6 +184,20 @@ pub(crate) enum SkillsField {
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum SkillTarget {
+    Name(String),
+    Obj { name: String, path: Option<String> },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CommandsField {
+    Wildcard(String),
+    List(Vec<CommandTarget>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CommandTarget {
     Name(String),
     Obj { name: String, path: Option<String> },
 }

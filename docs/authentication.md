@@ -1,6 +1,6 @@
 # Authentication
 
-Kasetto can pull skills and MCP configs from private repositories. No login command or credentials file needed — just set an environment variable and it works.
+Kasetto can pull skills, commands, and MCP configs from private repositories. No login command or credentials file needed — just set an environment variable and it works.
 
 ## Supported Git Hosts
 

@@ -1,6 +1,6 @@
 # FAQ
 
-**When you need this:** You have a quick "what happens if…" question about syncing skills or MCP servers.
+**When you need this:** You have a quick "what happens if…" question about syncing skills, commands, or MCP servers.
 
 ## Will Kasetto Overwrite My MCP Entries?
 

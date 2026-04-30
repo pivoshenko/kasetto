@@ -14,6 +14,7 @@ use crate::ui::{animations_enabled, print_json, SYM_OK};
 struct CleanOutput {
     skills_removed: usize,
     mcps_removed: usize,
+    commands_removed: usize,
     dry_run: bool,
 }
 
@@ -35,9 +36,11 @@ pub(crate) fn run(
 
     let state = lock.state();
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
+    let command_assets = lock.list_tracked_asset_ids("command");
 
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
+    let commands_count = command_assets.len();
 
     if !dry_run {
         for entry in state.skills.values() {
@@ -62,6 +65,12 @@ pub(crate) fn run(
             }
         }
 
+        for (_id, destination_csv) in &command_assets {
+            for destination in destination_csv.split(',').filter(|s| !s.is_empty()) {
+                let _ = fs::remove_file(destination);
+            }
+        }
+
         lock.clear_all();
         save_lock(&lock, scope, &project_root)?;
     }
@@ -69,6 +78,7 @@ pub(crate) fn run(
     let output = CleanOutput {
         skills_removed: skills_count,
         mcps_removed: mcps_count,
+        commands_removed: commands_count,
         dry_run,
     };
 
@@ -84,7 +94,7 @@ pub(crate) fn run(
         println!();
         println!(
             "  {label_color}{prefix}{RESET}: {}",
-            skills_count + mcps_count
+            skills_count + mcps_count + commands_count
         );
 
         if dry_run {
@@ -129,6 +139,31 @@ pub(crate) fn run(
                     }
                 }
             }
+
+            let command_files: Vec<_> = lock
+                .assets
+                .iter()
+                .filter(|(_, a)| a.kind == "command")
+                .collect();
+            if !command_files.is_empty() {
+                println!("  OpenCode commands:");
+                for (_, a) in command_files {
+                    let destinations: String = a
+                        .destination
+                        .split(',')
+                        .filter(|s| !s.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    if color {
+                        println!(
+                            "    {ACCENT}command{RESET} {}  (source: {})",
+                            destinations, a.source
+                        );
+                    } else {
+                        println!("    command {}  (source: {})", destinations, a.source);
+                    }
+                }
+            }
         }
 
         if !dry_run {
@@ -141,4 +176,50 @@ pub(crate) fn run(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fsops::temp_dir;
+    use crate::lock::{load_lock, save_lock, LockFile};
+    use std::sync::{Mutex, OnceLock};
+
+    fn cwd_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn clean_removes_tracked_command_assets_in_project_scope() {
+        let _guard = cwd_lock().lock().expect("lock cwd");
+        let original_cwd = std::env::current_dir().expect("current dir");
+
+        let project_root = temp_dir("kasetto-clean-commands");
+        let command_dir = project_root.join(".opencode/commands");
+        let command_file = command_dir.join("review.md");
+        fs::create_dir_all(&command_dir).expect("create command dir");
+        fs::write(&command_file, "---\n---\nReview\n").expect("write command file");
+
+        let mut lock = LockFile::default();
+        lock.save_tracked_asset(
+            "command",
+            "command::local::review",
+            "review.md",
+            "h1",
+            "local",
+            &command_file.to_string_lossy(),
+        );
+        save_lock(&lock, Scope::Project, &project_root).expect("save lock");
+
+        std::env::set_current_dir(&project_root).expect("set current dir");
+        run(false, false, true, true, Some(Scope::Project)).expect("clean run");
+        std::env::set_current_dir(original_cwd).expect("restore current dir");
+
+        assert!(!command_file.exists());
+        let cleaned = load_lock(Scope::Project, &project_root).expect("load cleaned lock");
+        assert!(cleaned.assets.is_empty());
+
+        let _ = fs::remove_dir_all(&project_root);
+    }
 }

@@ -102,3 +102,26 @@ mcps:
       - name: my-server
         path: tools   # → tools/my-server.json
 ```
+
+## Custom Commands
+
+Sync custom command files into supported agents:
+
+```yaml
+agent:
+  - claude-code
+  - opencode
+
+skills:
+  - source: https://github.com/acme/skills
+    skills: "*"
+
+commands:
+  - source: https://github.com/acme/opencode-commands
+    commands:
+      - review-changes
+      - name: deep-dive
+        path: workflows
+```
+
+Command files are discovered in conventional directories (`commands/`, `.claude/commands/`, `.opencode/commands/`, etc.) and copied into each selected agent's command directory. Use `commands: "*"` to install every command found in the source.
