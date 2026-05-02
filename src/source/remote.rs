@@ -15,10 +15,17 @@ pub(super) fn remote_repo_archive_branch(
     branch: &str,
 ) -> (String, UrlRequestAuth) {
     match parsed {
-        RepoUrl::GitHub { host, owner, repo } => (
-            format!("https://{host}/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz"),
-            UrlRequestAuth::for_github_archive(),
-        ),
+        RepoUrl::GitHub { host, owner, repo } => {
+            let auth = UrlRequestAuth::for_github_archive();
+            // GitHub's web archive endpoint doesn't support token auth for private repos.
+            // The API endpoint (api.github.com) does and works for public repos too.
+            let url = if host == "github.com" && !auth.headers.is_empty() {
+                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{branch}")
+            } else {
+                format!("https://{host}/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz")
+            };
+            (url, auth)
+        }
         _ => remote_repo_archive_ref(parsed, branch),
     }
 }
@@ -27,10 +34,15 @@ pub(super) fn remote_repo_archive_branch(
 /// Uses the short form that works for any ref type on all hosts.
 pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (String, UrlRequestAuth) {
     match parsed {
-        RepoUrl::GitHub { host, owner, repo } => (
-            format!("https://{host}/{owner}/{repo}/archive/{git_ref}.tar.gz"),
-            UrlRequestAuth::for_github_archive(),
-        ),
+        RepoUrl::GitHub { host, owner, repo } => {
+            let auth = UrlRequestAuth::for_github_archive();
+            let url = if host == "github.com" && !auth.headers.is_empty() {
+                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{git_ref}")
+            } else {
+                format!("https://{host}/{owner}/{repo}/archive/{git_ref}.tar.gz")
+            };
+            (url, auth)
+        }
         RepoUrl::GitLab { host, project_path } => (
             gitlab_project_archive_url(host, project_path, git_ref),
             UrlRequestAuth::for_gitlab_archive(),
