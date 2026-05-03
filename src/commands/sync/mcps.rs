@@ -8,8 +8,8 @@ use crate::error::{err, Result};
 use crate::fsops::{hash_file, now_unix, resolve_mcp_settings_targets};
 use crate::lock::LockFile;
 use crate::mcps::{merge_mcp_config, remove_mcp_server, servers_present_in_settings};
-use crate::model::{Action, Summary};
-use crate::source::{discover_mcps, materialize_source, resolve_mcp_path};
+use crate::model::{Action, McpsField, Summary};
+use crate::source::{discover_mcps, materialize_source, resolve_mcp_entry};
 use crate::ui::with_spinner;
 
 use super::{file_name_str, sync_label, SyncContext};
@@ -60,22 +60,26 @@ pub(super) fn sync_mcps(
             .cleanup_dir
             .as_deref()
             .unwrap_or_else(|| std::path::Path::new(&src.source));
-        let mcps = match if let Some(ref p) = src.path {
-            resolve_mcp_path(root, p)
-        } else {
-            discover_mcps(root)
-        } {
+        let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
+            McpsField::Wildcard(_) => discover_mcps(root),
+            McpsField::List(entries) => {
+                let mut paths = Vec::new();
+                for entry in entries {
+                    match resolve_mcp_entry(root, entry) {
+                        Ok(p) => paths.push(p),
+                        Err(e) => return Err(e),
+                    }
+                }
+                Ok(paths)
+            }
+        };
+        let mcps = match resolve_result {
             Ok(paths) => paths,
             Err(e) => {
                 summary.broken += 1;
-                let skill = src
-                    .path
-                    .as_ref()
-                    .map(|p| format!("mcp:{p}"))
-                    .unwrap_or_else(|| "mcp".into());
                 actions.push(Action {
                     source: Some(src.source.clone()),
-                    skill: Some(skill),
+                    skill: Some("mcp".into()),
                     status: "broken".into(),
                     error: Some(e.to_string()),
                 });

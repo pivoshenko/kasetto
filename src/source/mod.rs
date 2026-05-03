@@ -191,8 +191,8 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         }
     }
 
-    // Check the mcp/ subdirectory for additional pack JSON files.
-    let mcp_dir = root.join("mcp");
+    // Check mcps/ subdirectory for additional pack JSON files.
+    let mcp_dir = root.join("mcps");
     if mcp_dir.exists() {
         for e in fs::read_dir(mcp_dir)? {
             let e = e?;
@@ -208,15 +208,34 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
     Ok(out)
 }
 
-/// Resolve a single MCP file by explicit path within a repo root.
-pub(crate) fn resolve_mcp_path(root: &Path, rel_path: &str) -> Result<Vec<PathBuf>> {
-    let target = root.join(rel_path);
+/// Resolve one `McpEntry` to a file path — mirrors skill discovery convention.
+///
+/// - `Name("github")` → `<root>/mcps/github.json`
+/// - `Obj { name: "github", path: Some("tools") }` → `<root>/tools/github.json`
+/// - `Obj { name: "github", path: None }` → `<root>/mcps/github.json`
+///
+/// `.json` is appended automatically when the name has no extension.
+pub(crate) fn resolve_mcp_entry(
+    root: &Path,
+    entry: &crate::model::McpEntry,
+) -> Result<PathBuf> {
+    let (name, dir) = match entry {
+        crate::model::McpEntry::Name(n) => (n.as_str(), "mcps"),
+        crate::model::McpEntry::Obj { name, path } => {
+            (name.as_str(), path.as_deref().unwrap_or("mcps"))
+        }
+    };
+    let filename = if std::path::Path::new(name).extension().is_some() {
+        name.to_string()
+    } else {
+        format!("{name}.json")
+    };
+    let target = root.join(dir).join(&filename);
     if target.is_file() {
-        Ok(vec![target])
+        Ok(target)
     } else {
         Err(err(format!(
-            "MCP path not found: {} (resolved to {})",
-            rel_path,
+            "MCP entry not found: {filename} in {dir}/ (resolved to {})",
             target.display()
         )))
     }
@@ -354,9 +373,9 @@ mod tests {
     }
 
     #[test]
-    fn discover_mcps_finds_mcp_subdir_and_root() {
+    fn discover_mcps_finds_mcps_subdir_and_root() {
         let root = temp_dir("kasetto-mcp-both");
-        let mcp_dir = root.join("mcp");
+        let mcp_dir = root.join("mcps");
         fs::create_dir_all(&mcp_dir).unwrap();
         fs::write(
             root.join(".mcp.json"),
@@ -387,46 +406,85 @@ mod tests {
     }
 
     #[test]
-    fn resolve_mcp_path_finds_explicit_file() {
-        let root = temp_dir("kasetto-mcp-path");
-        fs::create_dir_all(&root).unwrap();
+    fn resolve_mcp_entry_name_looks_in_mcps_dir() {
+        let root = temp_dir("kasetto-entry-name");
+        let mcps_dir = root.join("mcps");
+        fs::create_dir_all(&mcps_dir).unwrap();
         fs::write(
-            root.join(".mcp.json"),
-            r#"{"mcpServers":{"tool":{"command":"x"}}}"#,
+            mcps_dir.join("github.json"),
+            r#"{"mcpServers":{"github":{"command":"x"}}}"#,
         )
         .unwrap();
 
-        let mcps = resolve_mcp_path(&root, ".mcp.json").unwrap();
-        assert_eq!(mcps.len(), 1);
-        assert!(mcps[0].ends_with(".mcp.json"));
+        let entry = crate::model::McpEntry::Name("github".into());
+        let path = resolve_mcp_entry(&root, &entry).unwrap();
+        assert!(path.ends_with("mcps/github.json"));
 
         let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
-    fn resolve_mcp_path_nested() {
-        let root = temp_dir("kasetto-mcp-nested");
-        let nested = root.join("configs");
-        fs::create_dir_all(&nested).unwrap();
+    fn resolve_mcp_entry_name_auto_appends_json() {
+        let root = temp_dir("kasetto-entry-ext");
+        let mcps_dir = root.join("mcps");
+        fs::create_dir_all(&mcps_dir).unwrap();
         fs::write(
-            nested.join("custom.json"),
-            r#"{"mcpServers":{"tool":{"command":"x"}}}"#,
+            mcps_dir.join("linear.json"),
+            r#"{"mcpServers":{"linear":{"command":"x"}}}"#,
         )
         .unwrap();
 
-        let mcps = resolve_mcp_path(&root, "configs/custom.json").unwrap();
-        assert_eq!(mcps.len(), 1);
+        // "linear" (no extension) should find "linear.json"
+        let entry = crate::model::McpEntry::Name("linear".into());
+        let path = resolve_mcp_entry(&root, &entry).unwrap();
+        assert!(path.ends_with("linear.json"));
+
+        // "linear.json" (explicit extension) should also work
+        let entry_ext = crate::model::McpEntry::Name("linear.json".into());
+        let path_ext = resolve_mcp_entry(&root, &entry_ext).unwrap();
+        assert!(path_ext.ends_with("linear.json"));
 
         let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
-    fn resolve_mcp_path_errors_on_missing() {
-        let root = temp_dir("kasetto-mcp-missing");
-        fs::create_dir_all(&root).unwrap();
+    fn resolve_mcp_entry_obj_uses_custom_path() {
+        let root = temp_dir("kasetto-entry-obj");
+        let tools_dir = root.join("tools");
+        fs::create_dir_all(&tools_dir).unwrap();
+        fs::write(
+            tools_dir.join("my-server.json"),
+            r#"{"mcpServers":{"my-server":{"command":"x"}}}"#,
+        )
+        .unwrap();
 
-        let result = resolve_mcp_path(&root, "nonexistent.json");
-        assert!(result.is_err());
+        let entry = crate::model::McpEntry::Obj {
+            name: "my-server".into(),
+            path: Some("tools".into()),
+        };
+        let path = resolve_mcp_entry(&root, &entry).unwrap();
+        assert!(path.ends_with("tools/my-server.json"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_mcp_entry_obj_defaults_to_mcps_dir() {
+        let root = temp_dir("kasetto-entry-obj-default");
+        let mcps_dir = root.join("mcps");
+        fs::create_dir_all(&mcps_dir).unwrap();
+        fs::write(
+            mcps_dir.join("server.json"),
+            r#"{"mcpServers":{"server":{"command":"x"}}}"#,
+        )
+        .unwrap();
+
+        let entry = crate::model::McpEntry::Obj {
+            name: "server".into(),
+            path: None,
+        };
+        let path = resolve_mcp_entry(&root, &entry).unwrap();
+        assert!(path.ends_with("mcps/server.json"));
 
         let _ = fs::remove_dir_all(&root);
     }

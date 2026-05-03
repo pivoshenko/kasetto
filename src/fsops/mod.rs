@@ -231,7 +231,7 @@ pub(crate) fn temp_dir(prefix: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Agent, AgentField, Config, GitPin, SkillTarget, SkillsField};
+    use crate::model::{Agent, AgentField, Config, GitPin, McpEntry, McpsField, SkillTarget, SkillsField};
     use std::path::Path;
 
     #[test]
@@ -496,6 +496,7 @@ skills: []
 mcps:
   - source: https://github.com/example/mcp-pack
     ref: v1.5
+    mcps: "*"
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
         assert_eq!(cfg.mcps[0].git_ref.as_deref(), Some("v1.5"));
@@ -504,27 +505,57 @@ mcps:
     }
 
     #[test]
-    fn config_mcps_parses_path_field() {
+    fn config_mcps_parses_wildcard() {
         let yaml = r#"
 agent: cursor
 skills: []
 mcps:
-  - source: https://github.com/shepsci/kaggle-skill
-    path: .mcp.json
+  - source: https://github.com/acme/mcp-pack
+    mcps: "*"
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert_eq!(cfg.mcps[0].path.as_deref(), Some(".mcp.json"));
+        assert!(matches!(cfg.mcps[0].mcps, McpsField::Wildcard(_)));
     }
 
     #[test]
-    fn config_mcps_path_defaults_to_none() {
+    fn config_mcps_parses_plain_strings() {
         let yaml = r#"
 agent: cursor
 skills: []
 mcps:
-  - source: https://github.com/example/mcp-pack
+  - source: https://github.com/acme/monorepo
+    ref: v1.4.0
+    mcps:
+      - github
+      - linear
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert!(cfg.mcps[0].path.is_none());
+        let McpsField::List(ref entries) = cfg.mcps[0].mcps else {
+            panic!("expected List");
+        };
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(&entries[0], McpEntry::Name(n) if n == "github"));
+        assert!(matches!(&entries[1], McpEntry::Name(n) if n == "linear"));
+    }
+
+    #[test]
+    fn config_mcps_parses_objects() {
+        let yaml = r#"
+agent: cursor
+skills: []
+mcps:
+  - source: https://github.com/acme/monorepo
+    mcps:
+      - name: my-server
+        path: tools
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        let McpsField::List(ref entries) = cfg.mcps[0].mcps else {
+            panic!("expected List");
+        };
+        assert_eq!(entries.len(), 1);
+        assert!(
+            matches!(&entries[0], McpEntry::Obj { name, path: Some(p) } if name == "my-server" && p == "tools")
+        );
     }
 }

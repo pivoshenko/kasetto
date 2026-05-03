@@ -113,9 +113,8 @@ pub(crate) struct McpSourceSpec {
     pub branch: Option<String>,
     #[serde(rename = "ref")]
     pub git_ref: Option<String>,
-    /// Explicit path to an MCP JSON file within the repo (e.g. `.mcp.json`).
-    /// When set, skips auto-discovery and uses this file directly.
-    pub path: Option<String>,
+    /// Mirrors `skills[].skills`: `"*"` to discover all, or a list of names / `{ name, path }`.
+    pub mcps: McpsField,
 }
 
 impl McpSourceSpec {
@@ -128,6 +127,28 @@ impl McpSourceSpec {
             skills: SkillsField::Wildcard("*".to_string()),
         }
     }
+}
+
+/// The `mcps` field on an `McpSourceSpec` — mirrors `SkillsField` exactly.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum McpsField {
+    /// `mcps: "*"` — discover all MCP files in the source.
+    #[allow(dead_code)]
+    Wildcard(String),
+    /// `mcps: [...]` — explicit list of names or `{ name, path }` objects.
+    List(Vec<McpEntry>),
+}
+
+/// One entry in `mcps[].mcps` — mirrors `SkillTarget`.
+///
+/// - Plain string `"github"` → `mcps/github.json`
+/// - Object `{ name: github, path: tools }` → `tools/github.json`
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum McpEntry {
+    Name(String),
+    Obj { name: String, path: Option<String> },
 }
 
 #[derive(Debug, Deserialize)]
