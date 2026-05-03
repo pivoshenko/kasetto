@@ -14,8 +14,6 @@ use crate::model::Scope;
     after_help = crate::cli_examples!(
         "kasetto",
         "kasetto sync --config https://example.com/kasetto.yaml --verbose",
-        "kasetto add https://github.com/org/skills --skill code-reviewer",
-        "kasetto remove https://github.com/org/skills --skill code-reviewer -u",
         "kasetto init",
         "kasetto list",
         "kasetto doctor",
@@ -91,33 +89,6 @@ pub(crate) struct SyncArgs {
     pub scope: ScopeArgs,
 }
 
-#[derive(Args, Clone, Debug, Default)]
-pub(crate) struct AddArgs {
-    #[arg(help = "repository URL or local path")]
-    pub repo: String,
-    #[arg(long = "skill")]
-    #[arg(help = "select one skill by name (repeatable)")]
-    pub skills: Vec<String>,
-    #[arg(long)]
-    #[arg(help = "write to $XDG_CONFIG_HOME/kasetto/kasetto.yaml")]
-    pub global: bool,
-}
-
-#[derive(Args, Clone, Debug, Default)]
-pub(crate) struct RemoveArgs {
-    #[arg(help = "repository URL or local path")]
-    pub repo: String,
-    #[arg(long = "skill")]
-    #[arg(help = "remove one skill by name (repeatable)")]
-    pub skills: Vec<String>,
-    #[arg(long)]
-    #[arg(help = "write to $XDG_CONFIG_HOME/kasetto/kasetto.yaml")]
-    pub global: bool,
-    #[arg(short = 'u')]
-    #[arg(help = "skip confirmation prompt")]
-    pub unattended: bool,
-}
-
 #[derive(Subcommand)]
 pub(crate) enum Commands {
     #[command(
@@ -151,32 +122,6 @@ pub(crate) enum Commands {
         sync: SyncArgs,
     },
     #[command(
-        about = "Add a skill source to config",
-        long_about = "Discover skills from a repo or local source, then add or update that source in kasetto config. By default, writes ./kasetto.yaml and creates it if missing. With --global, writes $XDG_CONFIG_HOME/kasetto/kasetto.yaml.",
-        after_help = crate::cli_examples!(
-            "kasetto add https://github.com/org/skills",
-            "kasetto add https://github.com/org/skills --skill code-reviewer --skill docs",
-            "kasetto add https://github.com/org/skills --global",
-        )
-    )]
-    Add {
-        #[command(flatten)]
-        add: AddArgs,
-    },
-    #[command(
-        about = "Remove a skill source from config",
-        long_about = "Remove a source or selected skills from kasetto config. By default, writes ./kasetto.yaml. With --global, writes $XDG_CONFIG_HOME/kasetto/kasetto.yaml. Shows a preview before applying changes unless -u is set.",
-        after_help = crate::cli_examples!(
-            "kasetto remove https://github.com/org/skills",
-            "kasetto remove https://github.com/org/skills --skill code-reviewer --skill docs",
-            "kasetto remove https://github.com/org/skills -u --global",
-        )
-    )]
-    Remove {
-        #[command(flatten)]
-        remove: RemoveArgs,
-    },
-    #[command(
         about = "List installed skills and MCPs",
         long_about = "Read installed skills and MCPs from the lock file.\n\nIn interactive terminals, kasetto opens a navigable browser with tabs for Skills and MCPs. Use --json for scripting.",
         after_help = crate::cli_examples!("kasetto list", "kasetto list --json",)
@@ -189,29 +134,6 @@ pub(crate) enum Commands {
         output: OutputArgs,
         #[command(flatten)]
         scope: ScopeArgs,
-    },
-    #[command(
-        about = "Search SkillsMP for published skills",
-        long_about = "Search the SkillsMP marketplace by keyword, or use semantic search with --semantic.\n\nUse --json for automation, and pass an API key with --api-key or $SKILLSMP_API_KEY when needed.",
-        after_help = crate::cli_examples!(
-            "kasetto search rust cli",
-            "kasetto search --semantic \"web scraper\" --api-key sk_live_...",
-            "kasetto search --json automation",
-        )
-    )]
-    Search {
-        #[arg(long)]
-        #[arg(help = "print search results as JSON")]
-        json: bool,
-        #[arg(long)]
-        #[arg(help = "use SkillsMP semantic search (/ai-search)")]
-        semantic: bool,
-        #[arg(long)]
-        #[arg(help = "SkillsMP API key (falls back to $SKILLSMP_API_KEY)")]
-        api_key: Option<String>,
-        #[arg(required = true, num_args = 1..)]
-        #[arg(help = "search query")]
-        query: Vec<String>,
     },
     #[command(
         about = "Run local diagnostics",
@@ -298,58 +220,4 @@ pub(crate) enum SelfAction {
         #[arg(help = "skip confirmation prompt")]
         yes: bool,
     },
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn search_command_accepts_multi_word_query() {
-        let cli = Cli::try_parse_from(["kst", "search", "rust", "cli"]).expect("parse");
-        match cli.command {
-            Some(Commands::Search {
-                query,
-                json,
-                semantic,
-                api_key,
-            }) => {
-                assert_eq!(query, ["rust", "cli"]);
-                assert!(!json);
-                assert!(!semantic);
-                assert!(api_key.is_none());
-            }
-            _ => panic!("unexpected command"),
-        }
-    }
-
-    #[test]
-    fn search_command_accepts_flags() {
-        let cli = Cli::try_parse_from([
-            "kst",
-            "search",
-            "--json",
-            "--semantic",
-            "--api-key",
-            "secret",
-            "web",
-            "scraper",
-        ])
-        .expect("parse");
-
-        match cli.command {
-            Some(Commands::Search {
-                query,
-                json,
-                semantic,
-                api_key,
-            }) => {
-                assert_eq!(query, ["web", "scraper"]);
-                assert!(json);
-                assert!(semantic);
-                assert_eq!(api_key.as_deref(), Some("secret"));
-            }
-            _ => panic!("unexpected command"),
-        }
-    }
 }

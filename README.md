@@ -98,7 +98,6 @@ That's it. Kasetto pulls the skills and installs them into the right agent direc
 
 ```bash
 kst list      # interactive browser with vim-style navigation
-kst search rust cli
 kst doctor    # version, paths, last sync status
 ```
 
@@ -139,37 +138,6 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 
 Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero only for source-level failures.
 
-### `kst add`
-
-Discovers skills from a repo or local source and writes that source into config. By default it writes `./kasetto.yaml`, creating it when missing. With `--global`, it writes `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`.
-
-```bash
-kst add <repo> [--skill <name>]... [--global]
-```
-
-| Flag        | What it does                                                         |
-| ----------- | -------------------------------------------------------------------- |
-| `--skill`   | Add only specific skills; repeat to include multiple names           |
-| `--global`  | Write the global config instead of `./kasetto.yaml`                  |
-
-If the source is already present, Kasetto updates it instead of duplicating it. Re-adding a source with no `--skill` promotes it to `skills: "*"`. Remote repo sources are normalized to a standard canonical URL before being written.
-
-### `kst remove`
-
-Removes a source from config, or removes specific skills from an explicitly listed source.
-
-```bash
-kst remove <repo> [--skill <name>]... [--global] [-u]
-```
-
-| Flag        | What it does                                                         |
-| ----------- | -------------------------------------------------------------------- |
-| `--skill`   | Remove only specific skills from an explicit list                    |
-| `--global`  | Write the global config instead of `./kasetto.yaml`                  |
-| `-u`        | Skip the confirmation prompt and apply the change immediately        |
-
-By default, `kst remove` shows a preview of the config path, normalized source, requested change, and resulting state before asking `Proceed? [y/N]`. Without `--skill`, the whole source entry is removed. Selective removal from a source stored as `skills: "*"` is rejected because the config does not track an explicit stored list to subtract from.
-
 ### `kst list`
 
 Shows skills and MCP servers from the lock file(s). **Without** `--project` or `--global`, both scopes are merged so you can tell global and project installs apart (scope is shown per row / in JSON).
@@ -179,22 +147,6 @@ kst list [--json] [--quiet] [--plain] [--project | --global]
 ```
 
 In a terminal (and without `--plain`), this opens an interactive browser — Skills and MCPs tabs with detail panes. Navigate with `j`/`k`, switch tabs with Tab or `h`/`l`, scroll with `PgUp`/`PgDn`, jump with `gg`/`G`. Use `--plain`, set `NO_TUI=1`, or pipe stdout for a plain text listing.
-
-### `kst search`
-
-Searches the SkillsMP marketplace and prints ranked results with author, stars, update recency, and URLs. Use `--semantic` to call the SkillsMP AI search endpoint instead of keyword search.
-
-```bash
-kst search [--json] [--semantic] [--api-key <key>] <query...>
-```
-
-| Flag         | What it does                                              |
-| ------------ | --------------------------------------------------------- |
-| `--json`     | Print structured search results for scripts and agents    |
-| `--semantic` | Use SkillsMP semantic search (`/api/v1/skills/ai-search`) |
-| `--api-key`  | SkillsMP API key (falls back to `$SKILLSMP_API_KEY`)      |
-
-Keyword search works anonymously, but SkillsMP semantic search requires an API key. Kasetto surfaces SkillsMP rate-limit headers in both human output and JSON so scripts can react to remaining quota.
 
 ### `kst doctor`
 
@@ -259,14 +211,6 @@ When `--config` is omitted, Kasetto looks for config in this order:
 Point it at a specific file or URL with `--config`, or run `kst init` for local `./kasetto.yaml` (`kst init --global` writes the global config file).
 To persist a remote URL as your default, add a `source:` key to `~/.config/kasetto/config.yaml`.
 
-<<<<<<< HEAD
-You can also define reusable `presets` in the global config and pull them into a repo config with `include_presets`.
-
-||||||| 1393a55
-=======
-For building a local config incrementally, use `kst add https://github.com/org/skills` to append a discovered source without hand-editing YAML. Both `kst add` and `kst remove` are available from the TUI home screen.
-
->>>>>>> feat/add-repo-to-config
 ```yaml
 # Choose an agent preset (single or multiple)...
 agent: codex
@@ -279,17 +223,6 @@ agent: codex
 
 # Install scope: "global" (default) or "project"
 # scope: project
-
-# Reusable preset definitions, typically in ~/.config/kasetto/kasetto.yaml
-# presets:
-#   - name: team-core
-#     skills:
-#       - source: https://github.com/org/shared-skills
-#         skills: "*"
-
-# Include preset definitions from this file or your global config
-# include_presets:
-#   - team-core
 
 skills:
   # Pull specific skills from a GitHub repo
@@ -327,11 +260,7 @@ mcps:
 | `agent`           | no       | One or more [supported agent presets](#supported-agents)            |
 | `destination`     | no       | Explicit install path - overrides `agent` if both are set           |
 | `scope`           | no       | `"global"` (default) or `"project"` - where to install              |
-| `presets`         | no       | Named reusable skill source groups, usually defined in the global config |
-| `include_presets` | no       | Preset names to prepend from the repo config and/or global config   |
 | `skills`          | **yes**  | List of skill sources                                               |
-| `presets[].name`  | **yes**  | Preset name referenced from `include_presets`                       |
-| `presets[].skills` | **yes** | Skill source list using the same shape as top-level `skills`        |
 | `skills[].source` | **yes**  | Git host URL or local path                                          |
 | `skills[].branch` | no       | Branch for remote sources (default: `main`, falls back to `master`) |
 | `skills[].ref`    | no       | Git tag, commit SHA, or ref (takes priority over `branch`)          |

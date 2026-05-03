@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::{McpSettingsFormat, McpSettingsTarget};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub(crate) enum AgentField {
     One(Agent),

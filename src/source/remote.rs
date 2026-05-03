@@ -15,17 +15,10 @@ pub(super) fn remote_repo_archive_branch(
     branch: &str,
 ) -> (String, UrlRequestAuth) {
     match parsed {
-        RepoUrl::GitHub { host, owner, repo } => {
-            let auth = UrlRequestAuth::for_github_archive();
-            // GitHub's web archive endpoint doesn't support token auth for private repos.
-            // The API endpoint (api.github.com) does and works for public repos too.
-            let url = if host == "github.com" && !auth.headers.is_empty() {
-                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{}", encode_github_ref(branch))
-            } else {
-                format!("https://{host}/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz")
-            };
-            (url, auth)
-        }
+        RepoUrl::GitHub { host, owner, repo } => (
+            format!("https://{host}/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz"),
+            UrlRequestAuth::for_github_archive(),
+        ),
         _ => remote_repo_archive_ref(parsed, branch),
     }
 }
@@ -34,15 +27,10 @@ pub(super) fn remote_repo_archive_branch(
 /// Uses the short form that works for any ref type on all hosts.
 pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (String, UrlRequestAuth) {
     match parsed {
-        RepoUrl::GitHub { host, owner, repo } => {
-            let auth = UrlRequestAuth::for_github_archive();
-            let url = if host == "github.com" && !auth.headers.is_empty() {
-                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{}", encode_github_ref(git_ref))
-            } else {
-                format!("https://{host}/{owner}/{repo}/archive/{git_ref}.tar.gz")
-            };
-            (url, auth)
-        }
+        RepoUrl::GitHub { host, owner, repo } => (
+            format!("https://{host}/{owner}/{repo}/archive/{git_ref}.tar.gz"),
+            UrlRequestAuth::for_github_archive(),
+        ),
         RepoUrl::GitLab { host, project_path } => (
             gitlab_project_archive_url(host, project_path, git_ref),
             UrlRequestAuth::for_gitlab_archive(),
@@ -64,12 +52,6 @@ pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (Strin
 /// GitLab API path encoding: `/` → `%2F`.
 fn encode_gitlab_path(path: &str) -> String {
     path.replace('/', "%2F")
-}
-
-/// GitHub API ref encoding: `/` → `%2F` so that refs like `feature/foo`
-/// are treated as a single path segment in the tarball URL.
-fn encode_github_ref(git_ref: &str) -> String {
-    git_ref.replace('/', "%2F")
 }
 
 fn gitlab_project_archive_url(host: &str, project_path: &str, branch: &str) -> String {
@@ -99,55 +81,6 @@ fn gitea_archive_tarball_url(host: &str, owner: &str, repo: &str, branch: &str) 
     format!("https://{host}/{owner}/{repo}/archive/{branch}.tar.gz")
 }
 
-pub(crate) fn normalize_remote_yaml_url(url: &str) -> Result<String> {
-    let parsed = reqwest::Url::parse(url)
-        .map_err(|e| err(format!("invalid remote config URL: {url}: {e}")))?;
-
-    match parsed.scheme() {
-        "http" | "https" => {}
-        scheme => {
-            return Err(err(format!(
-                "remote config URL must use http or https: {url} (got {scheme})"
-            )));
-        }
-    }
-
-    let host = parsed
-        .host_str()
-        .ok_or_else(|| err(format!("remote config URL is missing a host: {url}")))?;
-    if !has_yaml_extension(parsed.path()) {
-        return Err(err(format!(
-            "remote config URL must point to a .yml or .yaml file: {url}"
-        )));
-    }
-
-    if matches!(
-        host,
-        "raw.githubusercontent.com" | "www.raw.githubusercontent.com"
-    ) {
-        return Ok(parsed.to_string());
-    }
-
-    if let Some(rewritten) = rewrite_browse_to_raw_url(url) {
-        return Ok(rewritten);
-    }
-
-    if matches!(host, "github.com" | "www.github.com") {
-        return Err(err(format!(
-            "GitHub remote config URLs must use /blob/, /raw/, or raw.githubusercontent.com and point to a .yml or .yaml file: {url}"
-        )));
-    }
-
-    Ok(parsed.to_string())
-}
-
-fn has_yaml_extension(path: &str) -> bool {
-    path.rsplit('/').next().is_some_and(|name| {
-        let lower = name.to_ascii_lowercase();
-        lower.ends_with(".yml") || lower.ends_with(".yaml")
-    })
-}
-
 /// Rewrite browser-style URLs (e.g. `/blob/`, `/src/branch/`) to the raw-content
 /// equivalent so users can paste a URL straight from their browser into
 /// `--config` or skill sources.
@@ -167,7 +100,7 @@ pub(crate) fn rewrite_browse_to_raw_url(url: &str) -> Option<String> {
     let without_scheme = &cleaned[scheme_len..];
     let (host, rest) = without_scheme.split_once('/')?;
 
-    if matches!(host, "github.com" | "www.github.com") {
+    if host == "github.com" {
         if let Some(rewritten) = rewrite_github_blob(rest) {
             return Some(rewritten);
         }
@@ -181,7 +114,7 @@ pub(crate) fn rewrite_browse_to_raw_url(url: &str) -> Option<String> {
         return None;
     }
 
-    rewrite_gitlab_raw_path(host, rest)
+    rewrite_gitlab_raw_url(host, rest)
 }
 
 fn rewrite_github_blob(rest: &str) -> Option<String> {
@@ -226,7 +159,7 @@ fn rewrite_gitea_src(scheme: &str, host: &str, rest: &str, query: Option<&str>) 
     Some(out)
 }
 
-fn rewrite_gitlab_raw_path(host: &str, rest: &str) -> Option<String> {
+fn rewrite_gitlab_raw_url(host: &str, rest: &str) -> Option<String> {
     for marker in ["/-/raw/", "/-/blob/"] {
         if let Some(idx) = rest.find(marker) {
             let project = &rest[..idx];
@@ -316,45 +249,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn github_branch_archive_uses_refs_heads_prefix_without_token() {
+    fn github_branch_archive_uses_refs_heads_prefix() {
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
             owner: "o".into(),
             repo: "r".into(),
         };
-        // No token set → falls back to web archive URL.
         let (url, _) = remote_repo_archive_branch(&parsed, "main");
         assert_eq!(url, "https://github.com/o/r/archive/refs/heads/main.tar.gz");
     }
 
     #[test]
-    fn github_branch_archive_uses_api_endpoint_with_token() {
-        std::env::set_var("GITHUB_TOKEN", "test-token");
-        let parsed = RepoUrl::GitHub {
-            host: "github.com".into(),
-            owner: "o".into(),
-            repo: "r".into(),
-        };
-        let (url, _) = remote_repo_archive_branch(&parsed, "main");
-        std::env::remove_var("GITHUB_TOKEN");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/main");
-    }
-
-    #[test]
-    fn github_branch_archive_encodes_slash_in_ref_with_token() {
-        std::env::set_var("GITHUB_TOKEN", "test-token");
-        let parsed = RepoUrl::GitHub {
-            host: "github.com".into(),
-            owner: "o".into(),
-            repo: "r".into(),
-        };
-        let (url, _) = remote_repo_archive_branch(&parsed, "feature/foo");
-        std::env::remove_var("GITHUB_TOKEN");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/feature%2Ffoo");
-    }
-
-    #[test]
-    fn github_ref_archive_uses_short_form_without_token() {
+    fn github_ref_archive_uses_short_form() {
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
             owner: "o".into(),
@@ -364,19 +270,6 @@ mod tests {
         assert_eq!(url, "https://github.com/o/r/archive/v2.0.tar.gz");
         let (url, _) = remote_repo_archive_ref(&parsed, "abc123def");
         assert_eq!(url, "https://github.com/o/r/archive/abc123def.tar.gz");
-    }
-
-    #[test]
-    fn github_ref_archive_encodes_slash_in_ref_with_token() {
-        std::env::set_var("GITHUB_TOKEN", "test-token");
-        let parsed = RepoUrl::GitHub {
-            host: "github.com".into(),
-            owner: "o".into(),
-            repo: "r".into(),
-        };
-        let (url, _) = remote_repo_archive_ref(&parsed, "refs/tags/release/1.2");
-        std::env::remove_var("GITHUB_TOKEN");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/refs%2Ftags%2Frelease%2F1.2");
     }
 
     #[test]
@@ -473,57 +366,5 @@ mod tests {
     #[test]
     fn rewrite_skips_non_http_scheme() {
         assert!(rewrite_browse_to_raw_url("git@github.com:owner/repo.git").is_none());
-    }
-
-    #[test]
-    fn normalize_remote_yaml_url_rewrites_github_blob() {
-        let url = normalize_remote_yaml_url(
-            "https://github.com/acme/team/blob/main/config/kasetto.yaml?raw=1",
-        )
-        .expect("normalize");
-        assert_eq!(
-            url,
-            "https://raw.githubusercontent.com/acme/team/main/config/kasetto.yaml"
-        );
-    }
-
-    #[test]
-    fn normalize_remote_yaml_url_accepts_raw_github() {
-        let url = normalize_remote_yaml_url(
-            "https://raw.githubusercontent.com/acme/team/main/config/kasetto.yml",
-        )
-        .expect("normalize");
-        assert_eq!(
-            url,
-            "https://raw.githubusercontent.com/acme/team/main/config/kasetto.yml"
-        );
-    }
-
-    #[test]
-    fn normalize_remote_yaml_url_rejects_non_yaml_paths() {
-        let err = normalize_remote_yaml_url("https://example.com/config.json").expect_err("reject");
-        assert!(err.to_string().contains(".yml or .yaml"));
-    }
-
-    #[test]
-    fn normalize_remote_yaml_url_rejects_non_blob_github_urls() {
-        let err =
-            normalize_remote_yaml_url("https://github.com/acme/team/tree/main/config/kasetto.yaml")
-                .expect_err("reject");
-        assert!(err
-            .to_string()
-            .contains("must use /blob/, /raw/, or raw.githubusercontent.com"));
-    }
-
-    #[test]
-    fn normalize_remote_yaml_url_rewrites_gitlab_blob() {
-        let url = normalize_remote_yaml_url(
-            "https://gitlab.example.com/group/repo/-/blob/main/kasetto.yaml",
-        )
-        .expect("normalize");
-        assert_eq!(
-            url,
-            "https://gitlab.example.com/api/v4/projects/group%2Frepo/repository/files/kasetto.yaml/raw?ref=main"
-        );
     }
 }

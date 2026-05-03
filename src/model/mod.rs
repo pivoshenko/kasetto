@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 pub(crate) use agent::{all_mcp_project_targets, all_mcp_settings_targets, Agent, AgentField};
 pub(crate) use config::{
-    resolve_scope, Config, GitPin, PresetDefinition, Scope, SkillTarget, SkillsField, SourceSpec,
+    resolve_scope, Config, GitPin, Scope, SkillTarget, SkillsField, SourceSpec,
 };
 pub(crate) use types::{Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure};
 

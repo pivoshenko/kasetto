@@ -58,36 +58,6 @@ mcps:
   - source: https://github.com/acme/mcp-packs
 ```
 
-## Shared Team Presets With Repo Overrides
-
-Put reusable team defaults in the global config, then include them from each repo:
-
-```yaml
-# ~/.config/kasetto/kasetto.yaml
-presets:
-  - name: team-core
-    skills:
-      - source: https://github.com/acme/shared-skills
-        skills:
-          - code-reviewer
-          - doc-coauthoring
-```
-
-```yaml
-# ./kasetto.yaml
-agent: claude-code
-
-include_presets:
-  - team-core
-
-skills:
-  - source: ./skills
-    skills:
-      - repo-helper
-```
-
-Kasetto expands `include_presets` before the repo-local `skills` list, so teams can keep a shared baseline and still add per-repo skills.
-
 ## MCP Packs: Pinning And Rollouts
 
 Pin an MCP pack source to a git tag or commit SHA:

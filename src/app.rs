@@ -26,13 +26,6 @@ pub fn run() -> Result<()> {
                     show_banner: true,
                 })
             }
-            Commands::Add { add } => crate::commands::add::run(&add.repo, &add.skills, add.global),
-            Commands::Remove { remove } => crate::commands::remove::run(
-                &remove.repo,
-                &remove.skills,
-                remove.global,
-                remove.unattended,
-            ),
             Commands::List {
                 json,
                 output,
@@ -40,12 +33,6 @@ pub fn run() -> Result<()> {
             } => {
                 crate::commands::list::run(json, output.plain, output.quiet, scope.scope_override())
             }
-            Commands::Search {
-                query,
-                json,
-                semantic,
-                api_key,
-            } => crate::commands::search::run(&query, json, semantic, api_key.as_deref()),
             Commands::Doctor {
                 json,
                 output,

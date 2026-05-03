@@ -4,10 +4,6 @@ agent: codex
 # Option B: manual destination (takes precedence if both are set)
 # destination: ./.agents/skills
 
-# Import presets from another kasetto config file
-# preset_configs:
-#   - https://github.com/acme/team-config/blob/main/kasetto.yaml
-
 skills:
   - source: https://github.com/pivoshenko/pivoshenko.ai
     skills:

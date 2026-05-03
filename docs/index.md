@@ -137,30 +137,13 @@ kst doctor
 
 Doctor shows your version, lock file location, install paths, last sync time, and any skills that failed.
 
-## Searching SkillsMP
-
-Need to discover skills before adding them to your config? Search the SkillsMP catalog directly:
-
-```bash
-kst search rust cli
-```
-
-For semantic search, pass an API key explicitly or via `$SKILLSMP_API_KEY`:
-
-```bash
-kst search --semantic --api-key sk_live_... "web scraper"
-```
-
-Kasetto shows the current SkillsMP quota from rate-limit headers in both human output and JSON output.
-
 ## Using JSON Output
 
-`sync`, `list`, `search`, `doctor`, `clean`, and `self update` support `--json` for scripting or CI:
+`sync`, `list`, `doctor`, `clean`, and `self update` support `--json` for scripting or CI:
 
 ```bash
 kst sync --json
 kst list --json
-kst search --json rust cli
 kst doctor --json
 kst clean --json
 ```

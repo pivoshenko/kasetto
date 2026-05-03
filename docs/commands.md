@@ -70,26 +70,6 @@ In a terminal (and without `--plain`), this opens an interactive browser — **S
 
     Set `NO_TUI=1` or pipe stdout to force a non-browser text listing. For a **local** plain listing without disabling all TUIs, use `--plain`.
 
-## `kst search`
-
-Searches the SkillsMP marketplace and prints ranked results in a human-friendly layout by default.
-
-```bash
-kst search [OPTIONS] <QUERY>...
-```
-
-### Options
-
-| Flag              | Description                                                |
-| ----------------- | ---------------------------------------------------------- |
-| `--json`          | Output structured search results as JSON                   |
-| `--semantic`      | Use SkillsMP semantic search (`/api/v1/skills/ai-search`) |
-| `--api-key <key>` | SkillsMP API key (falls back to `$SKILLSMP_API_KEY`)      |
-
-Keyword search works without authentication. Semantic search requires a SkillsMP API key, either from `--api-key` or `$SKILLSMP_API_KEY`.
-
-Kasetto includes SkillsMP rate-limit information in the output so you can monitor remaining minute/day quota. JSON output also includes request metadata and, for keyword search, the pagination block returned by SkillsMP.
-
 ## `kst doctor`
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.

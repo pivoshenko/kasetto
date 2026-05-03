@@ -110,19 +110,6 @@ pub(crate) fn parse_repo_url(url: &str) -> Result<RepoUrl> {
     })
 }
 
-pub(crate) fn normalize_repo_url(url: &str) -> Result<String> {
-    let normalized = match parse_repo_url(url)? {
-        RepoUrl::GitHub { host, owner, repo } => format!("https://{host}/{owner}/{repo}"),
-        RepoUrl::GitLab { host, project_path } => format!("https://{host}/{project_path}"),
-        RepoUrl::Bitbucket {
-            workspace,
-            repo_slug,
-        } => format!("https://bitbucket.org/{workspace}/{repo_slug}"),
-        RepoUrl::Gitea { host, owner, repo } => format!("https://{host}/{owner}/{repo}"),
-    };
-    Ok(normalized)
-}
-
 fn path_segments(path: &str) -> Vec<&str> {
     path.split('/').filter(|s| !s.is_empty()).collect()
 }
@@ -220,17 +207,5 @@ mod tests {
             ),
             "expected Codeberg (Gitea) URL"
         );
-    }
-
-    #[test]
-    fn normalize_repo_url_trims_git_and_trailing_slash() {
-        let url = normalize_repo_url("http://github.com/pivoshenko/kasetto.git/").expect("norm");
-        assert_eq!(url, "https://github.com/pivoshenko/kasetto");
-    }
-
-    #[test]
-    fn normalize_repo_url_preserves_gitlab_subgroups() {
-        let url = normalize_repo_url("https://gitlab.example.com/group/sub/repo/").expect("norm");
-        assert_eq!(url, "https://gitlab.example.com/group/sub/repo");
     }
 }

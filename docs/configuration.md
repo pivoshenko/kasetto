@@ -25,17 +25,6 @@ agent: codex
 # Install scope: "global" (default) or "project"
 # scope: project
 
-# Reusable preset definitions, typically in ~/.config/kasetto/kasetto.yaml
-# presets:
-#   - name: team-core
-#     skills:
-#       - source: https://github.com/org/shared-skills
-#         skills: "*"
-
-# Include preset definitions from this file or your global config
-# include_presets:
-#   - team-core
-
 skills:
   # Pull specific skills from a GitHub repo
   - source: https://github.com/org/skill-pack
@@ -71,24 +60,13 @@ mcps:
 
 ### Top-Level Fields
 
-| Key               | Required | Description                                                         |
-| ----------------- | -------- | ------------------------------------------------------------------- |
-| `agent`           | no       | One or more [supported agent presets](./agents.md) - string or list |
-| `destination`     | no       | Explicit install path - overrides `agent` if both are set           |
-| `scope`           | no       | `"global"` (default) or `"project"` - where to install              |
-| `presets`         | no       | Named reusable skill-source groups, usually defined in the global config |
-| `include_presets` | no       | Preset names to prepend from the current config and/or global config |
-| `skills`          | **yes**  | List of skill sources                                               |
-| `mcps`            | no       | List of MCP server sources                                          |
-
-### Preset Fields
-
-Each entry in the `presets` list defines a named group of skill sources:
-
-| Key                | Required | Description                                           |
-| ------------------ | -------- | ----------------------------------------------------- |
-| `presets[].name`   | **yes**  | Preset name referenced from `include_presets`         |
-| `presets[].skills` | **yes**  | Skill source list using the same shape as top-level `skills` |
+| Key           | Required | Description                                                         |
+| ------------- | -------- | ------------------------------------------------------------------- |
+| `agent`       | no       | One or more [supported agent presets](./agents.md) - string or list |
+| `destination` | no       | Explicit install path - overrides `agent` if both are set           |
+| `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
+| `skills`      | **yes**  | List of skill sources                                               |
+| `mcps`        | no       | List of MCP server sources                                          |
 
 ### Skill Source Fields
 
@@ -130,44 +108,6 @@ a non-standard layout.
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](./how-sync-works.md) for merge behavior details.
-
-## Reusable Presets
-
-Presets let you define reusable skill bundles once and include them in repo-level configs.
-
-```yaml
-# ~/.config/kasetto/kasetto.yaml
-presets:
-  - name: team-core
-    skills:
-      - source: https://github.com/acme/shared-skills
-        skills:
-          - code-reviewer
-          - doc-coauthoring
-```
-
-```yaml
-# ./kasetto.yaml
-agent: claude-code
-
-include_presets:
-  - team-core
-
-skills:
-  - source: ./skills
-    skills:
-      - repo-helper
-```
-
-When Kasetto loads the repo config, it expands `include_presets` into the top-level `skills` list.
-Included preset sources are prepended ahead of the repo's own `skills` entries.
-
-A few important rules:
-
-- Presets only expand into `skills`. They do not add `mcps`.
-- Presets can be defined in the current config or in the global config at `~/.config/kasetto/kasetto.yaml`.
-- If the same preset name is defined twice across those sources, Kasetto fails with a duplicate-preset error.
-- If `include_presets` references a name that does not exist, Kasetto fails before syncing.
 
 ## Remote Configs
 
