@@ -3,6 +3,7 @@ import { GoStar } from "react-icons/go";
 import { AgentsGrid } from "./components/agents-grid";
 import { CopyButton } from "./components/copy-button";
 import { ConfigExample, FeatureList } from "./components/feature-tabs";
+import { ThemeToggle } from "./components/theme-toggle";
 
 const INSTALL = [
   {
@@ -59,8 +60,8 @@ export default async function Page() {
           {/* GET STARTED */}
           <div className="action-row">
             <span className="action-label">GET STARTED</span>
-            <div className="action-right">
-              <code className="action-cmd">curl -fsSL kasetto.dev/install | sh</code>
+            <div className="install-right">
+              <code className="install-cmd">curl -fsSL kasetto.dev/install | sh</code>
               <CopyButton text="curl -fsSL kasetto.dev/install | sh" />
             </div>
           </div>
@@ -141,6 +142,7 @@ export default async function Page() {
           2026 Volodymyr Pivoshenko &lt;contact@pivoshenko.dev&gt;
         </span>
         <div className="footer-links">
+          <ThemeToggle />
           <a
             href="https://github.com/pivoshenko"
             className="footer-icon"

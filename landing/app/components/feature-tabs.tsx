@@ -50,11 +50,15 @@ const CONFIG_LINES: Token[] = [
   { t: "cmt", v: " # or global" },
   { t: "nl" },
   { t: "nl" },
+  { t: "cmt", v: "# destination: ./.agents/skills  # optional, override install path" },
+  { t: "nl" },
+  { t: "nl" },
+
   { t: "key", v: "skills" },
   { t: "punct", v: ":" },
   { t: "nl" },
 
-  // Source 1: wildcard — sync all skills from repo
+  // Source 1: wildcard, no branch/ref
   { t: "dash", v: "  " },
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
@@ -62,20 +66,13 @@ const CONFIG_LINES: Token[] = [
   { t: "url", v: "github.com/acme/frontend-pack" },
   { t: "nl" },
   { t: "dash", v: "    " },
-  { t: "key", v: "ref" },
-  { t: "punct", v: ": " },
-  { t: "str", v: "v2.1.0" },
-  { t: "cmt", v: " # pin to tag or commit" },
-  { t: "nl" },
-  { t: "dash", v: "    " },
   { t: "key", v: "skills" },
   { t: "punct", v: ": " },
   { t: "str", v: '"*"' },
-  { t: "cmt", v: " # all skills in repo" },
   { t: "nl" },
   { t: "nl" },
 
-  // Source 2: named skills — pick specific ones
+  // Source 2: branch
   { t: "dash", v: "  " },
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
@@ -85,12 +82,11 @@ const CONFIG_LINES: Token[] = [
   { t: "dash", v: "    " },
   { t: "key", v: "branch" },
   { t: "punct", v: ": " },
-  { t: "str", v: "main" },
+  { t: "str", v: "master" },
   { t: "nl" },
   { t: "dash", v: "    " },
   { t: "key", v: "skills" },
   { t: "punct", v: ":" },
-  { t: "cmt", v: " # pick by name" },
   { t: "nl" },
   { t: "dash", v: "      " },
   { t: "punct", v: "- " },
@@ -102,12 +98,17 @@ const CONFIG_LINES: Token[] = [
   { t: "nl" },
   { t: "nl" },
 
-  // Source 3: skill with custom path
+  // Source 3: ref + custom paths
   { t: "dash", v: "  " },
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
   { t: "punct", v: ": " },
   { t: "url", v: "codeberg.org/oss/shared" },
+  { t: "nl" },
+  { t: "dash", v: "    " },
+  { t: "key", v: "ref" },
+  { t: "punct", v: ": " },
+  { t: "str", v: "v2.1.0" },
   { t: "nl" },
   { t: "dash", v: "    " },
   { t: "key", v: "skills" },
@@ -123,39 +124,71 @@ const CONFIG_LINES: Token[] = [
   { t: "key", v: "path" },
   { t: "punct", v: ": " },
   { t: "str", v: "rules/custom-lint" },
-  { t: "cmt", v: " # custom path to skill dir" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "key", v: "name" },
+  { t: "punct", v: ": " },
+  { t: "str", v: "format-helpers" },
+  { t: "nl" },
+  { t: "dash", v: "        " },
+  { t: "key", v: "path" },
+  { t: "punct", v: ": " },
+  { t: "str", v: "rules/format" },
   { t: "nl" },
   { t: "nl" },
 
-  // MCP sources
   { t: "key", v: "mcps" },
   { t: "punct", v: ":" },
   { t: "nl" },
+
+  // MCP 1: wildcard — auto-discover all packs
   { t: "dash", v: "  " },
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
   { t: "punct", v: ": " },
   { t: "url", v: "github.com/acme/mcp-pack" },
   { t: "nl" },
+  { t: "dash", v: "    " },
+  { t: "key", v: "mcps" },
+  { t: "punct", v: ': "' },
+  { t: "str", v: "*" },
+  { t: "punct", v: '"' },
+  { t: "nl" },
+  { t: "nl" },
+
+  // MCP 2: monorepo — pick by name, resolved from mcps/
   { t: "dash", v: "  " },
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
   { t: "punct", v: ": " },
-  { t: "url", v: "github.com/team/tools" },
+  { t: "url", v: "github.com/acme/monorepo" },
   { t: "nl" },
   { t: "dash", v: "    " },
-  { t: "key", v: "path" },
+  { t: "key", v: "ref" },
   { t: "punct", v: ": " },
-  { t: "str", v: ".mcp.json" },
-  { t: "cmt", v: " # explicit file in repo" },
+  { t: "str", v: "v1.4.0" },
+  { t: "nl" },
+  { t: "dash", v: "    " },
+  { t: "key", v: "mcps" },
+  { t: "punct", v: ":" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "github" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "linear" },
+  { t: "nl" },
 ];
 
 function renderTokens(tokens: Token[]) {
-  const parts: React.ReactNode[] = [];
+  const lines: React.ReactNode[][] = [[]];
   let key = 0;
   for (const tok of tokens) {
     if (tok.t === "nl") {
-      parts.push(<br key={key++} />);
+      lines.push([]);
     } else {
       const cls =
         tok.t === "key"
@@ -169,14 +202,19 @@ function renderTokens(tokens: Token[]) {
                 : tok.t === "dash"
                   ? "sy-dash"
                   : "sy-punct";
-      parts.push(
+      lines[lines.length - 1].push(
         <span key={key++} className={cls}>
           {tok.v}
         </span>
       );
     }
   }
-  return parts;
+  return lines.map((line, i) => (
+    <div key={i} className="sy-line">
+      <span className="sy-ln">{i + 1}</span>
+      <span className="sy-line-content">{line}</span>
+    </div>
+  ));
 }
 
 export function FeatureList() {
