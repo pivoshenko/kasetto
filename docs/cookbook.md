@@ -56,6 +56,7 @@ skills:
 
 mcps:
   - source: https://github.com/acme/mcp-packs
+    mcps: "*"
 ```
 
 ## MCP Packs: Pinning And Rollouts
@@ -72,6 +73,7 @@ skills:
 mcps:
   - source: https://github.com/acme/mcp-packs
     ref: v2.4.1
+    mcps: "*"
 ```
 
 Roll forward by bumping `ref`, then use `--dry-run` to preview:
@@ -80,12 +82,23 @@ Roll forward by bumping `ref`, then use `--dry-run` to preview:
 kst sync --dry-run
 ```
 
-## Explicit MCP Pack Path (`mcps.path`)
+## Explicit MCP Entries (`mcps.mcps`)
 
-If a repo contains multiple MCP config files or doesn't match the default discovery layout, point directly at one:
+If a repo contains multiple MCP files or uses a non-standard layout, list entries explicitly.
+Plain strings look up `mcps/<name>.json`; objects let you override the directory:
 
 ```yaml
 mcps:
+  # Names resolved from mcps/ dir (auto .json extension)
   - source: https://github.com/acme/monorepo
-    path: mcps/servers/pack.json
+    ref: v1.4.0
+    mcps:
+      - github        # → mcps/github.json
+      - linear        # → mcps/linear.json
+
+  # Custom directory via { name, path }
+  - source: https://github.com/acme/other
+    mcps:
+      - name: my-server
+        path: tools   # → tools/my-server.json
 ```

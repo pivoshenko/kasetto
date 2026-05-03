@@ -43,9 +43,9 @@ Kasetto auto-discovers MCP pack files in the source:
 
 1. `.mcp.json` at the source root
 2. `mcp.json` at the source root
-3. Any `.json` file inside a `mcp/` subdirectory
+3. Any `.json` file inside the `mcps/` subdirectory
 
-Each file must contain a `mcpServers` JSON object. Use the `path` config field to skip auto-discovery and point directly at a specific file.
+Each file must contain a `mcpServers` JSON object. Use a `mcps:` list to pick specific files instead of discovering all.
 
 Server entries are merged into each agent's native settings file (e.g., `.claude.json`, `.cursor/mcp.json`). The merge follows two simple rules:
 

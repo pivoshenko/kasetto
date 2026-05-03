@@ -51,9 +51,22 @@ skills:
 
 # MCP servers (optional)
 mcps:
+  # Discover all MCP files in the repo
   - source: https://github.com/org/mcp-pack
+    mcps: "*"
+
+  # Pick specific files from a monorepo (resolved from mcps/ dir)
   - source: https://github.com/org/monorepo
-    path: mcps/my-server/pack.json
+    ref: v1.4.0
+    mcps:
+      - github        # → mcps/github.json
+      - linear        # → mcps/linear.json
+
+  # Custom directory via { name, path }
+  - source: https://github.com/org/other
+    mcps:
+      - name: my-server
+        path: tools   # → tools/my-server.json
 ```
 
 ## Reference
@@ -89,21 +102,32 @@ Each entry in the `skills` list can be a string (the skill name) or an object:
 
 ### MCP Source Fields
 
-| Key      | Required | Description                                                                 |
-| -------- | -------- | --------------------------------------------------------------------------- |
-| `source` | **yes**  | Git host URL or local path containing MCP server config                     |
-| `branch` | no       | Branch for remote sources (default: `main`, falls back to `master`)         |
-| `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`                  |
-| `path`   | no       | Explicit path to the MCP JSON file within the source (skips auto-discovery) |
+| Key      | Required | Description                                                                   |
+| -------- | -------- | ----------------------------------------------------------------------------- |
+| `source` | **yes**  | Git host URL or local path containing MCP server config                       |
+| `branch` | no       | Branch for remote sources (default: `main`, falls back to `master`)           |
+| `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`                    |
+| `mcps`   | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects           |
 
-Kasetto discovers MCP config files automatically in this order:
+When `mcps: "*"`, Kasetto auto-discovers MCP config files in this order:
 
 1. `.mcp.json` at the source root
 2. `mcp.json` at the source root
-3. Any `.json` file inside a `mcp/` subdirectory
+3. Any `.json` file inside the `mcps/` subdirectory
 
-Use the `path` field to point at a specific file when the source contains multiple configs or uses
-a non-standard layout.
+### MCP Entry Fields
+
+Each entry in the `mcps` list can be a plain string (name) or an object — mirrors skill entries:
+
+| Form                        | Resolves to                  |
+| --------------------------- | ---------------------------- |
+| `- github`                  | `mcps/github.json`           |
+| `- github.json`             | `mcps/github.json`           |
+| `- { name: x, path: dir }`  | `dir/x.json`                 |
+| `- { name: x }`             | `mcps/x.json`                |
+
+`.json` is appended automatically when the name has no extension.
+
 
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`

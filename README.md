@@ -250,27 +250,34 @@ skills:
 
 # MCP servers (optional)
 mcps:
+  # Discover all packs in the repo
   - source: https://github.com/org/mcp-pack
+    mcps: "*"
+
+  # Pick specific files from a monorepo (names resolved from mcps/ dir)
   - source: https://github.com/org/monorepo
-    path: mcps/my-server/pack.json
+    ref: v1.4.0
+    mcps:
+      - github        # → mcps/github.json
+      - linear        # → mcps/linear.json
 ```
 
-| Key               | Required | Description                                                         |
-| ----------------- | -------- | ------------------------------------------------------------------- |
-| `agent`           | no       | One or more [supported agent presets](#supported-agents)            |
-| `destination`     | no       | Explicit install path - overrides `agent` if both are set           |
-| `scope`           | no       | `"global"` (default) or `"project"` - where to install              |
-| `skills`          | **yes**  | List of skill sources                                               |
-| `skills[].source` | **yes**  | Git host URL or local path                                          |
-| `skills[].branch` | no       | Branch for remote sources (default: `main`, falls back to `master`) |
-| `skills[].ref`    | no       | Git tag, commit SHA, or ref (takes priority over `branch`)          |
-| `skills[].sub-dir`| no       | Relative subdirectory to use as source root (`sub_dir` alias also supported) |
-| `skills[].skills` | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects        |
-| `mcps`            | no       | List of MCP server sources                                          |
-| `mcps[].source`   | **yes**  | Git host URL or local path containing MCP config                    |
-| `mcps[].branch`   | no       | Branch for remote sources                                           |
-| `mcps[].ref`      | no       | Git tag, commit SHA, or ref                                         |
-| `mcps[].path`     | no       | Explicit path to MCP JSON file within the source                    |
+| Key                  | Required | Description                                                         |
+| -------------------- | -------- | ------------------------------------------------------------------- |
+| `agent`              | no       | One or more [supported agent presets](#supported-agents)            |
+| `destination`        | no       | Explicit install path - overrides `agent` if both are set           |
+| `scope`              | no       | `"global"` (default) or `"project"` - where to install              |
+| `skills`             | **yes**  | List of skill sources                                               |
+| `skills[].source`    | **yes**  | Git host URL or local path                                          |
+| `skills[].branch`    | no       | Branch for remote sources (default: `main`, falls back to `master`) |
+| `skills[].ref`       | no       | Git tag, commit SHA, or ref (takes priority over `branch`)          |
+| `skills[].sub-dir`   | no       | Relative subdirectory to use as source root (`sub_dir` alias also supported) |
+| `skills[].skills`    | **yes**  | `"*"` for all, or a list of names / `{ name, path }` objects        |
+| `mcps`               | no       | List of MCP server sources                                          |
+| `mcps[].source`      | **yes**  | Git host URL or local path containing MCP config                    |
+| `mcps[].branch`      | no       | Branch for remote sources                                           |
+| `mcps[].ref`         | no       | Git tag, commit SHA, or ref                                         |
+| `mcps[].mcps`        | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects |
 
 ## Supported Agents
 
