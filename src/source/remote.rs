@@ -268,6 +268,8 @@ mod tests {
 
     #[test]
     fn github_branch_archive_uses_refs_heads_prefix_without_token() {
+        std::env::remove_var("GITHUB_TOKEN");
+        std::env::remove_var("GH_TOKEN");
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
             owner: "o".into(),
@@ -306,15 +308,17 @@ mod tests {
 
     #[test]
     fn github_ref_archive_uses_short_form_without_token() {
+        std::env::remove_var("GITHUB_TOKEN");
+        std::env::remove_var("GH_TOKEN");
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
             owner: "o".into(),
             repo: "r".into(),
         };
         let (url, _) = remote_repo_archive_ref(&parsed, "v2.0");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/v2.0");
+        assert_eq!(url, "https://github.com/o/r/archive/v2.0.tar.gz");
         let (url, _) = remote_repo_archive_ref(&parsed, "abc123def");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/abc123def");
+        assert_eq!(url, "https://github.com/o/r/archive/abc123def.tar.gz");
     }
 
     #[test]
