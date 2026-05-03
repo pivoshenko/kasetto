@@ -61,13 +61,28 @@ pub(super) fn sync_mcps(
             .as_deref()
             .unwrap_or_else(|| std::path::Path::new(&src.source));
         let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
-            McpsField::Wildcard(_) => discover_mcps(root),
+            McpsField::Wildcard(s) if s == "*" => discover_mcps(root),
+            McpsField::Wildcard(s) => Err(err(format!(
+                "invalid mcps value \"{s}\": expected \"*\" or a list"
+            ))),
             McpsField::List(entries) => {
                 let mut paths = Vec::new();
                 for entry in entries {
+                    let name = match entry {
+                        crate::model::McpEntry::Name(n) => n.clone(),
+                        crate::model::McpEntry::Obj { name, .. } => name.clone(),
+                    };
                     match resolve_mcp_entry(root, entry) {
                         Ok(p) => paths.push(p),
-                        Err(e) => return Err(e),
+                        Err(e) => {
+                            summary.broken += 1;
+                            actions.push(Action {
+                                source: Some(src.source.clone()),
+                                skill: Some(name),
+                                status: "broken".into(),
+                                error: Some(e.to_string()),
+                            });
+                        }
                     }
                 }
                 Ok(paths)
