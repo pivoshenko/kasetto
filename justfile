@@ -27,12 +27,12 @@ build-next:
   cd landing && pnpm build
 
 build-docs:
-  mkdocs build
+  cd docs && mkdocs build -f mkdocs.yml
 
 build: build-rs build-next
 
 serve-docs:
-  mkdocs serve
+  cd docs && mkdocs serve -f mkdocs.yml
 
 serve-landing:
   cd landing && pnpm dev

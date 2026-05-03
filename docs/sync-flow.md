@@ -1,0 +1,244 @@
+# Sync Flow
+
+Complete reference for how `kst sync` resolves sources, discovers skills and MCP files, diffs against the lock, and writes to agent environments.
+
+---
+
+## Top-Level Pipeline
+
+```mermaid
+flowchart TD
+    A[kasetto.yaml] --> B[Resolve scope & destinations]
+    B --> C[skills loop]
+    B --> D[mcps loop]
+
+    C --> C1[Materialize source]
+    C1 --> C2[Discover available skills]
+    C2 --> C3[Select targets]
+    C3 --> C4[Hash & diff vs lock]
+    C4 --> C5[Copy to destinations]
+    C5 --> C6[Update lock state]
+
+    D --> D1[Materialize source]
+    D1 --> D2[Resolve MCP files]
+    D2 --> D3[Parse mcpServers]
+    D3 --> D4[Hash & diff vs lock]
+    D4 --> D5[Confirmation gate]
+    D5 --> D6[Merge into agent settings]
+    D6 --> D7[Update lock state]
+
+    C6 --> E[Save lock file + report]
+    D7 --> E
+```
+
+---
+
+## Source Materialization
+
+Shared by both skills and MCPs.
+
+```mermaid
+flowchart TD
+    A[source: field] --> B{Remote or local?}
+
+    B -->|URL| C[Resolve auth token from env vars]
+    C --> D[Rewrite browser URL to raw endpoint if needed]
+    D --> E{Git pin}
+    E -->|ref: set| F[Pin to tag / SHA — no fallback]
+    E -->|branch: set| G[Pin to explicit branch — no fallback]
+    E -->|neither| H[Try main → fall back to master]
+    F --> I[Download tarball → extract to temp dir]
+    G --> I
+    H --> I
+    I --> J{sub-dir set?}
+    J -->|yes| K[Use sub-dir as root]
+    J -->|no| L[Use repo root]
+
+    B -->|local path| M[Expand ~ and resolve relative to config]
+    M --> J
+
+    K --> N[root directory on disk]
+    L --> N
+```
+
+---
+
+## Skills Sync Flow
+
+### Discovery
+
+```mermaid
+flowchart TD
+    A[root directory] --> B{root/SKILL.md exists?}
+    B -->|yes| C[Root itself is a skill\nnamed after repo / dir]
+    B -->|no| D[No root skill]
+    C --> E[Scan root/ for subdirs with SKILL.md]
+    D --> E
+    E --> F[Scan root/skills/ for subdirs with SKILL.md]
+    F --> G[available map: name → path]
+```
+
+### Target Selection
+
+```mermaid
+flowchart TD
+    A[skills field] --> B{Type?}
+
+    B -->|Wildcard '*'| C[All entries in available map]
+
+    B -->|List| D[For each entry]
+    D --> E{Entry form?}
+    E -->|Name string| F{name in available?}
+    F -->|yes| G[Use available path]
+    F -->|no| H[broken — skip, report]
+
+    E -->|Object name + path| I{path/name/SKILL.md exists?}
+    I -->|yes| J[Use explicit path]
+    I -->|no| K{name in available?}
+    K -->|yes| L[Use available path]
+    K -->|no| M[broken — skip, report]
+
+    C --> N[targets list]
+    G --> N
+    J --> N
+    L --> N
+```
+
+### Hash, Diff & Copy
+
+```mermaid
+flowchart TD
+    A[skill target] --> B{key in lock?}
+
+    B -->|no| C[is_new = true]
+    B -->|yes| D{hash matches\nAND dest exists?}
+    D -->|yes| E[unchanged — skip]
+    D -->|no| F[queue as update]
+
+    C --> G{dry-run?}
+    F --> G
+    G -->|yes| H[report would_install / would_update]
+    G -->|no| I[copy_dir to every agent destination]
+    I --> J[write lock entry\nhash + dest + revision + timestamp]
+```
+
+### Stale Removal
+
+```mermaid
+flowchart TD
+    A[lock entries] --> B{key in desired set?}
+    B -->|yes| C[keep]
+    B -->|no| D{dry-run?}
+    D -->|yes| E[report would_remove]
+    D -->|no| F[remove_dir_all destination]
+    F --> G[remove from lock]
+```
+
+---
+
+## MCP Sync Flow
+
+### File Resolution
+
+```mermaid
+flowchart TD
+    A[mcps field] --> B{Value?}
+
+    B -->|Wildcard '*'| C[discover_mcps root]
+    C --> C1{root/.mcp.json exists?}
+    C1 -->|yes| C2[include .mcp.json]
+    C1 -->|no| C3[skip]
+    C2 --> C4{root/mcp.json exists?}
+    C3 --> C4
+    C4 -->|yes| C5[include mcp.json]
+    C4 -->|no| C6[skip]
+    C5 --> C7[include all *.json in root/mcps/]
+    C6 --> C7
+
+    B -->|List| D[For each entry]
+    D --> E{Entry form?}
+    E -->|Name string e.g. github| F[root/mcps/github.json\nauto-append .json if missing]
+    E -->|Object with path| G[root/path/name.json\ndefault dir is mcps/]
+
+    C7 --> H[resolved file list]
+    F --> H
+    G --> H
+```
+
+### Parse, Hash & Diff
+
+```mermaid
+flowchart TD
+    A[resolved .json file] --> B{Contains mcpServers object?}
+    B -->|no| C[broken — skip, report]
+    B -->|yes| D[extract server names]
+    D --> E{asset_id in lock?}
+
+    E -->|no| F[is_new = true]
+    E -->|yes| G{hash matches AND\nall servers in settings?}
+    G -->|yes| H[unchanged — skip]
+    G -->|no| I[is_new = false — queue as update]
+
+    F --> J[pending list]
+    I --> J
+```
+
+### Confirmation Gate
+
+```mermaid
+flowchart TD
+    A{Any new servers\nin pending?} -->|no| E[apply all pending]
+    A -->|yes| B{--yes flag?}
+    B -->|yes| E
+    B -->|no| C{stdin is terminal?}
+    C -->|no| D[error: pass --yes]
+    C -->|yes| F[print new server names\nprompt y/N]
+    F --> G{User confirms?}
+    G -->|yes| E
+    G -->|no| H[skip new installs\napply updates only]
+```
+
+### Merge Into Agent Settings
+
+```mermaid
+flowchart TD
+    A[server definition] --> B{Agent format?}
+
+    B -->|McpServers JSON| C[write under mcpServers key\nClaude Code, Cursor, Roo,\nCline, Gemini CLI, Goose,\nWindsurf, Amp and others]
+    B -->|VsCodeServers JSON| D[write under servers key\nadd type: stdio if missing\nGitHub Copilot / VS Code]
+    B -->|OpenCode JSON| E[convert to type:local or type:remote\nwrite under mcp key\nOpenCode]
+    B -->|CodexToml TOML| F[write mcp_servers.name table\nCodex]
+
+    C --> G{server name already\nin target file?}
+    D --> G
+    E --> G
+    F --> G
+    G -->|yes| H[skip — never overwrite]
+    G -->|no| I[write server definition]
+    I --> J[save settings file]
+```
+
+---
+
+## Scope & Destinations
+
+```mermaid
+flowchart TD
+    A[Resolve scope] --> B{Source?}
+    B -->|--project / --global flag| C[use CLI value]
+    B -->|scope: in config| D[use config value]
+    B -->|neither| E[default: global]
+
+    C --> F{Scope}
+    D --> F
+    E --> F
+
+    F -->|global| G[~/.agent/skills/ per agent\nlock: ~/.config/kasetto/kasetto.lock]
+    F -->|project| H[./.agent/skills/ per agent\nlock: ./.kasetto.lock]
+```
+
+---
+
+## Dry Run
+
+`--dry-run` skips all writes. Actions report `would_install`, `would_update`, `would_remove`. Lock file is never modified.

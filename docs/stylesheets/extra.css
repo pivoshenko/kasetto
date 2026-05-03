@@ -124,6 +124,11 @@
   margin-top: 0;
 }
 
+.mermaid {
+  display: flex;
+  justify-content: center;
+}
+
 [data-md-color-scheme="kasetto-dark"] .md-typeset .keys kbd {
   background-color: #161616;
   border: 1px solid #222222;
