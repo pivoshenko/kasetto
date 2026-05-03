@@ -7,6 +7,7 @@
     - [How To Submit an Enhancement](#how-to-submit-an-enhancement)
   - [Code Contributions](#code-contributions)
     - [Local Development](#local-development)
+    - [Branches](#branches)
     - [Commits](#commits)
     - [Pull Requests](#pull-requests)
 
@@ -66,11 +67,42 @@ When a repository includes helper scripts or task runners, prefer using those do
 > [!IMPORTANT]
 > Behavioral code changes should include or update tests.
 
+### Branches
+
+Branch names follow the pattern `<type>/<short-description>` using the same type prefixes as commits.
+The description should be lowercase kebab-case, brief, and specific enough to identify the change at a glance.
+
+Examples:
+
+```
+feat/github-token-refresh
+fix/private-repo-archive-auth
+docs/update-sync-flow-diagram
+refactor/mcps-schema-alignment
+```
+
+A branch covering multiple unrelated changes should be split — one concern per branch makes review and bisect much easier.
+
 ### Commits
 
 Use clear, focused commits with descriptive messages.
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+
+**Format**
+
+```
+<type>(<scope>): <subject>
+
+[optional body]
+```
+
+- **type** — one of the prefixes from the table below
+- **scope** — the module, command, or area being changed (e.g. `sync`, `mcps`, `github`, `landing`, `config`); omit when the change is truly cross-cutting
+- **subject** — imperative mood, lowercase, no trailing period, 72 characters or fewer
+- **body** — optional; use it to explain *why*, not *what*; wrap at 72 characters
+
+**Type prefixes**
 
 | Prefix     | When to use                                                                                             |
 | ---------- | ------------------------------------------------------------------------------------------------------- |
@@ -87,9 +119,14 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 | `design`   | Changes to visual or UI design assets and layout                                                        |
 | `revert`   | Reverts a previous commit (reference the reverted commit hash in the body)                              |
 
-Example: `feat(auth): add token refresh support`
+**Examples**
 
-If your repository enforces a different commit style, follow the repository-specific rule.
+```
+feat(sync): support skills source sub-directory selection
+fix(github): url-encode git refs in API tarball endpoint
+refactor(mcps): align mcps[] schema with skills[]
+docs(config): document browser URL auto-rewriting for --config
+```
 
 ### Pull Requests
 
