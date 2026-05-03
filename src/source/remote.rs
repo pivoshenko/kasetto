@@ -268,7 +268,7 @@ mod tests {
             repo: "r".into(),
         };
         let (url, _) = remote_repo_archive_branch(&parsed, "main");
-        assert_eq!(url, "https://github.com/o/r/archive/refs/heads/main.tar.gz");
+        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/main");
     }
 
     #[test]
@@ -279,9 +279,9 @@ mod tests {
             repo: "r".into(),
         };
         let (url, _) = remote_repo_archive_ref(&parsed, "v2.0");
-        assert_eq!(url, "https://github.com/o/r/archive/v2.0.tar.gz");
+        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/v2.0");
         let (url, _) = remote_repo_archive_ref(&parsed, "abc123def");
-        assert_eq!(url, "https://github.com/o/r/archive/abc123def.tar.gz");
+        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/abc123def");
     }
 
     #[test]
