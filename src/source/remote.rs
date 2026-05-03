@@ -20,7 +20,10 @@ pub(super) fn remote_repo_archive_branch(
             // GitHub's web archive endpoint doesn't support token auth for private repos.
             // The API endpoint (api.github.com) does and works for public repos too.
             let url = if host == "github.com" && !auth.headers.is_empty() {
-                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{}", encode_github_ref(branch))
+                format!(
+                    "https://api.{host}/repos/{owner}/{repo}/tarball/{}",
+                    encode_github_ref(branch)
+                )
             } else {
                 format!("https://{host}/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz")
             };
@@ -37,7 +40,10 @@ pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (Strin
         RepoUrl::GitHub { host, owner, repo } => {
             let auth = UrlRequestAuth::for_github_archive();
             let url = if host == "github.com" && !auth.headers.is_empty() {
-                format!("https://api.{host}/repos/{owner}/{repo}/tarball/{}", encode_github_ref(git_ref))
+                format!(
+                    "https://api.{host}/repos/{owner}/{repo}/tarball/{}",
+                    encode_github_ref(git_ref)
+                )
             } else {
                 format!("https://{host}/{owner}/{repo}/archive/{git_ref}.tar.gz")
             };
@@ -264,10 +270,15 @@ pub(super) fn download_extract(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn github_branch_archive_uses_refs_heads_prefix_without_token() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::remove_var("GITHUB_TOKEN");
         std::env::remove_var("GH_TOKEN");
         let parsed = RepoUrl::GitHub {
@@ -282,6 +293,7 @@ mod tests {
 
     #[test]
     fn github_branch_archive_uses_api_endpoint_with_token() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GITHUB_TOKEN", "test-token");
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
@@ -295,6 +307,7 @@ mod tests {
 
     #[test]
     fn github_branch_archive_encodes_slash_in_ref_with_token() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GITHUB_TOKEN", "test-token");
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
@@ -303,11 +316,15 @@ mod tests {
         };
         let (url, _) = remote_repo_archive_branch(&parsed, "feature/foo");
         std::env::remove_var("GITHUB_TOKEN");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/feature%2Ffoo");
+        assert_eq!(
+            url,
+            "https://api.github.com/repos/o/r/tarball/feature%2Ffoo"
+        );
     }
 
     #[test]
     fn github_ref_archive_uses_short_form_without_token() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::remove_var("GITHUB_TOKEN");
         std::env::remove_var("GH_TOKEN");
         let parsed = RepoUrl::GitHub {
@@ -323,6 +340,7 @@ mod tests {
 
     #[test]
     fn github_ref_archive_encodes_slash_in_ref_with_token() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GITHUB_TOKEN", "test-token");
         let parsed = RepoUrl::GitHub {
             host: "github.com".into(),
@@ -331,7 +349,10 @@ mod tests {
         };
         let (url, _) = remote_repo_archive_ref(&parsed, "refs/tags/release/1.2");
         std::env::remove_var("GITHUB_TOKEN");
-        assert_eq!(url, "https://api.github.com/repos/o/r/tarball/refs%2Ftags%2Frelease%2F1.2");
+        assert_eq!(
+            url,
+            "https://api.github.com/repos/o/r/tarball/refs%2Ftags%2Frelease%2F1.2"
+        );
     }
 
     #[test]
