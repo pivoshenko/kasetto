@@ -1,4 +1,7 @@
 {
   "buildCommand": "uv pip install --system -r requirements.txt && mkdocs build -f mkdocs.yml",
-  "outputDirectory": "../site"
+  "outputDirectory": "../site",
+  "github": {
+    "enabled": false
+  }
 }
