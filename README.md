@@ -134,6 +134,7 @@ kst sync [--config <path-or-url>] [--dry-run] [--quiet] [--json] [--plain] [--ve
 | `--json`    | Print the sync report as JSON                                                                                                                      |
 | `--plain`   | Disable colors and spinner animations                                                                                                              |
 | `--verbose` | Show per-skill action details                                                                                                                      |
+| `--no-hooks` | Skip pre_sync and post_sync hook execution                                                                                                       |
 | `--project` | Install into the current project directory                                                                                                         |
 | `--global`  | Install globally (default)                                                                                                                         |
 
@@ -261,6 +262,14 @@ mcps:
     mcps:
       - github        # → mcps/github.json
       - linear        # → mcps/linear.json
+
+# Hooks (optional) — define hooks in local or global config.
+# If both exist, local takes priority.
+hooks:
+  pre_sync:
+    - echo "Starting sync..."
+  post_sync:
+    - echo "Synced $KASETTO_INSTALLED skills, $KASETTO_UPDATED updated"
 ```
 
 | Key                | Required | Description                                                                  |
@@ -279,6 +288,9 @@ mcps:
 | `mcps[].branch`    | no       | Branch for remote sources                                                    |
 | `mcps[].ref`       | no       | Git tag, commit SHA, or ref                                                  |
 | `mcps[].mcps`      | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects         |
+| `hooks`            | no       | Optional `pre_sync` and `post_sync` hook commands                            |
+| `hooks.pre_sync`   | no       | Shell commands to run before sync (failure aborts)                           |
+| `hooks.post_sync`  | no       | Shell commands to run after sync (receives report via `KASETTO_*` env vars)  |
 
 ## Supported Agents
 
@@ -347,7 +359,6 @@ The same tokens apply when you fetch a remote config via `--config https://...`.
 ## Roadmap
 
 - Agents management
-- Hooks management
 - Audit command — scan config and MCP servers for security issues
 - Smart URL rewriting — auto-rewrite GitHub `/blob/` URLs to raw content
 - Your idea? [Open an issue](https://github.com/pivoshenko/kasetto/issues)

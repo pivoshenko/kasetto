@@ -12,6 +12,14 @@ pub(crate) enum Scope {
 }
 
 #[derive(Debug, Deserialize)]
+pub(crate) struct Hooks {
+    #[serde(default)]
+    pub pre_sync: Vec<String>,
+    #[serde(default)]
+    pub post_sync: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub(crate) struct Config {
     pub destination: Option<String>,
     #[serde(default)]
@@ -22,6 +30,7 @@ pub(crate) struct Config {
     pub skills: Vec<SourceSpec>,
     #[serde(default)]
     pub mcps: Vec<McpSourceSpec>,
+    pub hooks: Option<Hooks>,
 }
 
 impl Config {

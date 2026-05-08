@@ -24,8 +24,11 @@ pub(super) fn sync_skills(
         let stage = std::env::temp_dir().join(format!("kasetto-{}-{}", now_unix(), i));
         match materialize_source(src, ctx.cfg_dir, &stage) {
             Ok(materialized) => {
-                let (targets, broken_skills) =
-                    select_targets(&src.skills, &materialized.available, &materialized.source_root)?;
+                let (targets, broken_skills) = select_targets(
+                    &src.skills,
+                    &materialized.available,
+                    &materialized.source_root,
+                )?;
 
                 record_broken_skills(ctx, &src.source, broken_skills, summary, actions);
 

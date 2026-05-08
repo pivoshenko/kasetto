@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Features
+
+- **hooks**: `pre_sync` and `post_sync` hooks in the YAML config. Run shell commands before or after sync with `--no-hooks` to skip. Defined in local or global config; local takes priority when both exist. `post_sync` hooks receive the sync report via `KASETTO_*` environment variables.
+
 ## [2.6.1] - 2026-05-07
 
 ### Bug fixes

@@ -33,6 +33,7 @@ kst sync [OPTIONS]
 | `--json`                 | Print the sync report as JSON                                |
 | `--plain`                | Disable colors and spinner animations                        |
 | `--verbose`              | Show per-skill action details                                |
+| `--no-hooks`             | Skip `pre_sync` and `post_sync` hook execution               |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 

@@ -1,3 +1,4 @@
+mod hooks;
 mod mcps;
 mod skills;
 
@@ -9,7 +10,7 @@ use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, RESET, SECONDARY, SUCCESS, W
 use crate::error::Result;
 use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations};
 use crate::lock::{load_lock, save_lock};
-use crate::model::{resolve_scope, Config, Report, Scope, Summary};
+use crate::model::{resolve_scope, Config, Hooks, Report, Scope, Summary};
 use crate::ui::{animations_enabled, print_json, status_chip};
 
 pub(super) struct SyncContext<'a> {
@@ -32,8 +33,33 @@ pub(crate) struct SyncOptions<'a> {
     pub as_json: bool,
     pub plain: bool,
     pub verbose: bool,
+    pub no_hooks: bool,
     pub scope_override: Option<Scope>,
     pub show_banner: bool,
+}
+
+/// Load hooks from the local `kasetto.yaml` if it exists, falling back to the
+/// global config. If both define hooks, local wins.
+fn resolve_hooks() -> Option<Hooks> {
+    let local_path = crate::DEFAULT_CONFIG_FILENAME;
+    if let Ok(text) = std::fs::read_to_string(local_path) {
+        if let Ok(cfg) = serde_yaml::from_str::<Config>(&text) {
+            if cfg.hooks.is_some() {
+                return cfg.hooks;
+            }
+        }
+    }
+
+    if let Ok(global_dir) = crate::fsops::dirs_kasetto_config() {
+        let global_path = global_dir.join(crate::DEFAULT_GLOBAL_CONFIG_FILENAME);
+        if let Ok(text) = std::fs::read_to_string(&global_path) {
+            if let Ok(cfg) = serde_yaml::from_str::<Config>(&text) {
+                return cfg.hooks;
+            }
+        }
+    }
+
+    None
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
@@ -68,6 +94,12 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         quiet: opts.quiet,
     };
 
+    let hooks = if opts.no_hooks { None } else { resolve_hooks() };
+
+    if let Some(ref h) = hooks {
+        hooks::run_hooks(&ctx, &h.pre_sync, "pre-sync", &[])?;
+    }
+
     let mut lock = load_lock(scope, &cfg_dir)?;
     let mut state = lock.state();
     let mut summary = Summary::default();
@@ -93,6 +125,12 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     if !opts.dry_run {
         lock.save_report_json(&serde_json::to_string(&report)?);
         save_lock(&lock, scope, &cfg_dir)?;
+    }
+
+    if let Some(ref h) = hooks {
+        let env = hooks::post_sync_env(&report);
+        let env_ref: Vec<(&str, &str)> = env.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        hooks::run_hooks(&ctx, &h.post_sync, "post-sync", &env_ref)?;
     }
 
     if opts.as_json {
@@ -201,4 +239,141 @@ pub(super) fn file_name_str(path: &std::path::Path) -> String {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::sync::Mutex;
+
+    /// Serialise hook-resolution tests because they mutate the process-wide
+    /// current-working directory and `XDG_CONFIG_HOME`.
+    static HOOKS_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn temp_dir(prefix: &str) -> std::path::PathBuf {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
+    }
+
+    #[test]
+    fn resolve_hooks_prefers_local() {
+        let _guard = HOOKS_TEST_LOCK.lock().unwrap();
+
+        let dir = temp_dir("kasetto-hooks-local");
+        fs::create_dir_all(&dir).unwrap();
+        let local_cfg = dir.join("kasetto.yaml");
+        fs::write(
+            &local_cfg,
+            r#"
+agent: cursor
+skills: []
+hooks:
+  pre_sync:
+    - echo local
+"#,
+        )
+        .unwrap();
+
+        let global_dir = dir.join("global");
+        fs::create_dir_all(&global_dir).unwrap();
+        let global_cfg = global_dir.join("kasetto").join("kasetto.yaml");
+        fs::create_dir_all(global_cfg.parent().unwrap()).unwrap();
+        fs::write(
+            &global_cfg,
+            r#"
+agent: cursor
+skills: []
+hooks:
+  pre_sync:
+    - echo global
+"#,
+        )
+        .unwrap();
+
+        let _orig_local = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+        let _orig_xdg = std::env::var_os("XDG_CONFIG_HOME");
+        std::env::set_var("XDG_CONFIG_HOME", &global_dir);
+
+        let hooks = resolve_hooks();
+        assert!(hooks.is_some());
+        assert_eq!(hooks.unwrap().pre_sync, vec!["echo local"]);
+
+        let _ = fs::remove_dir_all(&dir);
+        if let Some(v) = _orig_xdg {
+            std::env::set_var("XDG_CONFIG_HOME", v);
+        } else {
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+        std::env::set_current_dir(_orig_local).unwrap();
+    }
+
+    #[test]
+    fn resolve_hooks_falls_back_to_global() {
+        let _guard = HOOKS_TEST_LOCK.lock().unwrap();
+
+        let dir = temp_dir("kasetto-hooks-global");
+        fs::create_dir_all(&dir).unwrap();
+
+        let global_dir = dir.join("global");
+        fs::create_dir_all(&global_dir).unwrap();
+        let global_cfg = global_dir.join("kasetto").join("kasetto.yaml");
+        fs::create_dir_all(global_cfg.parent().unwrap()).unwrap();
+        fs::write(
+            &global_cfg,
+            r#"
+agent: cursor
+skills: []
+hooks:
+  pre_sync:
+    - echo global
+"#,
+        )
+        .unwrap();
+
+        let _orig_local = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+        let _orig_xdg = std::env::var_os("XDG_CONFIG_HOME");
+        std::env::set_var("XDG_CONFIG_HOME", &global_dir);
+
+        let hooks = resolve_hooks();
+        assert!(hooks.is_some());
+        assert_eq!(hooks.unwrap().pre_sync, vec!["echo global"]);
+
+        let _ = fs::remove_dir_all(&dir);
+        if let Some(v) = _orig_xdg {
+            std::env::set_var("XDG_CONFIG_HOME", v);
+        } else {
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+        std::env::set_current_dir(_orig_local).unwrap();
+    }
+
+    #[test]
+    fn resolve_hooks_returns_none_when_neither_exists() {
+        let _guard = HOOKS_TEST_LOCK.lock().unwrap();
+
+        let dir = temp_dir("kasetto-hooks-none");
+        fs::create_dir_all(&dir).unwrap();
+
+        let _orig_local = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+        let _orig_xdg = std::env::var_os("XDG_CONFIG_HOME");
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+
+        let hooks = resolve_hooks();
+        assert!(hooks.is_none());
+
+        let _ = fs::remove_dir_all(&dir);
+        if let Some(v) = _orig_xdg {
+            std::env::set_var("XDG_CONFIG_HOME", v);
+        } else {
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+        std::env::set_current_dir(_orig_local).unwrap();
+    }
 }

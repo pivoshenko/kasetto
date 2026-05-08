@@ -260,8 +260,7 @@ mod tests {
             SkillTarget::Name("missing".to_string()),
         ]);
 
-        let (targets, broken) =
-            select_targets(&sf, &available, Path::new("/tmp")).expect("select");
+        let (targets, broken) = select_targets(&sf, &available, Path::new("/tmp")).expect("select");
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, "present");
         assert_eq!(broken.len(), 1);
@@ -287,8 +286,7 @@ mod tests {
             path: Some(nested.to_string_lossy().to_string()),
         }]);
 
-        let (targets, broken) =
-            select_targets(&sf, &available, Path::new("/tmp")).expect("select");
+        let (targets, broken) = select_targets(&sf, &available, Path::new("/tmp")).expect("select");
         assert!(broken.is_empty());
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, "custom-skill");
@@ -598,5 +596,36 @@ mcps:
         assert!(
             matches!(&entries[0], McpEntry::Obj { name, path: Some(p) } if name == "my-server" && p == "tools")
         );
+    }
+
+    #[test]
+    fn config_parses_hooks() {
+        let yaml = r#"
+agent: cursor
+skills: []
+hooks:
+  pre_sync:
+    - echo "before"
+    - ./scripts/validate.sh
+  post_sync:
+    - echo "after"
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        let hooks = cfg.hooks.expect("hooks present");
+        assert_eq!(
+            hooks.pre_sync,
+            vec!["echo \"before\"", "./scripts/validate.sh"]
+        );
+        assert_eq!(hooks.post_sync, vec!["echo \"after\""]);
+    }
+
+    #[test]
+    fn config_hooks_optional() {
+        let yaml = r#"
+agent: cursor
+skills: []
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert!(cfg.hooks.is_none());
     }
 }

@@ -67,6 +67,13 @@ mcps:
     mcps:
       - name: my-server
         path: tools   # → tools/my-server.json
+
+# Hooks (optional)
+hooks:
+  pre_sync:
+    - ./scripts/validate-skills.sh
+  post_sync:
+    - echo "Synced $KASETTO_INSTALLED skills"
 ```
 
 ## Reference
@@ -80,6 +87,7 @@ mcps:
 | `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`      | **yes**  | List of skill sources                                               |
 | `mcps`        | no       | List of MCP server sources                                          |
+| `hooks`       | no       | Optional `pre_sync` and `post_sync` hook commands                   |
 
 ### Skill Source Fields
 
@@ -140,6 +148,51 @@ Paths are resolved relative to the source root (or `sub-dir` if set); absolute p
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](./how-sync-works.md) for merge behavior details.
+
+## Hooks
+
+Define shell commands that run before or after `kst sync`. Hooks can be placed in your **local**
+`kasetto.yaml` or in the **global** config at `~/.config/kasetto/kasetto.yaml`.
+
+If both the local and global config define hooks, **local takes priority** and the global hooks
+are ignored entirely.
+
+### Example
+
+```yaml
+hooks:
+  pre_sync:
+    - echo "Starting sync..."
+    - ./scripts/validate-skills.sh
+  post_sync:
+    - echo "Synced $KASETTO_INSTALLED skills, updated $KASETTO_UPDATED"
+    - curl -X POST https://hooks.slack.com/... -d '{"text":"Kasetto sync complete"}'
+```
+
+### Reference
+
+| Key               | Description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `hooks`           | Object containing `pre_sync` and/or `post_sync` arrays                        |
+| `hooks.pre_sync`  | Shell commands run before sync via `sh -c`. Any failure aborts the sync.      |
+| `hooks.post_sync` | Shell commands run after sync completes. Receives report via `KASETTO_*` env vars. |
+
+Hooks run in the order listed. Use `--no-hooks` to skip all hooks for a single run.
+
+`post_sync` hooks receive the following environment variables:
+
+| Variable              | Example value        |
+| --------------------- | -------------------- |
+| `KASETTO_RUN_ID`      | `1746700000`         |
+| `KASETTO_CONFIG`      | `kasetto.yaml`       |
+| `KASETTO_DESTINATION` | `/home/user/.codex/skills` |
+| `KASETTO_DRY_RUN`     | `0` or `1`           |
+| `KASETTO_INSTALLED`   | `2`                  |
+| `KASETTO_UPDATED`     | `1`                  |
+| `KASETTO_REMOVED`     | `0`                  |
+| `KASETTO_UNCHANGED`   | `5`                  |
+| `KASETTO_BROKEN`      | `0`                  |
+| `KASETTO_FAILED`      | `0`                  |
 
 ## Remote Configs
 

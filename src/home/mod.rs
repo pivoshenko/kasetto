@@ -35,6 +35,7 @@ pub(crate) fn run(program_name: &str, default_config: &str) -> Result<()> {
                 as_json: sync.json,
                 plain: sync.plain,
                 verbose: sync.verbose,
+                no_hooks: sync.no_hooks,
                 scope_override: sync.scope.scope_override(),
                 show_banner: true,
             })
