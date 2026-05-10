@@ -8,6 +8,7 @@ use crate::fsops::http_client;
 
 use super::auth::{auth_env_inline_help, http_fetch_auth_hint, UrlRequestAuth};
 use super::parse::RepoUrl;
+use crate::model::GitPin;
 
 /// Build archive URL for a branch name (uses `refs/heads/` prefix for GitHub).
 pub(super) fn remote_repo_archive_branch(
@@ -215,7 +216,7 @@ pub(super) fn download_extract(
     auth: &UrlRequestAuth,
     dst: &Path,
     user_source: &str,
-) -> Result<()> {
+) -> Result<String> {
     if dst.exists() {
         fs::remove_dir_all(dst)?;
     }
@@ -244,10 +245,16 @@ pub(super) fn download_extract(
     }
     let gz = flate2::read::GzDecoder::new(body.as_ref());
     let mut archive = tar::Archive::new(gz);
+    let mut archive_root = None;
     for entry in archive.entries()? {
         let mut entry = entry?;
         let p = entry.path()?;
         let parts: Vec<_> = p.components().collect();
+        if archive_root.is_none() {
+            archive_root = parts
+                .first()
+                .map(|component| component.as_os_str().to_string_lossy().to_string());
+        }
         if parts.len() < 2 {
             continue;
         }
@@ -265,7 +272,142 @@ pub(super) fn download_extract(
         }
         entry.unpack(target)?;
     }
-    Ok(())
+    Ok(archive_root.unwrap_or_else(|| "unknown".to_string()))
+}
+
+fn archive_root_name(parsed: &RepoUrl, sha: &str) -> String {
+    match parsed {
+        RepoUrl::GitHub { owner, repo, .. } => format!("{owner}-{repo}-{sha}"),
+        RepoUrl::Gitea { owner, repo, .. } => format!("{owner}-{repo}-{sha}"),
+        RepoUrl::Bitbucket {
+            workspace,
+            repo_slug,
+            ..
+        } => {
+            format!("{workspace}-{repo_slug}-{sha}")
+        }
+        RepoUrl::GitLab { project_path, .. } => {
+            let slug = project_path.replace('/', "-");
+            format!("{slug}-{sha}")
+        }
+    }
+}
+
+fn fetch_json_field(url: &str, auth: &UrlRequestAuth, field_path: &[&str]) -> Option<String> {
+    let client = http_client().ok()?;
+    let request = client.get(url);
+    let request = auth.apply(request);
+    let response = request.send().ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let text = response.text().ok()?;
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let mut current = &value;
+    for field in field_path {
+        current = current.get(field)?;
+    }
+    current.as_str().map(String::from)
+}
+
+fn resolve_branch_sha(parsed: &RepoUrl, branch: &str) -> Option<String> {
+    match parsed {
+        RepoUrl::GitHub { host, owner, repo } => {
+            let api_host = if host == "github.com" {
+                "api.github.com"
+            } else {
+                host
+            };
+            let url = format!("https://{api_host}/repos/{owner}/{repo}/branches/{branch}");
+            let auth = UrlRequestAuth::for_github_archive();
+            fetch_json_field(&url, &auth, &["commit", "sha"])
+        }
+        RepoUrl::GitLab { host, project_path } => {
+            let encoded = project_path.replace('/', "%2F");
+            let url =
+                format!("https://{host}/api/v4/projects/{encoded}/repository/branches/{branch}");
+            let auth = UrlRequestAuth::for_gitlab_archive();
+            fetch_json_field(&url, &auth, &["commit", "id"])
+        }
+        RepoUrl::Bitbucket {
+            workspace,
+            repo_slug,
+        } => {
+            let url = format!(
+                "https://api.bitbucket.org/2.0/repositories/{workspace}/{repo_slug}/refs/branches/{branch}"
+            );
+            let auth = UrlRequestAuth::for_bitbucket_archive();
+            fetch_json_field(&url, &auth, &["target", "hash"])
+        }
+        RepoUrl::Gitea { host, owner, repo } => {
+            let url = format!("https://{host}/api/v1/repos/{owner}/{repo}/branches/{branch}");
+            let auth = UrlRequestAuth::for_gitea_archive();
+            fetch_json_field(&url, &auth, &["commit", "id"])
+        }
+    }
+}
+
+fn resolve_ref_sha(parsed: &RepoUrl, git_ref: &str) -> Option<String> {
+    match parsed {
+        RepoUrl::GitHub { host, owner, repo } => {
+            let api_host = if host == "github.com" {
+                "api.github.com"
+            } else {
+                host
+            };
+            let url = format!("https://{api_host}/repos/{owner}/{repo}/git/ref/{git_ref}");
+            let auth = UrlRequestAuth::for_github_archive();
+            fetch_json_field(&url, &auth, &["object", "sha"])
+        }
+        RepoUrl::GitLab { host, project_path } => {
+            let encoded = project_path.replace('/', "%2F");
+            let url =
+                format!("https://{host}/api/v4/projects/{encoded}/repository/commits/{git_ref}");
+            let auth = UrlRequestAuth::for_gitlab_archive();
+            fetch_json_field(&url, &auth, &["id"])
+        }
+        RepoUrl::Bitbucket {
+            workspace,
+            repo_slug,
+        } => {
+            let url = format!(
+                "https://api.bitbucket.org/2.0/repositories/{workspace}/{repo_slug}/commit/{git_ref}"
+            );
+            let auth = UrlRequestAuth::for_bitbucket_archive();
+            fetch_json_field(&url, &auth, &["hash"])
+        }
+        RepoUrl::Gitea { host, owner, repo } => {
+            let url = format!("https://{host}/api/v1/repos/{owner}/{repo}/git/commits/{git_ref}");
+            let auth = UrlRequestAuth::for_gitea_archive();
+            fetch_json_field(&url, &auth, &["sha"])
+        }
+    }
+}
+
+/// Resolve the full revision string for a remote ref without downloading the archive.
+/// Returns `branch:{name}@{archive_root}` or `ref:{ref}@{archive_root}`.
+/// Returns `None` if the provider can't be reached or the ref doesn't exist (caller falls back to archive download).
+pub(super) fn resolve_remote_revision(parsed: &RepoUrl, pin: &GitPin) -> Option<String> {
+    let (label, sha) = match pin {
+        GitPin::Ref(r) => {
+            let sha = resolve_ref_sha(parsed, r)?;
+            (format!("ref:{r}"), sha)
+        }
+        GitPin::Branch(b) => {
+            let sha = resolve_branch_sha(parsed, b)?;
+            (format!("branch:{b}"), sha)
+        }
+        GitPin::Default => {
+            if let Some(sha) = resolve_branch_sha(parsed, "main") {
+                ("branch:main".to_string(), sha)
+            } else {
+                let sha = resolve_branch_sha(parsed, "master")?;
+                ("branch:master".to_string(), sha)
+            }
+        }
+    };
+    let root = archive_root_name(parsed, &sha);
+    Some(format!("{label}@{root}"))
 }
 
 #[cfg(test)]
@@ -275,6 +417,53 @@ mod tests {
     use super::*;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn archive_root_name_github() {
+        let parsed = RepoUrl::GitHub {
+            host: "github.com".into(),
+            owner: "openai".into(),
+            repo: "skills".into(),
+        };
+        assert_eq!(archive_root_name(&parsed, "abc123"), "openai-skills-abc123");
+    }
+
+    #[test]
+    fn archive_root_name_gitea() {
+        let parsed = RepoUrl::Gitea {
+            host: "codeberg.org".into(),
+            owner: "user".into(),
+            repo: "my-skills".into(),
+        };
+        assert_eq!(
+            archive_root_name(&parsed, "def456"),
+            "user-my-skills-def456"
+        );
+    }
+
+    #[test]
+    fn archive_root_name_bitbucket() {
+        let parsed = RepoUrl::Bitbucket {
+            workspace: "acme".into(),
+            repo_slug: "skill-packs".into(),
+        };
+        assert_eq!(
+            archive_root_name(&parsed, "789ghi"),
+            "acme-skill-packs-789ghi"
+        );
+    }
+
+    #[test]
+    fn archive_root_name_gitlab() {
+        let parsed = RepoUrl::GitLab {
+            host: "gitlab.com".into(),
+            project_path: "group/subgroup/repo".into(),
+        };
+        assert_eq!(
+            archive_root_name(&parsed, "jkl012"),
+            "group-subgroup-repo-jkl012"
+        );
+    }
 
     #[test]
     fn github_branch_archive_uses_refs_heads_prefix_without_token() {

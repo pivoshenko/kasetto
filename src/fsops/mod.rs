@@ -260,8 +260,7 @@ mod tests {
             SkillTarget::Name("missing".to_string()),
         ]);
 
-        let (targets, broken) =
-            select_targets(&sf, &available, Path::new("/tmp")).expect("select");
+        let (targets, broken) = select_targets(&sf, &available, Path::new("/tmp")).expect("select");
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, "present");
         assert_eq!(broken.len(), 1);
@@ -287,8 +286,7 @@ mod tests {
             path: Some(nested.to_string_lossy().to_string()),
         }]);
 
-        let (targets, broken) =
-            select_targets(&sf, &available, Path::new("/tmp")).expect("select");
+        let (targets, broken) = select_targets(&sf, &available, Path::new("/tmp")).expect("select");
         assert!(broken.is_empty());
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, "custom-skill");

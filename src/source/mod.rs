@@ -16,6 +16,8 @@ use crate::error::{err, Result};
 use crate::fsops::resolve_path;
 use crate::model::{GitPin, SourceSpec};
 
+pub(crate) const UNKNOWN_REMOTE_REVISION: &str = "remote:unknown";
+
 fn repo_name_hint(parsed: &parse::RepoUrl) -> String {
     match parsed {
         parse::RepoUrl::GitHub { repo, .. } => repo.clone(),
@@ -68,6 +70,17 @@ fn resolve_source_root(base_root: &Path, sub_dir: Option<&str>) -> Result<PathBu
     Ok(resolved)
 }
 
+/// For remote sources, resolves the current remote revision without downloading the archive.
+/// Returns `None` for local sources, unsupported providers, or API failures (caller falls back to download).
+pub(crate) fn resolve_source_revision(src: &SourceSpec) -> Option<String> {
+    if !src.source.contains("://") {
+        return None;
+    }
+    let parsed = parse::parse_repo_url(&src.source).ok()?;
+    let pin = src.git_pin();
+    remote::resolve_remote_revision(&parsed, &pin)
+}
+
 pub(crate) fn materialize_source(
     src: &SourceSpec,
     cfg_dir: &Path,
@@ -81,22 +94,28 @@ pub(crate) fn materialize_source(
             GitPin::Ref(r) => {
                 let (url, auth) = remote::remote_repo_archive_ref(&parsed, r);
                 remote::download_extract(&url, &auth, stage, &src.source)?;
-                format!("ref:{r}")
+                remote::resolve_remote_revision(&parsed, &pin)
+                    .unwrap_or_else(|| UNKNOWN_REMOTE_REVISION.to_string())
             }
             GitPin::Branch(b) => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, b);
                 remote::download_extract(&url, &auth, stage, &src.source)?;
-                format!("branch:{b}")
+                remote::resolve_remote_revision(&parsed, &pin)
+                    .unwrap_or_else(|| UNKNOWN_REMOTE_REVISION.to_string())
             }
             GitPin::Default => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, "main");
-                remote::download_extract(&url, &auth, stage, &src.source).or_else(|_| {
+                if remote::download_extract(&url, &auth, stage, &src.source).is_err() {
                     let (url, auth) = remote::remote_repo_archive_branch(&parsed, "master");
                     remote::download_extract(&url, &auth, stage, &src.source).map_err(|e2| {
                         err(format!("{e2} (also tried branch `master` after `main`)"))
-                    })
-                })?;
-                "branch:main".into()
+                    })?;
+                    remote::resolve_remote_revision(&parsed, &GitPin::Branch("master".to_string()))
+                        .unwrap_or_else(|| UNKNOWN_REMOTE_REVISION.to_string())
+                } else {
+                    remote::resolve_remote_revision(&parsed, &GitPin::Branch("main".to_string()))
+                        .unwrap_or_else(|| UNKNOWN_REMOTE_REVISION.to_string())
+                }
             }
         };
 
