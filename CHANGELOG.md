@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8.0] - 2026-05-10
+
+### Bug fixes
+
+- Update keywords
+- **site**: Allow site directory in vercel deployment
+
+### Documentation
+
+- Document the site subproject in claude.md
+
+### Features
+
+- **site**: Show repo name and star count in topnav
+- **site**: Scroll cue, hero rebalance, unify warm accent to rust
+- **site**: Proper multi-column footer, polished navbar, wider hero demo
+- **site**: Typewriter command and per-row spinner in hero demo
+- **site**: Wire docs search, a11y polish, animated kst demo
+- **site**: Polish homepage hero and docs styling
+- **site**: Merge landing and docs into unified next.js site
+
+### Miscellaneous
+
+- Remove stale example
+- **site**: Disable vercel auto-deploy on push to main
+- **ci**: Rename vercel project secret variable
+- **docs**: Remove mkdocs and finish migration to fumadocs
+
 ## [2.7.0] - 2026-05-09
 
 ### Documentation
@@ -12,6 +40,10 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - **config**: Add extends for config inheritance
+
+### Release
+
+- V2.7.0
 
 ## [2.6.1] - 2026-05-07
 
