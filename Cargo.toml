@@ -6,11 +6,32 @@ description = "A declarative AI agent environment manager, written in Rust."
 authors = ["Volodymyr Pivoshenko"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/pivoshenko/kasetto"
+homepage = "https://kasetto.dev"
 repository = "https://github.com/pivoshenko/kasetto"
-documentation = "https://docs.rs/kasetto"
-keywords = ["ai", "cli", "skills", "agents", "sync"]
-categories = ["command-line-utilities", "config", "development-tools"]
+documentation = "https://docs.kasetto.dev"
+keywords = [
+  "ai",
+  "ai-agents",
+  "ai-skills",
+  "antigravity",
+  "claude",
+  "claude-code",
+  "codex",
+  "copilot",
+  "cursor",
+  "declarative",
+  "developer-tools",
+  "gemini",
+  "kiro",
+  "mcp",
+  "mcps",
+  "opencode",
+  "opencode-ai",
+  "openclaw",
+  "package-manager",
+  "skills",
+  "windsurf",
+]
 default-run = "kasetto"
 
 [[bin]]
