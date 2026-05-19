@@ -42,6 +42,17 @@ const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
 #     mcps:
 #       - name: my-server
 #         path: tools    # → tools/my-server.json
+
+# commands:
+#   - source: https://github.com/example/commands
+#     commands: "*"
+#   - source: https://github.com/example/commands
+#     ref: v1.0
+#     sub-dir: commands
+#     commands:
+#       - review-pr
+#       - name: deploy
+#         path: ops
 "#;
 
 pub(crate) fn run(force: bool, global: bool) -> Result<()> {

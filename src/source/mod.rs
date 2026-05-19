@@ -249,6 +249,111 @@ pub(crate) fn resolve_mcp_entry(root: &Path, entry: &crate::model::McpEntry) -> 
     }
 }
 
+/// Walk `<root>/commands/**/*.md` and return a map of namespaced name → file path.
+///
+/// Subdirectory nesting becomes `:` separated namespaces:
+/// - `commands/commit.md` → `commit`
+/// - `commands/git/commit.md` → `git:commit`
+/// - `commands/git/work/status.md` → `git:work:status`
+pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>> {
+    let mut out = HashMap::new();
+    let base = root.join("commands");
+    if !base.exists() {
+        return Ok(out);
+    }
+    walk_commands(&base, &base, &mut out)?;
+    Ok(out)
+}
+
+fn walk_commands(base: &Path, cur: &Path, out: &mut HashMap<String, PathBuf>) -> Result<()> {
+    for e in fs::read_dir(cur)? {
+        let e = e?;
+        let path = e.path();
+        let ft = e.file_type()?;
+        if ft.is_dir() {
+            walk_commands(base, &path, out)?;
+            continue;
+        }
+        if !ft.is_file() {
+            continue;
+        }
+        if path.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue;
+        }
+        let rel = match path.strip_prefix(base) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let mut parts: Vec<String> = rel
+            .components()
+            .filter_map(|c| match c {
+                Component::Normal(s) => s.to_str().map(str::to_string),
+                _ => None,
+            })
+            .collect();
+        if let Some(last) = parts.last_mut() {
+            if let Some(stem) = Path::new(last)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(str::to_string)
+            {
+                *last = stem;
+            }
+        }
+        if parts.is_empty() {
+            continue;
+        }
+        let name = parts.join(":");
+        out.insert(name, path);
+    }
+    Ok(())
+}
+
+/// Resolve one `CommandEntry` to a file path.
+///
+/// - `Name("review-pr")` → look up by namespaced name in `discover_commands`.
+/// - `Obj { name: "deploy", path: Some("ops") }` → `<root>/ops/deploy.md`.
+/// - `Obj { name: "deploy", path: None }` → look up by namespaced name.
+pub(crate) fn resolve_command_entry(
+    root: &Path,
+    entry: &crate::model::CommandEntry,
+) -> Result<(String, PathBuf)> {
+    match entry {
+        crate::model::CommandEntry::Name(n) => resolve_named_command(root, n),
+        crate::model::CommandEntry::Obj { name, path } => {
+            if let Some(dir) = path {
+                let filename = if name.ends_with(".md") {
+                    name.clone()
+                } else {
+                    format!("{name}.md")
+                };
+                let target = root.join(dir).join(&filename);
+                if target.is_file() {
+                    let derived = name.trim_end_matches(".md").to_string();
+                    Ok((derived, target))
+                } else {
+                    Err(err(format!(
+                        "command entry not found: {filename} in {dir}/ (resolved to {})",
+                        target.display()
+                    )))
+                }
+            } else {
+                resolve_named_command(root, name)
+            }
+        }
+    }
+}
+
+fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
+    let available = discover_commands(root)?;
+    if let Some(path) = available.get(name) {
+        return Ok((name.to_string(), path.clone()));
+    }
+    Err(err(format!(
+        "command entry not found: {name} (looked in commands/ with subdir namespaces)"
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -472,6 +577,56 @@ mod tests {
         };
         let path = resolve_mcp_entry(&root, &entry).unwrap();
         assert!(path.ends_with("tools/my-server.json"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn discover_commands_walks_nested_subdirs() {
+        let root = temp_dir("kasetto-cmd-disc");
+        let nested = root.join("commands/git/work");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(root.join("commands/commit.md"), "---\n---\nbody\n").unwrap();
+        fs::write(root.join("commands/git/commit.md"), "x").unwrap();
+        fs::write(nested.join("status.md"), "x").unwrap();
+        fs::write(root.join("commands/not-md.txt"), "ignored").unwrap();
+
+        let map = discover_commands(&root).unwrap();
+        assert_eq!(map.len(), 3);
+        assert!(map.contains_key("commit"));
+        assert!(map.contains_key("git:commit"));
+        assert!(map.contains_key("git:work:status"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_command_entry_name_uses_discovery() {
+        let root = temp_dir("kasetto-cmd-resolve");
+        fs::create_dir_all(root.join("commands/git")).unwrap();
+        fs::write(root.join("commands/git/commit.md"), "x").unwrap();
+
+        let entry = crate::model::CommandEntry::Name("git:commit".to_string());
+        let (name, path) = resolve_command_entry(&root, &entry).unwrap();
+        assert_eq!(name, "git:commit");
+        assert!(path.ends_with("commands/git/commit.md"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_command_entry_obj_with_path() {
+        let root = temp_dir("kasetto-cmd-obj");
+        fs::create_dir_all(root.join("ops")).unwrap();
+        fs::write(root.join("ops/deploy.md"), "x").unwrap();
+
+        let entry = crate::model::CommandEntry::Obj {
+            name: "deploy".to_string(),
+            path: Some("ops".to_string()),
+        };
+        let (name, path) = resolve_command_entry(&root, &entry).unwrap();
+        assert_eq!(name, "deploy");
+        assert!(path.ends_with("ops/deploy.md"));
 
         let _ = fs::remove_dir_all(&root);
     }

@@ -3,7 +3,9 @@ use std::io::IsTerminal;
 use crate::banner::print_banner;
 use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
 use crate::error::Result;
-use crate::list::{browse as browse_list, mcp_asset_entries, AssetEntry, BrowseInput};
+use crate::list::{
+    browse as browse_list, command_asset_entries, mcp_asset_entries, AssetEntry, BrowseInput,
+};
 use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
@@ -24,18 +26,19 @@ pub(crate) fn run(
 
     let project_root = std::env::current_dir().unwrap_or_default();
     let merged = scope_override.is_none();
-    let (skills, mcps) = load_skills_and_mcps(scope_override, &project_root)?;
+    let (skills, mcps, commands) = load_skills_mcps_commands(scope_override, &project_root)?;
 
     if as_json {
         let output = serde_json::json!({
             "skills": skills,
             "mcps": mcps,
+            "commands": commands,
             "merged_scopes": merged,
         });
         return print_json(&output);
     }
 
-    let has_anything = !skills.is_empty() || !mcps.is_empty();
+    let has_anything = !skills.is_empty() || !mcps.is_empty() || !commands.is_empty();
 
     if !has_anything {
         if !quiet {
@@ -53,6 +56,7 @@ pub(crate) fn run(
         browse_list(&BrowseInput {
             skills,
             mcps,
+            commands,
             plain,
         })?;
         return Ok(());
@@ -68,20 +72,22 @@ pub(crate) fn run(
 
     print_skills(&skills, merged, color);
     print_mcps(&mcps, merged, color);
+    print_commands(&commands, merged, color);
 
     Ok(())
 }
 
-fn load_skills_and_mcps(
+fn load_skills_mcps_commands(
     scope_override: Option<Scope>,
     project_root: &std::path::Path,
-) -> Result<(Vec<InstalledSkill>, Vec<AssetEntry>)> {
+) -> Result<(Vec<InstalledSkill>, Vec<AssetEntry>, Vec<AssetEntry>)> {
     if let Some(s) = scope_override {
         let scope = resolve_scope(Some(s), None);
         let lock = load_lock(scope, project_root)?;
         return Ok((
             installed_skills_from_lock(&lock, scope, false),
             mcp_asset_entries(&lock, scope),
+            command_asset_entries(&lock, scope),
         ));
     }
     let global_lock = load_lock(Scope::Global, project_root)?;
@@ -96,7 +102,10 @@ fn load_skills_and_mcps(
     let mut mcps = mcp_asset_entries(&global_lock, Scope::Global);
     mcps.extend(mcp_asset_entries(&project_lock, Scope::Project));
     mcps.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
-    Ok((skills, mcps))
+    let mut commands = command_asset_entries(&global_lock, Scope::Global);
+    commands.extend(command_asset_entries(&project_lock, Scope::Project));
+    commands.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
+    Ok((skills, mcps, commands))
 }
 
 fn print_skills(skills: &[InstalledSkill], merged: bool, color: bool) {
@@ -149,6 +158,32 @@ fn print_mcps(mcps: &[AssetEntry], merged: bool, color: bool) {
                 "  {}{}  pack {}  source {}",
                 m.name, scope_note, m.pack_file, m.source
             );
+        }
+    }
+    println!();
+}
+
+fn print_commands(commands: &[AssetEntry], merged: bool, color: bool) {
+    if commands.is_empty() {
+        return;
+    }
+    print_section_header("Commands", commands.len(), color);
+    println!();
+    for c in commands {
+        let scope_note = if merged {
+            format!(" [{}]", scope_label(c.scope))
+        } else {
+            String::new()
+        };
+        if c.source.is_empty() {
+            println!("  {}{}", c.name, scope_note);
+        } else if color {
+            println!(
+                "  {WARNING_EMPHASIS}{}{}{RESET}  {SECONDARY}source {}{RESET}",
+                c.name, scope_note, c.source
+            );
+        } else {
+            println!("  {}{}  source {}", c.name, scope_note, c.source);
         }
     }
     println!();

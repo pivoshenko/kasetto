@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use super::{McpSettingsFormat, McpSettingsTarget};
+use super::{CommandFormat, CommandTarget, McpSettingsFormat, McpSettingsTarget};
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
@@ -56,6 +56,62 @@ pub(crate) enum Agent {
     Windsurf,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn commands_global_path_known_agents() {
+        let home = Path::new("/tmp/home");
+        assert_eq!(
+            Agent::ClaudeCode.commands_global_path(home).unwrap().path,
+            home.join(".claude/commands")
+        );
+        assert_eq!(
+            Agent::Windsurf.commands_global_path(home).unwrap().path,
+            home.join(".codeium/windsurf/global_workflows")
+        );
+        assert_eq!(
+            Agent::GeminiCli.commands_global_path(home).unwrap().format,
+            CommandFormat::GeminiToml
+        );
+        assert!(Agent::Cursor.commands_global_path(home).is_none());
+        assert!(Agent::Trae.commands_global_path(home).is_none());
+    }
+
+    #[test]
+    fn commands_project_path_known_agents() {
+        let pr = Path::new("/work");
+        assert_eq!(
+            Agent::Cursor.commands_project_path(pr).unwrap().path,
+            pr.join(".cursor/commands")
+        );
+        assert_eq!(
+            Agent::Cursor.commands_project_path(pr).unwrap().format,
+            CommandFormat::MarkdownPlain
+        );
+        assert_eq!(
+            Agent::GithubCopilot
+                .commands_project_path(pr)
+                .unwrap()
+                .format,
+            CommandFormat::PromptMd
+        );
+        assert!(Agent::Codex.commands_project_path(pr).is_none());
+        assert!(Agent::Warp.commands_project_path(pr).is_none());
+    }
+
+    #[test]
+    fn all_command_global_targets_dedupes_and_sorts() {
+        let home = Path::new("/tmp/home");
+        let all = all_command_global_targets(home);
+        assert!(!all.is_empty());
+        for w in all.windows(2) {
+            assert!(w[0].path <= w[1].path);
+        }
+    }
+}
+
 /// Every preset value (for clean / enumerating native MCP paths).
 pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::Amp,
@@ -107,6 +163,38 @@ fn dedup_targets(iter: impl Iterator<Item = McpSettingsTarget>) -> Vec<McpSettin
     let mut out: Vec<McpSettingsTarget> = iter.filter(|t| seen.insert(t.path.clone())).collect();
     out.sort_by(|x, y| x.path.cmp(&y.path));
     out
+}
+
+fn dedup_command_targets(iter: impl Iterator<Item = Option<CommandTarget>>) -> Vec<CommandTarget> {
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out: Vec<CommandTarget> = iter
+        .flatten()
+        .filter(|t| seen.insert(t.path.clone()))
+        .collect();
+    out.sort_by(|x, y| x.path.cmp(&y.path));
+    out
+}
+
+/// Deduped global command directories for every known agent.
+pub(crate) fn all_command_global_targets(home: &Path) -> Vec<CommandTarget> {
+    dedup_command_targets(AGENT_PRESETS.iter().map(|a| a.commands_global_path(home)))
+}
+
+/// Deduped project-level command directories for every known agent.
+pub(crate) fn all_command_project_targets(project_root: &Path) -> Vec<CommandTarget> {
+    dedup_command_targets(
+        AGENT_PRESETS
+            .iter()
+            .map(|a| a.commands_project_path(project_root)),
+    )
+}
+
+#[inline]
+fn cmd(base: &Path, rel: &str, format: CommandFormat) -> Option<CommandTarget> {
+    Some(CommandTarget {
+        path: base.join(rel),
+        format,
+    })
 }
 
 /// VS Code / Copilot user-profile `mcp.json` (not Insiders).
@@ -258,6 +346,116 @@ impl Agent {
             | Agent::OpenHands
             | Agent::Replit
             | Agent::Warp => mcp_servers_target(project_root, ".mcp.json"),
+        }
+    }
+
+    /// Global commands directory and write format for this agent, if supported.
+    pub(crate) fn commands_global_path(self, home: &Path) -> Option<CommandTarget> {
+        match self {
+            Agent::ClaudeCode => cmd(home, ".claude/commands", CommandFormat::MarkdownFrontmatter),
+            Agent::Windsurf => cmd(
+                home,
+                ".codeium/windsurf/global_workflows",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::OpenCode => cmd(
+                home,
+                ".config/opencode/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Continue => cmd(home, ".continue/prompts", CommandFormat::PromptFile),
+            Agent::Amp => cmd(
+                home,
+                ".config/amp/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Augment => cmd(
+                home,
+                ".augment/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Roo => cmd(home, ".roo/commands", CommandFormat::MarkdownFrontmatter),
+            Agent::Codex => cmd(home, ".codex/prompts", CommandFormat::MarkdownFrontmatter),
+            Agent::GeminiCli => cmd(home, ".gemini/commands", CommandFormat::GeminiToml),
+            Agent::Cursor
+            | Agent::Cline
+            | Agent::GithubCopilot
+            | Agent::Junie
+            | Agent::OpenHands
+            | Agent::Antigravity
+            | Agent::Goose
+            | Agent::KiroCli
+            | Agent::OpenClaw
+            | Agent::Replit
+            | Agent::Trae
+            | Agent::Warp => None,
+        }
+    }
+
+    /// Project-local commands directory and write format for this agent, if supported.
+    pub(crate) fn commands_project_path(self, project_root: &Path) -> Option<CommandTarget> {
+        match self {
+            Agent::ClaudeCode => cmd(
+                project_root,
+                ".claude/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Cursor => cmd(
+                project_root,
+                ".cursor/commands",
+                CommandFormat::MarkdownPlain,
+            ),
+            Agent::Windsurf => cmd(
+                project_root,
+                ".windsurf/workflows",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Cline => cmd(
+                project_root,
+                ".clinerules/workflows",
+                CommandFormat::MarkdownPlain,
+            ),
+            Agent::OpenCode => cmd(
+                project_root,
+                ".opencode/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Continue => cmd(project_root, ".continue/prompts", CommandFormat::PromptFile),
+            Agent::GithubCopilot => cmd(project_root, ".github/prompts", CommandFormat::PromptMd),
+            Agent::Amp => cmd(
+                project_root,
+                ".agents/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Augment => cmd(
+                project_root,
+                ".augment/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Roo => cmd(
+                project_root,
+                ".roo/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Junie => cmd(
+                project_root,
+                ".junie/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::OpenHands => cmd(
+                project_root,
+                ".openhands/microagents",
+                CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::GeminiCli => cmd(project_root, ".gemini/commands", CommandFormat::GeminiToml),
+            Agent::Antigravity
+            | Agent::Codex
+            | Agent::Goose
+            | Agent::KiroCli
+            | Agent::OpenClaw
+            | Agent::Replit
+            | Agent::Trae
+            | Agent::Warp => None,
         }
     }
 }

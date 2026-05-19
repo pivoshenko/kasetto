@@ -322,6 +322,42 @@ pub(crate) fn resolve_mcp_settings_targets(
     Ok(out)
 }
 
+/// Returns one commands directory per configured agent (filtering unsupported), deduped.
+pub(crate) fn resolve_command_targets(
+    cfg: &Config,
+    scope: Scope,
+    project_root: &Path,
+) -> Result<Vec<crate::model::CommandTarget>> {
+    let agents = cfg.agents();
+    if agents.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out = Vec::new();
+    match scope {
+        Scope::Project => {
+            for a in agents {
+                if let Some(t) = a.commands_project_path(project_root) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
+                }
+            }
+        }
+        Scope::Global => {
+            let home = dirs_home()?;
+            for a in agents {
+                if let Some(t) = a.commands_global_path(&home) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 pub(crate) fn now_unix() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

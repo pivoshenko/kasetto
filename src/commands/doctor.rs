@@ -18,7 +18,15 @@ struct DoctorOutput {
     last_sync: Option<String>,
     failures: Vec<SyncFailure>,
     mcps: Vec<String>,
+    commands: Vec<String>,
+    command_dirs: Vec<CommandDirCheck>,
     update_check: UpdateCheckOutput,
+}
+
+#[derive(serde::Serialize)]
+struct CommandDirCheck {
+    path: String,
+    writable: bool,
 }
 
 #[derive(serde::Serialize)]
@@ -75,6 +83,8 @@ pub(crate) fn run(
     let last_sync = state.last_run.clone();
 
     let managed_mcps = lock.list_installed_mcps();
+    let managed_commands = lock.list_installed_commands();
+    let command_dirs = collect_command_dirs(scope, &project_root);
 
     let scope_label = match scope {
         Scope::Global => "global".to_string(),
@@ -92,6 +102,8 @@ pub(crate) fn run(
         last_sync,
         failures,
         mcps: managed_mcps,
+        commands: managed_commands,
+        command_dirs,
         update_check,
     };
 
@@ -151,8 +163,69 @@ pub(crate) fn run(
         &format!("{} ({program_name} list)", output.mcps.len()),
         color,
     );
+    print_field(
+        "Commands",
+        &format!("{} ({program_name} list)", output.commands.len()),
+        color,
+    );
+
+    print_label("Command Directories", color);
+    if output.command_dirs.is_empty() {
+        println!("  none");
+    } else {
+        for d in &output.command_dirs {
+            let state = if d.writable {
+                "writable"
+            } else {
+                "not writable"
+            };
+            if color {
+                println!("  {ACCENT}{}{RESET} {SECONDARY}({state}){RESET}", d.path);
+            } else {
+                println!("  {} ({state})", d.path);
+            }
+        }
+    }
 
     Ok(())
+}
+
+fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {
+    let targets = match scope {
+        crate::model::Scope::Project => crate::model::all_command_project_targets(project_root),
+        crate::model::Scope::Global => match crate::fsops::dirs_home() {
+            Ok(home) => crate::model::all_command_global_targets(&home),
+            Err(_) => return Vec::new(),
+        },
+    };
+    targets
+        .into_iter()
+        .map(|t| CommandDirCheck {
+            writable: is_writable(&t.path),
+            path: t.path.to_string_lossy().to_string(),
+        })
+        .collect()
+}
+
+fn is_writable(path: &Path) -> bool {
+    // Walk up to the first ancestor that exists, then probe write permissions there.
+    let mut probe = path.to_path_buf();
+    loop {
+        if probe.exists() {
+            break;
+        }
+        let Some(parent) = probe.parent().map(Path::to_path_buf) else {
+            return false;
+        };
+        if parent == probe {
+            return false;
+        }
+        probe = parent;
+    }
+    match std::fs::metadata(&probe) {
+        Ok(meta) => !meta.permissions().readonly(),
+        Err(_) => false,
+    }
 }
 
 fn build_update_check(current_version: &str) -> UpdateCheckOutput {

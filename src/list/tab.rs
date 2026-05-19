@@ -2,6 +2,7 @@
 pub(super) enum Tab {
     Skills,
     Mcps,
+    Commands,
 }
 
 impl Tab {
@@ -9,6 +10,7 @@ impl Tab {
         match self {
             Tab::Skills => "Skills",
             Tab::Mcps => "MCPs",
+            Tab::Commands => "Commands",
         }
     }
 }

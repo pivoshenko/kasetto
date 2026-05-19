@@ -22,6 +22,8 @@ pub(crate) struct Config {
     pub skills: Vec<SourceSpec>,
     #[serde(default)]
     pub mcps: Vec<McpSourceSpec>,
+    #[serde(default)]
+    pub commands: Vec<CommandSourceSpec>,
 }
 
 impl Config {
@@ -58,12 +60,67 @@ pub(crate) fn resolve_scope(cli_override: Option<Scope>, cfg: Option<&Config>) -
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_scope, Scope};
+    use super::*;
 
     #[test]
     fn resolve_scope_prefers_cli_override() {
         assert_eq!(resolve_scope(Some(Scope::Project), None), Scope::Project);
         assert_eq!(resolve_scope(Some(Scope::Global), None), Scope::Global);
+    }
+
+    #[test]
+    fn config_commands_parses_wildcard() {
+        let yaml = r#"
+skills: []
+commands:
+  - source: https://github.com/me/cmds
+    commands: "*"
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.commands.len(), 1);
+        assert!(matches!(
+            cfg.commands[0].commands,
+            CommandsField::Wildcard(_)
+        ));
+    }
+
+    #[test]
+    fn config_commands_parses_plain_strings_and_objects() {
+        let yaml = r#"
+skills: []
+commands:
+  - source: https://github.com/me/cmds
+    ref: v1.0
+    sub-dir: commands
+    commands:
+      - review-pr
+      - name: deploy
+        path: ops
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.commands[0].git_ref.as_deref(), Some("v1.0"));
+        assert_eq!(cfg.commands[0].sub_dir.as_deref(), Some("commands"));
+        let CommandsField::List(ref entries) = cfg.commands[0].commands else {
+            panic!("expected list");
+        };
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(&entries[0], CommandEntry::Name(n) if n == "review-pr"));
+        assert!(
+            matches!(&entries[1], CommandEntry::Obj { name, path: Some(p) } if name == "deploy" && p == "ops")
+        );
+    }
+
+    #[test]
+    fn config_commands_supports_sub_dir_alias() {
+        let yaml = r#"
+skills: []
+commands:
+  - source: https://github.com/me/cmds
+    sub_dir: nested/commands
+    commands: "*"
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.commands[0].sub_dir.as_deref(), Some("nested/commands"));
     }
 }
 
@@ -145,6 +202,48 @@ pub(crate) enum McpsField {
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum McpEntry {
+    Name(String),
+    Obj { name: String, path: Option<String> },
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct CommandSourceSpec {
+    pub source: String,
+    pub branch: Option<String>,
+    #[serde(rename = "ref")]
+    pub git_ref: Option<String>,
+    #[serde(default, rename = "sub-dir", alias = "sub_dir")]
+    pub sub_dir: Option<String>,
+    pub commands: CommandsField,
+}
+
+impl CommandSourceSpec {
+    pub(crate) fn as_source_spec(&self) -> SourceSpec {
+        SourceSpec {
+            source: self.source.clone(),
+            branch: self.branch.clone(),
+            git_ref: self.git_ref.clone(),
+            sub_dir: self.sub_dir.clone(),
+            skills: SkillsField::Wildcard("*".to_string()),
+        }
+    }
+}
+
+/// The `commands` field on a `CommandSourceSpec` — mirrors `McpsField` / `SkillsField`.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CommandsField {
+    Wildcard(String),
+    List(Vec<CommandEntry>),
+}
+
+/// One entry in `commands[].commands` — mirrors `McpEntry`.
+///
+/// - Plain string `"review-pr"` → resolves through `discover_commands` (namespaced names)
+/// - Object `{ name: deploy, path: ops }` → `<path>/<name>.md`
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CommandEntry {
     Name(String),
     Obj { name: String, path: Option<String> },
 }

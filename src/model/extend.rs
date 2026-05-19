@@ -37,7 +37,7 @@ pub(crate) fn merge_yaml(base: Value, overlay: Value) -> Value {
     let mut out = base_map.clone();
     for (key, ov_val) in overlay_map.clone() {
         let key_str = key.as_str().unwrap_or("");
-        if matches!(key_str, "skills" | "mcps") {
+        if matches!(key_str, "skills" | "mcps" | "commands") {
             if let Some(base_val) = out.get(&key) {
                 if let (Value::Sequence(base_seq), Value::Sequence(ov_seq)) =
                     (base_val.clone(), ov_val.clone())
@@ -187,6 +187,30 @@ mod tests {
             panic!("expected sequence")
         };
         assert_eq!(seq.len(), 1);
+    }
+
+    #[test]
+    fn merge_commands_uses_same_rules() {
+        let base = yaml("commands:\n  - source: https://x/a\n    ref: v1\n    commands: \"*\"\n");
+        let overlay = yaml(
+            "commands:\n  - source: https://x/a\n    ref: v1\n    commands:\n      - review\n",
+        );
+        let merged = merge_yaml(base, overlay);
+        let Value::Sequence(seq) = merged.get("commands").unwrap() else {
+            panic!("expected sequence")
+        };
+        assert_eq!(seq.len(), 1);
+    }
+
+    #[test]
+    fn merge_commands_appends_distinct_sources() {
+        let base = yaml("commands:\n  - source: https://x/a\n    commands: \"*\"\n");
+        let overlay = yaml("commands:\n  - source: https://x/b\n    commands: \"*\"\n");
+        let merged = merge_yaml(base, overlay);
+        let Value::Sequence(seq) = merged.get("commands").unwrap() else {
+            panic!("expected sequence")
+        };
+        assert_eq!(seq.len(), 2);
     }
 
     #[test]

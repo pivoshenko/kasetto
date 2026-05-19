@@ -50,3 +50,7 @@ mcps:
       - github
       - vercel
       - kaggle
+
+commands:
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    commands: "*"

@@ -188,6 +188,7 @@ mod lock;
 mod mcps;
 mod model;
 mod profile;
+mod prompts;
 mod source;
 mod tui;
 mod ui;

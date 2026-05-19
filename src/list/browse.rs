@@ -17,6 +17,9 @@ pub(crate) fn browse(input: &BrowseInput) -> Result<()> {
         if !input.mcps.is_empty() {
             t.push(Tab::Mcps);
         }
+        if !input.commands.is_empty() {
+            t.push(Tab::Commands);
+        }
         t
     };
     let mut active_tab = 0usize;
@@ -26,6 +29,7 @@ pub(crate) fn browse(input: &BrowseInput) -> Result<()> {
         let current_len = match tabs[active_tab] {
             Tab::Skills => input.skills.len(),
             Tab::Mcps => input.mcps.len(),
+            Tab::Commands => input.commands.len(),
         };
         if dirty {
             render::draw(

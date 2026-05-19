@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Sync user-defined slash commands across supported agents
+
 ## [2.11.0] - 2026-05-19
 
 ### Features

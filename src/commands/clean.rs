@@ -16,6 +16,7 @@ use crate::ui::{animations_enabled, print_json, SYM_OK};
 struct CleanOutput {
     skills_removed: usize,
     mcps_removed: usize,
+    commands_removed: usize,
     dry_run: bool,
 }
 
@@ -37,12 +38,18 @@ pub(crate) fn run(
 
     let state = lock.state();
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
+    let command_assets: Vec<(String, String)> = lock
+        .list_tracked_asset_ids("command")
+        .iter()
+        .map(|(id, dest)| (id.to_string(), dest.to_string()))
+        .collect();
 
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
+    let commands_count = command_assets.len();
 
     if !dry_run {
-        apply_removals(&state, &mcp_assets, scope, &project_root)?;
+        apply_removals(&state, &mcp_assets, &command_assets, scope, &project_root)?;
         lock.clear_all();
         save_lock(&lock, scope, &project_root)?;
     }
@@ -50,13 +57,20 @@ pub(crate) fn run(
     let output = CleanOutput {
         skills_removed: skills_count,
         mcps_removed: mcps_count,
+        commands_removed: commands_count,
         dry_run,
     };
 
     if as_json {
         print_json(&output)?;
     } else if !quiet {
-        print_report(&lock, &state, dry_run, plain, skills_count + mcps_count);
+        print_report(
+            &lock,
+            &state,
+            dry_run,
+            plain,
+            skills_count + mcps_count + commands_count,
+        );
     }
 
     Ok(())
@@ -65,11 +79,21 @@ pub(crate) fn run(
 fn apply_removals(
     state: &State,
     mcp_assets: &[(&str, &str)],
+    command_assets: &[(String, String)],
     scope: Scope,
     project_root: &std::path::Path,
 ) -> Result<()> {
     for entry in state.skills.values() {
         let _ = fs::remove_dir_all(&entry.destination);
+    }
+
+    for (_id, dest_csv) in command_assets {
+        for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
+            let path = std::path::Path::new(p);
+            if path.exists() && path.is_file() {
+                let _ = fs::remove_file(path);
+            }
+        }
     }
 
     let mcp_targets = match scope {

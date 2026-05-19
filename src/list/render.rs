@@ -75,6 +75,7 @@ pub(super) fn draw(
         .map(|t| match t {
             Tab::Skills => input.skills.len(),
             Tab::Mcps => input.mcps.len(),
+            Tab::Commands => input.commands.len(),
         })
         .collect();
 
@@ -125,6 +126,15 @@ pub(super) fn draw(
             layout,
             &colors,
             draw_mcp_detail_pane,
+        )?,
+        Tab::Commands => draw_tab_content(
+            stdout,
+            &input.commands,
+            "Commands",
+            state,
+            layout,
+            &colors,
+            draw_command_detail_pane,
         )?,
     }
 
@@ -527,6 +537,54 @@ fn draw_mcp_detail_pane(
         Line::label_value("Server", &item.name),
         Line::label_value("Scope", scope_label(item.scope)),
         Line::label_value("Pack file", pack),
+        Line::label_value("Source", source),
+    ];
+
+    let wrapped = wrap_lines(&lines, inner_width);
+    for row in 0..inner_height {
+        let y = inner_top + row;
+        if let Some(line) = wrapped.get(row) {
+            write_styled_line(stdout, inner_left, y, inner_width, line, colors)?;
+        } else {
+            write_fill(stdout, inner_left, y, inner_width, colors.background)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn draw_command_detail_pane(
+    stdout: &mut Stdout,
+    left: usize,
+    top: usize,
+    width: usize,
+    height: usize,
+    item: Option<&AssetEntry>,
+    colors: &Colors,
+) -> Result<()> {
+    if width < 10 || height < 4 {
+        return Ok(());
+    }
+
+    draw_box(stdout, left, top, width, height, "Details", colors)?;
+    let inner_left = left + 1;
+    let inner_top = top + 1;
+    let inner_width = width.saturating_sub(2);
+    let inner_height = height.saturating_sub(2);
+
+    let Some(item) = item else {
+        return Ok(());
+    };
+
+    let source = if item.source.is_empty() {
+        "—"
+    } else {
+        item.source.as_str()
+    };
+
+    let lines = vec![
+        Line::label_value("Command", &item.name),
+        Line::label_value("Scope", scope_label(item.scope)),
         Line::label_value("Source", source),
     ];
 

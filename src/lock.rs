@@ -154,6 +154,18 @@ impl LockFile {
         failed
     }
 
+    pub(crate) fn list_installed_commands(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "command")
+            .map(|(_, a)| a.name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
     pub(crate) fn list_installed_mcps(&self) -> Vec<String> {
         let mut servers: Vec<String> = self
             .list_tracked_asset_ids("mcp")

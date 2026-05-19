@@ -1,3 +1,4 @@
+mod commands;
 mod mcps;
 mod skills;
 
@@ -74,6 +75,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     let mut actions = Vec::new();
 
     skills::sync_skills(&ctx, &mut state, &mut summary, &mut actions)?;
+    commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
     mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {
