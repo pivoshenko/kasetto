@@ -12,9 +12,10 @@ const SOURCES: Source[] = [
   { name: "pivoshenko/pivoshenko.ai", count: "6 skills" },
   { name: "mcps/github", count: "1 server" },
   { name: "mcps/obsidian", count: "1 server" },
+  { name: "commands/review", count: "1 command" },
 ];
 
-const SUMMARY = { skills: "14", mcps: "2" };
+const SUMMARY = { skills: "14", mcps: "2", commands: "1" };
 
 type Phase = "idle" | "typing" | "running" | "done";
 
@@ -125,6 +126,9 @@ export function HeroTerminal() {
             <span className="t-dim">·</span>
             <span className="t-summary">{SUMMARY.mcps}</span>
             <span className="t-dim">mcps</span>
+            <span className="t-dim">·</span>
+            <span className="t-summary">{SUMMARY.commands}</span>
+            <span className="t-dim">commands</span>
           </div>
         </div>
       </div>

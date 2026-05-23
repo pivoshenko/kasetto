@@ -12,8 +12,8 @@ const FEATURES = [
     desc: "Ship to 21 agents at once — Claude Code, Cursor, Codex, Windsurf, Copilot, and beyond. Stop maintaining separate configs for each tool. One sync, every agent updated, every time.",
   },
   {
-    title: "SKILLS & MCP",
-    desc: "Any directory with a SKILL.md is a skill — no registry, no boilerplate. MCP server configs are auto-merged into every supported format. Distribute rules and tools as easily as sharing a repo link.",
+    title: "SKILLS, MCP & COMMANDS",
+    desc: "Any directory with a SKILL.md is a skill — no registry, no boilerplate. MCP server configs are auto-merged into every supported format, and slash commands transform into each agent's native format. Distribute rules, tools, and prompts as easily as sharing a repo link.",
   },
   {
     title: "SPEED",
@@ -186,6 +186,46 @@ const CONFIG_LINES: Token[] = [
   { t: "dash", v: "      " },
   { t: "punct", v: "- " },
   { t: "str", v: "linear" },
+  { t: "nl" },
+  { t: "nl" },
+
+  { t: "key", v: "commands" },
+  { t: "punct", v: ":" },
+  { t: "nl" },
+
+  // Commands 1: wildcard — sync every slash command in the repo
+  { t: "dash", v: "  " },
+  { t: "punct", v: "- " },
+  { t: "key", v: "source" },
+  { t: "punct", v: ": " },
+  { t: "url", v: "github.com/acme/prompt-pack" },
+  { t: "nl" },
+  { t: "dash", v: "    " },
+  { t: "key", v: "commands" },
+  { t: "punct", v: ': "' },
+  { t: "str", v: "*" },
+  { t: "punct", v: '"' },
+  { t: "nl" },
+  { t: "nl" },
+
+  // Commands 2: pick by name
+  { t: "dash", v: "  " },
+  { t: "punct", v: "- " },
+  { t: "key", v: "source" },
+  { t: "punct", v: ": " },
+  { t: "url", v: "github.com/acme/monorepo" },
+  { t: "nl" },
+  { t: "dash", v: "    " },
+  { t: "key", v: "commands" },
+  { t: "punct", v: ":" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "review" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "commit" },
   { t: "nl" },
 ];
 
