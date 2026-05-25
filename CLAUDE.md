@@ -38,7 +38,7 @@ CLI args → match cli.command
 - **`fsops/`** - File operations: config loading from file/HTTP (`mod.rs`, `load_config_any` recursing through `extends`), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`)
 - **`mcps/`** - MCP server management: pack discovery (`pack.rs`), format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). Supports 4 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML
 - **`prompts/`** - Slash-command (user-defined prompt template) handling: frontmatter parsing (`parse.rs`), per-agent transforms (`transform.rs`), entry point `apply_command`. Supports 5 output formats: MarkdownFrontmatter, MarkdownPlain, PromptMd, PromptFile (Continue), GeminiToml
-- **`lock.rs`** - Manifest persistence: tracks installed skills + MCP assets, stores latest sync report as JSON blob
+- **`lock.rs`** - Manifest persistence: tracks installed skills + command and MCP assets, stores latest sync report as JSON blob
 - **`home/`** - Interactive welcome screen with `prompt.rs` for sync arg input
 - **`list/`** - Interactive TUI browser: `browse.rs` (event loop), `render.rs` (frame drawing), `session.rs` (state/guard), `tab.rs`, `types.rs`
 - **`update_notifier.rs`** - Background "new version available" notice. Fires a detached thread from `app::run` to refresh `$XDG_CACHE_HOME/kasetto/update-check.json` (24h TTL), then prints one yellow line at end of run. Reuses `is_newer`/`fetch_latest_release` from `commands::self_update`. Suppressed for `--json`/`--plain`/`--quiet`, `completions`, `self update`, and non-TTY stdout
@@ -57,8 +57,9 @@ Next.js 15 App Router project that hosts both the marketing landing (`/`) and th
 1. Load config from file or HTTP URL (with GitLab/GitHub/Gitea auth via env vars). If the YAML has `extends:`, the loader recursively fetches and merges parent configs before deserialization (cycle-detected, capped at depth 8).
 2. Resolve scope (CLI flag → config field → default Global) and destination paths per agent
 3. For each skill source: materialize (download if remote) → discover available skills → select targets → hash → copy → update lock state
-4. For each MCP source: materialize → resolve files (`mcps: "*"` → auto-discover `.mcp.json` / `mcp.json` / `mcps/*.json`; `mcps: [names]` → `mcps/<name>.json`; `mcps: [{name, path}]` → `<path>/<name>.json`) → collect pending installs → merge into agent settings files → update lock
-5. Save lock file and report (unless `--dry-run`)
+4. For each command source: materialize → discover commands (`commands: "*"` auto-discovers the `commands/` directory; named/explicit entries otherwise) → parse frontmatter → transform each into the target agent's native format (`prompts::apply_command`, 5 output formats) → write to destination → update lock
+5. For each MCP source: materialize → resolve files (`mcps: "*"` → auto-discover `.mcp.json` / `mcp.json` / `mcps/*.json`; `mcps: [names]` → `mcps/<name>.json`; `mcps: [{name, path}]` → `<path>/<name>.json`) → collect pending installs → merge into agent settings files → update lock
+6. Save lock file and report (unless `--dry-run`)
 
 ### UI System
 

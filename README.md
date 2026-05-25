@@ -26,12 +26,12 @@ There are good tools in this space already - [Vercel Skills](https://github.com/
 
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible skill management across machines and agents.**
 
-- **Declarative** — one YAML config describes your entire skill setup. Version it, share it, bootstrap a whole team in seconds. The config is the source of truth — readable, auditable, version-controlled.
-- **Enterprise & private repos** — GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances out of the box. Onboard new engineers in one command. Everyone gets the exact same environment — zero drift, zero surprises.
-- **Multi-agent** — every major AI agent supported: Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents). One config, every agent updated.
-- **Skills & MCP** — any directory with a `SKILL.md` is a skill — no registry, no boilerplate. MCP server configs are auto-merged into every supported format (Cursor JSON, Claude JSON, Copilot VS Code, Codex TOML).
-- **Speed** — written in Rust. SHA-256 content hashing and lock file diffing mean only what changed gets touched. Full sync across every agent finishes in seconds.
-- **Universal** — single static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and proper exit codes.
+- **Declarative** — one YAML file, your whole setup: skills, commands, MCPs, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.
+- **Enterprise & private repositories** — pull from anywhere: GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift.
+- **Multi-agent** — write once, ship everywhere. Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents) — one sync keeps them all current.
+- **Skills, Commands & MCPs** — all three asset kinds, one source: skills, commands, and MCPs. Everything is transformed into each agent's native format, and auto-merged. Distribute rules, tools, and prompts as easily as sharing a repository link.
+- **Speed** — instant by design. Built in Rust, it hashes content and diffs a lock file so only what changed gets touched — full syncs finish in seconds.
+- **Universal** — one static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and real exit codes.
 
 > Inspired by [uv](https://github.com/astral-sh/uv) - what uv did for Python packages, Kasetto aims to do for AI skills.
 
@@ -136,56 +136,59 @@ When `--config` is omitted, Kasetto looks for config in this order:
 
 Run `kst init` to scaffold a local config, or `kst init --global` for the global one.
 
+<!-- kasetto-config:start -->
 ```yaml
-# Choose an agent preset (single or multiple)...
-agent: codex
-# agent:
-#   - claude-code
-#   - cursor
+# Option A: preset destination by agent (see README for supported agent values)
+agent:
+  - codex
+  - claude-code
 
-# ...or set an explicit path (overrides agent)
-# destination: ./my-skills
-
-# Install scope: "global" (default) or "project"
-# scope: project
+# Option B: manual destination (takes precedence if both are set)
+# destination: ./.agents/skills
 
 skills:
-  # Pull specific skills from a GitHub repo
-  - source: https://github.com/org/skill-pack
-    branch: main
-    skills:
-      - code-reviewer
-      - name: design-system
-
-  # Sync everything from a local folder
-  - source: ~/Development/my-skills
+  # "*" syncs every skill in the source — each is a directory with a SKILL.md,
+  # discovered in the source root or its skills/ subdirectory
+  - source: https://github.com/vercel-labs/next-skills
+    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
     skills: "*"
 
-  # Pin to a git tag or commit
-  - source: https://github.com/acme/stable-skills
-    ref: v1.2.0
+  # or list skills by name
+  - source: https://github.com/anthropics/skills
     skills:
-      - name: custom-skill
-        path: tools/skills
+      - doc-coauthoring
+      - frontend-design
+      - pptx
 
-  # Scope discovery to a nested directory inside the source
-  - source: https://github.com/acme/agents
-    sub-dir: plugins/swift-apple-expert
-    skills: "*"
+  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
+  - source: https://github.com/mattpocock/skills
+    sub-dir: skills/productivity
+    skills:
+      - grill-me
+      - caveman
 
-# MCP servers (optional)
+  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  - source: https://github.com/mattpocock/skills
+    skills:
+      - name: improve-codebase-architecture
+        path: skills/engineering
+
+commands:
+  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
+  - source: https://github.com/gsd-build/get-shit-done
+    commands:
+      - gsd
+
 mcps:
-  # Discover all packs in the repo
-  - source: https://github.com/org/mcp-pack
-    mcps: "*"
-
-  # Pick specific files from a monorepo (names resolved from mcps/ dir)
-  - source: https://github.com/org/monorepo
-    ref: v1.4.0
+  # names resolve to mcps/<name>.json in the source
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    branch: main   # track a specific branch (use ref: to pin a tag or commit)
     mcps:
-      - github        # → mcps/github.json
-      - linear        # → mcps/linear.json
+      - github
+      - vercel
+      - kaggle
 ```
+<!-- kasetto-config:end -->
 
 Full key reference, merge rules, and `extends:` inheritance live in the [configuration docs](https://kasetto.dev/docs/configuration).
 

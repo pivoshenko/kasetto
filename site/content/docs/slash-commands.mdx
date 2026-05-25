@@ -11,7 +11,7 @@ with YAML frontmatter, then transformed on the fly into each agent's native form
 
 ## Source format
 
-A command repo contains a `commands/` directory. Files are Markdown with YAML frontmatter:
+A command repository contains a `commands/` directory. Files are Markdown with YAML frontmatter:
 
 ```markdown
 ---
@@ -35,7 +35,7 @@ Subdirectories under `commands/` become `:`-separated namespaces:
 commands:
   - source: https://github.com/me/my-commands
     ref: v1.0
-    sub-dir: commands      # optional - subdirectory inside the source repo
+    sub-dir: commands      # optional - subdirectory inside the source repository
     commands: "*"          # discover all, or list explicit entries below
 
   - source: https://github.com/acme/monorepo

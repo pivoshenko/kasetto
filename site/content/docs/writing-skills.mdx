@@ -13,7 +13,7 @@ Kasetto discovers skills from the source root and from `skills/`:
 
 ```
 repo-root/
-├── SKILL.md                ← discovered as repo-name skill
+├── SKILL.md                ← discovered as repository name skill
 ├── my-skill/
 │   └── SKILL.md        ← discovered
 ├── skills/
@@ -26,7 +26,7 @@ repo-root/
 
 Kasetto picks up:
 
-- A top-level `SKILL.md` (installed using the repo name, or `sub-dir` basename).
+- A top-level `SKILL.md` (installed using the repository name, or `sub-dir` basename).
 - Any root-level subdirectory containing `SKILL.md`.
 - Any `skills/<name>/SKILL.md` subdirectory.
 
@@ -100,7 +100,7 @@ skills:
 
 ## Custom Source Path
 
-If a skill lives somewhere non-standard within the repo, point to it with the `path` field:
+If a skill lives somewhere non-standard within the repository, point to it with the `path` field:
 
 ```yaml
 skills:

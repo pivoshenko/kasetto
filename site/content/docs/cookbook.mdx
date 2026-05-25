@@ -70,7 +70,7 @@ Each workspace gets its own `./kasetto.lock`.
 
 ## Multiple Agents From One Config
 
-Install the same skills (and MCP servers) into multiple agents:
+Install the same skills (and MCPs) into multiple agents:
 
 ```yaml
 agent:
@@ -112,7 +112,7 @@ kst sync --dry-run
 
 ## Explicit MCP Entries (`mcps.mcps`)
 
-If a repo contains multiple MCP files or uses a non-standard layout, list entries explicitly.
+If a repository contains multiple MCP files or uses a non-standard layout, list entries explicitly.
 Plain strings look up `mcps/<name>.json`; objects let you override the directory:
 
 ```yaml

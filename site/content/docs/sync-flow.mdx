@@ -55,7 +55,7 @@ flowchart TD
     H --> I
     I --> J{sub-dir set?}
     J -->|yes| K[Use sub-dir as root]
-    J -->|no| L[Use repo root]
+    J -->|no| L[Use repository root]
 
     B -->|local path| M[Expand ~ and resolve relative to config]
     M --> J
@@ -73,7 +73,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[root directory] --> B{root/SKILL.md exists?}
-    B -->|yes| C[Root itself is a skill\nnamed after repo / dir]
+    B -->|yes| C[Root itself is a skill\nnamed after repository / dir]
     B -->|no| D[No root skill]
     C --> E[Scan root/ for subdirs with SKILL.md]
     D --> E

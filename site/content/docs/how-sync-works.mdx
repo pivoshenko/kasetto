@@ -17,7 +17,7 @@ A look at what `kst sync` actually does — how skills are installed, how MCP co
    b. Discover skills in source directory
    c. For each skill: hash → compare to lock → copy if changed
    d. Remove skills no longer in config
-4. Sync MCP servers
+4. Sync MCPs
    a. For each MCP source: materialize (download if remote)
    b. Discover MCP pack files in source
    c. For each pack: hash → compare to lock → merge into agent settings if changed
@@ -104,7 +104,7 @@ The lock file is how Kasetto knows what to remove when you drop a source from th
 
 **Skills** are tracked by a composite key (`source::skill-name`) along with their destination path and hash.
 
-**MCP servers** are tracked as assets with the server names they installed (e.g., `destination: "git-tools,airflow"`). Only these tracked names are removed during cleanup.
+**MCPs** are tracked as assets with the server names they installed (e.g., `destination: "git-tools,airflow"`). Only these tracked names are removed during cleanup.
 
 <Callout type="info">
 

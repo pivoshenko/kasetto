@@ -17,62 +17,59 @@ To persist a remote URL as your default, add a `source:` key to `~/.config/kaset
 
 ## Example
 
+{/* kasetto-config:start */}
 ```yaml
-# Choose an agent preset (single or multiple)...
-agent: codex
-# agent:
-#   - claude-code
-#   - cursor
+# Option A: preset destination by agent (see README for supported agent values)
+agent:
+  - codex
+  - claude-code
 
-# ...or set an explicit path (overrides agent)
-# destination: ./my-skills
-
-# Install scope: "global" (default) or "project"
-# scope: project
+# Option B: manual destination (takes precedence if both are set)
+# destination: ./.agents/skills
 
 skills:
-  # Pull specific skills from a GitHub repo
-  - source: https://github.com/org/skill-pack
-    branch: main
-    skills:
-      - code-reviewer
-      - name: design-system
-
-  # Sync everything from a local folder
-  - source: ~/Development/my-skills
+  # "*" syncs every skill in the source — each is a directory with a SKILL.md,
+  # discovered in the source root or its skills/ subdirectory
+  - source: https://github.com/vercel-labs/next-skills
+    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
     skills: "*"
 
-  # Pin to a specific git tag
-  - source: https://github.com/acme/monorepo
-    ref: v1.2.0
+  # or list skills by name
+  - source: https://github.com/anthropics/skills
     skills:
-      - name: custom-skill
-        path: tools/skills
+      - doc-coauthoring
+      - frontend-design
+      - pptx
 
-  # Limit discovery to a nested directory inside the source
-  - source: https://github.com/acme/agents
-    sub-dir: plugins/swift-apple-expert
-    skills: "*"
+  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
+  - source: https://github.com/mattpocock/skills
+    sub-dir: skills/productivity
+    skills:
+      - grill-me
+      - caveman
 
-# MCP servers (optional)
+  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  - source: https://github.com/mattpocock/skills
+    skills:
+      - name: improve-codebase-architecture
+        path: skills/engineering
+
+commands:
+  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
+  - source: https://github.com/gsd-build/get-shit-done
+    commands:
+      - gsd
+
 mcps:
-  # Discover all MCP files in the repo
-  - source: https://github.com/org/mcp-pack
-    mcps: "*"
-
-  # Pick specific files from a monorepo (resolved from mcps/ dir)
-  - source: https://github.com/org/monorepo
-    ref: v1.4.0
+  # names resolve to mcps/<name>.json in the source
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    branch: main   # track a specific branch (use ref: to pin a tag or commit)
     mcps:
-      - github        # → mcps/github.json
-      - linear        # → mcps/linear.json
-
-  # Custom directory via { name, path }
-  - source: https://github.com/org/other
-    mcps:
-      - name: my-server
-        path: tools   # → tools/my-server.json
+      - github
+      - vercel
+      - kaggle
 ```
+{/* kasetto-config:end */}
 
 ## Reference
 
@@ -208,11 +205,11 @@ Kasetto recognises browser URLs from GitHub, GitLab, and Gitea / Codeberg / Forg
 
 Kasetto prints a short `note: rewrote browser URL to raw content: ...` line so you can see what was fetched. Authentication is resolved against the rewritten host, so the same tokens that work for raw URLs apply here too.
 
-If the URL points to a private repo, Kasetto uses the same token-based authentication as skill sources. See [authentication](/docs/authentication) for the full list of supported environment variables.
+If the URL points to a private repository, Kasetto uses the same token-based authentication as skill sources. See [authentication](/docs/authentication) for the full list of supported environment variables.
 
 ## Multiple Agents
 
-The `agent` field accepts a single value or a list. With a list, Kasetto installs skills to every agent's directory and merges MCP servers into every agent's settings file:
+The `agent` field accepts a single value or a list. With a list, Kasetto installs skills to every agent's directory and merges MCPs into every agent's settings file:
 
 ```yaml
 agent:
