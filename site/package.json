@@ -2,12 +2,6 @@
   "name": "kasetto-site",
   "version": "0.1.0",
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
-  },
   "scripts": {
     "postinstall": "fumadocs-mdx",
     "dev": "next dev",
