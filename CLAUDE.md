@@ -33,7 +33,7 @@ CLI args → match cli.command
 ### Module Layout
 
 - **`commands/`** - Each subcommand: `sync/` (split into `skills.rs` + `mcps.rs` + `commands.rs`), `list`, `doctor`, `init`, `clean`, `self_update`, `uninstall`, `completions`
-- **`model/`** - Core types: `Agent` enum (21 presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `Report`, `Summary`. `extend.rs` holds the YAML-level `extends` merge: scalars replace; `skills`/`mcps` merge by `(source, ref|branch, sub-dir)` identity
+- **`model/`** - Core types: `Agent` enum (21 presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `CommandEntry`, `CommandFormat`, `Report`, `Summary`. `extend.rs` holds the YAML-level `extends` merge: scalars replace; `skills`/`mcps`/`commands` merge by `(source, ref|branch, sub-dir)` identity
 - **`source/`** - Remote handling: URL parsing (`parse.rs`), archive download/extraction (`remote.rs`), auth token resolution (`auth.rs`), git host URL rewriting (`hosts.rs`)
 - **`fsops/`** - File operations: config loading from file/HTTP (`mod.rs`, `load_config_any` recursing through `extends`), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`)
 - **`mcps/`** - MCP server management: pack discovery (`pack.rs`), format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). Supports 4 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML

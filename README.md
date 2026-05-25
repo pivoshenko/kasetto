@@ -177,7 +177,8 @@ commands:
   # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
   - source: https://github.com/gsd-build/get-shit-done
     commands:
-      - gsd
+      - gsd:explore
+      - gsd:fast
 
 mcps:
   # names resolve to mcps/<name>.json in the source
