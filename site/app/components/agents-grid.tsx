@@ -6,9 +6,8 @@ const AGENTS = [
   { name: "Claude Code", value: "claude-code" },
   { name: "Cursor", value: "cursor" },
   { name: "Codex", value: "codex" },
-  { name: "Windsurf", value: "windsurf" },
-  { name: "Amp", value: "amp" },
   { name: "Antigravity", value: "antigravity" },
+  { name: "Amp", value: "amp" },
   { name: "Augment", value: "augment" },
   { name: "Cline", value: "cline" },
   { name: "Continue", value: "continue" },
@@ -24,6 +23,7 @@ const AGENTS = [
   { name: "Roo Code", value: "roo" },
   { name: "Trae", value: "trae" },
   { name: "Warp", value: "warp" },
+  { name: "Windsurf", value: "windsurf" },
 ];
 
 const INITIAL = 4;
