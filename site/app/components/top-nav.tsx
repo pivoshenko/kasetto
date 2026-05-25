@@ -1,5 +1,6 @@
 import { FaGithub } from "react-icons/fa";
 import { GoStar } from "react-icons/go";
+import { ThemeToggle } from "./theme-toggle";
 
 async function getStars(): Promise<string | null> {
   try {
@@ -47,6 +48,7 @@ export async function TopNav() {
               </span>
             )}
           </a>
+          <ThemeToggle />
         </div>
       </div>
     </nav>
