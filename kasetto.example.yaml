@@ -7,50 +7,43 @@ agent:
 # destination: ./.agents/skills
 
 skills:
+  # "*" syncs every skill in the source — each is a directory with a SKILL.md,
+  # discovered in the source root or its skills/ subdirectory
+  - source: https://github.com/vercel-labs/next-skills
+    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
+    skills: "*"
+
+  # or list skills by name
   - source: https://github.com/anthropics/skills
     skills:
       - doc-coauthoring
       - frontend-design
-      - pdf
       - pptx
-      - skill-creator
 
-  - source: https://github.com/ferdinandobons/startup-skill
+  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
+  - source: https://github.com/mattpocock/skills
+    sub-dir: skills/productivity
     skills:
-      - startup-design
-      - startup-competitors
-      - startup-positioning
-      - startup-pitch
+      - grill-me
+      - caveman
 
-  - source: https://github.com/vercel-labs/next-skills
-    skills: "*"
-
-  - source: https://github.com/vercel-labs/agent-skills
-    skills:
-      - web-design-guidelines
-      - deploy-to-vercel
-
-  - source: https://github.com/shepsci/kaggle-skill
-    skills: "*"
-
-  - source: https://github.com/apollographql/skills
-    skills:
-      - rust-best-practices
-
+  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
-      - name: grill-me
-        path: skills/productivity
-      - name: caveman
-        path: skills/productivity
+      - name: improve-codebase-architecture
+        path: skills/engineering
+
+commands:
+  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
+  - source: https://github.com/gsd-build/get-shit-done
+    commands:
+      - gsd
 
 mcps:
+  # names resolve to mcps/<name>.json in the source
   - source: https://github.com/pivoshenko/pivoshenko.ai
+    branch: main   # track a specific branch (use ref: to pin a tag or commit)
     mcps:
       - github
       - vercel
       - kaggle
-
-commands:
-  - source: https://github.com/pivoshenko/pivoshenko.ai
-    commands: "*"

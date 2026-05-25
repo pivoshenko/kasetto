@@ -39,6 +39,11 @@ serve-site:
 changelog:
     git-cliff --output CHANGELOG.md
 
+# regenerate README + docs config block from kasetto.example.yaml
+sync-config:
+    node scripts/sync-config-example.mjs
+    cd site && pnpm exec biome format --write app/components/feature-tabs.tsx
+
 demo-vhs:
     #!/usr/bin/env bash
     set -euo pipefail
