@@ -82,8 +82,29 @@ pub(crate) struct SyncArgs {
     #[arg(long)]
     #[arg(help = "print per-skill action list")]
     pub verbose: bool,
+    #[arg(long, short = 'u', num_args = 0.., value_name = "NAME")]
+    #[arg(
+        help = "re-resolve branch/default sources and rewrite locked hashes",
+        long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more skill names (--update foo bar) to re-resolve only the sources providing those skills; all other sources are honored from the lock.\n\nUpdating a skill from a multi-skill source re-resolves that whole source."
+    )]
+    pub update: Option<Vec<String>>,
+    #[arg(long, visible_alias = "frozen")]
+    #[arg(help = "fail if the lock cannot satisfy the config; never fetch (CI-friendly)")]
+    pub locked: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
+}
+
+impl SyncArgs {
+    /// `true` when `--update` was passed (with or without names).
+    pub(crate) fn update_active(&self) -> bool {
+        self.update.is_some()
+    }
+
+    /// The explicit skill names passed to `--update <name>...` (empty for `--update` alone).
+    pub(crate) fn update_only(&self) -> Vec<String> {
+        self.update.clone().unwrap_or_default()
+    }
 }
 
 #[derive(Subcommand)]
@@ -110,6 +131,8 @@ pub(crate) enum Commands {
         long_about = "Read configuration, discover requested skills and MCPs, then install/update/remove local copies so destination matches config.\n\nUse --dry-run to preview changes without modifying files.",
         after_help = crate::cli_examples!(
             "kasetto sync",
+            "kasetto sync --update",
+            "kasetto sync --locked",
             "kasetto sync --dry-run --verbose",
             "kasetto sync --config https://example.com/kasetto.yaml",
         )
@@ -217,4 +240,47 @@ pub(crate) enum SelfAction {
         #[arg(help = "skip confirmation prompt")]
         yes: bool,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_sync(args: &[&str]) -> SyncArgs {
+        let cli = Cli::try_parse_from(args).expect("parse");
+        match cli.command {
+            Some(Commands::Sync { sync }) => sync,
+            _ => panic!("expected sync command"),
+        }
+    }
+
+    #[test]
+    fn update_absent_is_inactive() {
+        let sync = parse_sync(&["kasetto", "sync"]);
+        assert!(!sync.update_active());
+        assert!(sync.update_only().is_empty());
+    }
+
+    #[test]
+    fn update_flag_alone_is_active_with_no_names() {
+        let sync = parse_sync(&["kasetto", "sync", "--update"]);
+        assert!(sync.update_active());
+        assert!(sync.update_only().is_empty());
+    }
+
+    #[test]
+    fn update_with_names_is_active_and_selective() {
+        let sync = parse_sync(&["kasetto", "sync", "--update", "foo", "bar"]);
+        assert!(sync.update_active());
+        assert_eq!(
+            sync.update_only(),
+            vec!["foo".to_string(), "bar".to_string()]
+        );
+    }
+
+    #[test]
+    fn frozen_aliases_locked() {
+        let sync = parse_sync(&["kasetto", "sync", "--frozen"]);
+        assert!(sync.locked);
+    }
 }

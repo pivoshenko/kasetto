@@ -26,6 +26,12 @@ pub(super) struct SyncContext<'a> {
     pub(super) plain: bool,
     pub(super) as_json: bool,
     pub(super) quiet: bool,
+    /// `--update`: re-resolve moving refs and rewrite locked hashes.
+    pub(super) update: bool,
+    /// `--update <name>...`: when non-empty, only sources providing these skills are re-resolved.
+    pub(super) update_only: Vec<String>,
+    /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
+    pub(super) locked: bool,
 }
 
 /// Options for the `sync` command.
@@ -38,9 +44,18 @@ pub(crate) struct SyncOptions<'a> {
     pub verbose: bool,
     pub scope_override: Option<Scope>,
     pub show_banner: bool,
+    pub update: bool,
+    pub update_only: Vec<String>,
+    pub locked: bool,
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
+    if opts.locked && opts.update {
+        return Err(crate::error::err(
+            "`--locked`/`--frozen` and `--update` are contradictory: \
+             --update fetches to re-resolve refs, --locked forbids fetching",
+        ));
+    }
     let animate = animations_enabled(opts.quiet, opts.as_json, opts.plain);
     if opts.show_banner
         && !opts.quiet
@@ -71,6 +86,9 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         plain: opts.plain,
         as_json: opts.as_json,
         quiet: opts.quiet,
+        update: opts.update,
+        update_only: opts.update_only.clone(),
+        locked: opts.locked,
     };
 
     let mut lock = load_lock(scope, &cfg_dir)?;
@@ -191,6 +209,19 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: bool) {
             }
         }
     }
+}
+
+/// Whether `--update` re-resolves a source. Active when `--update` was passed
+/// with no names, or when `--update <name>...` includes one of this source's
+/// desired asset names. Shared across the skill, command, and MCP sync paths.
+pub(super) fn update_active_for_source(ctx: &SyncContext, desired: &[String]) -> bool {
+    if !ctx.update {
+        return false;
+    }
+    if ctx.update_only.is_empty() {
+        return true;
+    }
+    desired.iter().any(|s| ctx.update_only.contains(s))
 }
 
 pub(super) fn sync_label(kind: &str, name: &str, source: &str, plain: bool) -> String {

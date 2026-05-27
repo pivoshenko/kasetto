@@ -5,12 +5,12 @@ use std::path::PathBuf;
 use crate::error::{err, Result};
 use crate::fsops::{hash_file, now_unix, relativize_dest, resolve_command_targets};
 use crate::lock::LockFile;
-use crate::model::{Action, CommandsField, Summary};
+use crate::model::{Action, CommandTarget, CommandsField, Summary};
 use crate::prompts::{apply_command, destination_path};
 use crate::source::{discover_commands, materialize_source, resolve_command_entry};
 use crate::ui::with_spinner;
 
-use super::{sync_label, SyncContext};
+use super::{sync_label, update_active_for_source, SyncContext};
 
 struct PendingCommand {
     source: String,
@@ -37,6 +37,62 @@ pub(super) fn sync_commands(
     let mut cleanup_dirs: Vec<PathBuf> = Vec::new();
 
     for (i, src) in ctx.cfg.commands.iter().enumerate() {
+        // Desired command names for this source, derived without any network:
+        // explicit config names for a list, or the locked set for a wildcard.
+        let desired_names = desired_command_names(src, lock);
+
+        // `--locked`/`--frozen`: the lock must be able to satisfy the config.
+        if ctx.locked {
+            if let Err(e) = ensure_locked_satisfiable_commands(src, &desired_names, lock) {
+                summary.failed += 1;
+                actions.push(Action {
+                    source: Some(src.source.clone()),
+                    skill: None,
+                    status: "locked_error".into(),
+                    error: Some(e.to_string()),
+                });
+                continue;
+            }
+        }
+
+        let update_active = update_active_for_source(ctx, &desired_names);
+        let fetch =
+            update_active || needs_fetch_commands(ctx, src, &desired_names, lock, &targets);
+
+        if fetch && ctx.locked {
+            summary.failed += 1;
+            actions.push(Action {
+                source: Some(src.source.clone()),
+                skill: None,
+                status: "locked_error".into(),
+                error: Some(
+                    "lock requires a fetch to satisfy this source, but --locked forbids fetching"
+                        .into(),
+                ),
+            });
+            continue;
+        }
+
+        if !fetch {
+            // Skip path: no network. Honor each desired command from the lock.
+            for name in &desired_names {
+                let asset_id = format!("command::{}::{}", src.source, name);
+                desired_ids.insert(asset_id);
+                let label = sync_label("command", name, &src.source, ctx.plain);
+                with_spinner(ctx.animate, ctx.plain, &label, || {
+                    summary.unchanged += 1;
+                    actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: Some(format!("command:{name}")),
+                        status: "unchanged".into(),
+                        error: None,
+                    });
+                    Ok(())
+                })?;
+            }
+            continue;
+        }
+
         let stage = std::env::temp_dir().join(format!("kasetto-cmd-{}-{}", now_unix(), i));
         let materialized = match materialize_source(&src.as_source_spec(), ctx.cfg_dir, &stage) {
             Ok(m) => m,
@@ -187,6 +243,101 @@ pub(super) fn sync_commands(
     Ok(())
 }
 
+/// Desired command names for a source, derived without any network access.
+/// - `List`: the explicit config names.
+/// - `Wildcard("*")`: the names of lock command-assets for this source.
+/// - other wildcard values: empty (broken-value handling stays on the fetch path).
+fn desired_command_names(src: &crate::model::CommandSourceSpec, lock: &LockFile) -> Vec<String> {
+    match &src.commands {
+        CommandsField::List(entries) => entries
+            .iter()
+            .map(|e| match e {
+                crate::model::CommandEntry::Name(n) => n.clone(),
+                crate::model::CommandEntry::Obj { name, .. } => name.clone(),
+            })
+            .collect(),
+        CommandsField::Wildcard(s) if s == "*" => lock
+            .assets
+            .values()
+            .filter(|a| a.kind == "command" && a.source == src.source)
+            .map(|a| a.name.clone())
+            .collect(),
+        CommandsField::Wildcard(_) => Vec::new(),
+    }
+}
+
+/// Per-source fetch decision (computed before any download). Fetch when a
+/// wildcard source has never been resolved, when any desired command lacks a
+/// lock entry, or when any expected destination file is missing (no local
+/// repair exists for commands — the installed file is a transform of the source).
+fn needs_fetch_commands(
+    _ctx: &SyncContext,
+    src: &crate::model::CommandSourceSpec,
+    desired: &[String],
+    lock: &LockFile,
+    targets: &[CommandTarget],
+) -> bool {
+    // A wildcard source with no lock command-asset has never been resolved.
+    if matches!(&src.commands, CommandsField::Wildcard(s) if s == "*")
+        && !lock
+            .assets
+            .values()
+            .any(|a| a.kind == "command" && a.source == src.source)
+    {
+        return true;
+    }
+    for name in desired {
+        let asset_id = format!("command::{}::{}", src.source, name);
+        if lock.get_tracked_asset("command", &asset_id).is_none() {
+            return true;
+        }
+        let any_missing = targets
+            .iter()
+            .any(|t| !destination_path(t, name).exists());
+        if any_missing {
+            return true;
+        }
+    }
+    false
+}
+
+/// `--locked` validation: every config-named command must have a lock entry, and
+/// a wildcard source must contribute at least one locked command-asset.
+fn ensure_locked_satisfiable_commands(
+    src: &crate::model::CommandSourceSpec,
+    desired: &[String],
+    lock: &LockFile,
+) -> Result<()> {
+    match &src.commands {
+        CommandsField::List(_) => {
+            for name in desired {
+                let asset_id = format!("command::{}::{}", src.source, name);
+                if lock.get_tracked_asset("command", &asset_id).is_none() {
+                    return Err(err(format!(
+                        "--locked: command `{name}` from `{}` is not in the lock",
+                        src.source
+                    )));
+                }
+            }
+            Ok(())
+        }
+        CommandsField::Wildcard(_) => {
+            let present = lock
+                .assets
+                .values()
+                .any(|a| a.kind == "command" && a.source == src.source);
+            if present {
+                Ok(())
+            } else {
+                Err(err(format!(
+                    "--locked: source `{}` has no command entries in the lock",
+                    src.source
+                )))
+            }
+        }
+    }
+}
+
 fn apply_pending(
     ctx: &SyncContext,
     lock: &mut LockFile,
@@ -248,6 +399,54 @@ fn apply_pending(
         })?;
     }
     Ok(())
+}
+
+fn remove_stale(
+    ctx: &SyncContext,
+    lock: &mut LockFile,
+    summary: &mut Summary,
+    actions: &mut Vec<Action>,
+    desired_ids: &HashSet<String>,
+) {
+    let existing: Vec<(String, String)> = lock
+        .list_tracked_asset_ids("command")
+        .iter()
+        .map(|(id, dest)| (id.to_string(), dest.to_string()))
+        .collect();
+    for (old_id, dest_csv) in &existing {
+        if desired_ids.contains(old_id) {
+            continue;
+        }
+        let name = lock
+            .assets
+            .get(old_id)
+            .map(|a| a.name.clone())
+            .unwrap_or_else(|| old_id.rsplit("::").next().unwrap_or(old_id).to_string());
+        if ctx.dry_run {
+            summary.removed += 1;
+            actions.push(Action {
+                source: None,
+                skill: Some(format!("command:{name}")),
+                status: "would_remove".into(),
+                error: None,
+            });
+        } else {
+            for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
+                let path = crate::fsops::resolve_dest(p, &ctx.scope_root);
+                if path.exists() && path.is_file() {
+                    let _ = fs::remove_file(path);
+                }
+            }
+            lock.remove_tracked_asset(old_id);
+            summary.removed += 1;
+            actions.push(Action {
+                source: None,
+                skill: Some(format!("command:{name}")),
+                status: "removed".into(),
+                error: None,
+            });
+        }
+    }
 }
 
 #[cfg(test)]
@@ -316,7 +515,7 @@ mod tests {
         let ctx = SyncContext {
             cfg: &cfg,
             cfg_dir: &project,
-            destinations: &[project.clone()],
+            destinations: std::slice::from_ref(&project),
             scope_root: project.clone(),
             scope: Scope::Project,
             dry_run: false,
@@ -324,6 +523,9 @@ mod tests {
             plain: true,
             as_json: false,
             quiet: true,
+            update: false,
+            update_only: Vec::new(),
+            locked: false,
         };
 
         sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
@@ -365,7 +567,7 @@ mod tests {
         let ctx2 = SyncContext {
             cfg: &cfg2,
             cfg_dir: &project,
-            destinations: &[project.clone()],
+            destinations: std::slice::from_ref(&project),
             scope_root: project.clone(),
             scope: Scope::Project,
             dry_run: false,
@@ -373,6 +575,9 @@ mod tests {
             plain: true,
             as_json: false,
             quiet: true,
+            update: false,
+            update_only: Vec::new(),
+            locked: false,
         };
         // commands field empty + targets exist → still early-returns; need targets resolved to drive stale removal.
         // The current sync_commands function short-circuits if cfg.commands is empty. So manually call remove_stale.
@@ -391,52 +596,105 @@ mod tests {
         let _ = fs::remove_dir_all(&src_root);
         let _ = fs::remove_dir_all(&project);
     }
-}
 
-fn remove_stale(
-    ctx: &SyncContext,
-    lock: &mut LockFile,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
-    desired_ids: &HashSet<String>,
-) {
-    let existing: Vec<(String, String)> = lock
-        .list_tracked_asset_ids("command")
-        .iter()
-        .map(|(id, dest)| (id.to_string(), dest.to_string()))
-        .collect();
-    for (old_id, dest_csv) in &existing {
-        if desired_ids.contains(old_id) {
-            continue;
+    fn make_ctx<'a>(
+        cfg: &'a Config,
+        project: &'a PathBuf,
+        dests: &'a [PathBuf],
+        locked: bool,
+    ) -> SyncContext<'a> {
+        SyncContext {
+            cfg,
+            cfg_dir: project,
+            destinations: dests,
+            scope_root: project.clone(),
+            scope: Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            as_json: false,
+            quiet: true,
+            update: false,
+            update_only: Vec::new(),
+            locked,
         }
-        let name = lock
-            .assets
-            .get(old_id)
-            .map(|a| a.name.clone())
-            .unwrap_or_else(|| old_id.rsplit("::").next().unwrap_or(old_id).to_string());
-        if ctx.dry_run {
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("command:{name}")),
-                status: "would_remove".into(),
-                error: None,
-            });
-        } else {
-            for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
-                let path = crate::fsops::resolve_dest(p, &ctx.scope_root);
-                if path.exists() && path.is_file() {
-                    let _ = fs::remove_file(path);
-                }
-            }
-            lock.remove_tracked_asset(old_id);
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("command:{name}")),
-                status: "removed".into(),
-                error: None,
-            });
+    }
+
+    fn list_cfg(src_root: &std::path::Path, commands: CommandsField) -> Config {
+        Config {
+            destination: None,
+            scope: Some(Scope::Project),
+            agent: Some(AgentField::One(Agent::ClaudeCode)),
+            skills: Vec::new(),
+            mcps: Vec::new(),
+            commands: vec![CommandSourceSpec {
+                source: src_root.to_string_lossy().to_string(),
+                branch: None,
+                git_ref: None,
+                sub_dir: None,
+                commands,
+            }],
         }
+    }
+
+    #[test]
+    fn second_run_unchanged_without_source_no_fetch() {
+        let src_root = temp_dir("src");
+        write(
+            &src_root.join("commands/foo.md"),
+            "---\ndescription: foo\n---\nBody\n",
+        );
+        let project = temp_dir("proj");
+        fs::create_dir_all(&project).unwrap();
+        let dests = vec![project.clone()];
+
+        let cfg = list_cfg(&src_root, CommandsField::Wildcard("*".into()));
+        let mut lock = LockFile::default();
+
+        let ctx = make_ctx(&cfg, &project, &dests, false);
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
+        assert_eq!(summary.installed, 1, "first run installs");
+
+        // Remove the source entirely: plain re-sync must still report unchanged.
+        fs::remove_dir_all(&src_root).unwrap();
+        let ctx2 = make_ctx(&cfg, &project, &dests, false);
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_commands(&ctx2, &mut lock, &mut summary2, &mut actions2).unwrap();
+        assert_eq!(summary2.unchanged, 1, "second run unchanged, no fetch");
+        assert_eq!(summary2.failed, 0);
+        assert_eq!(summary2.removed, 0, "lock entry retained, not pruned");
+
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn locked_errors_when_command_absent_from_lock() {
+        let src_root = temp_dir("src");
+        write(
+            &src_root.join("commands/foo.md"),
+            "---\ndescription: foo\n---\nBody\n",
+        );
+        let project = temp_dir("proj");
+        fs::create_dir_all(&project).unwrap();
+        let dests = vec![project.clone()];
+
+        let cfg = list_cfg(
+            &src_root,
+            CommandsField::List(vec![crate::model::CommandEntry::Name("foo".into())]),
+        );
+        let mut lock = LockFile::default();
+
+        let ctx = make_ctx(&cfg, &project, &dests, true);
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
+        assert_eq!(summary.failed, 1, "--locked errors when not in lock");
+        assert_eq!(summary.installed, 0);
+
+        let _ = fs::remove_dir_all(&src_root);
+        let _ = fs::remove_dir_all(&project);
     }
 }

@@ -11,6 +11,7 @@ pub(crate) enum Scope {
     Project,
 }
 
+/// Deserialized `kasetto.yaml`: the full sync request (destination, scope, agents, and sources).
 #[derive(Debug, Deserialize)]
 pub(crate) struct Config {
     pub destination: Option<String>,
@@ -124,6 +125,7 @@ commands:
     }
 }
 
+/// A skill source: where to fetch from and which skills to install.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SourceSpec {
     pub source: String,
@@ -162,6 +164,7 @@ impl SourceSpec {
     }
 }
 
+/// An MCP source: where to fetch from and which MCP servers to install.
 #[derive(Debug, Deserialize)]
 pub(crate) struct McpSourceSpec {
     pub source: String,
@@ -189,7 +192,6 @@ impl McpSourceSpec {
 #[serde(untagged)]
 pub(crate) enum McpsField {
     /// `mcps: "*"` — discover all MCP files in the source.
-    #[allow(dead_code)]
     Wildcard(String),
     /// `mcps: [...]` — explicit list of names or `{ name, path }` objects.
     List(Vec<McpEntry>),
@@ -206,6 +208,7 @@ pub(crate) enum McpEntry {
     Obj { name: String, path: Option<String> },
 }
 
+/// A command source: where to fetch from and which slash commands to install.
 #[derive(Debug, Deserialize)]
 pub(crate) struct CommandSourceSpec {
     pub source: String,

@@ -9,8 +9,7 @@ pub(crate) use agent::{
     all_command_global_targets, all_command_project_targets, all_mcp_project_targets,
     all_mcp_settings_targets, Agent, AgentField,
 };
-#[cfg(test)]
-pub(crate) use config::CommandSourceSpec;
+pub(crate) use config::{CommandSourceSpec, McpSourceSpec};
 pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,
     SkillTarget, SkillsField, SourceSpec,

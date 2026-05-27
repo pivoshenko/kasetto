@@ -25,6 +25,8 @@ pub fn run() -> Result<()> {
         Some(command) => match command {
             Commands::Init { force, global } => crate::commands::init::run(force, global),
             Commands::Sync { sync } => {
+                let update = sync.update_active();
+                let update_only = sync.update_only();
                 let config = sync.config.unwrap_or_else(|| default_config.clone());
                 crate::commands::sync::run(&crate::commands::sync::SyncOptions {
                     config_path: &config,
@@ -35,6 +37,9 @@ pub fn run() -> Result<()> {
                     verbose: sync.verbose,
                     scope_override: sync.scope.scope_override(),
                     show_banner: true,
+                    update,
+                    update_only,
+                    locked: sync.locked,
                 })
             }
             Commands::List {

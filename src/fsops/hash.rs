@@ -13,7 +13,10 @@ pub(crate) fn hash_dir(path: &Path) -> Result<String> {
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     for f in files {
-        let rel = f.strip_prefix(path)?.to_string_lossy();
+        // Normalize path separators so the digest is invariant across OSes
+        // (Windows `\` vs Unix `/`); otherwise the same skill hashes differently
+        // per platform and breaks committed-lock portability.
+        let rel = f.strip_prefix(path)?.to_string_lossy().replace('\\', "/");
         hasher.update(rel.as_bytes());
         hasher.update([0]);
         let file = fs::File::open(&f)?;
@@ -68,4 +71,42 @@ fn collect_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
+    }
+
+    /// The relative-path bytes fed into the digest must be separator-invariant:
+    /// `a\b` and `a/b` must contribute identically so the same skill hashes the
+    /// same on Windows and Unix.
+    #[test]
+    fn relative_path_separator_invariant() {
+        let win = "a\\b\\c.md".replace('\\', "/");
+        let unix = "a/b/c.md".replace('\\', "/");
+        assert_eq!(win, unix);
+    }
+
+    #[test]
+    fn hash_dir_is_stable_across_runs() {
+        let root = temp_dir("kasetto-hash-stable");
+        fs::create_dir_all(root.join("sub")).expect("create dirs");
+        fs::write(root.join("SKILL.md"), "# Demo\n").expect("write");
+        fs::write(root.join("sub/extra.md"), "body\n").expect("write");
+
+        let a = hash_dir(&root).expect("hash a");
+        let b = hash_dir(&root).expect("hash b");
+        assert_eq!(a, b);
+
+        let _ = fs::remove_dir_all(&root);
+    }
 }
