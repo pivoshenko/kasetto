@@ -3,13 +3,14 @@ use std::fs;
 use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ERROR, RESET, SUCCESS, WARNING};
 use crate::error::Result;
-use crate::fsops::{dirs_home, dirs_kasetto_config};
+use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
 use crate::lock::{load_lock, save_lock, LockFile};
 use crate::mcps::remove_mcp_server;
 use crate::model::{
     all_mcp_project_targets, all_mcp_settings_targets, resolve_scope, Scope, State,
 };
 use crate::profile::list_color_enabled;
+use crate::state::clear_runtime_state;
 use crate::ui::{animations_enabled, print_json, SYM_OK};
 
 #[derive(serde::Serialize)]
@@ -52,6 +53,7 @@ pub(crate) fn run(
         apply_removals(&state, &mcp_assets, &command_assets, scope, &project_root)?;
         lock.clear_all();
         save_lock(&lock, scope, &project_root)?;
+        clear_runtime_state(scope, &project_root)?;
     }
 
     let output = CleanOutput {
@@ -83,13 +85,14 @@ fn apply_removals(
     scope: Scope,
     project_root: &std::path::Path,
 ) -> Result<()> {
+    let root = scope_root(scope, project_root)?;
     for entry in state.skills.values() {
-        let _ = fs::remove_dir_all(&entry.destination);
+        let _ = fs::remove_dir_all(resolve_dest(&entry.destination, &root));
     }
 
     for (_id, dest_csv) in command_assets {
         for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
-            let path = std::path::Path::new(p);
+            let path = resolve_dest(p, &root);
             if path.exists() && path.is_file() {
                 let _ = fs::remove_file(path);
             }

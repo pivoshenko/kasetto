@@ -3,12 +3,14 @@ use std::io::IsTerminal;
 use crate::banner::print_banner;
 use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
 use crate::error::Result;
+use crate::fsops::{resolve_dest, scope_root};
 use crate::list::{
     browse as browse_list, command_asset_entries, mcp_asset_entries, AssetEntry, BrowseInput,
 };
 use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
+use crate::state::{load_runtime_state, RuntimeState};
 use crate::ui::{animations_enabled, print_json, print_section_header};
 
 pub(crate) fn run(
@@ -84,18 +86,29 @@ fn load_skills_mcps_commands(
     if let Some(s) = scope_override {
         let scope = resolve_scope(Some(s), None);
         let lock = load_lock(scope, project_root)?;
+        let runtime = load_runtime_state(scope, project_root)?;
         return Ok((
-            installed_skills_from_lock(&lock, scope, false),
+            installed_skills_from_lock(&lock, &runtime, scope, project_root, false),
             mcp_asset_entries(&lock, scope),
             command_asset_entries(&lock, scope),
         ));
     }
     let global_lock = load_lock(Scope::Global, project_root)?;
     let project_lock = load_lock(Scope::Project, project_root)?;
-    let mut skills = installed_skills_from_lock(&global_lock, Scope::Global, true);
+    let global_runtime = load_runtime_state(Scope::Global, project_root)?;
+    let project_runtime = load_runtime_state(Scope::Project, project_root)?;
+    let mut skills = installed_skills_from_lock(
+        &global_lock,
+        &global_runtime,
+        Scope::Global,
+        project_root,
+        true,
+    );
     skills.extend(installed_skills_from_lock(
         &project_lock,
+        &project_runtime,
         Scope::Project,
+        project_root,
         true,
     ));
     skills.sort_by_cached_key(|s| (scope_ord(s.scope), s.name.to_lowercase()));
@@ -213,19 +226,25 @@ fn skill_display_id(lock_scope: Scope, raw_id: &str, composite: bool) -> String 
 
 fn installed_skills_from_lock(
     lock: &LockFile,
+    runtime: &RuntimeState,
     lock_scope: Scope,
+    project_root: &std::path::Path,
     composite_ids: bool,
 ) -> Vec<InstalledSkill> {
     let state = lock.state();
+    let root = scope_root(lock_scope, project_root).unwrap_or_else(|_| project_root.to_path_buf());
     let mut skills = Vec::new();
     for (id, entry) in &state.skills {
-        let (name, fallback_description) = read_skill_profile(&entry.destination, &entry.skill);
+        let abs_dest = resolve_dest(&entry.destination, &root);
+        let abs_dest_str = abs_dest.to_string_lossy().to_string();
+        let (name, fallback_description) = read_skill_profile(&abs_dest_str, &entry.skill);
         let description = if entry.description.trim().is_empty() {
             fallback_description
         } else {
             entry.description.clone()
         };
-        let updated_ago = format_updated_ago(&entry.updated_at);
+        let updated_at = runtime.updated_at(id);
+        let updated_ago = format_updated_ago(&updated_at);
         let effective_scope = entry.scope.unwrap_or(lock_scope);
         skills.push(InstalledSkill {
             id: skill_display_id(lock_scope, id, composite_ids),
@@ -234,10 +253,10 @@ fn installed_skills_from_lock(
             description,
             source: entry.source.clone(),
             skill: entry.skill.clone(),
-            destination: entry.destination.clone(),
+            destination: abs_dest_str,
             hash: entry.hash.clone(),
             source_revision: entry.source_revision.clone(),
-            updated_at: entry.updated_at.clone(),
+            updated_at,
             updated_ago,
         });
     }

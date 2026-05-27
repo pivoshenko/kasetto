@@ -4,8 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
-use crate::fsops::{dirs_kasetto_data, now_iso};
-use crate::model::{Scope, SkillEntry, State, SyncFailure};
+use crate::fsops::dirs_kasetto_data;
+use crate::model::{Scope, SkillEntry, State, LOCK_VERSION};
 
 pub(crate) const LOCK_FILENAME: &str = "kasetto.lock";
 
@@ -15,36 +15,31 @@ pub(crate) struct AssetEntry {
     pub name: String,
     pub hash: String,
     pub source: String,
+    /// For commands: install paths relative to the scope root (CSV).
+    /// For MCPs: the merged server names (CSV).
     pub destination: String,
-    pub updated_at: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct LockFile {
     #[serde(default = "default_version")]
     pub version: u8,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub last_run: Option<String>,
     #[serde(default)]
     pub skills: BTreeMap<String, SkillEntry>,
     #[serde(default)]
     pub assets: BTreeMap<String, AssetEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub latest_report: Option<String>,
 }
 
 fn default_version() -> u8 {
-    1
+    LOCK_VERSION
 }
 
 impl Default for LockFile {
     fn default() -> Self {
         Self {
-            version: 1,
-            last_run: None,
+            version: LOCK_VERSION,
             skills: BTreeMap::new(),
             assets: BTreeMap::new(),
-            latest_report: None,
         }
     }
 }
@@ -53,13 +48,11 @@ impl LockFile {
     pub(crate) fn state(&self) -> State {
         State {
             version: self.version,
-            last_run: self.last_run.clone(),
             skills: self.skills.clone(),
         }
     }
 
     pub(crate) fn apply_state(&mut self, state: &State) {
-        self.last_run = state.last_run.clone();
         self.skills = state.skills.clone();
     }
 
@@ -90,7 +83,6 @@ impl LockFile {
                 hash: hash.to_string(),
                 source: source.to_string(),
                 destination: destination.to_string(),
-                updated_at: now_iso(),
             },
         );
     }
@@ -110,48 +102,6 @@ impl LockFile {
     pub(crate) fn clear_all(&mut self) {
         self.skills.clear();
         self.assets.clear();
-        self.latest_report = None;
-        self.last_run = None;
-    }
-
-    pub(crate) fn save_report_json(&mut self, report_json: &str) {
-        self.latest_report = Some(report_json.to_string());
-    }
-
-    pub(crate) fn load_latest_failures(&self) -> Vec<SyncFailure> {
-        let Some(report_json) = &self.latest_report else {
-            return Vec::new();
-        };
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(report_json) else {
-            return Vec::new();
-        };
-        let mut failed = Vec::new();
-        if let Some(actions) = value.get("actions").and_then(|v| v.as_array()) {
-            for action in actions {
-                let status = action.get("status").and_then(|v| v.as_str()).unwrap_or("");
-                if status != "broken" && status != "source_error" {
-                    continue;
-                }
-                failed.push(SyncFailure {
-                    name: action
-                        .get("skill")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-")
-                        .to_string(),
-                    source: action
-                        .get("source")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-")
-                        .to_string(),
-                    reason: action
-                        .get("error")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("unknown reason")
-                        .to_string(),
-                });
-            }
-        }
-        failed
     }
 
     pub(crate) fn list_installed_commands(&self) -> Vec<String> {
@@ -256,10 +206,9 @@ mod tests {
         save_lock(&lock, Scope::Project, &dir).unwrap();
 
         let loaded = load_lock(Scope::Project, &dir).unwrap();
-        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.version, 2);
         assert!(loaded.skills.is_empty());
         assert!(loaded.assets.is_empty());
-        assert!(loaded.last_run.is_none());
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -269,20 +218,16 @@ mod tests {
         let dir = temp_dir("kasetto-lock-data");
         fs::create_dir_all(&dir).unwrap();
 
-        let mut lock = LockFile {
-            last_run: Some("12345".to_string()),
-            ..Default::default()
-        };
+        let mut lock = LockFile::default();
         lock.skills.insert(
             "src::skill-a".to_string(),
             SkillEntry {
-                destination: "/tmp/skill-a".into(),
+                destination: ".claude/skills/skill-a".into(),
                 hash: "abc".into(),
                 skill: "skill-a".into(),
                 description: "desc".into(),
                 source: "src".into(),
                 source_revision: "rev1".into(),
-                updated_at: "100".into(),
                 scope: None,
             },
         );
@@ -298,7 +243,6 @@ mod tests {
         save_lock(&lock, Scope::Project, &dir).unwrap();
         let loaded = load_lock(Scope::Project, &dir).unwrap();
 
-        assert_eq!(loaded.last_run.as_deref(), Some("12345"));
         assert_eq!(loaded.skills.len(), 1);
         assert_eq!(loaded.skills["src::skill-a"].hash, "abc");
         assert_eq!(loaded.assets.len(), 1);
@@ -315,7 +259,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
 
         let lock = load_lock(Scope::Project, &dir).unwrap();
-        assert_eq!(lock.version, 1);
+        assert_eq!(lock.version, 2);
         assert!(lock.skills.is_empty());
 
         let _ = fs::remove_dir_all(&dir);
@@ -323,10 +267,7 @@ mod tests {
 
     #[test]
     fn clear_all_empties_everything() {
-        let mut lock = LockFile {
-            last_run: Some("999".to_string()),
-            ..Default::default()
-        };
+        let mut lock = LockFile::default();
         lock.skills.insert(
             "k".to_string(),
             SkillEntry {
@@ -336,14 +277,11 @@ mod tests {
             },
         );
         lock.save_tracked_asset("mcp", "id", "n", "h", "s", "d");
-        lock.save_report_json(r#"{"actions":[]}"#);
 
         lock.clear_all();
 
         assert!(lock.skills.is_empty());
         assert!(lock.assets.is_empty());
-        assert!(lock.latest_report.is_none());
-        assert!(lock.last_run.is_none());
     }
 
     #[test]
@@ -368,44 +306,6 @@ mod tests {
     }
 
     #[test]
-    fn load_latest_failures_extracts_broken_actions() {
-        let mut lock = LockFile::default();
-        lock.save_report_json(
-            r#"{
-            "actions": [
-                {"status": "installed", "skill": "good", "source": "s"},
-                {"status": "broken", "skill": "bad", "source": "s", "error": "missing"},
-                {"status": "source_error", "skill": "err", "source": "s2", "error": "timeout"}
-            ]
-        }"#,
-        );
-
-        let failures = lock.load_latest_failures();
-        assert_eq!(failures.len(), 2);
-        assert_eq!(failures[0].name, "bad");
-        assert_eq!(failures[0].reason, "missing");
-        assert_eq!(failures[1].name, "err");
-    }
-
-    #[test]
-    fn load_latest_failures_includes_mcp_broken_actions() {
-        let mut lock = LockFile::default();
-        lock.save_report_json(
-            r#"{
-            "actions": [
-                {"status": "broken", "skill": "mcp:pack.json", "source": "https://example.com/r", "error": "invalid JSON"}
-            ]
-        }"#,
-        );
-
-        let failures = lock.load_latest_failures();
-        assert_eq!(failures.len(), 1);
-        assert_eq!(failures[0].name, "mcp:pack.json");
-        assert_eq!(failures[0].reason, "invalid JSON");
-        assert_eq!(failures[0].source, "https://example.com/r");
-    }
-
-    #[test]
     fn list_installed_mcps_deduplicates() {
         let mut lock = LockFile::default();
         lock.save_tracked_asset("mcp", "a", "a", "h", "s", "srv1,srv2");
@@ -418,10 +318,7 @@ mod tests {
     #[test]
     fn state_round_trip() {
         let mut lock = LockFile::default();
-        let mut state = State {
-            last_run: Some("ts".to_string()),
-            ..Default::default()
-        };
+        let mut state = State::default();
         state.skills.insert(
             "k".to_string(),
             SkillEntry {
@@ -434,7 +331,6 @@ mod tests {
         lock.apply_state(&state);
         let recovered = lock.state();
 
-        assert_eq!(recovered.last_run, state.last_run);
         assert_eq!(recovered.skills.len(), 1);
         assert_eq!(recovered.skills["k"].skill, "s");
     }

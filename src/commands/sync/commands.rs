@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::error::{err, Result};
-use crate::fsops::{hash_file, now_unix, resolve_command_targets};
+use crate::fsops::{hash_file, now_unix, relativize_dest, resolve_command_targets};
 use crate::lock::LockFile;
 use crate::model::{Action, CommandsField, Summary};
 use crate::prompts::{apply_command, destination_path};
@@ -220,7 +220,7 @@ fn apply_pending(
                             target.path.display()
                         ))
                     })?;
-                    written.push(dest.to_string_lossy().to_string());
+                    written.push(relativize_dest(&dest, &ctx.scope_root));
                 }
                 let dest_csv = written.join(",");
                 lock.save_tracked_asset(
@@ -317,6 +317,7 @@ mod tests {
             cfg: &cfg,
             cfg_dir: &project,
             destinations: &[project.clone()],
+            scope_root: project.clone(),
             scope: Scope::Project,
             dry_run: false,
             animate: false,
@@ -365,6 +366,7 @@ mod tests {
             cfg: &cfg2,
             cfg_dir: &project,
             destinations: &[project.clone()],
+            scope_root: project.clone(),
             scope: Scope::Project,
             dry_run: false,
             animate: false,
@@ -422,7 +424,7 @@ fn remove_stale(
             });
         } else {
             for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
-                let path = std::path::Path::new(p);
+                let path = crate::fsops::resolve_dest(p, &ctx.scope_root);
                 if path.exists() && path.is_file() {
                     let _ = fs::remove_file(path);
                 }

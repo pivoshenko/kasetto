@@ -24,6 +24,13 @@ pub(crate) fn hash_dir(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Hash an arbitrary string (used to key machine-local state by lock path).
+pub(crate) fn hash_str(s: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(s.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 /// Hash a single file (for MCPs tracking).
 pub(crate) fn hash_file(path: &Path) -> Result<String> {
     let mut hasher = Sha256::new();

@@ -3,10 +3,13 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::Result;
-use crate::fsops::{copy_dir, hash_dir, now_iso, now_unix, select_targets, BrokenSkill};
+use crate::fsops::{
+    copy_dir, hash_dir, now_iso, now_unix, relativize_dest, select_targets, BrokenSkill,
+};
 use crate::model::{Action, SkillEntry, State, Summary};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
+use crate::state::RuntimeState;
 use crate::ui::{eprint_fail, with_spinner};
 
 use super::{sync_label, SyncContext};
@@ -14,6 +17,7 @@ use super::{sync_label, SyncContext};
 pub(super) fn sync_skills(
     ctx: &SyncContext,
     state: &mut State,
+    runtime: &mut RuntimeState,
     summary: &mut Summary,
     actions: &mut Vec<Action>,
 ) -> Result<()> {
@@ -37,6 +41,7 @@ pub(super) fn sync_skills(
                     process_single_skill(
                         ctx,
                         state,
+                        runtime,
                         summary,
                         actions,
                         &mut desired_keys,
@@ -64,7 +69,7 @@ pub(super) fn sync_skills(
         }
     }
 
-    remove_stale_skills(ctx, state, &desired_keys, summary, actions);
+    remove_stale_skills(ctx, state, runtime, &desired_keys, summary, actions);
     Ok(())
 }
 
@@ -93,6 +98,7 @@ fn record_broken_skills(
 fn process_single_skill(
     ctx: &SyncContext,
     state: &mut State,
+    runtime: &mut RuntimeState,
     summary: &mut Summary,
     actions: &mut Vec<Action>,
     desired_keys: &mut HashSet<String>,
@@ -159,16 +165,16 @@ fn process_single_skill(
             summary.installed += 1;
             "installed"
         };
+        runtime.set_updated_at(&key, now_iso());
         state.skills.insert(
             key,
             SkillEntry {
-                destination: dest.to_string_lossy().to_string(),
+                destination: relativize_dest(&dest, &ctx.scope_root),
                 hash,
                 skill: skill_name.to_string(),
                 description: profile_description.clone(),
                 source: source.to_string(),
                 source_revision: source_revision.to_string(),
-                updated_at: now_iso(),
                 scope: Some(ctx.scope),
             },
         );
@@ -185,6 +191,7 @@ fn process_single_skill(
 fn remove_stale_skills(
     ctx: &SyncContext,
     state: &mut State,
+    runtime: &mut RuntimeState,
     desired_keys: &HashSet<String>,
     summary: &mut Summary,
     actions: &mut Vec<Action>,
@@ -204,8 +211,10 @@ fn remove_stale_skills(
                     error: None,
                 });
             } else {
-                let _ = fs::remove_dir_all(&entry.destination);
+                let abs = crate::fsops::resolve_dest(&entry.destination, &ctx.scope_root);
+                let _ = fs::remove_dir_all(&abs);
                 state.skills.remove(&k);
+                runtime.forget(&k);
                 summary.removed += 1;
                 actions.push(Action {
                     source: Some(entry.source),

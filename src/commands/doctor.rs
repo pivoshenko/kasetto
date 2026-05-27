@@ -3,9 +3,11 @@ use std::path::Path;
 use crate::banner::print_banner;
 use crate::colors::{ACCENT, RESET, SECONDARY};
 use crate::error::Result;
+use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, lock_path};
 use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
+use crate::state::load_runtime_state;
 use crate::ui::{animations_enabled, print_field, print_json, print_label};
 
 #[derive(serde::Serialize)]
@@ -52,18 +54,20 @@ pub(crate) fn run(
     let scope = resolve_scope(scope_override, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let lock = load_lock(scope, &project_root)?;
+    let runtime = load_runtime_state(scope, &project_root)?;
 
     let version = env!("CARGO_PKG_VERSION").to_string();
     let lock_file_path = lock_path(scope, &project_root)?;
 
     let state = lock.state();
+    let root = scope_root(scope, &project_root)?;
 
     let mut install_paths: Vec<String> = state
         .skills
         .values()
         .map(|entry| {
-            let p = Path::new(&entry.destination);
-            p.parent().unwrap_or(p).to_string_lossy().to_string()
+            let p = resolve_dest(&entry.destination, &root);
+            p.parent().unwrap_or(&p).to_string_lossy().to_string()
         })
         .collect();
     install_paths.sort();
@@ -79,8 +83,8 @@ pub(crate) fn run(
     let mut skills: Vec<String> = state.skills.values().map(|e| e.skill.clone()).collect();
     skills.sort();
 
-    let failures = lock.load_latest_failures();
-    let last_sync = state.last_run.clone();
+    let failures = runtime.load_latest_failures();
+    let last_sync = runtime.last_run.clone();
 
     let managed_mcps = lock.list_installed_mcps();
     let managed_commands = lock.list_installed_commands();

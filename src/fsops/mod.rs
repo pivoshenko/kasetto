@@ -6,7 +6,7 @@ mod settings;
 
 pub(crate) use copy::copy_dir;
 pub(crate) use dirs::{dirs_home, dirs_kasetto_cache, dirs_kasetto_config, dirs_kasetto_data};
-pub(crate) use hash::{hash_dir, hash_file};
+pub(crate) use hash::{hash_dir, hash_file, hash_str};
 pub(crate) use http::http_client;
 pub(crate) use settings::SettingsFile;
 
@@ -356,6 +356,37 @@ pub(crate) fn resolve_command_targets(
         }
     }
     Ok(out)
+}
+
+/// Root that lock-file `destination` paths are stored relative to, so the
+/// committed lock stays portable across machines and users.
+/// Project scope → the project root; Global scope → the user's home directory.
+pub(crate) fn scope_root(scope: Scope, project_root: &Path) -> Result<PathBuf> {
+    match scope {
+        Scope::Project => Ok(project_root.to_path_buf()),
+        Scope::Global => dirs_home(),
+    }
+}
+
+/// Make an absolute install path portable by storing it relative to `root`.
+/// Paths outside `root` (e.g. a custom absolute `destination`) are kept as-is.
+pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
+    match abs.strip_prefix(root) {
+        Ok(rel) => rel.to_string_lossy().to_string(),
+        Err(_) => abs.to_string_lossy().to_string(),
+    }
+}
+
+/// Inverse of [`relativize_dest`]: resolve a stored `destination` back to an
+/// absolute path. Already-absolute values (legacy locks, out-of-root paths)
+/// are returned unchanged.
+pub(crate) fn resolve_dest(stored: &str, root: &Path) -> PathBuf {
+    let p = PathBuf::from(stored);
+    if p.is_absolute() {
+        p
+    } else {
+        root.join(p)
+    }
 }
 
 pub(crate) fn now_unix() -> u64 {

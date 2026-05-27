@@ -3,8 +3,14 @@ use std::collections::BTreeMap;
 
 use super::Scope;
 
+/// Schema version of `kasetto.lock`. Bumped to 2 for the portable format:
+/// relative `destination` paths and no machine-/run-specific fields.
+pub(crate) const LOCK_VERSION: u8 = 2;
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub(crate) struct SkillEntry {
+    /// Install path relative to the scope root (portable across machines);
+    /// legacy locks may store an absolute path here, which is still honored.
     pub destination: String,
     pub hash: String,
     pub skill: String,
@@ -12,7 +18,6 @@ pub(crate) struct SkillEntry {
     pub description: String,
     pub source: String,
     pub source_revision: String,
-    pub updated_at: String,
     /// Scope this entry was installed under (present for locks written by newer kasetto).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<Scope>,
@@ -21,15 +26,13 @@ pub(crate) struct SkillEntry {
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct State {
     pub version: u8,
-    pub last_run: Option<String>,
     pub skills: BTreeMap<String, SkillEntry>,
 }
 
 impl Default for State {
     fn default() -> Self {
         Self {
-            version: 1,
-            last_run: None,
+            version: LOCK_VERSION,
             skills: BTreeMap::new(),
         }
     }

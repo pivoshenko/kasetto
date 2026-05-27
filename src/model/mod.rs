@@ -15,7 +15,9 @@ pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,
     SkillTarget, SkillsField, SourceSpec,
 };
-pub(crate) use types::{Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure};
+pub(crate) use types::{
+    Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure, LOCK_VERSION,
+};
 
 /// How Kasetto merges pack `mcpServers` into an agent config file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

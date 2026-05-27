@@ -8,15 +8,18 @@ use std::path::{Path, PathBuf};
 use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, RESET, SECONDARY, SUCCESS, WARNING};
 use crate::error::Result;
-use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations};
+use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, scope_root};
 use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Config, Report, Scope, Summary};
+use crate::state::{load_runtime_state, save_runtime_state};
 use crate::ui::{animations_enabled, print_json, status_chip};
 
 pub(super) struct SyncContext<'a> {
     pub(super) cfg: &'a Config,
     pub(super) cfg_dir: &'a Path,
     pub(super) destinations: &'a [PathBuf],
+    /// Root that lock `destination` paths are stored relative to.
+    pub(super) scope_root: PathBuf,
     pub(super) scope: Scope,
     pub(super) dry_run: bool,
     pub(super) animate: bool,
@@ -61,6 +64,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         cfg: &cfg,
         cfg_dir: &cfg_dir,
         destinations: &destinations,
+        scope_root: scope_root(scope, &cfg_dir)?,
         scope,
         dry_run: opts.dry_run,
         animate,
@@ -71,15 +75,15 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
 
     let mut lock = load_lock(scope, &cfg_dir)?;
     let mut state = lock.state();
+    let mut runtime = load_runtime_state(scope, &cfg_dir)?;
     let mut summary = Summary::default();
     let mut actions = Vec::new();
 
-    skills::sync_skills(&ctx, &mut state, &mut summary, &mut actions)?;
+    skills::sync_skills(&ctx, &mut state, &mut runtime, &mut summary, &mut actions)?;
     commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
     mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {
-        state.last_run = Some(now_iso());
         lock.apply_state(&state);
     }
 
@@ -93,8 +97,10 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     };
 
     if !opts.dry_run {
-        lock.save_report_json(&serde_json::to_string(&report)?);
         save_lock(&lock, scope, &cfg_dir)?;
+        runtime.last_run = Some(now_iso());
+        runtime.save_report_json(&serde_json::to_string(&report)?);
+        save_runtime_state(&runtime, scope, &cfg_dir)?;
     }
 
     if opts.as_json {
