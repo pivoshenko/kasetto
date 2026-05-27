@@ -99,7 +99,7 @@ source: https://github.com/pivoshenko/pivoshenko.ai/blob/main/kasetto.yaml
 
 After that, `kst sync` resolves the URL automatically — no `--config` flag needed.
 
-That's it. Kasetto pulls the skills and installs them into the right agent directory. The next time you run `sync`, only what changed gets updated.
+That's it. Kasetto pulls the skills, installs them into the right agent directory, and records exactly what it installed in `kasetto.lock`. Commit `kasetto.yaml` and `kasetto.lock` together (like `Cargo.lock` or `package-lock.json`) and every teammate gets identical versions. A plain `kst sync` honors the lock without re-resolving moving refs; `kst sync --update` rolls versions forward; `kst sync --locked` enforces the lock in CI.
 
 See [pivoshenko/pivoshenko.ai](https://github.com/pivoshenko/pivoshenko.ai) for a community example pulling skills from multiple packs for Claude Code and OpenCode.
 
@@ -115,7 +115,7 @@ kst doctor    # version, paths, last sync status
 One-line synopsis below. Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
 
 - **`kst init`** — generate a starter `kasetto.yaml` (local or `--global`).
-- **`kst sync`** — read config, fetch sources, install skills + MCPs into agent dirs.
+- **`kst sync`** — read config, install skills + MCPs into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
 - **`kst list`** — interactive TUI (or plain/JSON) of installed skills and MCPs from the lock file.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.
 - **`kst clean`** — remove tracked skills and MCP configs for the given scope.

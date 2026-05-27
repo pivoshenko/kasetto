@@ -13,16 +13,24 @@ A look at what `kst sync` actually does — how skills are installed, how MCP co
 1. Load config (`$KASETTO_CONFIG` → saved preference → `./kasetto.yaml` → `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`, or explicit `--config` path/URL)
 2. Load lock file (kasetto.lock)
 3. Sync skills
-   a. For each skill source: materialize (download if remote)
-   b. Discover skills in source directory
-   c. For each skill: hash → compare to lock → copy if changed
-   d. Remove skills no longer in config
-4. Sync MCPs
-   a. For each MCP source: materialize (download if remote)
-   b. Discover MCP pack files in source
-   c. For each pack: hash → compare to lock → merge into agent settings if changed
-   d. Remove MCP entries no longer in config
-5. Save lock file and report (unless --dry-run)
+   a. For each skill source: decide whether a fetch is needed (the lock pins it and the destinations already match → no network)
+   b. Materialize (download if remote) only when a fetch is needed
+   c. Discover skills in source directory
+   d. For each skill: hash → compare to lock → copy if changed
+   e. Remove skills no longer in config
+4. Sync commands
+   a. For each command source: decide whether a fetch is needed (the lock pins it and the destination files already exist → no network)
+   b. Materialize (download if remote) only when a fetch is needed
+   c. Discover commands in source, transform into each agent's native format
+   d. For each command: hash → compare to lock → write if changed
+   e. Remove commands no longer in config
+5. Sync MCPs
+   a. For each MCP source: decide whether a fetch is needed (the lock pins it and its servers are already present in the agent settings → no network)
+   b. Materialize (download if remote) only when a fetch is needed
+   c. Discover MCP pack files in source
+   d. For each pack: hash → compare to lock → merge into agent settings if changed
+   e. Remove MCP entries no longer in config
+6. Save lock file and report (unless --dry-run)
 ```
 
 ## Skills: Copy and Replace
@@ -91,16 +99,18 @@ Kasetto uses SHA-256 hashes so it only does work when something actually changed
 
 This keeps re-sync fast — unchanged sources require no file I/O beyond reading the lock.
 
-## Lock File
+## The Lockfile Contract
 
-Kasetto tracks everything it installed in a YAML lock file called `kasetto.lock`. Where it lives depends on the scope:
+`kasetto.lock` is a real lockfile, in the same spirit as `Cargo.lock`, `package-lock.json`, or `go.sum`. It pins exactly which skills, commands, and MCP assets were installed — by source, revision, destination, and content hash — so that anyone who runs `kst sync` against the same config and lock gets an identical setup.
+
+Where it lives depends on the scope:
 
 | Scope   | Location                                                                               |
 | ------- | -------------------------------------------------------------------------------------- |
 | Global  | `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`) |
 | Project | `./kasetto.lock` in the project root                                                   |
 
-The lock file is how Kasetto knows what to remove when you drop a source from the config or run `kst clean`. You generally won't need to touch it by hand.
+The lock is also how Kasetto knows what to remove when you drop a source from the config or run `kst clean`. You generally won't need to touch it by hand.
 
 **Skills** are tracked by a composite key (`source::skill-name`) along with their destination path and hash.
 
@@ -108,8 +118,43 @@ The lock file is how Kasetto knows what to remove when you drop a source from th
 
 <Callout type="info">
 
-
 Kasetto never touches entries it didn't install. Manually added servers, skills from other tools, or entries from a different scope are always left alone.
+
+</Callout>
+
+### Commit It
+
+For project scope, commit **both** `kasetto.yaml` and `kasetto.lock`. The config says *what* you want; the lock says *exactly which versions* everyone gets. The lock is deterministic and portable by design:
+
+- Destination paths are stored **relative to the scope root**, so the file is identical on every machine and diffs cleanly in review.
+- It contains **no timestamps or machine-specific data** — nothing run-specific leaks in.
+
+Machine-local runtime state (last-run report, per-skill install times used by `kst list` and `kst doctor`) lives separately under `$XDG_CACHE_HOME/kasetto/runtime/` and is **never committed**. It is safe to delete and regenerates on the next sync.
+
+<Callout type="info">
+
+A custom **absolute** `destination:` stays non-portable by design — an absolute path can't be relativized, so it's stored as-is. Use a relative `destination:` (or the defaults) if you want the lock to travel between machines.
+
+</Callout>
+
+### How `sync` Honors the Lock
+
+| Command                            | Behavior                                                                                                                              |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `kst sync`                         | Installs exactly what the lock pins. If the on-disk destinations already match the locked hashes, **no network fetch happens** — moving refs like a branch are not re-resolved. |
+| `kst sync --update` (`-u`)         | Re-resolves branch / default-HEAD sources, downloads the latest, and rewrites the pins (hash + revision) in the lock.                |
+| `kst sync --update <name>`         | Updates only the selected entries; everything else is honored from the lock. (Naming one skill re-resolves its whole source.)        |
+| `kst sync --locked` / `--frozen`   | Strict mode for CI: installs from the lock and **never fetches**. Errors only if the config needs something the lock can't satisfy.  |
+
+A plain `kst sync` always re-hashes the destination contents locally (cheap, no network) and repairs any tampered or missing copy from the lock — but it will not phone home to check whether an upstream branch moved. That is what `--update` is for. `--update` and `--locked` together are contradictory and rejected.
+
+### Wildcards Are Frozen to the Locked Set
+
+When a source uses `skills: "*"`, a plain `kst sync` installs exactly the set recorded in the lock — not whatever the source currently contains. New skills added upstream and skills removed upstream are only reflected after `kst sync --update`, which re-discovers the source and prunes accordingly. This keeps the lock authoritative: the wildcard resolves the same way for every teammate until someone deliberately updates.
+
+<Callout type="warn">
+
+**One-time `updated` flood after upgrading.** A release normalizes the skill content hash across operating systems (path separators are unified before hashing). The first `kst sync` after upgrading will therefore show every skill as `updated` once as it rewrites the lock with the new hash format. This is expected and self-heals — subsequent syncs report `unchanged` again.
 
 </Callout>
 ## Removal Behavior

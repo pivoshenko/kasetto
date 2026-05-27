@@ -20,6 +20,14 @@ No. MCP merges are **additive** and existing server entries are **never overwrit
 
 See [How Sync Works](/docs/how-sync-works#lock-file).
 
+## Should I Commit `kasetto.lock`?
+
+Yes. For project scope, commit **both** `kasetto.yaml` and `kasetto.lock`, just like you'd commit `Cargo.lock` or `package-lock.json`. The config says what you want; the lock pins exactly which versions everyone gets. The lock is deterministic and portable (relative paths, no timestamps), so it diffs cleanly. Machine-local runtime state lives in the cache dir and is never committed. See [How Sync Works → The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
+
+## How Do I Update Pinned Versions?
+
+Run `kst sync --update` (alias `-u`) to re-resolve branch / default-HEAD sources and rewrite the pins. A plain `kst sync` honors the lock and won't fetch when destinations already match. Use `kst sync --update <name>` to update only selected entries. See [How Sync Works → How `sync` Honors the Lock](/docs/how-sync-works#how-sync-honors-the-lock).
+
 ## How Do I Uninstall Safely?
 
 - To remove tracked installs for a scope: `kst clean`

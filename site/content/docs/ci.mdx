@@ -13,6 +13,16 @@ description: Run Kasetto in CI pipelines.
 
 ## Recommended Commands
 
+### Enforce The Locked Versions
+
+If you commit `kasetto.lock` (recommended for teams — see [Cookbook](/docs/cookbook#reproducible-team-setup-commit-the-lock)), use `--locked` to install exactly what the lock pins and **never fetch new versions**:
+
+```bash
+kst sync --locked
+```
+
+`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale or out-of-sync lock fails the build instead of drifting. It still repairs tampered destinations locally, but never resolves moving refs or downloads new content.
+
 ### Validate Without Writing
 
 Use `--dry-run` to check that sources resolve and that the plan matches expectations without touching disk:

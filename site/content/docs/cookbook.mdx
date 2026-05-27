@@ -10,6 +10,38 @@ description: Recipes for common workflows.
 - Patterns that work well in practice
 - How to pin and roll out changes safely
 
+## Reproducible Team Setup (Commit The Lock)
+
+Treat `kasetto.lock` like `Cargo.lock` or `package-lock.json`: commit it next to `kasetto.yaml` so every teammate gets identical skill versions.
+
+```bash
+# Maintainer: set up the config, sync, then commit both files.
+kst sync --project
+git add kasetto.yaml kasetto.lock
+git commit -m "chore: pin agent skills"
+```
+
+```bash
+# Teammates: clone, then sync. The lock is honored exactly —
+# no surprise upgrades, and no network fetch when nothing changed.
+kst sync
+```
+
+```bash
+# Maintainer rolls versions forward, then commits the updated lock.
+kst sync --update          # re-resolve branches/HEAD, rewrite pins
+# or update one entry: kst sync --update code-reviewer
+git add kasetto.lock
+git commit -m "chore: bump agent skills"
+```
+
+```bash
+# CI verifies the checked-in lock without ever fetching new versions.
+kst sync --locked --project
+```
+
+`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works → The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
+
 ## Team Bootstrap From A URL Config
 
 Host a shared `kasetto.yaml` somewhere reachable over HTTPS (public or private), then have each developer run:
