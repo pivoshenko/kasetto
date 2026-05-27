@@ -51,6 +51,8 @@ tempfile = "3"
 unsafe_code = "forbid"
 
 [lints.clippy]
+all = { level = "deny", priority = -1 }
+perf = { level = "warn", priority = -1 }
 dbg_macro = "warn"
 todo = "warn"
 

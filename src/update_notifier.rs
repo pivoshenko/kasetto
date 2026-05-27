@@ -86,6 +86,8 @@ pub(crate) fn spawn_background_check() -> Option<UpdateCheckHandle> {
     }
 
     let (tx, rx) = mpsc::channel();
+    // Best-effort: this detached thread only refreshes a cosmetic update-check cache, so any
+    // panic here is intentionally isolated to the thread and never aborts the real command.
     std::thread::spawn(move || {
         if let Ok(release) = fetch_latest_release() {
             let entry = CacheEntry {

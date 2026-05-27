@@ -9,6 +9,7 @@ use crate::model::{Scope, SkillEntry, State, LOCK_VERSION};
 
 pub(crate) const LOCK_FILENAME: &str = "kasetto.lock";
 
+/// A tracked non-skill asset (command or MCP) recorded in the lock file.
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub(crate) struct AssetEntry {
     pub kind: String,
@@ -20,6 +21,7 @@ pub(crate) struct AssetEntry {
     pub destination: String,
 }
 
+/// Portable, commit-friendly manifest (`kasetto.lock`) of installed skills and assets.
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct LockFile {
     #[serde(default = "default_version")]
@@ -169,21 +171,6 @@ pub(crate) fn save_lock(lock: &mut LockFile, scope: Scope, project_root: &Path) 
         .map_err(|e| err(format!("failed to serialize lock file: {e}")))?;
     fs::write(&path, yaml)?;
     Ok(path)
-}
-
-/// Delete the lock file if it exists.
-#[allow(dead_code)]
-pub(crate) fn remove_lock(scope: Scope, project_root: &Path) -> Result<()> {
-    let path = lock_path(scope, project_root)?;
-    if path.exists() {
-        fs::remove_file(&path).map_err(|e| {
-            err(format!(
-                "failed to remove lock file {}: {e}",
-                path.display()
-            ))
-        })?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

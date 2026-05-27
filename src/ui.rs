@@ -108,6 +108,8 @@ where
 
     let result = operation();
     stop.store(true, Ordering::Relaxed);
+    // Best-effort: a panic in the cosmetic spinner thread is intentionally swallowed here so it
+    // never surfaces to or aborts the real command whose result we return below.
     let _ = handle.join();
 
     let mut stderr = std::io::stderr();

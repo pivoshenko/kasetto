@@ -56,62 +56,6 @@ pub(crate) enum Agent {
     Windsurf,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn commands_global_path_known_agents() {
-        let home = Path::new("/tmp/home");
-        assert_eq!(
-            Agent::ClaudeCode.commands_global_path(home).unwrap().path,
-            home.join(".claude/commands")
-        );
-        assert_eq!(
-            Agent::Windsurf.commands_global_path(home).unwrap().path,
-            home.join(".codeium/windsurf/global_workflows")
-        );
-        assert_eq!(
-            Agent::GeminiCli.commands_global_path(home).unwrap().format,
-            CommandFormat::GeminiToml
-        );
-        assert!(Agent::Cursor.commands_global_path(home).is_none());
-        assert!(Agent::Trae.commands_global_path(home).is_none());
-    }
-
-    #[test]
-    fn commands_project_path_known_agents() {
-        let pr = Path::new("/work");
-        assert_eq!(
-            Agent::Cursor.commands_project_path(pr).unwrap().path,
-            pr.join(".cursor/commands")
-        );
-        assert_eq!(
-            Agent::Cursor.commands_project_path(pr).unwrap().format,
-            CommandFormat::MarkdownPlain
-        );
-        assert_eq!(
-            Agent::GithubCopilot
-                .commands_project_path(pr)
-                .unwrap()
-                .format,
-            CommandFormat::PromptMd
-        );
-        assert!(Agent::Codex.commands_project_path(pr).is_none());
-        assert!(Agent::Warp.commands_project_path(pr).is_none());
-    }
-
-    #[test]
-    fn all_command_global_targets_dedupes_and_sorts() {
-        let home = Path::new("/tmp/home");
-        let all = all_command_global_targets(home);
-        assert!(!all.is_empty());
-        for w in all.windows(2) {
-            assert!(w[0].path <= w[1].path);
-        }
-    }
-}
-
 /// Every preset value (for clean / enumerating native MCP paths).
 pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::Amp,
@@ -456,6 +400,62 @@ impl Agent {
             | Agent::Replit
             | Agent::Trae
             | Agent::Warp => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn commands_global_path_known_agents() {
+        let home = Path::new("/tmp/home");
+        assert_eq!(
+            Agent::ClaudeCode.commands_global_path(home).unwrap().path,
+            home.join(".claude/commands")
+        );
+        assert_eq!(
+            Agent::Windsurf.commands_global_path(home).unwrap().path,
+            home.join(".codeium/windsurf/global_workflows")
+        );
+        assert_eq!(
+            Agent::GeminiCli.commands_global_path(home).unwrap().format,
+            CommandFormat::GeminiToml
+        );
+        assert!(Agent::Cursor.commands_global_path(home).is_none());
+        assert!(Agent::Trae.commands_global_path(home).is_none());
+    }
+
+    #[test]
+    fn commands_project_path_known_agents() {
+        let pr = Path::new("/work");
+        assert_eq!(
+            Agent::Cursor.commands_project_path(pr).unwrap().path,
+            pr.join(".cursor/commands")
+        );
+        assert_eq!(
+            Agent::Cursor.commands_project_path(pr).unwrap().format,
+            CommandFormat::MarkdownPlain
+        );
+        assert_eq!(
+            Agent::GithubCopilot
+                .commands_project_path(pr)
+                .unwrap()
+                .format,
+            CommandFormat::PromptMd
+        );
+        assert!(Agent::Codex.commands_project_path(pr).is_none());
+        assert!(Agent::Warp.commands_project_path(pr).is_none());
+    }
+
+    #[test]
+    fn all_command_global_targets_dedupes_and_sorts() {
+        let home = Path::new("/tmp/home");
+        let all = all_command_global_targets(home);
+        assert!(!all.is_empty());
+        for w in all.windows(2) {
+            assert!(w[0].path <= w[1].path);
         }
     }
 }

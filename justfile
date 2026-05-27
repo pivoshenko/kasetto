@@ -7,7 +7,7 @@ format-site:
 format: format-rs format-site
 
 lint-rs:
-    cargo clippy -- -D warnings
+    cargo clippy --all-targets -- -D warnings
 
 lint-site:
     cd site && pnpm lint
