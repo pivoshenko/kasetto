@@ -97,7 +97,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     };
 
     if !opts.dry_run {
-        save_lock(&lock, scope, &cfg_dir)?;
+        save_lock(&mut lock, scope, &cfg_dir)?;
         runtime.last_run = Some(now_iso());
         runtime.save_report_json(&serde_json::to_string(&report)?);
         save_runtime_state(&runtime, scope, &cfg_dir)?;

@@ -52,7 +52,7 @@ pub(crate) fn run(
     if !dry_run {
         apply_removals(&state, &mcp_assets, &command_assets, scope, &project_root)?;
         lock.clear_all();
-        save_lock(&lock, scope, &project_root)?;
+        save_lock(&mut lock, scope, &project_root)?;
         clear_runtime_state(scope, &project_root)?;
     }
 

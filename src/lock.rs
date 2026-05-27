@@ -158,7 +158,9 @@ pub(crate) fn load_lock(scope: Scope, project_root: &Path) -> Result<LockFile> {
 }
 
 /// Write the lock file to disk, creating parent directories if needed.
-pub(crate) fn save_lock(lock: &LockFile, scope: Scope, project_root: &Path) -> Result<PathBuf> {
+/// Stamps the current schema version so a migrated older lock is relabeled.
+pub(crate) fn save_lock(lock: &mut LockFile, scope: Scope, project_root: &Path) -> Result<PathBuf> {
+    lock.version = LOCK_VERSION;
     let path = lock_path(scope, project_root)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -202,8 +204,8 @@ mod tests {
         let dir = temp_dir("kasetto-lock-empty");
         fs::create_dir_all(&dir).unwrap();
 
-        let lock = LockFile::default();
-        save_lock(&lock, Scope::Project, &dir).unwrap();
+        let mut lock = LockFile::default();
+        save_lock(&mut lock, Scope::Project, &dir).unwrap();
 
         let loaded = load_lock(Scope::Project, &dir).unwrap();
         assert_eq!(loaded.version, 2);
@@ -240,7 +242,7 @@ mod tests {
             "srv1,srv2",
         );
 
-        save_lock(&lock, Scope::Project, &dir).unwrap();
+        save_lock(&mut lock, Scope::Project, &dir).unwrap();
         let loaded = load_lock(Scope::Project, &dir).unwrap();
 
         assert_eq!(loaded.skills.len(), 1);
@@ -249,6 +251,46 @@ mod tests {
 
         let asset = loaded.get_tracked_asset("mcp", "mcp::src::pack.json");
         assert_eq!(asset, Some(("h1".into(), "srv1,srv2".into())));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn legacy_v1_lock_loads_and_restamps_on_save() {
+        let dir = temp_dir("kasetto-lock-legacy");
+        fs::create_dir_all(&dir).unwrap();
+
+        // A v1 lock carrying fields that no longer exist in the schema plus an
+        // absolute destination. Unknown fields must be ignored, absolute paths
+        // honored, and the version relabeled to the current schema on save.
+        let legacy = "version: 1\n\
+last_run: '111'\n\
+latest_report: '{\"actions\":[]}'\n\
+skills:\n\
+\x20 src::a:\n\
+\x20\x20\x20 destination: /abs/path/.claude/skills/a\n\
+\x20\x20\x20 hash: h\n\
+\x20\x20\x20 skill: a\n\
+\x20\x20\x20 source: src\n\
+\x20\x20\x20 source_revision: local\n\
+\x20\x20\x20 updated_at: '111'\n\
+assets: {}\n";
+        fs::write(dir.join(LOCK_FILENAME), legacy).unwrap();
+
+        let mut loaded = load_lock(Scope::Project, &dir).unwrap();
+        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.skills.len(), 1);
+        assert_eq!(
+            loaded.skills["src::a"].destination,
+            "/abs/path/.claude/skills/a"
+        );
+
+        save_lock(&mut loaded, Scope::Project, &dir).unwrap();
+        let resaved = fs::read_to_string(dir.join(LOCK_FILENAME)).unwrap();
+        assert!(resaved.starts_with("version: 2"));
+        assert!(!resaved.contains("last_run"));
+        assert!(!resaved.contains("latest_report"));
+        assert!(!resaved.contains("updated_at"));
 
         let _ = fs::remove_dir_all(&dir);
     }
