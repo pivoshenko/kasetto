@@ -5,7 +5,7 @@ use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::http_client;
 use crate::profile::list_color_enabled;
-use crate::ui::{animations_enabled, print_json, with_spinner, SYM_OK};
+use crate::ui::{animations_enabled, print_json, with_spinner};
 
 pub(crate) const GITHUB_REPO: &str = "pivoshenko/kasetto";
 
@@ -50,10 +50,10 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
             print_json(&output)?;
         } else if color {
             println!(
-                "{SUCCESS}{SYM_OK}{RESET} Already on the latest version {ACCENT}{current_version}{RESET}"
+                "{SUCCESS}\x1b[1mAudited{RESET} kasetto {ACCENT}{current_version}{RESET} (already latest)"
             );
         } else {
-            println!("{SYM_OK} Already on the latest version {current_version}");
+            println!("Audited kasetto {current_version} (already latest)");
         }
         return Ok(());
     }
@@ -97,9 +97,9 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
     if as_json {
         print_json(&output)?;
     } else if color {
-        println!("\n{SUCCESS}{SYM_OK}{RESET} Updated to {ACCENT}{latest_version}{RESET}");
+        println!("\n{SUCCESS}\x1b[1mUpdated{RESET} kasetto to {ACCENT}{latest_version}{RESET}");
     } else {
-        println!("\n{SYM_OK} Updated to {latest_version}");
+        println!("\nUpdated kasetto to {latest_version}");
     }
 
     Ok(())

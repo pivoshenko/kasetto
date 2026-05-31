@@ -1,10 +1,9 @@
 use std::io::{self, IsTerminal, Write};
 use std::{fs, path::PathBuf};
 
-use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS, WARNING};
+use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::{dirs_kasetto_config, dirs_kasetto_data};
-use crate::ui::{SYM_FAIL, SYM_OK};
 
 pub(crate) fn run(yes: bool) -> Result<()> {
     if !yes {
@@ -13,7 +12,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
                 "pass --yes to confirm uninstall in non-interactive mode",
             ));
         }
-        println!("{WARNING}This will remove kasetto, kst, and all installed assets.{RESET}");
+        println!("{ATTENTION}This will remove kasetto, kst, and all installed assets.{RESET}");
         println!();
         print!("{ACCENT}Uninstall kasetto?{RESET} [y/N] ");
         io::stdout().flush()?;
@@ -28,7 +27,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
 
     println!("{ACCENT}Removing installed assets...{RESET}");
     if let Err(e) = crate::commands::clean::run(false, false, true, false, None) {
-        eprintln!("{WARNING}{SYM_FAIL}{RESET} Clean failed: {e}");
+        eprintln!("{ERROR}\x1b[1merror:{RESET} clean failed: {e}");
     }
 
     // 2. Remove $XDG_CONFIG_HOME/kasetto/ (saved config, MCP stubs, …)
@@ -64,7 +63,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
     remove_file_if_exists(&exe)?;
 
     println!();
-    println!("{SUCCESS}{SYM_OK}{RESET} kasetto uninstalled.");
+    println!("{SUCCESS}\x1b[1mUninstalled{RESET} kasetto");
     Ok(())
 }
 

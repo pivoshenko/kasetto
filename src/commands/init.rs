@@ -3,10 +3,9 @@ use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
 use crate::banner::print_banner;
-use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS, WARNING};
+use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::dirs_kasetto_config;
-use crate::ui::{SYM_FAIL, SYM_OK};
 use crate::{DEFAULT_CONFIG_FILENAME, DEFAULT_GLOBAL_CONFIG_FILENAME};
 
 const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
@@ -62,7 +61,7 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
 
     if path.exists() && !force {
         println!(
-            "{WARNING}{SYM_FAIL}{RESET} {} already exists",
+            "{ATTENTION}\x1b[1mwarning:{RESET} {} already exists",
             path.display()
         );
         if io::stdin().is_terminal() {
@@ -88,7 +87,7 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
     fs::write(&path, TEMPLATE)?;
 
     println!(
-        "{SUCCESS}{SYM_OK}{RESET} Created {ACCENT}{}{RESET}",
+        "{SUCCESS}\x1b[1mCreated{RESET} {ACCENT}{}{RESET}",
         path.display()
     );
     println!();

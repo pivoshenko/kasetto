@@ -10,7 +10,7 @@ use crate::model::{
 };
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
-use crate::ui::{print_json, SYM_OK};
+use crate::ui::print_json;
 
 #[derive(serde::Serialize)]
 struct CleanOutput {
@@ -129,7 +129,7 @@ fn print_report(lock: &LockFile, state: &State, dry_run: bool, plain: bool, tota
         println!("Run without {ACCENT}--dry-run{RESET} to apply.");
     } else {
         println!();
-        println!("{SUCCESS}{SYM_OK}{RESET} Lock file reset.");
+        println!("{SUCCESS}\x1b[1mReset{RESET} lock file");
     }
 }
 

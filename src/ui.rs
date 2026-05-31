@@ -12,9 +12,6 @@ use crate::error::Result;
 /// Braille spinner frames shared across all TUI surfaces.
 pub(crate) const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/// Unicode symbols for success and failure indicators.
-pub(crate) const SYM_OK: &str = "✓";
-pub(crate) const SYM_FAIL: &str = "✗";
 
 pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
     !quiet && !as_json && !plain && std::io::stderr().is_terminal()
@@ -106,24 +103,23 @@ where
     let _ = handle.join();
 
     let mut stderr = std::io::stderr();
-    let symbol = if result.is_ok() { SYM_OK } else { SYM_FAIL };
     if plain {
         if result.is_ok() {
-            let _ = writeln!(stderr, "{} {}", symbol, ok_label);
+            let _ = writeln!(stderr, "{}", ok_label);
         } else {
-            let _ = writeln!(stderr, "{} {}", symbol, label);
+            let _ = writeln!(stderr, "error: {}", label);
         }
     } else if result.is_ok() {
         let _ = writeln!(
             stderr,
-            "{}{}{}{} {}",
-            CLEAR_LINE, SUCCESS, symbol, RESET, ok_label
+            "{}{}\x1b[1m{}{}",
+            CLEAR_LINE, SUCCESS, ok_label, RESET
         );
     } else {
         let _ = writeln!(
             stderr,
-            "{}{}{}{} {}",
-            CLEAR_LINE, ERROR, symbol, RESET, label
+            "{}{}\x1b[1merror:{} {}",
+            CLEAR_LINE, ERROR, RESET, label
         );
     }
     let _ = stderr.flush();
