@@ -158,8 +158,8 @@ impl SyncArgs {
         self.quiet > 0
     }
 
-    pub(crate) fn is_verbose(&self) -> bool {
-        self.verbose > 0
+    pub(crate) fn verbosity(&self) -> u8 {
+        self.verbose
     }
 
     pub(crate) fn resolve_plain(&self) -> bool {

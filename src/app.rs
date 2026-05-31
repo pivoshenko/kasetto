@@ -29,7 +29,7 @@ pub fn run() -> Result<()> {
                 let update = sync.update_active();
                 let update_only = sync.update_only();
                 let quiet = sync.is_quiet();
-                let verbose = sync.is_verbose();
+                let verbose = sync.verbosity();
                 let plain = sync.resolve_plain();
                 let config = sync.config.unwrap_or_else(|| default_config.clone());
                 crate::commands::sync::run(&crate::commands::sync::SyncOptions {

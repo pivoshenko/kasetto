@@ -41,7 +41,7 @@ pub(crate) struct SyncOptions<'a> {
     pub quiet: bool,
     pub as_json: bool,
     pub plain: bool,
-    pub verbose: bool,
+    pub verbose: u8,
     pub scope_override: Option<Scope>,
     pub update: bool,
     pub update_only: Vec<String>,
@@ -62,6 +62,11 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     let scope = resolve_scope(opts.scope_override, Some(&cfg));
     let destinations = resolve_destinations(&cfg_dir, &cfg, scope)?;
     let destination = destinations[0].clone();
+
+    if opts.verbose >= 2 && !opts.quiet && !opts.as_json {
+        emit_resolution_diag(&cfg_label, scope, &destinations, opts.plain);
+    }
+
     if !opts.dry_run {
         for d in &destinations {
             fs::create_dir_all(d)?;
@@ -132,6 +137,29 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     Ok(())
 }
 
+/// `-vv` (and higher) diagnostic header printed before the sync proper:
+/// resolved config path, scope, and each destination dir.
+fn emit_resolution_diag(cfg_label: &str, scope: Scope, destinations: &[PathBuf], plain: bool) {
+    let scope_str = match scope {
+        Scope::Global => "global",
+        Scope::Project => "project",
+    };
+    if plain {
+        println!("config: {cfg_label}");
+        println!("scope:  {scope_str}");
+        for d in destinations {
+            println!("dest:   {}", d.display());
+        }
+    } else {
+        println!("{SECONDARY}config:{RESET} {cfg_label}");
+        println!("{SECONDARY}scope: {RESET} {scope_str}");
+        for d in destinations {
+            println!("{SECONDARY}dest:  {RESET} {}", d.display());
+        }
+    }
+    println!();
+}
+
 fn pluralize_item(n: usize) -> &'static str {
     if n == 1 {
         "item"
@@ -153,7 +181,7 @@ fn format_elapsed(d: Duration) -> String {
 fn print_sync_summary(
     report: &Report,
     plain: bool,
-    verbose: bool,
+    verbose: u8,
     elapsed: Duration,
     locked: bool,
 ) {
@@ -230,7 +258,7 @@ fn print_sync_summary(
         eprintln!("{prefix} {} {} failed", s.failed, pluralize_item(s.failed));
     }
 
-    if verbose {
+    if verbose >= 1 {
         println!();
         for a in &report.actions {
             let glyph = action_glyph(&a.status, plain);
