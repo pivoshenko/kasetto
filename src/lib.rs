@@ -202,7 +202,6 @@ mod profile;
 mod prompts;
 mod source;
 mod state;
-mod tui;
 mod ui;
 mod update_notifier;
 

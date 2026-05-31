@@ -49,15 +49,6 @@ pub(crate) fn print_label(label: &str, color: bool) {
     }
 }
 
-/// Print `Label: count` section header with optional ANSI color.
-pub(crate) fn print_section_header(title: &str, count: usize, color: bool) {
-    if color {
-        println!("{ACCENT}{title}: {count}{RESET}");
-    } else {
-        println!("{title}: {count}");
-    }
-}
-
 /// Print a failure line to stderr with optional ANSI color.
 pub(crate) fn eprint_fail(name: &str, source: &str, plain: bool) {
     if plain {

@@ -1,4 +1,4 @@
-//! ANSI SGR sequences and shared terminal palette (crossterm + clap).
+//! ANSI SGR sequences and clap help styling.
 //!
 //! Brand DNA is anchored to the Kasetto site (`site/app/globals.css`):
 //! Side A = mauve `#b89cdc`, Side B = amber `#d4b070` (split-complementary to mauve;
@@ -52,37 +52,6 @@ pub(crate) const RGB_BASE: (u8, u8, u8) = (0x0a, 0x09, 0x08);
 /// Warm red for ERROR — derived from rust, shifted toward red to stay distinct from [`ACCENT_WARM`].
 #[allow(dead_code)]
 pub(crate) const RGB_RED: (u8, u8, u8) = (0xc2, 0x54, 0x50);
-
-/// Crossterm colors aligned with [`super`] semantic SGR roles.
-#[allow(dead_code)]
-pub(crate) mod term {
-    use crossterm::style::Color;
-
-    use super::{RGB_AMBER, RGB_CREAM, RGB_MAUVE, RGB_RED, RGB_SKY, RGB_SUBTLE};
-
-    const fn rgb(t: (u8, u8, u8)) -> Color {
-        Color::Rgb {
-            r: t.0,
-            g: t.1,
-            b: t.2,
-        }
-    }
-
-    /// [`super::ACCENT`] — mauve (add bold via [`crossterm::style::Attribute::Bold`] where needed).
-    pub(crate) const ACCENT: Color = rgb(RGB_MAUVE);
-    /// [`super::ACCENT_WARM`] — amber (Side B).
-    pub(crate) const ACCENT_WARM: Color = rgb(RGB_AMBER);
-    /// [`super::BANNER`] — mauve.
-    pub(crate) const BANNER: Color = rgb(RGB_MAUVE);
-    /// [`super::SECONDARY`] — warm subtle grey.
-    pub(crate) const SECONDARY: Color = rgb(RGB_SUBTLE);
-    /// [`super::INFO`] — muted sky.
-    pub(crate) const INFO: Color = rgb(RGB_SKY);
-    /// [`super::ERROR`] — warm red.
-    pub(crate) const ERROR: Color = rgb(RGB_RED);
-    /// Primary body text on colored TUI backgrounds — cream, not pure white.
-    pub(crate) const TEXT: Color = rgb(RGB_CREAM);
-}
 
 // ─── clap help styling ────────────────────────────────────────────────────────
 
