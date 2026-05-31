@@ -5,7 +5,7 @@ name: GH Labels
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - ".github/labels.yaml"
       - ".github/workflows/labels.yaml"
