@@ -10,7 +10,7 @@ use crate::model::{Action, McpSettingsTarget, McpsField, Summary};
 use crate::source::{discover_mcps, materialize_source, resolve_mcp_entry};
 use crate::ui::with_spinner;
 
-use super::{file_name_str, sync_label, update_active_for_source, SyncContext};
+use super::{file_name_str, sync_label_with, update_active_for_source, SyncContext};
 
 /// An MCP entry ready to be installed or updated.
 struct PendingMcp {
@@ -86,10 +86,12 @@ pub(super) fn sync_mcps(
 
         if !fetch {
             // Skip path: no network. Honor each desired MCP file from the lock.
+            let mut first_in_run = true;
             for file_name in &desired_file_names {
                 let asset_id = format!("mcp::{}::{}", src.source, file_name);
                 desired_mcp_ids.insert(asset_id);
-                let label = sync_label("MCP", file_name, &src.source, ctx.plain);
+                let label = sync_label_with(file_name, &src.source, ctx.plain, first_in_run);
+                first_in_run = false;
                 with_spinner(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
@@ -182,9 +184,12 @@ pub(super) fn sync_mcps(
             }
             continue;
         }
+        let mut first_in_run = true;
         for mcp_path in &mcps {
             let file_name = file_name_str(mcp_path);
             let file_name_for_err = file_name.clone();
+            let row_first = first_in_run;
+            first_in_run = false;
             let r: std::result::Result<(), crate::error::Error> = (|| {
                 let hash = hash_file(mcp_path)?;
                 let mcp_text = fs::read_to_string(mcp_path)?;
@@ -210,7 +215,7 @@ pub(super) fn sync_mcps(
                     .unwrap_or(false);
 
                 if is_unchanged {
-                    let label = sync_label("MCP", &file_name, &src.source, ctx.plain);
+                    let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
                     with_spinner(ctx.animate, ctx.plain, &label, || {
                         summary.unchanged += 1;
                         actions.push(Action {
@@ -378,8 +383,11 @@ fn apply_pending(
     mcp_settings_list: &[crate::model::McpSettingsTarget],
     pending: &[PendingMcp],
 ) -> Result<()> {
+    let mut last_source = String::new();
     for p in pending {
-        let label = sync_label("MCP", &p.file_name, &p.source, ctx.plain);
+        let first_in_run = p.source != last_source;
+        last_source = p.source.clone();
+        let label = sync_label_with(&p.file_name, &p.source, ctx.plain, first_in_run);
         with_spinner(ctx.animate, ctx.plain, &label, || {
             let status = if !p.is_new {
                 if ctx.dry_run {

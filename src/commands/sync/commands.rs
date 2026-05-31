@@ -10,7 +10,7 @@ use crate::prompts::{apply_command, destination_path};
 use crate::source::{discover_commands, materialize_source, resolve_command_entry};
 use crate::ui::with_spinner;
 
-use super::{sync_label, update_active_for_source, SyncContext};
+use super::{sync_label_with, update_active_for_source, SyncContext};
 
 struct PendingCommand {
     source: String,
@@ -74,10 +74,12 @@ pub(super) fn sync_commands(
 
         if !fetch {
             // Skip path: no network. Honor each desired command from the lock.
+            let mut first_in_run = true;
             for name in &desired_names {
                 let asset_id = format!("command::{}::{}", src.source, name);
                 desired_ids.insert(asset_id);
-                let label = sync_label("command", name, &src.source, ctx.plain);
+                let label = sync_label_with(name, &src.source, ctx.plain, first_in_run);
+                first_in_run = false;
                 with_spinner(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
@@ -177,9 +179,12 @@ pub(super) fn sync_commands(
             });
         }
 
+        let mut first_in_run = true;
         for (name, src_path) in selected {
             let asset_id = format!("command::{}::{}", src.source, name);
             desired_ids.insert(asset_id.clone());
+            let row_first = first_in_run;
+            first_in_run = false;
             let hash = match hash_file(&src_path) {
                 Ok(h) => h,
                 Err(e) => {
@@ -205,7 +210,7 @@ pub(super) fn sync_commands(
                 .unwrap_or(false);
 
             if is_unchanged {
-                let label = sync_label("command", &name, &src.source, ctx.plain);
+                let label = sync_label_with(&name, &src.source, ctx.plain, row_first);
                 with_spinner(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
@@ -343,8 +348,11 @@ fn apply_pending(
     targets: &[crate::model::CommandTarget],
     pending: &[PendingCommand],
 ) -> Result<()> {
+    let mut last_source = String::new();
     for p in pending {
-        let label = sync_label("command", &p.name, &p.source, ctx.plain);
+        let first_in_run = p.source != last_source;
+        last_source = p.source.clone();
+        let label = sync_label_with(&p.name, &p.source, ctx.plain, first_in_run);
         with_spinner(ctx.animate, ctx.plain, &label, || {
             let status = if !p.is_new {
                 if ctx.dry_run {

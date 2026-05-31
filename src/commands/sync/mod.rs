@@ -286,11 +286,18 @@ pub(super) fn update_active_for_source(ctx: &SyncContext, desired: &[String]) ->
     desired.iter().any(|s| ctx.update_only.contains(s))
 }
 
-pub(super) fn sync_label(_kind: &str, name: &str, source: &str, plain: bool) -> String {
-    if plain {
-        format!(" {name}  {source}")
-    } else {
-        format!(" {ACCENT}{name}{RESET}  {SECONDARY}{}{RESET}", short_source(source))
+/// Per-row sync label. `show_source = true` appends ` <dim short-source>`
+/// after the bold name; `false` shows only the name. Callers run-length-group
+/// consecutive rows from the same source so the URL appears once per run.
+pub(super) fn sync_label_with(name: &str, source: &str, plain: bool, show_source: bool) -> String {
+    match (plain, show_source) {
+        (true, true) => format!(" {name}  {source}"),
+        (true, false) => format!(" {name}"),
+        (false, true) => format!(
+            " {ACCENT}{name}{RESET}  {SECONDARY}{}{RESET}",
+            short_source(source)
+        ),
+        (false, false) => format!(" {ACCENT}{name}{RESET}"),
     }
 }
 

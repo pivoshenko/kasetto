@@ -12,7 +12,7 @@ use crate::source::materialize_source;
 use crate::state::RuntimeState;
 use crate::ui::{eprint_fail, with_spinner};
 
-use super::{sync_label, update_active_for_source, SyncContext};
+use super::{sync_label_with, update_active_for_source, SyncContext};
 
 pub(super) fn sync_skills(
     ctx: &SyncContext,
@@ -113,8 +113,11 @@ fn sync_source_via_fetch(
                 Ok((targets, broken_skills)) => {
                     record_broken_skills(ctx, &src.source, broken_skills, summary, actions);
 
+                    let mut first_in_run = true;
                     for (skill_name, skill_path) in targets {
-                        let label = sync_label("skill", &skill_name, &src.source, ctx.plain);
+                        let label =
+                            sync_label_with(&skill_name, &src.source, ctx.plain, first_in_run);
+                        first_in_run = false;
                         if let Err(e) = process_single_skill(
                             ctx,
                             state,
@@ -177,6 +180,7 @@ fn sync_source_from_lock(
     src: &SourceSpec,
     desired: &[String],
 ) {
+    let mut first_in_run = true;
     for skill_name in desired {
         let key = format!("{}::{}", src.source, skill_name);
         desired_keys.insert(key.clone());
@@ -184,7 +188,8 @@ fn sync_source_from_lock(
             // needs_fetch would have been true; defensive guard.
             continue;
         };
-        let label = sync_label("skill", skill_name, &src.source, ctx.plain);
+        let label = sync_label_with(skill_name, &src.source, ctx.plain, first_in_run);
+        first_in_run = false;
         if let Err(e) =
             process_locked_skill(ctx, runtime, summary, actions, &entry, skill_name, &label)
         {
