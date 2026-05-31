@@ -1,18 +1,29 @@
+default:
+    @just --list
+
+install-rs:
+    cargo fetch
+
+install-next:
+    cd site && pnpm install
+
+install: install-rs install-next
+
 format-rs:
     cargo fmt
 
-format-site:
+format-next:
     cd site && pnpm format
 
-format: format-rs format-site
+format: format-rs format-next
 
 lint-rs:
     cargo clippy --all-targets -- -D warnings
 
-lint-site:
+lint-next:
     cd site && pnpm lint
 
-lint: lint-rs lint-site
+lint: lint-rs lint-next
 
 test:
     cargo test
@@ -20,21 +31,33 @@ test:
 update-rs:
     cargo update
 
-update-site:
+update-next:
     cd site && pnpm update
 
-update: update-rs update-site
+update: update-rs update-next
 
 build-rs:
     cargo build --release
 
-build-site:
+build-next:
     cd site && pnpm build
 
-build: build-rs build-site
+build: build-rs build-next
 
-serve-site:
+audit-rs:
+    @command -v cargo-audit >/dev/null || cargo install --locked cargo-audit
+    cargo audit
+
+audit-next:
+    cd site && pnpm audit
+
+audit: audit-rs audit-next
+
+dev-next:
     cd site && pnpm dev
+
+start-next:
+    cd site && pnpm start
 
 changelog:
     git-cliff --output CHANGELOG.md
