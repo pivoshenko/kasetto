@@ -2,17 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Source = { name: string; count: string };
+type Source = { name: string; source: string };
 
 const COMMAND = "kst sync";
 
+// One row per skill, run-length-grouped by source so the URL appears once
+// per contiguous run — matches the new `kst sync -v` output exactly.
 const SOURCES: Source[] = [
-  { name: "anthropics/skills", count: "5 skills" },
-  { name: "vercel-labs/next-skills", count: "3 skills" },
-  { name: "pivoshenko/pivoshenko.ai", count: "6 skills" },
-  { name: "mcps/github", count: "1 server" },
-  { name: "mcps/obsidian", count: "1 server" },
-  { name: "commands/review", count: "1 command" },
+  { name: "code-review", source: "github.com/anthropics/skills" },
+  { name: "pr-description", source: "" },
+  { name: "release-notes", source: "" },
+  { name: "next-best-practices", source: "github.com/vercel-labs/next-skills" },
+  { name: "next-upgrade", source: "" },
+  { name: "git-commit", source: "github.com/pivoshenko/pivoshenko.ai" },
 ];
 
 const SUMMARY = { count: "17", elapsed: "412ms" };
@@ -106,15 +108,15 @@ export function HeroTerminal() {
             {showCursor && phase === "typing" && <span className="t-cursor" aria-hidden />}
           </div>
 
-          {SOURCES.map((src, idx) => {
+          {SOURCES.map((row, idx) => {
             const isDone = idx < resolved;
             const isResolving = idx === resolving && phase === "running";
             const visible = isDone || isResolving;
             return (
-              <div key={src.name} className="t-row t-fade" data-shown={visible}>
+              <div key={row.name} className="t-row t-fade" data-shown={visible}>
                 {isDone ? <span className="t-ok">+</span> : <span className="t-spin" aria-hidden />}
-                <span>{src.name}</span>
-                <span className="t-dim">{isDone ? src.count : "resolving…"}</span>
+                <strong>{row.name}</strong>
+                {row.source && <span className="t-dim">{row.source}</span>}
               </div>
             );
           })}
