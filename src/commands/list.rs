@@ -8,7 +8,7 @@ use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::{color_stdout_enabled, print_json};
+use crate::ui::{color_stdout_enabled, print_json, print_tip};
 
 #[derive(Clone, Serialize)]
 pub(crate) struct AssetEntry {
@@ -59,6 +59,10 @@ pub(crate) fn run(
     let has_anything = !skills.is_empty() || !mcps.is_empty() || !commands.is_empty();
     if !has_anything {
         println!("Nothing installed.");
+        print_tip(
+            "run `kst init` to scaffold a config, then `kst sync` to install skills",
+            plain,
+        );
         return Ok(());
     }
 

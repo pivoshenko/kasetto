@@ -5,7 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::colors::{
-    ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, RESET, SECONDARY, SUCCESS,
+    ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, INFO, RESET, SECONDARY, SUCCESS,
 };
 use crate::error::Result;
 
@@ -47,6 +47,16 @@ pub(crate) fn print_label(label: &str, color: bool) {
         println!("{SECONDARY}{label}:{RESET}");
     } else {
         println!("{label}:");
+    }
+}
+
+/// Print a uv-style `tip: <msg>` line in popil sky (`INFO`). Plain mode
+/// omits color but keeps the prefix.
+pub(crate) fn print_tip(msg: &str, plain: bool) {
+    if plain {
+        println!("tip: {msg}");
+    } else {
+        println!("{INFO}\x1b[1mtip:{RESET} {msg}");
     }
 }
 
