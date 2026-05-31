@@ -28,14 +28,16 @@ pub fn run() -> Result<()> {
             Commands::Sync { sync } => {
                 let update = sync.update_active();
                 let update_only = sync.update_only();
+                let quiet = sync.is_quiet();
+                let verbose = sync.is_verbose();
                 let config = sync.config.unwrap_or_else(|| default_config.clone());
                 crate::commands::sync::run(&crate::commands::sync::SyncOptions {
                     config_path: &config,
                     dry_run: sync.dry_run,
-                    quiet: sync.quiet,
+                    quiet,
                     as_json: sync.json,
                     plain: sync.plain,
-                    verbose: sync.verbose,
+                    verbose,
                     scope_override: sync.scope.scope_override(),
                     update,
                     update_only,
@@ -51,7 +53,7 @@ pub fn run() -> Result<()> {
                 json,
                 kind,
                 output.plain,
-                output.quiet,
+                output.is_quiet(),
                 scope.scope_override(),
             ),
             Commands::Doctor {
@@ -61,7 +63,7 @@ pub fn run() -> Result<()> {
             } => crate::commands::doctor::run(
                 json,
                 output.plain,
-                output.quiet,
+                output.is_quiet(),
                 scope.scope_override(),
                 &program_name,
             ),
@@ -73,7 +75,7 @@ pub fn run() -> Result<()> {
             } => crate::commands::clean::run(
                 dry_run,
                 json,
-                output.quiet,
+                output.is_quiet(),
                 output.plain,
                 scope.scope_override(),
             ),
@@ -103,10 +105,10 @@ pub fn run() -> Result<()> {
 /// commands that already print version info.
 fn should_suppress_notice(command: &Option<Commands>) -> bool {
     match command {
-        Some(Commands::Sync { sync }) => sync.json || sync.plain || sync.quiet,
-        Some(Commands::List { json, output, .. }) => *json || output.plain || output.quiet,
-        Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.quiet,
-        Some(Commands::Clean { json, output, .. }) => *json || output.plain || output.quiet,
+        Some(Commands::Sync { sync }) => sync.json || sync.plain || sync.is_quiet(),
+        Some(Commands::List { json, output, .. }) => *json || output.plain || output.is_quiet(),
+        Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.is_quiet(),
+        Some(Commands::Clean { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Completions { .. }) => true,
         Some(Commands::ManageSelf { .. }) => true,
         Some(Commands::Init { .. }) => false,

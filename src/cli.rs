@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 use crate::model::Scope;
@@ -51,12 +51,18 @@ impl ScopeArgs {
 /// Shared output flags for commands that print to the terminal (matches `sync` where applicable).
 #[derive(Args, Clone, Debug, Default)]
 pub(crate) struct OutputArgs {
-    #[arg(long)]
-    #[arg(help = "suppress non-error output")]
-    pub quiet: bool,
+    #[arg(short = 'q', long, action = ArgAction::Count, global = false)]
+    #[arg(help = "suppress non-error output (repeat for stricter silence)")]
+    pub quiet: u8,
     #[arg(long)]
     #[arg(help = "disable colors and animations")]
     pub plain: bool,
+}
+
+impl OutputArgs {
+    pub(crate) fn is_quiet(&self) -> bool {
+        self.quiet > 0
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
@@ -80,18 +86,18 @@ pub(crate) struct SyncArgs {
     #[arg(long)]
     #[arg(help = "preview actions without changing files")]
     pub dry_run: bool,
-    #[arg(long)]
-    #[arg(help = "suppress non-error output")]
-    pub quiet: bool,
+    #[arg(short = 'q', long, action = ArgAction::Count)]
+    #[arg(help = "suppress non-error output (repeat for stricter silence)")]
+    pub quiet: u8,
     #[arg(long)]
     #[arg(help = "print final report as JSON")]
     pub json: bool,
     #[arg(long)]
     #[arg(help = "disable colors and animations")]
     pub plain: bool,
-    #[arg(long)]
-    #[arg(help = "print per-skill action list")]
-    pub verbose: bool,
+    #[arg(short = 'v', long, action = ArgAction::Count)]
+    #[arg(help = "increase output detail (-v, -vv, -vvv)")]
+    pub verbose: u8,
     #[arg(long, short = 'u', num_args = 0.., value_name = "NAME")]
     #[arg(
         help = "re-resolve branch/default sources and rewrite locked hashes",
@@ -114,6 +120,14 @@ impl SyncArgs {
     /// The explicit skill names passed to `--update <name>...` (empty for `--update` alone).
     pub(crate) fn update_only(&self) -> Vec<String> {
         self.update.clone().unwrap_or_default()
+    }
+
+    pub(crate) fn is_quiet(&self) -> bool {
+        self.quiet > 0
+    }
+
+    pub(crate) fn is_verbose(&self) -> bool {
+        self.verbose > 0
     }
 }
 
