@@ -91,13 +91,12 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         path.display()
     );
     println!();
-    println!("{ACCENT}Next steps:{RESET}");
+    println!("{ACCENT}Next steps{RESET}");
+    println!("  1. Edit {ACCENT}{}{RESET} to add your sources and target agent", path.display());
     println!(
-        "  1. Edit {ACCENT}{}{RESET} for your sources and agent",
-        path.display()
+        "  2. For private repos set {ACCENT}GITHUB_TOKEN{RESET} / {ACCENT}GH_TOKEN{RESET} / {ACCENT}GITLAB_TOKEN{RESET}",
     );
-    println!("  2. For private GitHub / GHE use {ACCENT}GITHUB_TOKEN{RESET} or {ACCENT}GH_TOKEN{RESET}; for GitLab use {ACCENT}GITLAB_TOKEN{RESET}");
-    println!("  3. Run {ACCENT}kasetto sync{RESET} to install skills");
+    println!("  3. Run {ACCENT}kasetto sync{RESET} to install");
 
     Ok(())
 }
