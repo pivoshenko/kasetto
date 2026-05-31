@@ -63,8 +63,7 @@ pub(super) fn sync_mcps(
         let update_names: Vec<String> = desired_file_names
             .iter()
             .flat_map(|f| {
-                std::iter::once(f.clone())
-                    .chain(f.strip_suffix(".json").map(str::to_string))
+                std::iter::once(f.clone()).chain(f.strip_suffix(".json").map(str::to_string))
             })
             .collect();
         let update_active = update_active_for_source(ctx, &update_names);

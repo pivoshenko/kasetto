@@ -9,11 +9,11 @@ pub(crate) use agent::{
     all_command_global_targets, all_command_project_targets, all_mcp_project_targets,
     all_mcp_settings_targets, Agent, AgentField,
 };
-pub(crate) use config::{CommandSourceSpec, McpSourceSpec};
 pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,
     SkillTarget, SkillsField, SourceSpec,
 };
+pub(crate) use config::{CommandSourceSpec, McpSourceSpec};
 pub(crate) use types::{
     Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure, LOCK_VERSION,
 };

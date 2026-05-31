@@ -56,8 +56,7 @@ pub(super) fn sync_commands(
         }
 
         let update_active = update_active_for_source(ctx, &desired_names);
-        let fetch =
-            update_active || needs_fetch_commands(ctx, src, &desired_names, lock, &targets);
+        let fetch = update_active || needs_fetch_commands(ctx, src, &desired_names, lock, &targets);
 
         if fetch && ctx.locked {
             summary.failed += 1;
@@ -291,9 +290,7 @@ fn needs_fetch_commands(
         if lock.get_tracked_asset("command", &asset_id).is_none() {
             return true;
         }
-        let any_missing = targets
-            .iter()
-            .any(|t| !destination_path(t, name).exists());
+        let any_missing = targets.iter().any(|t| !destination_path(t, name).exists());
         if any_missing {
             return true;
         }
