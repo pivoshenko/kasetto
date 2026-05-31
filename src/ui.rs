@@ -76,6 +76,24 @@ pub(crate) fn eprint_fail(name: &str, source: &str, plain: bool) {
     }
 }
 
+/// Print a uv-style `warning: <msg>` line to stderr in bold yellow.
+pub(crate) fn eprint_warn(msg: &str, plain: bool) {
+    if plain {
+        eprintln!("warning: {msg}");
+    } else {
+        eprintln!("{ATTENTION}\x1b[1mwarning:{RESET} {msg}");
+    }
+}
+
+/// Print a uv-style `error: <msg>` line to stderr in bold red.
+pub(crate) fn eprint_error(msg: &str, plain: bool) {
+    if plain {
+        eprintln!("error: {msg}");
+    } else {
+        eprintln!("{ERROR}\x1b[1merror:{RESET} {msg}");
+    }
+}
+
 pub(crate) fn with_spinner<T, F>(
     enabled: bool,
     plain: bool,

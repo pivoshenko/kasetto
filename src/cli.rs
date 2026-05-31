@@ -171,7 +171,10 @@ impl SyncArgs {
 /// warning for the legacy `--plain`) and return the effective `plain` value.
 fn resolve_plain(plain_flag: bool, color: ColorMode) -> bool {
     if plain_flag {
-        eprintln!("warning: --plain is deprecated; use --color never instead");
+        crate::ui::eprint_warn(
+            "--plain is deprecated; use --color never instead",
+            color == ColorMode::Never,
+        );
     }
     match color {
         ColorMode::Always => {

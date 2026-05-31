@@ -242,20 +242,16 @@ fn print_sync_summary(
     }
 
     if s.broken > 0 {
-        let prefix = if plain {
-            "warning:".to_string()
-        } else {
-            format!("{ATTENTION}\x1b[1mwarning:{RESET}")
-        };
-        eprintln!("{prefix} {} {} broken", s.broken, pluralize_item(s.broken));
+        crate::ui::eprint_warn(
+            &format!("{} {} broken", s.broken, pluralize_item(s.broken)),
+            plain,
+        );
     }
     if s.failed > 0 {
-        let prefix = if plain {
-            "error:".to_string()
-        } else {
-            format!("{ERROR}\x1b[1merror:{RESET}")
-        };
-        eprintln!("{prefix} {} {} failed", s.failed, pluralize_item(s.failed));
+        crate::ui::eprint_error(
+            &format!("{} {} failed", s.failed, pluralize_item(s.failed)),
+            plain,
+        );
     }
 
     if verbose >= 1 {
