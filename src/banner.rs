@@ -1,154 +1,106 @@
-use std::io::IsTerminal;
 use unicode_width::UnicodeWidthStr;
 
-use crate::colors::{ansi_cursor_column_1based, ansi_cursor_up, RESET};
-
-/// Popil lavender (`#a89bb5`) — banner foreground. The only truecolor SGR
-/// in the operational codebase; everything else uses basic ANSI so the
-/// terminal theme decides hues.
-const BANNER: &str = "\x1b[38;2;168;155;181m";
-/// Popil yellow (`#d4a85a`) — banner subtitle highlight.
-const BANNER_SUBTITLE_FG: &str = "\x1b[38;2;212;168;90m";
-
-const BANNER_TOP: &str = "╔═══════════════════════════════════════════════════════════════╗";
-const BANNER_BOTTOM: &str = "╚═══════════════════════════════════════════════════════════════╝";
-const BANNER_INNER_WIDTH: usize = 63;
-const LOGO_LINES: [&str; 6] = [
-    "  ██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗   ",
-    "  ██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗  ",
-    "  █████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║  ",
-    "  ██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║  ",
-    "  ██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝  ",
-    "  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝   ",
-];
-const JAPANESE_SUBTITLE: &str = "スキル・パッケージ・マネージャー";
-
-/// Total banner lines: top border + LOGO_LINES + empty + subtitle + bottom border.
-const BANNER_LINE_COUNT: usize = 1 + LOGO_LINES.len() + 1 + 1 + 1;
-
-/// Screen column (0-based), row index in [`banner_lines`] (0 = top border), twinkle phase.
-pub(crate) const BANNER_STAR_CELLS: [(u16, u16, u16); 10] = [
-    (3, 7, 0),
-    (8, 7, 2),
-    (13, 7, 4),
-    // Right margin: use phases that render as stars in the CLI overlay (not middle dots).
-    (50, 7, 2),
-    (55, 7, 3),
-    (60, 7, 5),
-    (2, 8, 6),
-    (10, 8, 8),
-    (52, 8, 0),
-    (58, 8, 9),
-];
-
+use crate::colors::{ATTENTION, BRAND, RESET};
 use crate::ui::color_stdout_enabled;
 
-fn empty_banner_line() -> String {
-    format!("║{}║", " ".repeat(BANNER_INNER_WIDTH))
-}
+/// Frame + logo: brand violet (`BRAND`) — the ceremonial brand mark surface.
+const BANNER_FG: &str = BRAND;
+/// Japanese subtitle: amber (`ATTENTION`) — the brand-adjacent lead hue.
+const SUBTITLE_FG: &str = ATTENTION;
 
-fn left_boxed_line(content: &str) -> String {
-    let width = UnicodeWidthStr::width(content);
-    let right_pad = BANNER_INNER_WIDTH.saturating_sub(width);
-    format!("║{}{}║", content, " ".repeat(right_pad))
-}
+const LOGO_LINES: [&str; 6] = [
+    "██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗ ",
+    "██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗",
+    "█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║",
+    "██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║",
+    "██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝",
+    "╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝ ",
+];
+const JAPANESE_SUBTITLE: &str = "スキル・パッケージ・マネージャー";
+const LOGO_WIDTH: usize = 59;
+/// Inner content width inside the frame (logo + 2-char gutter each side).
+const INNER_WIDTH: usize = LOGO_WIDTH + 4;
 
-fn centered_boxed_line(content: &str) -> String {
-    let width = UnicodeWidthStr::width(content);
-    let total_pad = BANNER_INNER_WIDTH.saturating_sub(width);
-    let left_pad = total_pad / 2;
-    let right_pad = total_pad - left_pad;
-    format!(
-        "║{}{}{}║",
-        " ".repeat(left_pad),
-        content,
-        " ".repeat(right_pad)
-    )
-}
-
-fn colorize_content(line: &str, content: &str, color: &str, base: &str) -> String {
-    line.replacen(content, &format!("{color}{content}{base}"), 1)
-}
-
-fn banner_lines() -> Vec<String> {
-    let mut lines = Vec::new();
-    lines.push(BANNER_TOP.to_string());
-    for logo in LOGO_LINES {
-        lines.push(left_boxed_line(logo));
+fn frame_top(use_color: bool) -> String {
+    let bar = "═".repeat(INNER_WIDTH);
+    if use_color {
+        format!("{BANNER_FG}╔{bar}╗{RESET}")
+    } else {
+        format!("╔{bar}╗")
     }
-    lines.push(empty_banner_line());
-    lines.push(centered_boxed_line(JAPANESE_SUBTITLE));
-    lines.push(BANNER_BOTTOM.to_string());
-    lines
+}
+
+fn frame_bottom(use_color: bool) -> String {
+    let bar = "═".repeat(INNER_WIDTH);
+    if use_color {
+        format!("{BANNER_FG}╚{bar}╝{RESET}")
+    } else {
+        format!("╚{bar}╝")
+    }
+}
+
+fn frame_line(colored_content: &str, visible_width: usize, use_color: bool) -> String {
+    let total_pad = INNER_WIDTH.saturating_sub(visible_width);
+    let left = total_pad / 2;
+    let right = total_pad - left;
+    if use_color {
+        format!(
+            "{BANNER_FG}║{RESET}{lp}{colored_content}{rp}{BANNER_FG}║{RESET}",
+            lp = " ".repeat(left),
+            rp = " ".repeat(right),
+        )
+    } else {
+        format!(
+            "║{lp}{colored_content}{rp}║",
+            lp = " ".repeat(left),
+            rp = " ".repeat(right),
+        )
+    }
+}
+
+fn frame_blank(use_color: bool) -> String {
+    frame_line("", 0, use_color)
+}
+
+fn logo_line(line: &str, use_color: bool) -> String {
+    let colored = if use_color {
+        format!("{BANNER_FG}{line}{RESET}")
+    } else {
+        line.to_string()
+    };
+    frame_line(&colored, UnicodeWidthStr::width(line), use_color)
+}
+
+fn tagline_inside(use_color: bool) -> String {
+    let visible = UnicodeWidthStr::width(JAPANESE_SUBTITLE);
+    let colored = if use_color {
+        format!("{SUBTITLE_FG}{JAPANESE_SUBTITLE}{RESET}")
+    } else {
+        JAPANESE_SUBTITLE.to_string()
+    };
+    frame_line(&colored, visible, use_color)
 }
 
 pub(crate) fn banner_string(use_color: bool) -> String {
-    let mut lines = banner_lines();
-    if use_color {
-        if let Some(subtitle) = lines.get_mut(LOGO_LINES.len() + 2) {
-            *subtitle = colorize_content(subtitle, JAPANESE_SUBTITLE, BANNER_SUBTITLE_FG, BANNER);
-        }
-        format!("{}{}{RESET}\n", BANNER, lines.join("\n"))
-    } else {
-        format!("{}\n", lines.join("\n"))
+    let mut out = String::with_capacity(1024);
+    out.push_str(&frame_top(use_color));
+    out.push('\n');
+    for line in LOGO_LINES {
+        out.push_str(&logo_line(line, use_color));
+        out.push('\n');
     }
-}
-
-/// Glyph for one static "star" cell (filled, outline, or dot) from animation phase.
-fn cli_static_star_glyph(phase: u16) -> &'static str {
-    match phase % 6 {
-        0 | 5 => "✦",
-        1 | 4 => "·",
-        2 => "✧",
-        _ => "•",
-    }
-}
-
-/// One static frame of banner stars using cursor motion (stdout must already show the banner).
-fn cli_static_star_overlay() -> String {
-    let up = BANNER_LINE_COUNT.saturating_sub(7);
-    let mut s = String::with_capacity(256);
-    s.push_str(RESET);
-    s.push_str(&ansi_cursor_up(up as u16));
-
-    let mut row7: Vec<(u16, u16)> = BANNER_STAR_CELLS
-        .iter()
-        .filter(|(_, r, _)| *r == 7)
-        .map(|(c, _, ph)| (*c, *ph))
-        .collect();
-    row7.sort_unstable_by_key(|(c, _)| *c);
-    for (col, ph) in row7 {
-        let g = cli_static_star_glyph(ph);
-        s.push_str(&ansi_cursor_column_1based(col.saturating_add(1)));
-        s.push_str(BANNER);
-        s.push_str(g);
-        s.push_str(RESET);
-    }
-    s.push_str("\r\n");
-
-    let mut row8: Vec<(u16, u16)> = BANNER_STAR_CELLS
-        .iter()
-        .filter(|(_, r, _)| *r == 8)
-        .map(|(c, _, ph)| (*c, *ph))
-        .collect();
-    row8.sort_unstable_by_key(|(c, _)| *c);
-    for (col, ph) in row8 {
-        let g = cli_static_star_glyph(ph);
-        s.push_str(&ansi_cursor_column_1based(col.saturating_add(1)));
-        s.push_str(BANNER);
-        s.push_str(g);
-        s.push_str(RESET);
-    }
-    // Past bottom border; align with cursor after `banner_string`'s trailing newline.
-    s.push_str("\r\n\r\n");
-    s
+    out.push_str(&frame_blank(use_color));
+    out.push('\n');
+    out.push_str(&tagline_inside(use_color));
+    out.push('\n');
+    out.push_str(&frame_bottom(use_color));
+    out.push('\n');
+    out
 }
 
 pub(crate) fn print_banner() {
-    let color = color_stdout_enabled();
-    print!("{}", banner_string(color));
-    if color && std::io::stdout().is_terminal() {
-        print!("{}", cli_static_star_overlay());
+    if !color_stdout_enabled() {
+        return;
     }
+    print!("{}", banner_string(true));
 }
-

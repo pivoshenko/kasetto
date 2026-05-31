@@ -1,7 +1,7 @@
 use std::fs;
 use std::time::{Duration, Instant};
 
-use crate::colors::{ATTENTION, ERROR, RESET, SECONDARY};
+use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
 use crate::lock::{load_lock, save_lock, LockFile};
@@ -11,7 +11,10 @@ use crate::model::{
 };
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
-use crate::ui::{action_glyph, print_group_header, print_json, print_tip, short_source};
+use crate::ui::{
+    action_glyph, print_json, print_section_header, print_source_header, print_tip,
+    print_tree_leaf, short_source, status_tail,
+};
 
 #[derive(serde::Serialize)]
 struct CleanOutput {
@@ -44,6 +47,20 @@ pub(crate) fn run(
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
     let commands_count = command_assets.len();
+
+    if !dry_run && !as_json && !quiet && (skills_count + mcps_count + commands_count) > 0 {
+        let color = list_color_enabled() && !plain;
+        if color {
+            println!(
+                "{ATTENTION}⚠{RESET} Removing {skills_count} skills, {mcps_count} MCP servers, and {commands_count} commands."
+            );
+        } else {
+            println!(
+                "Removing {skills_count} skills, {mcps_count} MCP servers, and {commands_count} commands."
+            );
+        }
+        println!();
+    }
 
     if !dry_run {
         apply_removals(&state, &mcp_assets, &command_assets, scope, &project_root)?;
@@ -136,25 +153,122 @@ fn print_report(
         return;
     }
 
-    let (verb, color_code) = if dry_run {
-        ("Would remove", ATTENTION)
-    } else {
-        ("Removed", ERROR)
-    };
-    if plain {
-        println!("{verb} {total} items in {timing}");
-    } else {
-        println!("{color_code}\x1b[1m{verb}{RESET} {total} items {SECONDARY}in {timing}{RESET}");
-    }
+    print_removal_tree(lock, state, dry_run, !color);
 
     if dry_run {
-        print_dry_run_detail(lock, state, color);
+        if color {
+            println!(
+                "{ATTENTION}{ACCENT}Would remove{RESET} {total} items {SECONDARY}in {timing}{RESET}"
+            );
+        } else {
+            println!("Would remove {total} items in {timing}");
+        }
         println!();
         print_tip("run without `--dry-run` to apply", plain);
-    } else if color {
-        println!("{SECONDARY}Reset lock file{RESET}");
     } else {
-        println!("Reset lock file");
+        if color {
+            println!(
+                "{ERROR}{ACCENT}Removed{RESET} {total} items {SECONDARY}in {timing}{RESET}"
+            );
+            println!(
+                "  {SECONDARY}lock file reset · run{RESET} {ATTENTION}kasetto sync{RESET} {SECONDARY}to restore{RESET}"
+            );
+        } else {
+            println!("Removed {total} items in {timing}");
+            println!("  lock file reset · run kasetto sync to restore");
+        }
+    }
+}
+
+/// Print a source-grouped red teardown tree for skills, MCP packs, and
+/// commands captured in the lock state. Used by both `--dry-run` (with
+/// `would_remove` glyphs) and the real run (with `removed` glyphs).
+fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool) {
+    let status = if dry_run { "would_remove" } else { "removed" };
+
+    if !state.skills.is_empty() {
+        let mut by_source: Vec<(String, Vec<(&str, &str)>)> = Vec::new();
+        let mut entries: Vec<_> = state.skills.values().collect();
+        entries.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.skill.cmp(&b.skill)));
+        for e in entries {
+            let key = e.source.clone();
+            if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                g.1.push((e.skill.as_str(), e.skill.as_str()));
+            } else {
+                by_source.push((key, vec![(e.skill.as_str(), e.skill.as_str())]));
+            }
+        }
+        print_section_header("Skills", Some((state.skills.len(), "to remove")), plain);
+        println!();
+        for (source, items) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), None, plain);
+            for (i, (name, _)) in items.iter().enumerate() {
+                let is_last = i == items.len() - 1;
+                let glyph = action_glyph(status, plain);
+                let tail = status_tail(status, None, None, plain);
+                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+            }
+            println!();
+        }
+    }
+
+    let mcp_packs: Vec<_> = lock.assets.iter().filter(|(_, a)| a.kind == "mcp").collect();
+    if !mcp_packs.is_empty() {
+        let total_servers: usize = mcp_packs
+            .iter()
+            .map(|(_, a)| a.destination.split(',').filter(|s| !s.is_empty()).count())
+            .sum();
+        print_section_header("Mcp Servers", Some((total_servers, "to remove")), plain);
+        println!();
+        let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
+        for (_, a) in &mcp_packs {
+            for server in a.destination.split(',').filter(|s| !s.is_empty()) {
+                let key = a.source.clone();
+                if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                    g.1.push(server);
+                } else {
+                    by_source.push((key, vec![server]));
+                }
+            }
+        }
+        for (source, servers) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), None, plain);
+            for (i, name) in servers.iter().enumerate() {
+                let is_last = i == servers.len() - 1;
+                let glyph = action_glyph(status, plain);
+                let tail = status_tail(status, None, None, plain);
+                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+            }
+            println!();
+        }
+    }
+
+    let cmd_assets: Vec<_> = lock.assets.iter().filter(|(_, a)| a.kind == "command").collect();
+    if !cmd_assets.is_empty() {
+        print_section_header("Commands", Some((cmd_assets.len(), "to remove")), plain);
+        println!();
+        let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
+        for (_, a) in &cmd_assets {
+            let key = a.source.clone();
+            if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                g.1.push(a.name.as_str());
+            } else {
+                by_source.push((key, vec![a.name.as_str()]));
+            }
+        }
+        for (source, items) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), None, plain);
+            for (i, name) in items.iter().enumerate() {
+                let is_last = i == items.len() - 1;
+                let glyph = action_glyph(status, plain);
+                let tail = status_tail(status, None, None, plain);
+                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+            }
+            println!();
+        }
     }
 }
 
@@ -167,86 +281,3 @@ fn format_elapsed(d: Duration) -> String {
     }
 }
 
-fn print_dry_run_detail(lock: &LockFile, state: &State, color: bool) {
-    let plain = !color;
-
-    if !state.skills.is_empty() {
-        print_group_header("Skills", color);
-        let mut entries: Vec<_> = state.skills.values().collect();
-        entries.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.skill.cmp(&b.skill)));
-        let mut last_source = String::new();
-        for entry in entries {
-            let glyph = action_glyph("would_remove", plain);
-            let show_source = entry.source != last_source;
-            last_source = entry.source.clone();
-            let src_cell = if show_source {
-                short_source(&entry.source)
-            } else {
-                String::new()
-            };
-            if color {
-                if src_cell.is_empty() {
-                    println!(" {glyph} \x1b[1m{}{RESET}", entry.skill);
-                } else {
-                    println!(
-                        " {glyph} \x1b[1m{}{RESET}  {SECONDARY}{}{RESET}",
-                        entry.skill, src_cell
-                    );
-                }
-            } else if src_cell.is_empty() {
-                println!(" - {}", entry.skill);
-            } else {
-                println!(" - {}  {}", entry.skill, src_cell);
-            }
-        }
-    }
-
-    let mcp_packs: Vec<_> = lock
-        .assets
-        .iter()
-        .filter(|(_, a)| a.kind == "mcp")
-        .collect();
-    if !mcp_packs.is_empty() {
-        print_group_header("MCP Servers", color);
-        for (_, a) in mcp_packs {
-            let servers: String = a
-                .destination
-                .split(',')
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<_>>()
-                .join(", ");
-            let glyph = action_glyph("would_remove", plain);
-            if color {
-                println!(
-                    " {glyph} \x1b[1m{}{RESET}  {SECONDARY}pack: {}, {}{RESET}",
-                    servers,
-                    a.name,
-                    short_source(&a.source)
-                );
-            } else {
-                println!(" - {}  pack: {}, {}", servers, a.name, short_source(&a.source));
-            }
-        }
-    }
-
-    let cmd_assets: Vec<_> = lock
-        .assets
-        .iter()
-        .filter(|(_, a)| a.kind == "command")
-        .collect();
-    if !cmd_assets.is_empty() {
-        print_group_header("Commands", color);
-        for (_, a) in cmd_assets {
-            let glyph = action_glyph("would_remove", plain);
-            if color {
-                println!(
-                    " {glyph} \x1b[1m{}{RESET}  {SECONDARY}{}{RESET}",
-                    a.name,
-                    short_source(&a.source)
-                );
-            } else {
-                println!(" - {}  {}", a.name, short_source(&a.source));
-            }
-        }
-    }
-}

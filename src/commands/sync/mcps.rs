@@ -3,12 +3,15 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::error::{err, Result};
-use crate::fsops::{hash_file, now_unix, resolve_mcp_settings_targets};
+use crate::fsops::{dirs_home, dirs_kasetto_config, hash_file, now_unix, resolve_mcp_settings_targets};
 use crate::lock::LockFile;
 use crate::mcps::{merge_mcp_config, remove_mcp_server, servers_present_in_settings};
-use crate::model::{Action, McpSettingsTarget, McpsField, Summary};
+use crate::model::{
+    all_mcp_project_targets, all_mcp_settings_targets, Action, McpSettingsTarget, McpsField, Scope,
+    Summary,
+};
 use crate::source::{discover_mcps, materialize_source, resolve_mcp_entry};
-use crate::ui::with_spinner;
+use crate::ui::with_spinner_transient;
 
 use super::{file_name_str, sync_label_with, update_active_for_source, SyncContext};
 
@@ -31,7 +34,22 @@ pub(super) fn sync_mcps(
 ) -> Result<()> {
     let mut desired_mcp_ids = HashSet::new();
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
+
+    // No agents configured (e.g. user dropped `agent:`) but lock still has MCP
+    // entries — config is source of truth, so scrub the orphans from every
+    // known agent's settings file as best-effort, prune the lock, and return.
     if mcp_settings_list.is_empty() {
+        let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
+        if has_orphans {
+            let fallback_targets: Vec<McpSettingsTarget> = match ctx.scope {
+                Scope::Project => all_mcp_project_targets(&ctx.scope_root),
+                Scope::Global => match (dirs_home(), dirs_kasetto_config()) {
+                    (Ok(home), Ok(cfg_dir)) => all_mcp_settings_targets(&home, &cfg_dir),
+                    _ => Vec::new(),
+                },
+            };
+            remove_stale(ctx, lock, summary, actions, &desired_mcp_ids, &fallback_targets);
+        }
         return Ok(());
     }
 
@@ -92,7 +110,7 @@ pub(super) fn sync_mcps(
                 desired_mcp_ids.insert(asset_id);
                 let label = sync_label_with(file_name, &src.source, ctx.plain, first_in_run);
                 first_in_run = false;
-                with_spinner(ctx.animate, ctx.plain, &label, || {
+                with_spinner_transient(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
@@ -216,7 +234,7 @@ pub(super) fn sync_mcps(
 
                 if is_unchanged {
                     let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
-                    with_spinner(ctx.animate, ctx.plain, &label, || {
+                    with_spinner_transient(ctx.animate, ctx.plain, &label, || {
                         summary.unchanged += 1;
                         actions.push(Action {
                             source: Some(src.source.clone()),
@@ -388,7 +406,7 @@ fn apply_pending(
         let first_in_run = p.source != last_source;
         last_source = p.source.clone();
         let label = sync_label_with(&p.file_name, &p.source, ctx.plain, first_in_run);
-        with_spinner(ctx.animate, ctx.plain, &label, || {
+        with_spinner_transient(ctx.animate, ctx.plain, &label, || {
             let status = if !p.is_new {
                 if ctx.dry_run {
                     "would_update"

@@ -133,6 +133,20 @@ pub(crate) fn all_command_project_targets(project_root: &Path) -> Vec<CommandTar
     )
 }
 
+/// Deduped global command directories for a specific set of agents — used by
+/// `doctor` to scope the COMMAND DIRECTORIES panel to what the config wires.
+pub(crate) fn command_global_targets(home: &Path, agents: &[Agent]) -> Vec<CommandTarget> {
+    dedup_command_targets(agents.iter().map(|a| a.commands_global_path(home)))
+}
+
+/// Deduped project command directories for a specific set of agents.
+pub(crate) fn command_project_targets(
+    project_root: &Path,
+    agents: &[Agent],
+) -> Vec<CommandTarget> {
+    dedup_command_targets(agents.iter().map(|a| a.commands_project_path(project_root)))
+}
+
 #[inline]
 fn cmd(base: &Path, rel: &str, format: CommandFormat) -> Option<CommandTarget> {
     Some(CommandTarget {

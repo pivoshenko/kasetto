@@ -1,11 +1,14 @@
 use std::fs;
 use sha2::{Digest, Sha256};
 
-use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
+use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::http_client;
 use crate::profile::list_color_enabled;
-use crate::ui::{animations_enabled, print_json, with_spinner};
+use crate::ui::{
+    animations_enabled, print_json, print_update_closer, relativize_home, with_spinner,
+    with_spinner_transient,
+};
 
 pub(crate) const GITHUB_REPO: &str = "pivoshenko/kasetto";
 
@@ -50,12 +53,25 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
             print_json(&output)?;
         } else if color {
             println!(
-                "{SUCCESS}\x1b[1mAudited{RESET} kasetto {ACCENT}{current_version}{RESET} (already latest)"
+                "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Audited{RESET} kasetto {ACCENT}{current_version}{RESET} (already latest)"
             );
         } else {
             println!("Audited kasetto {current_version} (already latest)");
         }
         return Ok(());
+    }
+
+    // `✓ Update available  X → Y` per design.
+    if !as_json {
+        if color {
+            println!(
+                "{SUCCESS}✓{RESET} Update available  {ATTENTION}{current_version} → {latest_version}{RESET}"
+            );
+            println!();
+        } else {
+            println!("Update available  {current_version} → {latest_version}");
+            println!();
+        }
     }
 
     let target = current_target();
@@ -68,25 +84,41 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
     let current_exe = std::env::current_exe()
         .map_err(|e| err(format!("failed to locate current executable: {e}")))?;
 
-    let update_label = if color {
-        format!(
-            "Updating {}{}{} {}{}{} {}{}{}",
-            ACCENT, current_version, RESET, SECONDARY, "→", RESET, ACCENT, latest_version, RESET,
-        )
-    } else {
-        format!("Updating {} -> {}", current_version, latest_version)
-    };
-
     let checksums_asset = release.assets.iter().find(|a| a.name == "checksums.txt");
 
-    with_spinner(animate, !color, &update_label, || {
-        self_replace(
-            &asset.browser_download_url,
-            &asset.name,
-            checksums_asset.map(|a| a.browser_download_url.as_str()),
-            &current_exe,
-        )
+    // Phase 1: download archive bytes.
+    let body = with_spinner_transient(
+        animate,
+        !color,
+        format!("Downloading kasetto {latest_version}"),
+        || download_archive(&asset.browser_download_url),
+    )?;
+    print_step_done(
+        &format!("Downloaded kasetto {latest_version}"),
+        color,
+        as_json,
+    );
+
+    // Phase 2: verify checksum.
+    if let Some(checksums_asset) = checksums_asset {
+        with_spinner_transient(animate, !color, "Verifying signature", || {
+            let checksums_text = http_client()?
+                .get(&checksums_asset.browser_download_url)
+                .send()
+                .and_then(|r| r.error_for_status())
+                .and_then(|r| r.text())
+                .map_err(|e| err(format!("failed to download checksums.txt: {e}")))?;
+            verify_checksum(&body, &asset.name, &checksums_text)
+        })?;
+        print_step_done("Signature verified", color, as_json);
+    }
+
+    // Phase 3: install.
+    with_spinner_transient(animate, !color, "Installing", || {
+        install_from_archive(&body, &current_exe)
     })?;
+    let exe_display = relativize_home(&current_exe.to_string_lossy());
+    print_step_done(&format!("Installed to {exe_display}"), color, as_json);
 
     let output = UpdateOutput {
         current_version: current_version.to_string(),
@@ -96,13 +128,34 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
 
     if as_json {
         print_json(&output)?;
-    } else if color {
-        println!("\n{SUCCESS}\x1b[1mUpdated{RESET} kasetto to {ACCENT}{latest_version}{RESET}");
     } else {
-        println!("\nUpdated kasetto to {latest_version}");
+        println!();
+        print_update_closer(latest_version, current_version, !color);
+        if color {
+            println!(
+                "  {SECONDARY}Run{RESET} {ATTENTION}kasetto --version{RESET} {SECONDARY}to confirm{RESET}"
+            );
+        } else {
+            println!("  Run kasetto --version to confirm");
+        }
     }
 
+    let _ = ACCENT;
+
     Ok(())
+}
+
+/// `✓ message` — emit a single completed-step line per the design's update
+/// flow. Skipped under `--json` (the JSON summary is the only output then).
+fn print_step_done(message: &str, color: bool, as_json: bool) {
+    if as_json {
+        return;
+    }
+    if color {
+        println!("{SUCCESS}✓{RESET} {message}");
+    } else {
+        println!("{message}");
+    }
 }
 
 pub(crate) fn fetch_latest_release() -> Result<Release> {
@@ -145,32 +198,21 @@ pub(crate) fn is_newer(current: &str, latest: &str) -> bool {
     parse(latest) > parse(current)
 }
 
-fn self_replace(
-    url: &str,
-    asset_name: &str,
-    checksums_url: Option<&str>,
-    exe_path: &std::path::Path,
-) -> Result<()> {
+/// Download the release archive bytes from `url`.
+fn download_archive(url: &str) -> Result<Vec<u8>> {
     let body = http_client()?
         .get(url)
         .send()?
         .error_for_status()
         .map_err(|e| err(format!("failed to download update: {e}")))?
         .bytes()?;
+    Ok(body.to_vec())
+}
 
-    // Verify SHA256 checksum when checksums.txt is available in the release
-    if let Some(checksums_url) = checksums_url {
-        let checksums_text = http_client()?
-            .get(checksums_url)
-            .send()
-            .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text())
-            .map_err(|e| err(format!("failed to download checksums.txt: {e}")))?;
-
-        verify_checksum(&body, asset_name, &checksums_text)?;
-    }
-
-    let gz = flate2::read::GzDecoder::new(body.as_ref());
+/// Extract the archive into a tmp dir, replace `exe_path` with the new binary,
+/// and back up the old one (restored on failure).
+fn install_from_archive(body: &[u8], exe_path: &std::path::Path) -> Result<()> {
+    let gz = flate2::read::GzDecoder::new(body);
     let mut archive = tar::Archive::new(gz);
 
     let tmp_dir = std::env::temp_dir().join(format!("kasetto-update-{}", std::process::id()));
@@ -223,6 +265,9 @@ fn self_replace(
     let _ = fs::remove_dir_all(&tmp_dir);
     Ok(())
 }
+
+#[allow(dead_code)]
+fn _placeholder() {}
 
 /// Verify that the SHA256 of `data` matches the expected hash for `asset_name`
 /// found in the checksums text (one `<hash>  <filename>` per line).

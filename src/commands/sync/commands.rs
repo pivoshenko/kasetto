@@ -8,7 +8,7 @@ use crate::lock::LockFile;
 use crate::model::{Action, CommandTarget, CommandsField, Summary};
 use crate::prompts::{apply_command, destination_path};
 use crate::source::{discover_commands, materialize_source, resolve_command_entry};
-use crate::ui::with_spinner;
+use crate::ui::with_spinner_transient;
 
 use super::{sync_label_with, update_active_for_source, SyncContext};
 
@@ -28,7 +28,17 @@ pub(super) fn sync_commands(
     actions: &mut Vec<Action>,
 ) -> Result<()> {
     let targets = resolve_command_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
-    if targets.is_empty() || ctx.cfg.commands.is_empty() {
+
+    // When the user removes the `commands:` block from config, all previously
+    // installed commands are orphans — skip the install loop but still run
+    // remove_stale with an empty desired-set so the lock and on-disk files
+    // both get cleaned up.
+    if ctx.cfg.commands.is_empty() {
+        remove_stale(ctx, lock, summary, actions, &HashSet::new());
+        return Ok(());
+    }
+
+    if targets.is_empty() {
         return Ok(());
     }
 
@@ -80,7 +90,7 @@ pub(super) fn sync_commands(
                 desired_ids.insert(asset_id);
                 let label = sync_label_with(name, &src.source, ctx.plain, first_in_run);
                 first_in_run = false;
-                with_spinner(ctx.animate, ctx.plain, &label, || {
+                with_spinner_transient(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
@@ -211,7 +221,7 @@ pub(super) fn sync_commands(
 
             if is_unchanged {
                 let label = sync_label_with(&name, &src.source, ctx.plain, row_first);
-                with_spinner(ctx.animate, ctx.plain, &label, || {
+                with_spinner_transient(ctx.animate, ctx.plain, &label, || {
                     summary.unchanged += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
@@ -353,7 +363,7 @@ fn apply_pending(
         let first_in_run = p.source != last_source;
         last_source = p.source.clone();
         let label = sync_label_with(&p.name, &p.source, ctx.plain, first_in_run);
-        with_spinner(ctx.animate, ctx.plain, &label, || {
+        with_spinner_transient(ctx.animate, ctx.plain, &label, || {
             let status = if !p.is_new {
                 if ctx.dry_run {
                     "would_update"
@@ -584,10 +594,9 @@ mod tests {
             update_only: Vec::new(),
             locked: false,
         };
-        // commands field empty + targets exist → still early-returns; need targets resolved to drive stale removal.
-        // The current sync_commands function short-circuits if cfg.commands is empty. So manually call remove_stale.
-        let _ = (&ctx2, &mut summary2, &mut actions2);
-        // Simulate the "command removed from config" by calling remove_stale directly.
+        // `sync_commands` now invokes `remove_stale` itself when `cfg.commands` is
+        // empty — call it directly here to keep this a focused unit test of the
+        // cleanup pass.
         let desired = HashSet::new();
         remove_stale(&ctx2, &mut lock, &mut summary2, &mut actions2, &desired);
 

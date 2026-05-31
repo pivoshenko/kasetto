@@ -1,13 +1,16 @@
 use std::path::Path;
 
-use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY};
+use crate::colors::{ACCENT, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, lock_path};
 use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
-use crate::ui::{print_group_header, print_json, print_panel};
+use crate::ui::{
+    print_check, print_dir_row, print_doctor_head, print_doctor_kv, print_group_header,
+    print_json, relativize_home,
+};
 
 #[derive(serde::Serialize)]
 struct DoctorOutput {
@@ -115,50 +118,81 @@ pub(crate) fn run(
     }
 
     let color = list_color_enabled() && !plain;
-    let last_sync_text = match &output.last_sync {
-        Some(ts) => format!("{} ({})", format_updated_ago(ts), ts),
-        None => "none".to_string(),
-    };
-
     let update_check_text = format_update_check(&output.update_check);
 
-    print_panel(
-        &[
-            ("Version", output.version.as_str()),
-            ("Lock File", output.lock_file.as_str()),
-            ("Scope", output.scope.as_str()),
-            ("Installation Path", output.installation_path.as_str()),
-            ("Last Sync", last_sync_text.as_str()),
-            ("Update Check", update_check_text.as_str()),
-        ],
-        color,
-    );
+    print_doctor_head(&output.version, output.failures.is_empty(), !color);
 
-    let skills_str = format!("{} ({program_name} list)", output.skills.len());
-    let mcps_str = format!("{} ({program_name} list)", output.mcps.len());
-    let commands_str = format!("{} ({program_name} list)", output.commands.len());
-    print_group_header("Counts", color);
-    print_panel(
-        &[
-            ("Skills", skills_str.as_str()),
-            ("MCP Servers", mcps_str.as_str()),
-            ("Commands", commands_str.as_str()),
-        ],
-        color,
-    );
+    print_group_header("Environment", color);
+    let last_sync_short = match &output.last_sync {
+        Some(ts) => format_updated_ago(ts),
+        None => "none".to_string(),
+    };
+    let env_rows: Vec<(&str, String)> = vec![
+        ("Scope", output.scope.clone()),
+        ("Lock file", relativize_home(&output.lock_file)),
+        ("Install path", relativize_home(&output.installation_path)),
+        ("Last sync", last_sync_short),
+        ("Updates", update_check_text.clone()),
+    ];
+    let env_key_w = env_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
+    for (k, v) in &env_rows {
+        print_doctor_kv(k, v, env_key_w, None, !color);
+    }
 
-    print_group_header("Failures", color);
-    if output.failures.is_empty() {
-        if color {
-            println!("  {SECONDARY}none{RESET}");
+    print_group_header("Inventory", color);
+    use crate::colors::ATTENTION;
+    let inv_rows: Vec<(&str, String)> = vec![
+        ("Skills", output.skills.len().to_string()),
+        ("MCP servers", output.mcps.len().to_string()),
+        ("Commands", output.commands.len().to_string()),
+    ];
+    let inv_key_w = inv_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
+    for (k, v) in &inv_rows {
+        print_doctor_kv(k, v, inv_key_w, Some(ATTENTION), !color);
+    }
+    let _ = program_name;
+
+    print_group_header("Checks", color);
+    let lock_ok = std::path::Path::new(&output.lock_file).exists()
+        || !output.lock_file.is_empty();
+    print_check(lock_ok, "Lock file readable", !color);
+    let install_ok = std::path::Path::new(&output.installation_path).exists()
+        || output.installation_path == "none";
+    print_check(install_ok, "Install path writable", !color);
+    print_check(
+        output.failures.is_empty(),
+        if output.failures.is_empty() {
+            "No failed skills"
         } else {
-            println!("  none");
+            "Failed skills present"
+        },
+        !color,
+    );
+    let dirs_writable = output
+        .command_dirs
+        .iter()
+        .filter(|d| d.writable)
+        .count();
+    let dirs_total = output.command_dirs.len();
+    let dirs_label = format!(
+        "{dirs_writable} of {dirs_total} command directories writable"
+    );
+    print_check(dirs_writable == dirs_total, &dirs_label, !color);
+
+    if !output.command_dirs.is_empty() {
+        print_group_header_with_count("Command directories", output.command_dirs.len(), color);
+        for d in &output.command_dirs {
+            print_dir_row(&d.path, d.writable, !color);
         }
-    } else {
+    }
+
+    // Failures detail (only when present)
+    if !output.failures.is_empty() {
+        print_group_header("Failures", color);
         for f in &output.failures {
             if color {
                 println!(
-                    "  {ERROR}\x1b[1m!{RESET} {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
+                    "  {ERROR}{ACCENT}!{RESET} {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
                     f.name, f.reason, f.source
                 );
             } else {
@@ -167,37 +201,48 @@ pub(crate) fn run(
         }
     }
 
-    print_group_header("Command Directories", color);
-    if output.command_dirs.is_empty() {
-        if color {
-            println!("  {SECONDARY}none{RESET}");
-        } else {
-            println!("  none");
-        }
-    } else {
-        for d in &output.command_dirs {
-            if d.writable {
-                if color {
-                    println!("  {} {SECONDARY}(writable){RESET}", d.path);
-                } else {
-                    println!("  {} (writable)", d.path);
-                }
-            } else if color {
-                println!("  {} {ATTENTION}(not writable){RESET}", d.path);
-            } else {
-                println!("  {} (not writable)", d.path);
-            }
-        }
-    }
-
     Ok(())
 }
 
+/// `LABEL  N` header — amber uppercase + dim count, blank line above.
+fn print_group_header_with_count(title: &str, count: usize, color: bool) {
+    println!();
+    if color {
+        use crate::colors::{ATTENTION, SECONDARY};
+        println!(
+            "{ACCENT}{ATTENTION}{}{RESET}  {SECONDARY}{count}{RESET}",
+            title.to_uppercase()
+        );
+    } else {
+        println!("{}  {count}", title.to_uppercase());
+    }
+}
+
 fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {
+    // Scope COMMAND DIRECTORIES to the agents the config actually wires.
+    // If no config or no agents configured, fall back to every supported agent
+    // (debugging view — "what does kasetto know how to write to?").
+    let agents: Vec<crate::model::Agent> =
+        match crate::fsops::load_config_any(&crate::default_config_path()) {
+            Ok((cfg, _, _)) => cfg.agents(),
+            Err(_) => Vec::new(),
+        };
     let targets = match scope {
-        crate::model::Scope::Project => crate::model::all_command_project_targets(project_root),
+        crate::model::Scope::Project => {
+            if agents.is_empty() {
+                crate::model::all_command_project_targets(project_root)
+            } else {
+                crate::model::command_project_targets(project_root, &agents)
+            }
+        }
         crate::model::Scope::Global => match crate::fsops::dirs_home() {
-            Ok(home) => crate::model::all_command_global_targets(&home),
+            Ok(home) => {
+                if agents.is_empty() {
+                    crate::model::all_command_global_targets(&home)
+                } else {
+                    crate::model::command_global_targets(&home, &agents)
+                }
+            }
             Err(_) => return Vec::new(),
         },
     };

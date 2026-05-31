@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 pub(crate) use agent::{
     all_command_global_targets, all_command_project_targets, all_mcp_project_targets,
-    all_mcp_settings_targets, Agent, AgentField,
+    all_mcp_settings_targets, command_global_targets, command_project_targets, Agent, AgentField,
 };
 pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,

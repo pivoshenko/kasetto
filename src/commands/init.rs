@@ -2,10 +2,10 @@ use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
-use crate::banner::print_banner;
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::dirs_kasetto_config;
+use crate::ui::{animations_enabled, with_spinner_transient};
 use crate::{DEFAULT_CONFIG_FILENAME, DEFAULT_GLOBAL_CONFIG_FILENAME};
 
 const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
@@ -55,17 +55,15 @@ const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
 "#;
 
 pub(crate) fn run(force: bool, global: bool) -> Result<()> {
-    print_banner();
-    println!();
     let path = init_config_path(global)?;
 
     if path.exists() && !force {
         println!(
-            "{ATTENTION}\x1b[1mwarning:{RESET} {} already exists",
+            "{ATTENTION}{ACCENT}warning:{RESET} {} already exists",
             path.display()
         );
         if io::stdin().is_terminal() {
-            print!("{ACCENT}Overwrite?{RESET} [y/N] ");
+            print!("{ACCENT}Overwrite?{RESET} {SECONDARY}[y/N]{RESET} ");
             io::stdout().flush()?;
             let mut buf = String::new();
             io::stdin().read_line(&mut buf)?;
@@ -81,22 +79,35 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         }
     }
 
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, TEMPLATE)?;
+    let spinner_on = animations_enabled(false, false, false);
+    let path_for_spinner = path.clone();
+    with_spinner_transient(
+        spinner_on,
+        false,
+        format!("Creating {}", path_for_spinner.display()),
+        || {
+            if let Some(parent) = path_for_spinner.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path_for_spinner, TEMPLATE)?;
+            Ok(())
+        },
+    )?;
 
     println!(
-        "{SUCCESS}\x1b[1mCreated{RESET} {ACCENT}{}{RESET}",
+        "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Created{RESET} {ACCENT}{}{RESET}",
         path.display()
     );
     println!();
-    println!("{ACCENT}Next steps{RESET}");
-    println!("  1. Edit {ACCENT}{}{RESET} to add your sources and target agent", path.display());
+    println!("{ACCENT}{ATTENTION}NEXT STEPS{RESET}");
     println!(
-        "  2. For private repos set {ACCENT}GITHUB_TOKEN{RESET} / {ACCENT}GH_TOKEN{RESET} / {ACCENT}GITLAB_TOKEN{RESET}",
+        "  {ATTENTION}{ACCENT}1{RESET}   Edit {ATTENTION}{}{RESET} to add your sources and target agent",
+        path.display()
     );
-    println!("  3. Run {ACCENT}kasetto sync{RESET} to install");
+    println!(
+        "  {ATTENTION}{ACCENT}2{RESET}   For private repositories set {ATTENTION}GITHUB_TOKEN{RESET} / {ATTENTION}GH_TOKEN{RESET} / {ATTENTION}GITLAB_TOKEN{RESET}",
+    );
+    println!("  {ATTENTION}{ACCENT}3{RESET}   Run {ATTENTION}kasetto sync{RESET} to install");
 
     Ok(())
 }

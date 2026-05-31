@@ -1,14 +1,16 @@
 use serde::Serialize;
 
 use crate::cli::ListKind;
-use crate::colors::{ACCENT, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::{color_stdout_enabled, print_json, print_tip, short_source};
+use crate::ui::{
+    color_stdout_enabled, print_json, print_section_header, print_source_header, print_tip,
+    print_tree_leaf, short_source,
+};
 
 #[derive(Clone, Serialize)]
 pub(crate) struct AssetEntry {
@@ -60,125 +62,76 @@ pub(crate) fn run(
     if !has_anything {
         println!("Nothing installed.");
         print_tip(
-            "run `kst init` to scaffold a config, then `kst sync` to install skills",
+            "run `kasetto init` to scaffold a config, then `kasetto sync` to install skills",
             plain,
         );
         return Ok(());
     }
 
-    print_skills_table(&skills, merged, color);
-    print_assets_table("MCP Servers", &mcps, merged, color);
-    print_assets_table("Commands", &commands, merged, color);
+    let plain = !color;
+    print_skills_tree(&skills, plain);
+    print_assets_tree("MCP Servers", "connected", &mcps, plain);
+    print_assets_tree("Commands", "available", &commands, plain);
 
     Ok(())
 }
 
-fn print_skills_table(skills: &[InstalledSkill], merged: bool, color: bool) {
+fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
     if skills.is_empty() {
         return;
     }
-    let name_w = column_width("NAME", skills.iter().map(|s| s.name.as_str()));
-    let scope_w = if merged {
-        column_width("SCOPE", skills.iter().map(|s| scope_label(s.scope)))
-    } else {
-        0
-    };
-    let updated_w = column_width("UPDATED", skills.iter().map(|s| s.updated_ago.as_str()));
-
-    print_header(
-        &[
-            ("NAME", name_w),
-            ("SCOPE", scope_w),
-            ("UPDATED", updated_w),
-            ("SOURCE", 0),
-        ],
-        color,
-    );
-
-    for s in skills {
-        let scope_cell = if merged { scope_label(s.scope) } else { "" };
-        let source_cell = short_source(&s.source);
-        let row = format_row(&[
-            (&s.name, name_w),
-            (scope_cell, scope_w),
-            (&s.updated_ago, updated_w),
-            (&source_cell, 0),
-        ]);
-        println!("{}", row);
-    }
+    print_section_header("Skills", Some((skills.len(), "installed")), plain);
     println!();
+
+    // Group by source, preserve first-seen order, keep skills inside sorted.
+    let mut groups: Vec<(String, Vec<&InstalledSkill>)> = Vec::new();
+    for s in skills {
+        if let Some(g) = groups.iter_mut().find(|(k, _)| k == &s.source) {
+            g.1.push(s);
+        } else {
+            groups.push((s.source.clone(), vec![s]));
+        }
+    }
+    for (source, items) in &groups {
+        let repo = short_source(source);
+        print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
+        for (i, s) in items.iter().enumerate() {
+            let is_last = i == items.len() - 1;
+            let tail = if s.name == s.skill {
+                "—".to_string()
+            } else {
+                s.skill.clone()
+            };
+            print_tree_leaf(is_last, None, &s.name, false, &tail, 30, plain);
+        }
+        println!();
+    }
 }
 
-fn print_assets_table(title: &str, rows: &[AssetEntry], merged: bool, color: bool) {
+fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) {
     if rows.is_empty() {
         return;
     }
-    if color {
-        println!("{ACCENT}{}{RESET}", title);
-    } else {
-        println!("{}", title);
-    }
-
-    let name_w = column_width("NAME", rows.iter().map(|a| a.name.as_str()));
-    let scope_w = if merged {
-        column_width("SCOPE", rows.iter().map(|a| scope_label(a.scope)))
-    } else {
-        0
-    };
-
-    print_header(
-        &[("NAME", name_w), ("SCOPE", scope_w), ("SOURCE", 0)],
-        color,
-    );
-
-    for a in rows {
-        let scope_cell = if merged { scope_label(a.scope) } else { "" };
-        let source_cell = short_source(&a.source);
-        println!(
-            "{}",
-            format_row(&[
-                (&a.name, name_w),
-                (scope_cell, scope_w),
-                (&source_cell, 0),
-            ])
-        );
-    }
+    print_section_header(label, Some((rows.len(), unit)), plain);
     println!();
-}
 
-fn column_width<'a>(header: &'a str, values: impl Iterator<Item = &'a str>) -> usize {
-    values.map(str::len).max().unwrap_or(0).max(header.len())
-}
-
-fn print_header(cols: &[(&str, usize)], color: bool) {
-    let row = format_row(
-        &cols
-            .iter()
-            .map(|(label, width)| (*label, *width))
-            .collect::<Vec<_>>(),
-    );
-    if color {
-        println!("{SECONDARY}{}{RESET}", row);
-    } else {
-        println!("{}", row);
-    }
-}
-
-fn format_row(cells: &[(&str, usize)]) -> String {
-    let mut out = String::new();
-    let last = cells.len().saturating_sub(1);
-    for (i, (value, width)) in cells.iter().enumerate() {
-        if *width == 0 && i != last {
-            continue;
-        }
-        if i == last {
-            out.push_str(value);
-        } else if *width > 0 {
-            out.push_str(&format!("{:<width$}", value, width = width));
-            out.push_str("  ");
+    let mut groups: Vec<(String, Vec<&AssetEntry>)> = Vec::new();
+    for a in rows {
+        if let Some(g) = groups.iter_mut().find(|(k, _)| k == &a.source) {
+            g.1.push(a);
+        } else {
+            groups.push((a.source.clone(), vec![a]));
         }
     }
-    out
+    for (source, items) in &groups {
+        let repo = short_source(source);
+        print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
+        for (i, a) in items.iter().enumerate() {
+            let is_last = i == items.len() - 1;
+            print_tree_leaf(is_last, None, &a.name, false, "—", 30, plain);
+        }
+        println!();
+    }
 }
 
 fn load_skills_mcps_commands(

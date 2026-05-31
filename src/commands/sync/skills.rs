@@ -10,7 +10,7 @@ use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State, Summary};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
 use crate::state::RuntimeState;
-use crate::ui::{eprint_fail, with_spinner};
+use crate::ui::{eprint_fail, with_spinner_transient};
 
 use super::{sync_label_with, update_active_for_source, SyncContext};
 
@@ -241,7 +241,7 @@ fn process_single_skill(
 ) -> Result<()> {
     let destination = &ctx.destinations[0];
     let (_, profile_description) = read_skill_profile_from_dir(skill_path, skill_name);
-    with_spinner(ctx.animate, ctx.plain, label, || {
+    with_spinner_transient(ctx.animate, ctx.plain, label, || {
         let key = format!("{source}::{skill_name}");
         desired_keys.insert(key.clone());
         let hash = hash_dir(skill_path)?;
@@ -335,7 +335,7 @@ fn process_locked_skill(
     label: &str,
 ) -> Result<()> {
     let key = format!("{}::{}", entry.source, skill_name);
-    with_spinner(ctx.animate, ctx.plain, label, || {
+    with_spinner_transient(ctx.animate, ctx.plain, label, || {
         // A destination is good when it exists and re-hashes to the locked hash.
         let good = good_destination(ctx, skill_name, &entry.hash);
         let all_ok = all_destinations_match(ctx, skill_name, &entry.hash);

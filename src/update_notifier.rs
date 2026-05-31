@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::colors::{ACCENT, RESET, SECONDARY, WARNING_EMPHASIS};
+use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY};
 use crate::commands::self_update::{fetch_latest_release, is_newer};
 use crate::fsops::dirs_kasetto_cache;
 use crate::profile::list_color_enabled;
@@ -152,7 +152,7 @@ fn render_notice(current: &str, latest: &str, color: bool) -> String {
     let cmd = upgrade_command();
     if color {
         format!(
-            "\n{WARNING_EMPHASIS}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}→{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
+            "\n{ACCENT}{ATTENTION}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}→{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
         )
     } else {
         format!("\nNew version available: {current} -> {latest}  run `{cmd}`")

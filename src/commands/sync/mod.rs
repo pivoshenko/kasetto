@@ -12,7 +12,10 @@ use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, sco
 use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Config, Report, Scope, Summary};
 use crate::state::{load_runtime_state, save_runtime_state};
-use crate::ui::{action_glyph, animations_enabled, print_json};
+use crate::ui::{
+    action_glyph, animations_enabled, print_json, print_source_header, print_sync_chips,
+    print_tree_leaf, short_source, status_tail,
+};
 
 pub(super) struct SyncContext<'a> {
     pub(super) cfg: &'a Config,
@@ -122,11 +125,14 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     if opts.as_json {
         print_json(&report)?;
     } else if !opts.quiet {
+        let elapsed = started.elapsed();
+        print_resolution_header(&report, opts.plain);
+        print_sync_tree(&report, opts.plain);
         print_sync_summary(
             &report,
             opts.plain,
             opts.verbose,
-            started.elapsed(),
+            elapsed,
             opts.locked,
         );
     }
@@ -219,17 +225,21 @@ fn print_sync_summary(
         };
 
     for (i, (verb, count, color)) in lines.iter().enumerate() {
-        let suffix = if i == 0 {
-            format!(" in {timing}")
-        } else {
-            String::new()
+        let suffix = match (i, plain) {
+            (0, true) => format!(" in {timing}"),
+            (0, false) => format!(" {SECONDARY}in {timing}{RESET}"),
+            _ => String::new(),
         };
         let lead = if plain {
             (*verb).to_string()
         } else {
-            format!("{color}\x1b[1m{verb}{RESET}")
+            format!("{color}{ACCENT}{verb}{RESET}")
         };
         println!("{lead} {count} {}{suffix}", pluralize_item(*count));
+    }
+
+    if !(lines.is_empty() || locked && only_unchanged) {
+        print_sync_chips(s.updated, s.installed, s.removed, s.unchanged, plain);
     }
 
     if lines.is_empty() && s.broken == 0 && s.failed == 0 {
@@ -266,6 +276,60 @@ fn print_sync_summary(
                 println!(" {} {} ({})", glyph, skill, src);
             }
         }
+    }
+}
+
+/// `✓ Resolved N sources · M items` lead line — printed before the tree.
+fn print_resolution_header(report: &Report, plain: bool) {
+    let sources: std::collections::BTreeSet<&str> = report
+        .actions
+        .iter()
+        .filter_map(|a| a.source.as_deref())
+        .collect();
+    let n_sources = sources.len();
+    let n_items = report.actions.len();
+    if n_sources == 0 {
+        return;
+    }
+    if plain {
+        println!("✓ Resolved {n_sources} sources · {n_items} items");
+    } else {
+        println!(
+            "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Resolved{RESET} {n_sources} sources {SECONDARY}· {n_items} items{RESET}"
+        );
+    }
+    println!();
+}
+
+/// Source-grouped tree per design: each source gets a cyan header with a green
+/// ✓ + item count, then `├─/└─` leaves with the action glyph + name + status
+/// tail. Order: actions stay in the order the sync emitted them (already
+/// grouped by source per the underlying sync flow).
+fn print_sync_tree(report: &Report, plain: bool) {
+    // Group actions by source, preserving first-seen order.
+    let mut groups: Vec<(String, Vec<&crate::model::Action>)> = Vec::new();
+    for a in &report.actions {
+        let src = a.source.clone().unwrap_or_else(|| "-".to_string());
+        if let Some(g) = groups.iter_mut().find(|(k, _)| k == &src) {
+            g.1.push(a);
+        } else {
+            groups.push((src, vec![a]));
+        }
+    }
+
+    for (source, items) in &groups {
+        let repo = short_source(source);
+        // Sync source headers have NO count per design (terminal.jsx runSync).
+        print_source_header(&repo, None, Some(true), None, plain);
+        for (i, a) in items.iter().enumerate() {
+            let is_last = i == items.len() - 1;
+            let glyph = action_glyph(&a.status, plain);
+            let name = a.skill.as_deref().unwrap_or("-");
+            let strike = matches!(a.status.as_str(), "removed" | "would_remove");
+            let tail = status_tail(&a.status, None, None, plain);
+            print_tree_leaf(is_last, Some(&glyph), name, strike, &tail, 24, plain);
+        }
+        println!();
     }
 }
 

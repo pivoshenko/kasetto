@@ -1,80 +1,94 @@
-//! ANSI SGR sequences and clap help styling.
+//! Cassette CLI palette — semantic SGR aliases.
 //!
-//! Operational output (`sync`, `list`, `doctor`, `clean`, …) and help text use
-//! the basic ANSI 16-color palette so the CLI inherits the user's terminal
-//! theme — same convention as `cargo` and `uv`. The brand banner is the only
-//! surface that opts into 24-bit truecolor (popil lavender, see `banner.rs`).
+//! Seven semantic roles cover every colored surface. Call sites use the
+//! semantic names (`SUCCESS`, `ERROR`, `ATTENTION`, `INFO`, `SECONDARY`,
+//! `INFRA`, `BRAND`); only this file holds hex values. Body text inherits
+//! from the user's terminal — there's deliberately no "foreground" constant.
 //!
-//! # Semantic roles
+//! Color is gated on `color_stdout_enabled()` — set `NO_COLOR=1` or pipe
+//! stdout to drop it entirely.
 //!
-//! | Name | Use |
-//! |------|-----|
-//! | [`ACCENT`] | Bold (no color) — labels, prompts, command names in prose |
-//! | [`ACCENT_WARM`] | Bold cyan — spinner glyph, in-progress emphasis |
-//! | [`ATTENTION`] | Yellow — `warning:` prefix and dry-run verbs |
-//! | [`SECONDARY`] | Dim — hints, metadata, help examples |
-//! | [`INFO`] | Cyan — `tip:` / `note:` prefixes |
-//! | [`SUCCESS`] | Green — `Installed`, `Created`, `Audited` lead verbs |
-//! | [`WARNING`] | Yellow (alias of ATTENTION) |
-//! | [`WARNING_EMPHASIS`] | Bold yellow — emphasized warnings, table row labels |
-//! | [`ERROR`] | Red — `error:` prefix and failure lead verbs |
+//! # When each role is used
+//!
+//! | Token       | Hex       | Use                                                                                    |
+//! |-------------|-----------|----------------------------------------------------------------------------------------|
+//! | `ACCENT`    | bold      | emphasis (no color) — prompts, labels, lead verbs. Compose with a hue for bold-colored. |
+//! | `ATTENTION` | `#e8a94d` | help headers/literals, section headers, `Updated`/`Would …` verbs, `warning:`, banner subtitle, spinner glyph |
+//! | `SUCCESS`   | `#84c578` | `Installed` / `Created` / `Audited` verbs, `+` and `✓` glyphs, `✓ healthy` badge        |
+//! | `ERROR`     | `#e87e6c` | `error:` prefix, `−` and `✗` glyphs, `✗ issues` badge, failure rows                     |
+//! | `INFO`      | `#6cbfd3` | `tip:` / `note:` prefixes, source repo labels                                          |
+//! | `BRAND`     | `#b6a6ef` | **brand mark only** — banner frame + wordmark, `◆` farewell on `self uninstall`        |
+//! | `SECONDARY` | `#a8a195` | muted content — paths, timing tails, hints, `[y/N]`, clap placeholders, example lines  |
+//! | `INFRA`     | `#6e6759` | structure only — tree branches, bullet glyphs, strikethrough overlay (never content)   |
+//!
+//! Non-color SGR helpers: `RESET`, `STRIKE` / `STRIKE_RESET`, `CLEAR_LINE`.
 
-use clap::builder::styling::{AnsiColor, Effects, Style, Styles};
+use clap::builder::styling::{Effects, RgbColor, Style, Styles};
 
-/// Clap help styling — bold green headers (cargo / uv convention), bold
-/// (un-colored) literals, default placeholders.
-pub(crate) fn clap_styles() -> Styles {
-    Styles::styled()
-        .header(Style::new().fg_color(Some(AnsiColor::Green.into())) | Effects::BOLD)
-        .usage(Style::new().fg_color(Some(AnsiColor::Green.into())) | Effects::BOLD)
-        .literal(Style::new() | Effects::BOLD)
-        .placeholder(Style::new())
-}
+/// Bold (no foreground color). Prompts, labels, lead verbs. Compose with a
+/// hue for bold-colored emphasis (e.g. `{ACCENT}{ATTENTION}…`).
+pub(crate) const ACCENT: &str = "\x1b[1m";
 
-/// CUU - cursor up `n` rows (ECMA-48 `CSI n A`).
-pub(crate) fn ansi_cursor_up(rows: u16) -> String {
-    format!("\x1b[{}A", rows)
-}
+/// Amber `#e8a94d`. Help headers/literals, section headers, `Updated` /
+/// `Would …` verbs, `warning:` prefix, banner subtitle, spinner glyph,
+/// `kasetto` lead.
+pub(crate) const ATTENTION: &str = "\x1b[38;2;232;169;77m";
 
-/// CHA - cursor horizontal absolute; **1-based** column (`CSI n G`, xterm-style).
-pub(crate) fn ansi_cursor_column_1based(column: u16) -> String {
-    format!("\x1b[{}G", column.max(1))
-}
+/// Green `#84c578`. `Installed` / `Created` / `Audited` verbs, `+` add glyph,
+/// `✓` success glyph, `✓ healthy` badge.
+pub(crate) const SUCCESS: &str = "\x1b[38;2;132;197;120m";
+
+/// Red `#e87e6c`. `error:` prefix, `−` remove glyph, `✗` failure glyph,
+/// `✗ issues` badge.
+pub(crate) const ERROR: &str = "\x1b[38;2;232;126;108m";
+
+/// Cyan `#6cbfd3`. `tip:` / `note:` prefixes, source repo labels.
+pub(crate) const INFO: &str = "\x1b[38;2;108;191;211m";
+
+/// Brand violet `#b6a6ef`. **Brand mark only** — banner frame + wordmark,
+/// `◆` farewell on `self uninstall`. Reserved for ceremonial brand surfaces;
+/// not for operational status.
+pub(crate) const BRAND: &str = "\x1b[38;2;182;166;239m";
+
+/// Muted grey `#a8a195`. Paths, timing tails, hints, `[y/N]`, soft state
+/// (`Cancelled.`, `Nothing to sync`), clap placeholders, example lines.
+pub(crate) const SECONDARY: &str = "\x1b[38;2;168;161;149m";
+
+/// Structural `#6e6759`. Tree branches `├─` / `└─`, bullet glyphs (`●` /
+/// `•`), strikethrough overlay on removed entries. Never for content.
+pub(crate) const INFRA: &str = "\x1b[38;2;110;103;89m";
 
 /// Reset all attributes (`SGR 0`).
 pub(crate) const RESET: &str = "\x1b[0m";
 
-// Basic ANSI 16-color SGR literals. The terminal theme decides the hue.
-
-/// Bold (no foreground color) — generic highlight for labels, prompts, paths.
-pub(crate) const ACCENT: &str = "\x1b[1m";
-/// Bold cyan — spinner glyph and in-progress emphasis (matches uv's progress tone).
-pub(crate) const ACCENT_WARM: &str = "\x1b[1;36m";
-/// Plain yellow — `warning:` prefix, dry-run verbs.
-pub(crate) const ATTENTION: &str = "\x1b[33m";
-
-/// Dim attribute — hints, metadata, dim labels. Maps to whatever
-/// `--fg-subtle`-equivalent the user's terminal theme provides.
-pub(crate) const SECONDARY: &str = "\x1b[2m";
-
-pub(crate) const SUCCESS: &str = "\x1b[32m";
-pub(crate) const ERROR: &str = "\x1b[31m";
-#[allow(dead_code)]
-pub(crate) const WARNING: &str = "\x1b[33m";
-pub(crate) const WARNING_EMPHASIS: &str = "\x1b[1;33m";
-pub(crate) const INFO: &str = "\x1b[36m";
+/// Strikethrough on (`SGR 9`) — removed entries in trees.
+pub(crate) const STRIKE: &str = "\x1b[9m";
+/// Strikethrough off (`SGR 29`).
+pub(crate) const STRIKE_RESET: &str = "\x1b[29m";
 
 /// Carriage return + clear to end of line.
 pub(crate) const CLEAR_LINE: &str = "\r\x1b[2K";
 
-/// Clap `after_help`: bold green "Examples:" header, dim example lines.
+/// Clap help styling: amber `Usage:` / `Commands:` headers + literals,
+/// `SECONDARY`-grey `<COMMAND>` / `<ARG>` placeholders.
+pub(crate) fn clap_styles() -> Styles {
+    let amber = Style::new().fg_color(Some(RgbColor(232, 169, 77).into())) | Effects::BOLD;
+    let secondary = Style::new().fg_color(Some(RgbColor(168, 161, 149).into()));
+    Styles::styled()
+        .header(amber)
+        .usage(amber)
+        .literal(amber)
+        .placeholder(secondary)
+}
+
+/// Clap `after_help`: amber `Examples:` header, `SECONDARY` example lines.
 #[macro_export]
 macro_rules! cli_examples {
     ($($line:literal),* $(,)?) => {
         concat!(
-            "\x1b[1;32mExamples:\x1b[0m\n",
+            "\x1b[1m\x1b[38;2;232;169;77mExamples:\x1b[0m\n",
             $(
-                concat!("  \x1b[2m", $line, "\x1b[0m\n"),
+                concat!("  \x1b[38;2;168;161;149m", $line, "\x1b[0m\n"),
             )*
         )
     };

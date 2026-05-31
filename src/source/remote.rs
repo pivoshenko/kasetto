@@ -17,7 +17,7 @@ pub(super) fn remote_repo_archive_branch(
     match parsed {
         RepoUrl::GitHub { host, owner, repo } => {
             let auth = UrlRequestAuth::for_github_archive();
-            // GitHub's web archive endpoint doesn't support token auth for private repos.
+            // GitHub's web archive endpoint doesn't support token auth for private repositories.
             // The API endpoint (api.github.com) does and works for public repos too.
             let url = if host == "github.com" && !auth.headers.is_empty() {
                 format!(
