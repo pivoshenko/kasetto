@@ -5,7 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::colors::{
-    ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, INFO, RESET, SECONDARY, SUCCESS,
+    ACCENT, ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, INFO, RESET, SECONDARY, SUCCESS,
 };
 use crate::error::Result;
 
@@ -32,21 +32,28 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     Ok(())
 }
 
-/// Print `label: value` with the label in dim secondary tone (uv-style).
-pub(crate) fn print_field(label: &str, value: &str, color: bool) {
-    if color {
-        println!("{SECONDARY}{label}:{RESET} {value}");
-    } else {
-        println!("{label}: {value}");
+/// Print `key  value` rows with keys padded to a common width so values
+/// align vertically. Keys render bold (no color); values default. This is
+/// the canonical `kst doctor` field layout.
+pub(crate) fn print_panel(rows: &[(&str, &str)], color: bool) {
+    let key_w = rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
+    for (k, v) in rows {
+        if color {
+            println!("{ACCENT}{k:<key_w$}{RESET}  {v}");
+        } else {
+            println!("{k:<key_w$}  {v}");
+        }
     }
 }
 
-/// Print `label:` section header in dim secondary tone (uv-style).
-pub(crate) fn print_label(label: &str, color: bool) {
+/// Print a bold (no color), no-colon group header preceded by a blank line.
+/// Used to separate sections in `kst doctor` and `kst clean --dry-run`.
+pub(crate) fn print_group_header(title: &str, color: bool) {
+    println!();
     if color {
-        println!("{SECONDARY}{label}:{RESET}");
+        println!("{ACCENT}{title}{RESET}");
     } else {
-        println!("{label}:");
+        println!("{title}");
     }
 }
 

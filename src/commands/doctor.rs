@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use crate::colors::{ACCENT, RESET, SECONDARY};
+use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, lock_path};
 use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
-use crate::ui::{print_field, print_json, print_label};
+use crate::ui::{print_group_header, print_json, print_panel};
 
 #[derive(serde::Serialize)]
 struct DoctorOutput {
@@ -120,63 +120,72 @@ pub(crate) fn run(
         None => "none".to_string(),
     };
 
-    print_field("Version", &output.version, color);
-    print_field("Lock File", &output.lock_file, color);
-    print_field("Scope", &output.scope, color);
-    print_field("Installation Path", &output.installation_path, color);
-    print_field("Last Sync", &last_sync_text, color);
-    print_field(
-        "Update Check",
-        &format_update_check(&output.update_check),
+    let update_check_text = format_update_check(&output.update_check);
+
+    print_panel(
+        &[
+            ("Version", output.version.as_str()),
+            ("Lock File", output.lock_file.as_str()),
+            ("Scope", output.scope.as_str()),
+            ("Installation Path", output.installation_path.as_str()),
+            ("Last Sync", last_sync_text.as_str()),
+            ("Update Check", update_check_text.as_str()),
+        ],
         color,
     );
 
-    print_label("Failures", color);
+    let skills_str = format!("{} ({program_name} list)", output.skills.len());
+    let mcps_str = format!("{} ({program_name} list)", output.mcps.len());
+    let commands_str = format!("{} ({program_name} list)", output.commands.len());
+    print_group_header("Counts", color);
+    print_panel(
+        &[
+            ("Skills", skills_str.as_str()),
+            ("MCP Servers", mcps_str.as_str()),
+            ("Commands", commands_str.as_str()),
+        ],
+        color,
+    );
+
+    print_group_header("Failures", color);
     if output.failures.is_empty() {
-        println!("  none");
+        if color {
+            println!("  {SECONDARY}none{RESET}");
+        } else {
+            println!("  none");
+        }
     } else {
         for f in &output.failures {
             if color {
                 println!(
-                    "  {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
+                    "  {ERROR}\x1b[1m!{RESET} {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
                     f.name, f.reason, f.source
                 );
             } else {
-                println!("  {} {} {}", f.name, f.reason, f.source);
+                println!("  ! {} {} {}", f.name, f.reason, f.source);
             }
         }
     }
 
-    print_field(
-        "Skills",
-        &format!("{} ({program_name} list)", output.skills.len()),
-        color,
-    );
-    print_field(
-        "MCP Servers",
-        &format!("{} ({program_name} list)", output.mcps.len()),
-        color,
-    );
-    print_field(
-        "Commands",
-        &format!("{} ({program_name} list)", output.commands.len()),
-        color,
-    );
-
-    print_label("Command Directories", color);
+    print_group_header("Command Directories", color);
     if output.command_dirs.is_empty() {
-        println!("  none");
+        if color {
+            println!("  {SECONDARY}none{RESET}");
+        } else {
+            println!("  none");
+        }
     } else {
         for d in &output.command_dirs {
-            let state = if d.writable {
-                "writable"
+            if d.writable {
+                if color {
+                    println!("  {} {SECONDARY}(writable){RESET}", d.path);
+                } else {
+                    println!("  {} (writable)", d.path);
+                }
+            } else if color {
+                println!("  {} {ATTENTION}(not writable){RESET}", d.path);
             } else {
-                "not writable"
-            };
-            if color {
-                println!("  {ACCENT}{}{RESET} {SECONDARY}({state}){RESET}", d.path);
-            } else {
-                println!("  {} ({state})", d.path);
+                println!("  {} (not writable)", d.path);
             }
         }
     }
