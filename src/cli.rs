@@ -64,7 +64,7 @@ pub(crate) struct SyncArgs {
     #[arg(long)]
     #[arg(
         help = "config path or HTTP(S) URL",
-        long_help = "Configuration location. Supports:\n- local file path\n- HTTP(S) URL to a YAML config file\n\nWhen omitted, kasetto checks defaults in this order:\n1) $KASETTO_CONFIG env var\n2) source: key in $XDG_CONFIG_HOME/kasetto/config.yaml\n3) ./kasetto.yaml\n4) $XDG_CONFIG_HOME/kasetto/kasetto.yaml (or ~/.config/kasetto/kasetto.yaml)"
+        long_help = "Configuration location. Supports:\n- local file path\n- HTTP(S) URL to a YAML config file\n\nWhen omitted, kasetto checks defaults in this order:\n1) $KASETTO_CONFIG env var\n2) ./kasetto.yaml\n3) source: key in $XDG_CONFIG_HOME/kasetto/config.yaml\n4) $XDG_CONFIG_HOME/kasetto/kasetto.yaml (or ~/.config/kasetto/kasetto.yaml)"
     )]
     pub config: Option<String>,
     #[arg(long)]

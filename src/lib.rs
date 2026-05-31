@@ -15,8 +15,8 @@ struct Preferences {
 ///
 /// Priority:
 /// 1. `$KASETTO_CONFIG` env var
-/// 2. `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml` (preferences file)
-/// 3. `./kasetto.yaml` (local project config)
+/// 2. `./kasetto.yaml` (local project config)
+/// 3. `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml` (preferences file)
 /// 4. `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (global config)
 /// 5. `./kasetto.yaml` fallback
 pub(crate) fn default_config_path() -> String {
@@ -48,6 +48,10 @@ fn resolve_config_path(
         return v;
     }
 
+    if local_exists {
+        return DEFAULT_CONFIG_FILENAME.to_string();
+    }
+
     if let Some(path) = prefs_path {
         if let Ok(text) = std::fs::read_to_string(path) {
             if let Ok(prefs) = serde_yaml::from_str::<Preferences>(&text) {
@@ -56,10 +60,6 @@ fn resolve_config_path(
                 }
             }
         }
-    }
-
-    if local_exists {
-        return DEFAULT_CONFIG_FILENAME.to_string();
     }
 
     if let Some(global) = global_path {
@@ -123,6 +123,19 @@ mod tests {
             None,
         );
         assert_eq!(result, "https://example.com/env.yaml");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn local_kasetto_yaml_beats_preferences_source() {
+        let dir = temp_dir("kasetto-local-beats-prefs");
+        fs::create_dir_all(&dir).unwrap();
+        let prefs = dir.join("config.yaml");
+        fs::write(&prefs, "source: https://example.com/prefs.yaml\n").unwrap();
+
+        let result = resolve_config_path(None, Some(&prefs), true, None);
+        assert_eq!(result, DEFAULT_CONFIG_FILENAME);
 
         let _ = fs::remove_dir_all(&dir);
     }

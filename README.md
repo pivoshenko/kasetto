@@ -130,8 +130,8 @@ Most commands accept `--json`, `--plain`, `--quiet`, and `--project | --global`.
 When `--config` is omitted, Kasetto looks for config in this order:
 
 1. `$KASETTO_CONFIG` env var
-2. `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml`
-3. `./kasetto.yaml`
+2. `./kasetto.yaml`
+3. `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml`
 4. `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`)
 
 Run `kst init` to scaffold a local config, or `kst init --global` for the global one.
