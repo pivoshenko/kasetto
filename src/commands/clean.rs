@@ -1,6 +1,7 @@
 use std::fs;
+use std::time::{Duration, Instant};
 
-use crate::colors::{ACCENT, ERROR, RESET, SUCCESS, WARNING};
+use crate::colors::{ATTENTION, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
 use crate::lock::{load_lock, save_lock, LockFile};
@@ -10,7 +11,7 @@ use crate::model::{
 };
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
-use crate::ui::print_json;
+use crate::ui::{action_glyph, print_group_header, print_json, print_tip, short_source};
 
 #[derive(serde::Serialize)]
 struct CleanOutput {
@@ -27,6 +28,7 @@ pub(crate) fn run(
     plain: bool,
     scope_override: Option<Scope>,
 ) -> Result<()> {
+    let started = Instant::now();
     let scope = resolve_scope(scope_override, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let mut lock = load_lock(scope, &project_root)?;
@@ -66,6 +68,7 @@ pub(crate) fn run(
             dry_run,
             plain,
             skills_count + mcps_count + commands_count,
+            started.elapsed(),
         );
     }
 
@@ -113,67 +116,137 @@ fn apply_removals(
     Ok(())
 }
 
-fn print_report(lock: &LockFile, state: &State, dry_run: bool, plain: bool, total: usize) {
+fn print_report(
+    lock: &LockFile,
+    state: &State,
+    dry_run: bool,
+    plain: bool,
+    total: usize,
+    elapsed: Duration,
+) {
     let color = list_color_enabled() && !plain;
-    let (label_color, prefix) = if dry_run {
-        (WARNING, "Would remove")
+    let timing = format_elapsed(elapsed);
+
+    if total == 0 {
+        if color {
+            println!("{SECONDARY}Nothing to clean{RESET} {SECONDARY}(in {timing}){RESET}");
+        } else {
+            println!("Nothing to clean (in {timing})");
+        }
+        return;
+    }
+
+    let (verb, color_code) = if dry_run {
+        ("Would remove", ATTENTION)
     } else {
-        (ERROR, "Removed")
+        ("Removed", ERROR)
     };
-    println!();
-    println!("  {label_color}{prefix}{RESET}: {total}");
+    if plain {
+        println!("{verb} {total} items in {timing}");
+    } else {
+        println!("{color_code}\x1b[1m{verb}{RESET} {total} items {SECONDARY}in {timing}{RESET}");
+    }
 
     if dry_run {
         print_dry_run_detail(lock, state, color);
         println!();
-        println!("Run without {ACCENT}--dry-run{RESET} to apply.");
+        print_tip("run without `--dry-run` to apply", plain);
+    } else if color {
+        println!("{SECONDARY}Reset lock file{RESET}");
     } else {
-        println!();
-        println!("{SUCCESS}\x1b[1mReset{RESET} lock file");
+        println!("Reset lock file");
+    }
+}
+
+fn format_elapsed(d: Duration) -> String {
+    let ms = d.as_millis();
+    if ms < 1000 {
+        format!("{ms}ms")
+    } else {
+        format!("{:.2}s", d.as_secs_f64())
     }
 }
 
 fn print_dry_run_detail(lock: &LockFile, state: &State, color: bool) {
-    println!();
+    let plain = !color;
+
     if !state.skills.is_empty() {
-        println!("  Skills:");
-        for entry in state.skills.values() {
-            if color {
-                println!(
-                    "    {ACCENT}skill{RESET}  {}  ({})",
-                    entry.destination, entry.skill
-                );
+        print_group_header("Skills", color);
+        let mut entries: Vec<_> = state.skills.values().collect();
+        entries.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.skill.cmp(&b.skill)));
+        let mut last_source = String::new();
+        for entry in entries {
+            let glyph = action_glyph("would_remove", plain);
+            let show_source = entry.source != last_source;
+            last_source = entry.source.clone();
+            let src_cell = if show_source {
+                short_source(&entry.source)
             } else {
-                println!("    skill  {}  ({})", entry.destination, entry.skill);
+                String::new()
+            };
+            if color {
+                if src_cell.is_empty() {
+                    println!(" {glyph} \x1b[1m{}{RESET}", entry.skill);
+                } else {
+                    println!(
+                        " {glyph} \x1b[1m{}{RESET}  {SECONDARY}{}{RESET}",
+                        entry.skill, src_cell
+                    );
+                }
+            } else if src_cell.is_empty() {
+                println!(" - {}", entry.skill);
+            } else {
+                println!(" - {}  {}", entry.skill, src_cell);
             }
         }
     }
+
     let mcp_packs: Vec<_> = lock
         .assets
         .iter()
         .filter(|(_, a)| a.kind == "mcp")
         .collect();
-    if mcp_packs.is_empty() {
-        return;
+    if !mcp_packs.is_empty() {
+        print_group_header("MCP Servers", color);
+        for (_, a) in mcp_packs {
+            let servers: String = a
+                .destination
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let glyph = action_glyph("would_remove", plain);
+            if color {
+                println!(
+                    " {glyph} \x1b[1m{}{RESET}  {SECONDARY}pack: {}, {}{RESET}",
+                    servers,
+                    a.name,
+                    short_source(&a.source)
+                );
+            } else {
+                println!(" - {}  pack: {}, {}", servers, a.name, short_source(&a.source));
+            }
+        }
     }
-    println!("  MCP packs (server names merged from kasetto):");
-    for (_, a) in mcp_packs {
-        let servers: String = a
-            .destination
-            .split(',')
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join(", ");
-        if color {
-            println!(
-                "    {ACCENT}mcp{RESET}    {}  (pack: {}, source: {})",
-                servers, a.name, a.source
-            );
-        } else {
-            println!(
-                "    mcp    {}  (pack: {}, source: {})",
-                servers, a.name, a.source
-            );
+
+    let cmd_assets: Vec<_> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "command")
+        .collect();
+    if !cmd_assets.is_empty() {
+        print_group_header("Commands", color);
+        for (_, a) in cmd_assets {
+            let glyph = action_glyph("would_remove", plain);
+            if color {
+                println!(
+                    " {glyph} \x1b[1m{}{RESET}  {SECONDARY}{}{RESET}",
+                    a.name,
+                    short_source(&a.source)
+                );
+            } else {
+                println!(" - {}  {}", a.name, short_source(&a.source));
+            }
         }
     }
 }

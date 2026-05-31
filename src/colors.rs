@@ -59,6 +59,7 @@ pub(crate) const SECONDARY: &str = "\x1b[2m";
 
 pub(crate) const SUCCESS: &str = "\x1b[32m";
 pub(crate) const ERROR: &str = "\x1b[31m";
+#[allow(dead_code)]
 pub(crate) const WARNING: &str = "\x1b[33m";
 pub(crate) const WARNING_EMPHASIS: &str = "\x1b[1;33m";
 pub(crate) const INFO: &str = "\x1b[36m";
