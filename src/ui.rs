@@ -5,7 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::colors::{
-    ACCENT, ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, RESET, SECONDARY, SUCCESS,
+    ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, RESET, SECONDARY, SUCCESS,
 };
 use crate::error::Result;
 
@@ -35,32 +35,30 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     Ok(())
 }
 
-/// Print `Label: value` with optional ANSI color.
+/// Print `label: value` with the label in dim secondary tone (uv-style).
 pub(crate) fn print_field(label: &str, value: &str, color: bool) {
     if color {
-        println!("{ACCENT}{label}: {RESET}{value}");
+        println!("{SECONDARY}{label}:{RESET} {value}");
     } else {
         println!("{label}: {value}");
     }
 }
 
-/// Print `Label:` header with optional ANSI color.
+/// Print `label:` section header in dim secondary tone (uv-style).
 pub(crate) fn print_label(label: &str, color: bool) {
     if color {
-        println!("{ACCENT}{label}:{RESET}");
+        println!("{SECONDARY}{label}:{RESET}");
     } else {
         println!("{label}:");
     }
 }
 
-/// Print a failure line to stderr with optional ANSI color.
+/// Print a uv-style `error:`-prefixed failure line to stderr.
 pub(crate) fn eprint_fail(name: &str, source: &str, plain: bool) {
     if plain {
-        eprintln!("{SYM_FAIL} Failed {name} {source}");
+        eprintln!("error: failed to install {name} from {source}");
     } else {
-        eprintln!(
-            "{ERROR}{SYM_FAIL}{RESET} Failed {ACCENT}{name}{RESET} {SECONDARY}{source}{RESET}"
-        );
+        eprintln!("{ERROR}\x1b[1merror:{RESET} failed to install {name} from {source}");
     }
 }
 
