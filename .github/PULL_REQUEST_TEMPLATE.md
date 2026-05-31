@@ -1,6 +1,7 @@
 # Pull Request Checklist
 
-**Resolves: #issue-number-here**
+<!-- Optional — uncomment if this PR closes an issue -->
+<!-- Resolves: #issue-number-here -->
 
 ## Summary
 
@@ -13,11 +14,3 @@
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings or errors
-
-## Screenshots (if applicable)
-
-<!-- Add screenshots to help explain your changes if UI is affected -->
-
-## Additional Notes
-
-<!-- Add any other context or information for reviewers -->
