@@ -102,6 +102,8 @@ pub(crate) const SUCCESS: &str = "\x1b[38;2;138;157;104m";
 pub(crate) const ERROR: &str = "\x1b[38;2;200;122;114m";
 pub(crate) const WARNING: &str = "\x1b[38;2;196;173;136m";
 pub(crate) const WARNING_EMPHASIS: &str = "\x1b[1;38;2;196;173;136m";
+/// Popil sky — reserved for `tip:` / `note:` prefixes.
+#[allow(dead_code)]
 pub(crate) const INFO: &str = "\x1b[38;2;123;160;196m";
 
 /// Carriage return + clear to end of line.

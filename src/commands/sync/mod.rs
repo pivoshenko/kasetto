@@ -4,8 +4,9 @@ mod skills;
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
-use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, RESET, SECONDARY, SUCCESS, WARNING};
+use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
 use crate::error::Result;
 use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, scope_root};
 use crate::lock::{load_lock, save_lock};
@@ -55,6 +56,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         ));
     }
     let animate = animations_enabled(opts.quiet, opts.as_json, opts.plain);
+    let started = Instant::now();
 
     let (cfg, cfg_dir, cfg_label) = load_config_any(opts.config_path)?;
     let scope = resolve_scope(opts.scope_override, Some(&cfg));
@@ -115,7 +117,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     if opts.as_json {
         print_json(&report)?;
     } else if !opts.quiet {
-        print_sync_summary(&report, opts.plain, opts.verbose);
+        print_sync_summary(
+            &report,
+            opts.plain,
+            opts.verbose,
+            started.elapsed(),
+            opts.locked,
+        );
     }
 
     if report.summary.failed > 0 {
@@ -124,67 +132,102 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     Ok(())
 }
 
-fn print_sync_summary(report: &Report, plain: bool, verbose: bool) {
-    // Column widths align labels and right-align counts across the two summary rows.
-    const L1: usize = 12;
-    const L2: usize = 9;
-    const L3: usize = 9;
-    const NW: usize = 5;
-
-    println!();
-    if plain {
-        println!(
-            "  {:<L1$} {:>NW$}   {:<L2$} {:>NW$}   {:<L3$} {:>NW$}",
-            "Installed:",
-            report.summary.installed,
-            "Updated:",
-            report.summary.updated,
-            "Removed:",
-            report.summary.removed,
-        );
-        println!(
-            "  {:<L1$} {:>NW$}   {:<L2$} {:>NW$}   {:<L3$} {:>NW$}",
-            "Unchanged:",
-            report.summary.unchanged,
-            "Broken:",
-            report.summary.broken,
-            "Failed:",
-            report.summary.failed,
-        );
+fn pluralize_item(n: usize) -> &'static str {
+    if n == 1 {
+        "item"
     } else {
-        const W1: usize = 10;
-        const W2: usize = 7;
-        const W3: usize = 7;
-        println!(
-            "  {}Installed{}{}: {:>NW$}   {}Updated{}{}: {:>NW$}   {}Removed{}{}: {:>NW$}",
-            SUCCESS,
-            RESET,
-            " ".repeat(W1.saturating_sub("Installed".len())),
-            report.summary.installed,
-            INFO,
-            RESET,
-            " ".repeat(W2.saturating_sub("Updated".len())),
-            report.summary.updated,
-            WARNING,
-            RESET,
-            " ".repeat(W3.saturating_sub("Removed".len())),
-            report.summary.removed,
-        );
-        println!(
-            "  {}Unchanged{}{}: {:>NW$}   {}Broken{}{}: {:>NW$}   {}Failed{}{}: {:>NW$}",
-            SECONDARY,
-            RESET,
-            " ".repeat(W1.saturating_sub("Unchanged".len())),
-            report.summary.unchanged,
-            ATTENTION,
-            RESET,
-            " ".repeat(W2.saturating_sub("Broken".len())),
-            report.summary.broken,
-            ERROR,
-            RESET,
-            " ".repeat(W3.saturating_sub("Failed".len())),
-            report.summary.failed,
-        );
+        "items"
+    }
+}
+
+/// uv-style duration: sub-second → `Nms`, otherwise `N.Ns`.
+fn format_elapsed(d: Duration) -> String {
+    let ms = d.as_millis();
+    if ms < 1000 {
+        format!("{ms}ms")
+    } else {
+        format!("{:.2}s", d.as_secs_f64())
+    }
+}
+
+fn print_sync_summary(
+    report: &Report,
+    plain: bool,
+    verbose: bool,
+    elapsed: Duration,
+    locked: bool,
+) {
+    let s = &report.summary;
+    let dry = report.dry_run;
+    let timing = format_elapsed(elapsed);
+
+    let only_unchanged = s.installed == 0 && s.updated == 0 && s.removed == 0;
+    let lines: Vec<(&str, usize, &str)> =
+        if locked && only_unchanged && s.broken == 0 && s.failed == 0 {
+            vec![("Audited", s.unchanged, SUCCESS)]
+        } else {
+            let mut v = vec![
+                (
+                    if dry { "Would install" } else { "Installed" },
+                    s.installed,
+                    SUCCESS,
+                ),
+                (
+                    if dry { "Would update" } else { "Updated" },
+                    s.updated,
+                    ATTENTION,
+                ),
+                (
+                    if dry { "Would remove" } else { "Removed" },
+                    s.removed,
+                    ERROR,
+                ),
+            ];
+            v.retain(|(_, n, _)| *n > 0);
+            if v.is_empty() && s.unchanged > 0 {
+                v.push(("Unchanged", s.unchanged, SECONDARY));
+            }
+            v
+        };
+
+    for (i, (verb, count, color)) in lines.iter().enumerate() {
+        let suffix = if i == 0 {
+            format!(" in {timing}")
+        } else {
+            String::new()
+        };
+        let lead = if plain {
+            (*verb).to_string()
+        } else {
+            format!("{color}\x1b[1m{verb}{RESET}")
+        };
+        println!("{lead} {count} {}{suffix}", pluralize_item(*count));
+    }
+
+    if lines.is_empty() && s.broken == 0 && s.failed == 0 {
+        let lead = if plain {
+            "Nothing to sync".to_string()
+        } else {
+            format!("{SECONDARY}Nothing to sync{RESET}")
+        };
+        println!("{lead} (in {timing})");
+    }
+
+    if s.broken > 0 {
+        let prefix = if plain {
+            "warning:".to_string()
+        } else {
+            format!("{ATTENTION}\x1b[1mwarning:{RESET}")
+        };
+        eprintln!("{prefix} {} {} broken", s.broken, pluralize_item(s.broken));
+    }
+    if s.failed > 0 {
+        let prefix = if plain {
+            "error:".to_string()
+        } else {
+            format!("{ERROR}\x1b[1merror:{RESET}")
+        };
+        eprintln!("{prefix} {} {} failed", s.failed, pluralize_item(s.failed));
     }
 
     if verbose {
