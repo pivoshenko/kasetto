@@ -45,11 +45,16 @@ pub fn run() -> Result<()> {
             }
             Commands::List {
                 json,
+                kind,
                 output,
                 scope,
-            } => {
-                crate::commands::list::run(json, output.plain, output.quiet, scope.scope_override())
-            }
+            } => crate::commands::list::run(
+                json,
+                kind,
+                output.plain,
+                output.quiet,
+                scope.scope_override(),
+            ),
             Commands::Doctor {
                 json,
                 output,

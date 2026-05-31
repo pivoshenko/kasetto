@@ -1,20 +1,29 @@
 use std::io::IsTerminal;
 
+use serde::Serialize;
+
 use crate::banner::print_banner;
+use crate::cli::ListKind;
 use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
-use crate::list::{
-    browse as browse_list, command_asset_entries, mcp_asset_entries, AssetEntry, BrowseInput,
-};
 use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::{animations_enabled, print_json, print_section_header};
+use crate::ui::{animations_enabled, print_json};
+
+#[derive(Clone, Serialize)]
+pub(crate) struct AssetEntry {
+    pub name: String,
+    pub scope: Scope,
+    pub pack_file: String,
+    pub source: String,
+}
 
 pub(crate) fn run(
     as_json: bool,
+    kind: ListKind,
     plain: bool,
     quiet: bool,
     scope_override: Option<Scope>,
@@ -28,7 +37,18 @@ pub(crate) fn run(
 
     let project_root = std::env::current_dir().unwrap_or_default();
     let merged = scope_override.is_none();
-    let (skills, mcps, commands) = load_skills_mcps_commands(scope_override, &project_root)?;
+    let (mut skills, mut mcps, mut commands) =
+        load_skills_mcps_commands(scope_override, &project_root)?;
+
+    if !matches!(kind, ListKind::All | ListKind::Skills) {
+        skills.clear();
+    }
+    if !matches!(kind, ListKind::All | ListKind::Mcps) {
+        mcps.clear();
+    }
+    if !matches!(kind, ListKind::All | ListKind::Commands) {
+        commands.clear();
+    }
 
     if as_json {
         let output = serde_json::json!({
@@ -40,30 +60,6 @@ pub(crate) fn run(
         return print_json(&output);
     }
 
-    let has_anything = !skills.is_empty() || !mcps.is_empty() || !commands.is_empty();
-
-    if !has_anything {
-        if !quiet {
-            if plain || !animate {
-                println!("kasetto | カセット");
-            } else {
-                print_banner();
-            }
-            println!("Nothing installed.");
-        }
-        return Ok(());
-    }
-
-    if std::io::stdout().is_terminal() && std::env::var_os("NO_TUI").is_none() && !plain {
-        browse_list(&BrowseInput {
-            skills,
-            mcps,
-            commands,
-            plain,
-        })?;
-        return Ok(());
-    }
-
     if !quiet {
         if plain || !animate {
             println!("kasetto | カセット");
@@ -72,11 +68,127 @@ pub(crate) fn run(
         }
     }
 
-    print_skills(&skills, merged, color);
-    print_mcps(&mcps, merged, color);
-    print_commands(&commands, merged, color);
+    let has_anything = !skills.is_empty() || !mcps.is_empty() || !commands.is_empty();
+    if !has_anything {
+        println!("Nothing installed.");
+        return Ok(());
+    }
+
+    print_skills_table(&skills, merged, color);
+    print_assets_table("MCP Servers", &mcps, merged, color);
+    print_assets_table("Commands", &commands, merged, color);
 
     Ok(())
+}
+
+fn print_skills_table(skills: &[InstalledSkill], merged: bool, color: bool) {
+    if skills.is_empty() {
+        return;
+    }
+    let name_w = column_width("NAME", skills.iter().map(|s| s.name.as_str()));
+    let scope_w = if merged {
+        column_width("SCOPE", skills.iter().map(|s| scope_label(s.scope)))
+    } else {
+        0
+    };
+    let updated_w = column_width("UPDATED", skills.iter().map(|s| s.updated_ago.as_str()));
+
+    print_header(
+        &[
+            ("NAME", name_w),
+            ("SCOPE", scope_w),
+            ("UPDATED", updated_w),
+            ("SOURCE", 0),
+        ],
+        color,
+    );
+
+    for s in skills {
+        let scope_cell = if merged { scope_label(s.scope) } else { "" };
+        let row = format_row(&[
+            (&s.name, name_w),
+            (scope_cell, scope_w),
+            (&s.updated_ago, updated_w),
+            (&s.source, 0),
+        ]);
+        if color {
+            println!("{WARNING_EMPHASIS}{}{RESET}", row);
+        } else {
+            println!("{}", row);
+        }
+    }
+    println!();
+}
+
+fn print_assets_table(title: &str, rows: &[AssetEntry], merged: bool, color: bool) {
+    if rows.is_empty() {
+        return;
+    }
+    if color {
+        println!("{WARNING_EMPHASIS}{}{RESET}", title);
+    } else {
+        println!("{}", title);
+    }
+
+    let name_w = column_width("NAME", rows.iter().map(|a| a.name.as_str()));
+    let scope_w = if merged {
+        column_width("SCOPE", rows.iter().map(|a| scope_label(a.scope)))
+    } else {
+        0
+    };
+
+    print_header(
+        &[("NAME", name_w), ("SCOPE", scope_w), ("SOURCE", 0)],
+        color,
+    );
+
+    for a in rows {
+        let scope_cell = if merged { scope_label(a.scope) } else { "" };
+        println!(
+            "{}",
+            format_row(&[
+                (&a.name, name_w),
+                (scope_cell, scope_w),
+                (&a.source, 0),
+            ])
+        );
+    }
+    println!();
+}
+
+fn column_width<'a>(header: &'a str, values: impl Iterator<Item = &'a str>) -> usize {
+    values.map(str::len).max().unwrap_or(0).max(header.len())
+}
+
+fn print_header(cols: &[(&str, usize)], color: bool) {
+    let row = format_row(
+        &cols
+            .iter()
+            .map(|(label, width)| (*label, *width))
+            .collect::<Vec<_>>(),
+    );
+    if color {
+        println!("{SECONDARY}{}{RESET}", row);
+    } else {
+        println!("{}", row);
+    }
+}
+
+fn format_row(cells: &[(&str, usize)]) -> String {
+    let mut out = String::new();
+    let last = cells.len().saturating_sub(1);
+    for (i, (value, width)) in cells.iter().enumerate() {
+        if *width == 0 && i != last {
+            continue;
+        }
+        if i == last {
+            out.push_str(value);
+        } else if *width > 0 {
+            out.push_str(&format!("{:<width$}", value, width = width));
+            out.push_str("  ");
+        }
+    }
+    out
 }
 
 fn load_skills_mcps_commands(
@@ -121,85 +233,41 @@ fn load_skills_mcps_commands(
     Ok((skills, mcps, commands))
 }
 
-fn print_skills(skills: &[InstalledSkill], merged: bool, color: bool) {
-    if skills.is_empty() {
-        return;
-    }
-    print_section_header("Skills", skills.len(), color);
-    println!();
-    for item in skills {
-        let scope_note = if merged {
-            format!(" [{}]", scope_label(item.scope))
-        } else {
-            String::new()
-        };
-        if color {
-            println!(
-                "  {WARNING_EMPHASIS}{}{}{RESET}  {SECONDARY}updated {} ({}){RESET}",
-                item.name, scope_note, item.updated_ago, item.updated_at,
-            );
-        } else {
-            println!(
-                "  {}{}  updated {} ({})",
-                item.name, scope_note, item.updated_ago, item.updated_at,
-            );
-        }
-        println!("    {}", item.description);
-        println!("    source: {}", item.source);
-        println!();
-    }
+fn command_asset_entries(lock: &LockFile, scope: Scope) -> Vec<AssetEntry> {
+    let mut out: Vec<AssetEntry> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "command")
+        .map(|(_, a)| AssetEntry {
+            name: a.name.clone(),
+            scope,
+            pack_file: String::new(),
+            source: a.source.clone(),
+        })
+        .collect();
+    out.sort_by_key(|a| a.name.to_lowercase());
+    out
 }
 
-fn print_mcps(mcps: &[AssetEntry], merged: bool, color: bool) {
-    if mcps.is_empty() {
-        return;
+fn mcp_asset_entries(lock: &LockFile, scope: Scope) -> Vec<AssetEntry> {
+    let mut out = Vec::new();
+    for name in lock.list_installed_mcps() {
+        let (pack_file, source) = lock
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "mcp")
+            .find(|(_, a)| a.destination.split(',').any(|s| !s.is_empty() && s == name))
+            .map(|(_, a)| (a.name.clone(), a.source.clone()))
+            .unwrap_or_default();
+        out.push(AssetEntry {
+            name,
+            scope,
+            pack_file,
+            source,
+        });
     }
-    print_section_header("MCP Servers", mcps.len(), color);
-    println!();
-    for m in mcps {
-        let scope_note = if merged {
-            format!(" [{}]", scope_label(m.scope))
-        } else {
-            String::new()
-        };
-        if m.pack_file.is_empty() && m.source.is_empty() {
-            println!("  {}{}", m.name, scope_note);
-        } else if m.pack_file.is_empty() {
-            println!("  {}{}  source {}", m.name, scope_note, m.source);
-        } else {
-            println!(
-                "  {}{}  pack {}  source {}",
-                m.name, scope_note, m.pack_file, m.source
-            );
-        }
-    }
-    println!();
-}
-
-fn print_commands(commands: &[AssetEntry], merged: bool, color: bool) {
-    if commands.is_empty() {
-        return;
-    }
-    print_section_header("Commands", commands.len(), color);
-    println!();
-    for c in commands {
-        let scope_note = if merged {
-            format!(" [{}]", scope_label(c.scope))
-        } else {
-            String::new()
-        };
-        if c.source.is_empty() {
-            println!("  {}{}", c.name, scope_note);
-        } else if color {
-            println!(
-                "  {WARNING_EMPHASIS}{}{}{RESET}  {SECONDARY}source {}{RESET}",
-                c.name, scope_note, c.source
-            );
-        } else {
-            println!("  {}{}  source {}", c.name, scope_note, c.source);
-        }
-    }
-    println!();
+    out.sort_by_key(|a| a.name.to_lowercase());
+    out
 }
 
 fn scope_ord(s: Scope) -> u8 {

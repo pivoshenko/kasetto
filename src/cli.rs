@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 use crate::model::Scope;
@@ -57,6 +57,16 @@ pub(crate) struct OutputArgs {
     #[arg(long)]
     #[arg(help = "disable colors and animations")]
     pub plain: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[clap(rename_all = "lowercase")]
+pub(crate) enum ListKind {
+    #[default]
+    All,
+    Skills,
+    Mcps,
+    Commands,
 }
 
 #[derive(Args, Clone, Debug, Default)]
@@ -142,14 +152,21 @@ pub(crate) enum Commands {
         sync: SyncArgs,
     },
     #[command(
-        about = "List installed skills and MCPs",
-        long_about = "Read installed skills and MCPs from the lock file.\n\nIn interactive terminals, kasetto opens a navigable browser with tabs for Skills and MCPs. Use --json for scripting.",
-        after_help = crate::cli_examples!("kasetto list", "kasetto list --json",)
+        about = "List installed skills, MCPs, and commands",
+        long_about = "Read installed assets from the lock file and print them as plain tables.\n\nFilter the output with `--type skills|mcps|commands|all` (default: all). Use --json for scripting.",
+        after_help = crate::cli_examples!(
+            "kasetto list",
+            "kasetto list --type skills",
+            "kasetto list --json",
+        )
     )]
     List {
         #[arg(long)]
         #[arg(help = "print installed assets as JSON")]
         json: bool,
+        #[arg(long = "type", value_enum, default_value_t = ListKind::All)]
+        #[arg(help = "limit output to one asset kind")]
+        kind: ListKind,
         #[command(flatten)]
         output: OutputArgs,
         #[command(flatten)]
