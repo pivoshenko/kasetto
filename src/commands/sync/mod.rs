@@ -286,15 +286,22 @@ pub(super) fn update_active_for_source(ctx: &SyncContext, desired: &[String]) ->
     desired.iter().any(|s| ctx.update_only.contains(s))
 }
 
-pub(super) fn sync_label(kind: &str, name: &str, source: &str, plain: bool) -> String {
+pub(super) fn sync_label(_kind: &str, name: &str, source: &str, plain: bool) -> String {
     if plain {
-        format!("Syncing {kind} {name}")
+        format!(" {name}  {source}")
     } else {
-        format!(
-            "Syncing {kind} {}{}{} {}{}{}",
-            ACCENT, name, RESET, SECONDARY, source, RESET
-        )
+        format!(" {ACCENT}{name}{RESET}  {SECONDARY}{}{RESET}", short_source(source))
     }
+}
+
+/// Strip the URL scheme + leading `www.` so per-row source labels read like
+/// `github.com/org/repo` instead of `https://github.com/org/repo`.
+fn short_source(source: &str) -> String {
+    let s = source
+        .strip_prefix("https://")
+        .or_else(|| source.strip_prefix("http://"))
+        .unwrap_or(source);
+    s.strip_prefix("www.").unwrap_or(s).to_string()
 }
 
 pub(super) fn file_name_str(path: &std::path::Path) -> String {

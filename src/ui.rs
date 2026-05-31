@@ -86,7 +86,6 @@ where
     F: FnOnce() -> Result<T>,
 {
     let label = label.into();
-    let ok_label = synced_label(&label);
     if !enabled {
         return operation();
     }
@@ -120,41 +119,24 @@ where
     let _ = handle.join();
 
     let mut stderr = std::io::stderr();
-    if plain {
-        if result.is_ok() {
-            let _ = writeln!(stderr, "{}", ok_label);
-        } else {
+    if !result.is_ok() {
+        if plain {
             let _ = writeln!(stderr, "error: {}", label);
+        } else {
+            let _ = writeln!(
+                stderr,
+                "{}{ERROR}\x1b[1merror:{RESET} {label}",
+                CLEAR_LINE
+            );
         }
-    } else if result.is_ok() {
-        let _ = writeln!(
-            stderr,
-            "{}{}\x1b[1m{}{}",
-            CLEAR_LINE, SUCCESS, ok_label, RESET
-        );
+    } else if plain {
+        let _ = writeln!(stderr, "{}", label);
     } else {
-        let _ = writeln!(
-            stderr,
-            "{}{}\x1b[1merror:{} {}",
-            CLEAR_LINE, ERROR, RESET, label
-        );
+        let _ = writeln!(stderr, "{}{label}", CLEAR_LINE);
     }
     let _ = stderr.flush();
 
     result
-}
-
-fn synced_label(label: &str) -> String {
-    if let Some(rest) = label.strip_prefix("Syncing ") {
-        return format!("Synced {}", rest);
-    }
-    if let Some(rest) = label.strip_prefix("Checking ") {
-        return format!("Checked {}", rest);
-    }
-    if let Some(rest) = label.strip_prefix("Updating ") {
-        return format!("Updated {}", rest);
-    }
-    label.to_string()
 }
 
 /// Single-glyph prefix for a per-asset sync action, uv-style: `+` install,
@@ -179,17 +161,6 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn synced_label_rewrites_known_prefixes() {
-        assert_eq!(synced_label("Syncing demo"), "Synced demo");
-        assert_eq!(synced_label("Checking for updates"), "Checked for updates");
-        assert_eq!(
-            synced_label("Updating 1.0.0 -> 1.1.0"),
-            "Updated 1.0.0 -> 1.1.0"
-        );
-        assert_eq!(synced_label("Loading source"), "Loading source");
-    }
 
     #[test]
     fn action_glyph_plain_returns_single_char() {
