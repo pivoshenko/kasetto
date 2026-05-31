@@ -139,6 +139,16 @@ where
     result
 }
 
+/// Strip the URL scheme + leading `www.` so source labels read like
+/// `github.com/org/repo` instead of `https://github.com/org/repo`.
+pub(crate) fn short_source(source: &str) -> String {
+    let s = source
+        .strip_prefix("https://")
+        .or_else(|| source.strip_prefix("http://"))
+        .unwrap_or(source);
+    s.strip_prefix("www.").unwrap_or(s).to_string()
+}
+
 /// Single-glyph prefix for a per-asset sync action, uv-style: `+` install,
 /// `~` update, `-` remove, `=` unchanged, `!` broken/failed. Bold + colored
 /// when `plain` is false.

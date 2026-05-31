@@ -295,21 +295,12 @@ pub(super) fn sync_label_with(name: &str, source: &str, plain: bool, show_source
         (true, false) => format!(" {name}"),
         (false, true) => format!(
             " {ACCENT}{name}{RESET}  {SECONDARY}{}{RESET}",
-            short_source(source)
+            crate::ui::short_source(source)
         ),
         (false, false) => format!(" {ACCENT}{name}{RESET}"),
     }
 }
 
-/// Strip the URL scheme + leading `www.` so per-row source labels read like
-/// `github.com/org/repo` instead of `https://github.com/org/repo`.
-fn short_source(source: &str) -> String {
-    let s = source
-        .strip_prefix("https://")
-        .or_else(|| source.strip_prefix("http://"))
-        .unwrap_or(source);
-    s.strip_prefix("www.").unwrap_or(s).to_string()
-}
 
 pub(super) fn file_name_str(path: &std::path::Path) -> String {
     path.file_name()

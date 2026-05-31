@@ -8,7 +8,7 @@ use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::{color_stdout_enabled, print_json, print_tip};
+use crate::ui::{color_stdout_enabled, print_json, print_tip, short_source};
 
 #[derive(Clone, Serialize)]
 pub(crate) struct AssetEntry {
@@ -97,11 +97,12 @@ fn print_skills_table(skills: &[InstalledSkill], merged: bool, color: bool) {
 
     for s in skills {
         let scope_cell = if merged { scope_label(s.scope) } else { "" };
+        let source_cell = short_source(&s.source);
         let row = format_row(&[
             (&s.name, name_w),
             (scope_cell, scope_w),
             (&s.updated_ago, updated_w),
-            (&s.source, 0),
+            (&source_cell, 0),
         ]);
         println!("{}", row);
     }
@@ -132,12 +133,13 @@ fn print_assets_table(title: &str, rows: &[AssetEntry], merged: bool, color: boo
 
     for a in rows {
         let scope_cell = if merged { scope_label(a.scope) } else { "" };
+        let source_cell = short_source(&a.source);
         println!(
             "{}",
             format_row(&[
                 (&a.name, name_w),
                 (scope_cell, scope_w),
-                (&a.source, 0),
+                (&source_cell, 0),
             ])
         );
     }
