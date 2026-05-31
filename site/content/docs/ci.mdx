@@ -7,7 +7,7 @@ description: Run Kasetto in CI pipelines.
 
 **What you'll learn:**
 
-- Recommended flags (`--dry-run`, `--json`, `--plain`, `--quiet`)
+- Recommended flags (`--dry-run`, `--json`, `--color never`, `--quiet`)
 - Exit-code expectations
 - A GitHub Actions example
 
@@ -39,15 +39,16 @@ Use `--json` for structured logs:
 kst sync --dry-run --json
 ```
 
-### Avoid TUIs in Non-Interactive Environments
+### Strip Colors and Animations
 
-Kasetto will avoid interactive UIs when it detects non-interactive output, but you can force it:
+Kasetto auto-detects non-TTY output and emits plain text, but you can force it:
 
-- Set `NO_TUI=1`
-- Or use `--plain` / `--quiet` as needed
+- `--color never` (preferred)
+- `-q` / `--quiet` to suppress non-error output entirely
+- The `NO_COLOR` env var is honored
 
 ```bash
-NO_TUI=1 kst sync --dry-run --plain
+kst sync --dry-run --color never
 ```
 
 ## Exit Codes
@@ -79,7 +80,6 @@ jobs:
 
       - name: Validate kasetto.yaml
         env:
-          NO_TUI: "1"
           # Add tokens if you pull from private sources:
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: kst sync --project --dry-run --json

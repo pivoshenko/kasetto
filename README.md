@@ -33,7 +33,7 @@ Kasetto is a **community-first** project that solves a different problem: **decl
 - **Speed** — instant by design. Built in Rust, it hashes content and diffs a lock file so only what changed gets touched — full syncs finish in seconds.
 - **Universal** — one static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and real exit codes.
 
-> Inspired by [uv](https://github.com/astral-sh/uv) - what uv did for Python packages, Kasetto aims to do for AI skills.
+> Inspired by [cargo](https://github.com/rust-lang/cargo) and [uv](https://github.com/astral-sh/uv) — the same lock-first, declarative, CLI-only ergonomics, applied to AI agent skills.
 
 ## Install
 
@@ -106,8 +106,9 @@ See [pivoshenko/pivoshenko.ai](https://github.com/pivoshenko/pivoshenko.ai) for 
 **3. See what's installed:**
 
 ```bash
-kst list      # interactive browser with vim-style navigation
-kst doctor    # version, paths, last sync status
+kst list                    # table of installed skills, MCPs, commands
+kst list --type skills      # filter to one asset kind
+kst doctor                  # version, paths, last sync status
 ```
 
 ## Commands
@@ -116,14 +117,14 @@ One-line synopsis below. Full flags and examples in the [commands reference](htt
 
 - **`kst init`** — generate a starter `kasetto.yaml` (local or `--global`).
 - **`kst sync`** — read config, install skills + MCPs into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
-- **`kst list`** — interactive TUI (or plain/JSON) of installed skills and MCPs from the lock file.
+- **`kst list`** — print a uv-style table of installed skills, MCPs, and commands from the lock file; `--type skills|mcps|commands` filters; `--json` for scripting.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.
 - **`kst clean`** — remove tracked skills and MCP configs for the given scope.
 - **`kst self update`** — fetch latest release, verify SHA256, replace binary in place.
 - **`kst self uninstall`** — remove installed assets, data, and the binary.
 - **`kst completions <shell>`** — emit shell completion script (`bash`/`zsh`/`fish`/`powershell`).
 
-Most commands accept `--json`, `--plain`, `--quiet`, and `--project | --global`.
+Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeat for stricter silence), and `--project | --global`. `--plain` is still accepted as a deprecated alias for `--color never`.
 
 ## Configuration
 

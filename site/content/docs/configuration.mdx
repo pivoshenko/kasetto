@@ -245,7 +245,8 @@ The `--project` / `--global` flags always override whatever `scope` is set in th
 
 These environment variables affect Kasetto's output behavior:
 
-| Variable   | Effect                                                                    |
-| ---------- | ------------------------------------------------------------------------- |
-| `NO_TUI`   | Disables interactive screens (home menu, list browser). Set to any value. |
-| `NO_COLOR` | Disables colored output. Set to any value.                                |
+| Variable          | Effect                                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| `NO_COLOR`        | Disables colored output. Set to any value.                                                      |
+| `CLICOLOR_FORCE`  | Forces color even when stdout is not a TTY. Set automatically by `--color always`.              |
+| `KASETTO_CONFIG`  | Overrides config discovery to use the exact path or URL (see [Configuration](#configuration)).  |

@@ -34,10 +34,10 @@ kst sync [OPTIONS]
 | ------------------------ | ------------------------------------------------------------ |
 | `--config <path-or-url>` | Path or HTTPS URL to a YAML config (default order: `$KASETTO_CONFIG`, `./kasetto.yaml`, `source:` in `config.yaml`, `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`) |
 | `--dry-run`              | Preview what would change without writing anything           |
-| `--quiet`                | Suppress non-error output                                    |
+| `-q`, `--quiet`          | Suppress non-error output (repeat for stricter silence)      |
 | `--json`                 | Print the sync report as JSON                                |
-| `--plain`                | Disable colors and spinner animations                        |
-| `--verbose`              | Show per-skill action details                                |
+| `--color <when>`         | `auto` (default), `always`, or `never`                       |
+| `-v`, `--verbose`        | Increase detail (`-v`, `-vv`, `-vvv`); per-skill action list at `-v` |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
@@ -51,7 +51,7 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 </Callout>
 ## `kst list`
 
-Shows everything Kasetto has installed (skills and MCPs from the lock file).
+Prints a uv-style table of installed assets from the lock file — name, scope, and source per row.
 
 ```bash
 kst list [OPTIONS]
@@ -59,25 +59,16 @@ kst list [OPTIONS]
 
 ### Options
 
-| Flag        | Description                                                              |
-| ----------- | ------------------------------------------------------------------------ |
-| `--json`    | Output as JSON instead of the interactive browser                        |
-| `--quiet`   | Do not print anything (unless `--json` is set)                           |
-| `--plain`   | Disable colors; use plain text output instead of the full-screen browser |
-| `--project` | Only read the project lock (`./kasetto.lock`) in the current directory   |
-| `--global`  | Only read the global lock (under XDG data)                               |
+| Flag                | Description                                                            |
+| ------------------- | ---------------------------------------------------------------------- |
+| `--type <kind>`     | `all` (default), `skills`, `mcps`, or `commands`                       |
+| `--json`            | Output as JSON                                                         |
+| `-q`, `--quiet`     | Suppress output (unless `--json` is set)                               |
+| `--color <when>`    | `auto` (default), `always`, or `never`                                 |
+| `--project`         | Only read the project lock (`./kasetto.lock`) in the current directory |
+| `--global`          | Only read the global lock (under XDG data)                             |
 
-With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each skill row includes a **scope** field (in JSON and in the browser detail pane). JSON also includes `"merged_scopes": true` in that mode; MCP entries are objects with `name`, `scope`, `pack_file`, and `source`.
-
-In a terminal (and without `--plain`), this opens an interactive browser — **Skills** and **MCPs** tabs, each with a detail pane. Navigate with <kbd>j</kbd> / <kbd>k</kbd>, scroll with
-<kbd>page-up</kbd> / <kbd>page-down</kbd>, jump with <kbd>g</kbd> <kbd>g</kbd> / <kbd>shift+g</kbd>. Switch tabs with <kbd>tab</kbd> or <kbd>h</kbd> / <kbd>l</kbd>.
-
-<Callout type="info">
-
-
-Set `NO_TUI=1` or pipe stdout to force a non-browser text listing. For a **local** plain listing without disabling all TUIs, use `--plain`.
-
-</Callout>
+With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
 ## `kst doctor`
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
@@ -88,13 +79,13 @@ kst doctor [OPTIONS]
 
 ### Options
 
-| Flag        | Description                                |
-| ----------- | ------------------------------------------ |
-| `--json`    | Output as JSON                             |
-| `--quiet`   | Do not print anything (unless `--json`)    |
-| `--plain`   | Disable colors and the banner-style header |
-| `--project` | Show project-scoped diagnostics            |
-| `--global`  | Show globally-scoped diagnostics (default) |
+| Flag             | Description                                |
+| ---------------- | ------------------------------------------ |
+| `--json`         | Output as JSON                             |
+| `-q`, `--quiet`  | Do not print anything (unless `--json`)    |
+| `--color <when>` | `auto` (default), `always`, or `never`     |
+| `--project`      | Show project-scoped diagnostics            |
+| `--global`       | Show globally-scoped diagnostics (default) |
 
 ## `kst clean`
 
@@ -106,14 +97,14 @@ kst clean [OPTIONS]
 
 ### Options
 
-| Flag        | Description                                                     |
-| ----------- | --------------------------------------------------------------- |
-| `--dry-run` | Preview what would be removed (lists skill paths and MCP packs) |
-| `--json`    | Print output as JSON                                            |
-| `--quiet`   | Suppress non-error output                                       |
-| `--plain`   | Disable colors and banner-style header                          |
-| `--project` | Clean project-scoped assets                                     |
-| `--global`  | Clean globally-scoped assets (default)                          |
+| Flag             | Description                                                     |
+| ---------------- | --------------------------------------------------------------- |
+| `--dry-run`      | Preview what would be removed (lists skill paths and MCP packs) |
+| `--json`         | Print output as JSON                                            |
+| `-q`, `--quiet`  | Suppress non-error output                                       |
+| `--color <when>` | `auto` (default), `always`, or `never`                          |
+| `--project`      | Clean project-scoped assets                                     |
+| `--global`       | Clean globally-scoped assets (default)                          |
 
 ## `kst self`
 
@@ -147,7 +138,7 @@ Kasetto prints a yellow `New version available: x.y.z → a.b.c` line at the end
 
 The notice is suppressed when:
 
-- output is `--json`, `--plain`, or `--quiet`
+- output is `--json`, `--color never`, or `--quiet`
 - the command emits machine-readable content (`completions`, `self update`)
 - stdout is not a TTY (e.g. piped to a file)
 

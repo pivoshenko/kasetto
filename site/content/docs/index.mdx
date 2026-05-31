@@ -10,7 +10,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 **What you'll learn:**
 
 - How to create a config and run your first sync
-- How to preview changes and avoid interactive UI
+- How to preview changes and script CI runs
 - Where to go next for the exact sync/merge guarantees
 
 Once you've [installed Kasetto](/docs/installation), run `kst` to make sure it's available:
@@ -24,19 +24,7 @@ Usage: kst <COMMAND>
 ...
 ```
 
-If there's no `kasetto.yaml` in the current directory, Kasetto greets you with an interactive home screen. Navigate with <kbd>j</kbd> / <kbd>k</kbd> or arrow keys, press <kbd>enter</kbd> to run the selected command, or use shortcut keys:
-
-| Key                | Action                         |
-| ------------------ | ------------------------------ |
-| <kbd>i</kbd>              | Init                           |
-| <kbd>s</kbd>              | Sync (prompts for config path) |
-| <kbd>l</kbd>              | List                           |
-| <kbd>d</kbd>              | Doctor                         |
-| <kbd>c</kbd>              | Clean                          |
-| <kbd>u</kbd>              | Self update                    |
-| <kbd>q</kbd> / <kbd>escape</kbd> | Quit                           |
-
-Set `NO_TUI=1` if you'd rather skip the interactive screen and get plain text hints.
+Bare `kst` (no subcommand) prints the banner followed by `--help`, just like bare `cargo` or `uv`. Kasetto is CLI-only — every action has a dedicated subcommand. Pipe stdout or pass `--color never` to strip styling.
 
 ## Creating a Config
 
@@ -130,14 +118,15 @@ If you want the exact merge rules and conflict behavior, see [How Sync Works](/d
 
 ## Exploring What's Installed
 
-Want to see what's installed? Open the browser:
+Print a table of installed assets:
 
 ```bash
-kst list
+kst list                    # all kinds together
+kst list --type skills      # filter to one kind
+kst list --json             # for scripting
 ```
 
-Navigate with <kbd>j</kbd> / <kbd>k</kbd>, switch tabs with <kbd>tab</kbd> or <kbd>h</kbd> / <kbd>l</kbd>, scroll with <kbd>page-up</kbd> / <kbd>page-down</kbd>, jump with <kbd>g</kbd> <kbd>g</kbd> / <kbd>shift+g</kbd>.
-With no `--project` or `--global`, **global and project** installs are shown together (each row is labeled by scope). Use `--plain`, set `NO_TUI=1`, or pipe stdout for plain text instead of the full-screen browser.
+With no `--project` or `--global`, **global and project** installs are shown together (each row labeled by scope).
 
 Want to check your local setup:
 

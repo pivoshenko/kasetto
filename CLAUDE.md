@@ -27,7 +27,7 @@ Kasetto is a single-binary CLI tool that syncs AI agent skills from GitHub repos
 ```
 CLI args → match cli.command
   ├─ Explicit subcommand → run that command
-  └─ None → Home screen (interactive TUI menu)
+  └─ None → banner + `--help` (exit 0) — cargo/uv style
 ```
 
 ### Module Layout
@@ -40,9 +40,8 @@ CLI args → match cli.command
 - **`prompts/`** - Slash-command (user-defined prompt template) handling: frontmatter parsing (`parse.rs`), per-agent transforms (`transform.rs`), entry point `apply_command`. Supports 5 output formats: MarkdownFrontmatter, MarkdownPlain, PromptMd, PromptFile (Continue), GeminiToml
 - **`lock.rs`** - Portable manifest persistence (`kasetto.lock`, schema `version: 2`): tracks installed skills + command/MCP assets only. Deterministic and commit-friendly — `destination` paths are stored relative to the scope root (project root for Project, home for Global) and resolved back to absolute at read time via `fsops::resolve_dest`/`relativize_dest`. No timestamps or run-specific data. **The lock is authoritative** (issue #33): a plain `kasetto sync` installs exactly what the lock pins and performs zero network fetches when on-disk destinations already match. The per-source `needs_fetch` gate in `commands/sync/skills.rs` re-hashes every destination *before* downloading and skips `materialize_source` entirely when all destinations match the locked hash; a missing/tampered secondary destination is repaired by copying from a verified-good local destination rather than fetching. `--update`/`-u` (optionally `--update <name>...`) is the only path that re-resolves moving refs and rewrites locked hashes; for a `skills: "*"` wildcard source, plain sync holds to the locked set (derived from lock entries where `entry.source == src.source`) and only `--update` re-resolves the wildcard via download + `select_targets`. `--locked`/`--frozen` never fetches and errors when the lock cannot satisfy the config (config-named skill absent, or source entirely absent); `--locked --update` is rejected as contradictory. Skill content hashing (`fsops::hash_dir`) normalizes path separators to `/` so digests are OS-invariant — existing locks therefore show one round of `updated` on the next plain sync after upgrading.
 - **`state.rs`** - Machine-local runtime state kept *out* of the committed lock (mirrors how `uv` keeps state in its cache dir, separate from `uv.lock`). Holds `last_run`, the latest sync `Report` JSON (for `doctor` failures), and per-skill install timestamps (for `list`'s "updated N ago"). Stored as JSON under `$XDG_CACHE_HOME/kasetto/runtime/<hash-of-lock-path>.json`; safe to delete, regenerated on next sync
-- **`home/`** - Interactive welcome screen with `prompt.rs` for sync arg input
-- **`list/`** - Interactive TUI browser: `browse.rs` (event loop), `render.rs` (frame drawing), `session.rs` (state/guard), `tab.rs`, `types.rs`
-- **`update_notifier.rs`** - Background "new version available" notice. Fires a detached thread from `app::run` to refresh `$XDG_CACHE_HOME/kasetto/update-check.json` (24h TTL), then prints one yellow line at end of run. Reuses `is_newer`/`fetch_latest_release` from `commands::self_update`. Suppressed for `--json`/`--plain`/`--quiet`, `completions`, `self update`, and non-TTY stdout
+- **`banner.rs`** - ASCII brand banner with static color overlay. Only rendered on bare `kst` (welcome) and `kst init`. All other subcommands are banner-less — operational output should not repeat the signature
+- **`update_notifier.rs`** - Background "new version available" notice. Fires a detached thread from `app::run` to refresh `$XDG_CACHE_HOME/kasetto/update-check.json` (24h TTL), then prints one yellow line at end of run. Reuses `is_newer`/`fetch_latest_release` from `commands::self_update`. Suppressed for `--json`/`--color never`/`--quiet`, `completions`, `self update`, and non-TTY stdout
 
 ### Site (`site/`)
 
@@ -64,19 +63,18 @@ Next.js 15 App Router project that hosts both the marketing landing (`/`) and th
 
 ### UI System
 
-**Color palette** (`colors.rs`): Semantic ANSI constants - `ACCENT` (bold magenta), `SUCCESS` (green), `ERROR` (red), `WARNING` (yellow), `SECONDARY` (grey), `INFO` (cyan). The `term` submodule maps these to crossterm `Color` values for TUI rendering. `clap_styles()` applies the palette to CLI help text. The `cli_examples!` macro renders help footers.
+**Color palette** (`colors.rs`): Brand anchors mirror `pivoshenko.theme/themes/palettes/popil.json` (the warm-ash flavor live on `kasetto.dev`). Side A is lavender `#a89bb5` (`ACCENT`/`BANNER`); Side B is peach `#d97757` (`ACCENT_WARM`). Semantic roles — `SUCCESS` (popil green), `ERROR` (popil red), `WARNING` (tape tan), `INFO` (popil sky, reserved for `tip:`/`note:` prefixes), `SECONDARY` (warm subtle grey), `ATTENTION` (popil yellow). Truecolor SGR; `NO_COLOR` / `--color never` gate emission via `ui::color_stdout_enabled()`. `CLICOLOR_FORCE` (set by `--color always`) overrides TTY detection. `clap_styles()` keeps a two-tone help surface (lavender headers + peach literals); operational output is uv-style austere — bold lead verbs and prefix glyphs only.
 
-**Shared helpers** (`ui.rs`): `SPINNER_FRAMES` (braille animation), `SYM_OK`/`SYM_FAIL` (✓/✗), `with_spinner()` (threaded progress animation), `print_json()`, `print_field()`, `print_label()`, `print_section_header()`, `print_name_list()`, `eprint_fail()`, `status_chip()`. All commands use these rather than direct `println!` with inline ANSI codes.
+**Shared helpers** (`ui.rs`): `SPINNER_FRAMES` (braille animation), `SYM_OK`/`SYM_FAIL` (✓/✗), `with_spinner()` (threaded progress animation), `print_json()`, `print_field()` / `print_label()` (dim secondary labels, uv-style), `eprint_fail()` (red `error:` prefix), `action_glyph()` (uv-style ` + ` / ` ~ ` / ` - ` / ` = ` / ` ! ` for per-asset sync rows), `color_stdout_enabled()`. All commands consume these rather than emitting inline ANSI.
 
-**TUI** (`tui.rs`): `TuiGuard` (RAII alternate screen), `draw_banner_or_fallback()` (shared banner rendering with small-terminal fallback). The TUI banner is static — both the home screen and list browser block on `event::read()` and redraw only on key press or resize via a dirty flag. The list browser (`list/`) uses a separate `TerminalGuard` that reserves rows inline rather than using alternate screen.
+**Output styling (uv-aligned)**: operational paths (`sync`/`list`/`doctor`/`clean`) follow uv discipline — terminal-default body text, bold-colored lead verbs in summaries (`Installed N items in Xms`, `Updated N items`, `Removed N items`, `Audited N items` for `--locked` no-ops), `warning:` / `error:` prefixed lines to stderr for non-fatal/fatal counts. `kst list` prints aligned tables (`NAME / SCOPE / SOURCE`, plus `UPDATED` for skills); per-action `--verbose` rows use the prefix-glyph format above.
 
 ### Key Patterns
 
 - **Scope as first-class concept**: Global (`~/.agent/skills/`) vs Project (`./.agent/skills/`), with scope-scoped lock files. Resolution: CLI flag → config field → default Global. See `model::resolve_scope()`.
 - **Agent as exhaustive enum**: `model::Agent` with serde aliases, maps to install paths and MCP settings targets. Adding an agent = add enum variant + path mappings.
 - **Skill discovery by convention**: Skills found in `root/` or `root/skills/` by directory listing (no manifest needed). Each skill dir must contain a `SKILL.md`.
-- **Output modes**: Most commands support `--plain` (no ANSI), `--json` (structured), and default (colors + animations). Check `animations_enabled()` and the `as_json`/`plain`/`quiet` flags.
-- **`ListItem` trait** in `list/render.rs`: Generic list pane rendering - both `InstalledSkill` and `AssetEntry` implement it, eliminating duplicate pane code.
+- **Output modes**: Most commands support `--color <auto|always|never>` (default `auto`), `--json` (structured), `-q`/`--quiet` (count action — repeat for stricter silence), and `-v`/`--verbose` (count action — `-v`/`-vv`/`-vvv`). `--plain` is preserved as a hidden deprecated alias for `--color never` and emits a stderr warning when used. Check `animations_enabled()` and the `as_json`/`plain`/`quiet` flags inside commands; resolve flags at the `app.rs` boundary via `OutputArgs::resolve_plain()` / `SyncArgs::resolve_plain()`.
 
 ## GitHub Workflows (`.github/workflows/`)
 
