@@ -195,7 +195,6 @@ mod colors;
 mod commands;
 mod error;
 mod fsops;
-mod home;
 mod list;
 mod lock;
 mod mcps;

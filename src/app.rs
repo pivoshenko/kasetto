@@ -1,7 +1,8 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use std::path::Path;
 use std::time::Duration;
 
+use crate::banner::print_banner;
 use crate::cli::{Cli, Commands, SelfAction};
 use crate::default_config_path;
 use crate::error::Result;
@@ -80,7 +81,12 @@ pub fn run() -> Result<()> {
                 crate::commands::completions::run(shell, &program_name)
             }
         },
-        None => crate::home::run(&program_name, &default_config),
+        None => {
+            print_banner();
+            let _ = Cli::command().print_help();
+            println!();
+            Ok(())
+        }
     };
 
     if result.is_ok() {
