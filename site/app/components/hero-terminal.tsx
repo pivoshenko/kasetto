@@ -15,7 +15,7 @@ const SOURCES: Source[] = [
   { name: "commands/review", count: "1 command" },
 ];
 
-const SUMMARY = { skills: "14", mcps: "2", commands: "1" };
+const SUMMARY = { count: "17", elapsed: "412ms" };
 
 type Phase = "idle" | "typing" | "running" | "done";
 
@@ -112,7 +112,7 @@ export function HeroTerminal() {
             const visible = isDone || isResolving;
             return (
               <div key={src.name} className="t-row t-fade" data-shown={visible}>
-                {isDone ? <span className="t-ok">✓</span> : <span className="t-spin" aria-hidden />}
+                {isDone ? <span className="t-ok">+</span> : <span className="t-spin" aria-hidden />}
                 <span>{src.name}</span>
                 <span className="t-dim">{isDone ? src.count : "resolving…"}</span>
               </div>
@@ -120,15 +120,10 @@ export function HeroTerminal() {
           })}
 
           <div className="t-summary-line t-fade" data-shown={phase === "done"}>
-            <span className="t-dim">synced</span>
-            <span className="t-summary">{SUMMARY.skills}</span>
-            <span className="t-dim">skills</span>
-            <span className="t-dim">·</span>
-            <span className="t-summary">{SUMMARY.mcps}</span>
-            <span className="t-dim">mcps</span>
-            <span className="t-dim">·</span>
-            <span className="t-summary">{SUMMARY.commands}</span>
-            <span className="t-dim">commands</span>
+            <span className="t-ok">Installed</span>
+            <span className="t-summary">{SUMMARY.count}</span>
+            <span className="t-dim">items in</span>
+            <span className="t-summary">{SUMMARY.elapsed}</span>
           </div>
         </div>
       </div>
