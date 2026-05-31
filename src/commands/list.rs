@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::cli::ListKind;
-use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
+use crate::colors::{ACCENT, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, LockFile};
@@ -103,11 +103,7 @@ fn print_skills_table(skills: &[InstalledSkill], merged: bool, color: bool) {
             (&s.updated_ago, updated_w),
             (&s.source, 0),
         ]);
-        if color {
-            println!("{WARNING_EMPHASIS}{}{RESET}", row);
-        } else {
-            println!("{}", row);
-        }
+        println!("{}", row);
     }
     println!();
 }
@@ -117,7 +113,7 @@ fn print_assets_table(title: &str, rows: &[AssetEntry], merged: bool, color: boo
         return;
     }
     if color {
-        println!("{WARNING_EMPHASIS}{}{RESET}", title);
+        println!("{ACCENT}{}{RESET}", title);
     } else {
         println!("{}", title);
     }

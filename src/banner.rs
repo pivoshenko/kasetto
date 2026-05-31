@@ -1,7 +1,14 @@
 use std::io::IsTerminal;
 use unicode_width::UnicodeWidthStr;
 
-use crate::colors::{ansi_cursor_column_1based, ansi_cursor_up, ATTENTION, BANNER, RESET};
+use crate::colors::{ansi_cursor_column_1based, ansi_cursor_up, RESET};
+
+/// Popil lavender (`#a89bb5`) — banner foreground. The only truecolor SGR
+/// in the operational codebase; everything else uses basic ANSI so the
+/// terminal theme decides hues.
+const BANNER: &str = "\x1b[38;2;168;155;181m";
+/// Popil yellow (`#d4a85a`) — banner subtitle highlight.
+const BANNER_SUBTITLE_FG: &str = "\x1b[38;2;212;168;90m";
 
 const BANNER_TOP: &str = "╔═══════════════════════════════════════════════════════════════╗";
 const BANNER_BOTTOM: &str = "╚═══════════════════════════════════════════════════════════════╝";
@@ -79,7 +86,7 @@ pub(crate) fn banner_string(use_color: bool) -> String {
     let mut lines = banner_lines();
     if use_color {
         if let Some(subtitle) = lines.get_mut(LOGO_LINES.len() + 2) {
-            *subtitle = colorize_content(subtitle, JAPANESE_SUBTITLE, ATTENTION, BANNER);
+            *subtitle = colorize_content(subtitle, JAPANESE_SUBTITLE, BANNER_SUBTITLE_FG, BANNER);
         }
         format!("{}{}{RESET}\n", BANNER, lines.join("\n"))
     } else {
