@@ -5,8 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::colors::{
-    ACCENT, ACCENT_WARM, CHIP_ERROR, CHIP_NEUTRAL, CHIP_SUCCESS, CHIP_WARNING, CLEAR_LINE, ERROR,
-    RESET, SECONDARY, SUCCESS,
+    ACCENT, ACCENT_WARM, ATTENTION, CLEAR_LINE, ERROR, RESET, SECONDARY, SUCCESS,
 };
 use crate::error::Result;
 
@@ -147,21 +146,22 @@ fn synced_label(label: &str) -> String {
     label.to_string()
 }
 
-pub(crate) fn status_chip(status: &str, plain: bool) -> String {
+/// Single-glyph prefix for a per-asset sync action, uv-style: `+` install,
+/// `~` update, `-` remove, `=` unchanged, `!` broken/failed. Bold + colored
+/// when `plain` is false.
+pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
+    let (glyph, color) = match status {
+        "installed" | "would_install" => ('+', SUCCESS),
+        "updated" | "would_update" => ('~', ATTENTION),
+        "removed" | "would_remove" => ('-', ERROR),
+        "unchanged" => ('=', SECONDARY),
+        "broken" | "source_error" => ('!', ERROR),
+        _ => ('?', ERROR),
+    };
     if plain {
-        return match status {
-            "broken" | "source_error" => format!("[{SYM_FAIL}]"),
-            _ => format!("[{}]", status.to_uppercase()),
-        };
-    }
-    match status {
-        "installed" | "updated" | "removed" => format!("{} {status} {}", CHIP_SUCCESS, RESET),
-        "unchanged" => format!("{} {status} {}", CHIP_NEUTRAL, RESET),
-        "would_install" | "would_update" | "would_remove" => {
-            format!("{} {status} {}", CHIP_WARNING, RESET)
-        }
-        "broken" | "source_error" => format!("{} {SYM_FAIL} {}", CHIP_ERROR, RESET),
-        _ => format!("{} {status} {}", CHIP_ERROR, RESET),
+        glyph.to_string()
+    } else {
+        format!("\x1b[1m{color}{glyph}{RESET}")
     }
 }
 
@@ -181,9 +181,13 @@ mod tests {
     }
 
     #[test]
-    fn status_chip_plain_for_broken_is_fail_symbol() {
-        assert_eq!(status_chip("broken", true), "[✗]");
-        assert_eq!(status_chip("source_error", true), "[✗]");
+    fn action_glyph_plain_returns_single_char() {
+        assert_eq!(action_glyph("installed", true), "+");
+        assert_eq!(action_glyph("updated", true), "~");
+        assert_eq!(action_glyph("removed", true), "-");
+        assert_eq!(action_glyph("unchanged", true), "=");
+        assert_eq!(action_glyph("broken", true), "!");
+        assert_eq!(action_glyph("source_error", true), "!");
     }
 
     #[test]

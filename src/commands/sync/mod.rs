@@ -11,7 +11,7 @@ use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, sco
 use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Config, Report, Scope, Summary};
 use crate::state::{load_runtime_state, save_runtime_state};
-use crate::ui::{animations_enabled, print_json, status_chip};
+use crate::ui::{action_glyph, animations_enabled, print_json};
 
 pub(super) struct SyncContext<'a> {
     pub(super) cfg: &'a Config,
@@ -188,15 +188,15 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: bool) {
     }
 
     if verbose {
-        println!("\nActions:");
+        println!();
         for a in &report.actions {
-            let status = status_chip(&a.status, plain);
+            let glyph = action_glyph(&a.status, plain);
             let src = a.source.as_deref().unwrap_or("-");
             let skill = a.skill.as_deref().unwrap_or("-");
             if let Some(err) = &a.error {
-                println!("  {} {} :: {} -> {}", status, src, skill, err);
+                println!(" {} {} ({}) — {}", glyph, skill, src, err);
             } else {
-                println!("  {} {} :: {}", status, src, skill);
+                println!(" {} {} ({})", glyph, skill, src);
             }
         }
     }

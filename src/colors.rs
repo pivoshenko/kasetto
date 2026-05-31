@@ -20,7 +20,6 @@
 //! | [`WARNING`] | Tape tan — muted, distinct from peach Side B |
 //! | [`WARNING_EMPHASIS`] | Bold tape tan |
 //! | [`ERROR`] | Popil red — warm, less alarming than primary red |
-//! | [`CHIP_*`] | Status chip backgrounds (warm fills, base-toned fg) |
 
 use clap::builder::styling::{Color as ClapColor, Effects, RgbColor, Style, Styles};
 
@@ -107,18 +106,6 @@ pub(crate) const INFO: &str = "\x1b[38;2;123;160;196m";
 
 /// Carriage return + clear to end of line.
 pub(crate) const CLEAR_LINE: &str = "\r\x1b[2K";
-
-// Status chips: warm cassette-label fills with popil-base (`#1f1f1e`) fg, so
-// chips read like printed labels on tinted tape, not VT100 highlights.
-
-/// Green fill, base fg.
-pub(crate) const CHIP_SUCCESS: &str = "\x1b[38;2;31;31;30;48;2;138;157;104m";
-/// Subtle warm-grey fill, base fg.
-pub(crate) const CHIP_NEUTRAL: &str = "\x1b[38;2;31;31;30;48;2;155;149;138m";
-/// Tape-tan fill, base fg (mirrors `WARNING` foreground).
-pub(crate) const CHIP_WARNING: &str = "\x1b[38;2;31;31;30;48;2;196;173;136m";
-/// Warm-red fill, base fg.
-pub(crate) const CHIP_ERROR: &str = "\x1b[38;2;31;31;30;48;2;200;122;114m";
 
 /// Clap `after_help`: accent "Examples:" header and secondary example lines (compile-time only).
 #[macro_export]
