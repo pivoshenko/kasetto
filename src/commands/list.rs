@@ -1,5 +1,3 @@
-use std::io::IsTerminal;
-
 use serde::Serialize;
 
 use crate::cli::ListKind;
@@ -10,7 +8,7 @@ use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::print_json;
+use crate::ui::{color_stdout_enabled, print_json};
 
 #[derive(Clone, Serialize)]
 pub(crate) struct AssetEntry {
@@ -31,7 +29,7 @@ pub(crate) fn run(
         return Ok(());
     }
 
-    let color = std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none() && !plain;
+    let color = !plain && color_stdout_enabled();
 
     let project_root = std::env::current_dir().unwrap_or_default();
     let merged = scope_override.is_none();

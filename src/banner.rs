@@ -34,9 +34,7 @@ pub(crate) const BANNER_STAR_CELLS: [(u16, u16, u16); 10] = [
     (58, 8, 9),
 ];
 
-fn color_stdout_enabled() -> bool {
-    std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
-}
+use crate::ui::color_stdout_enabled;
 
 fn empty_banner_line() -> String {
     format!("║{}║", " ".repeat(BANNER_INNER_WIDTH))

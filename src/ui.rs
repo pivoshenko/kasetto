@@ -21,6 +21,15 @@ pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> boo
     !quiet && !as_json && !plain && std::io::stderr().is_terminal()
 }
 
+/// Whether to emit colored output on stdout. Honors `CLICOLOR_FORCE` (set by
+/// `--color always`) ahead of TTY / `NO_COLOR` detection.
+pub(crate) fn color_stdout_enabled() -> bool {
+    if std::env::var_os("CLICOLOR_FORCE").is_some() {
+        return true;
+    }
+    std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
+}
+
 /// Print a serializable value as pretty JSON.
 pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(val)?);

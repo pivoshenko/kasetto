@@ -1,5 +1,4 @@
 use std::fs;
-use std::io::IsTerminal;
 use std::path::Path;
 
 use crate::fsops::now_unix;
@@ -112,7 +111,7 @@ pub(crate) fn format_updated_ago(updated_at: &str) -> String {
 }
 
 pub(crate) fn list_color_enabled() -> bool {
-    std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
+    crate::ui::color_stdout_enabled()
 }
 
 #[cfg(test)]
