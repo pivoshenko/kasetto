@@ -30,13 +30,14 @@ pub fn run() -> Result<()> {
                 let update_only = sync.update_only();
                 let quiet = sync.is_quiet();
                 let verbose = sync.is_verbose();
+                let plain = sync.resolve_plain();
                 let config = sync.config.unwrap_or_else(|| default_config.clone());
                 crate::commands::sync::run(&crate::commands::sync::SyncOptions {
                     config_path: &config,
                     dry_run: sync.dry_run,
                     quiet,
                     as_json: sync.json,
-                    plain: sync.plain,
+                    plain,
                     verbose,
                     scope_override: sync.scope.scope_override(),
                     update,
@@ -52,7 +53,7 @@ pub fn run() -> Result<()> {
             } => crate::commands::list::run(
                 json,
                 kind,
-                output.plain,
+                output.resolve_plain(),
                 output.is_quiet(),
                 scope.scope_override(),
             ),
@@ -62,7 +63,7 @@ pub fn run() -> Result<()> {
                 scope,
             } => crate::commands::doctor::run(
                 json,
-                output.plain,
+                output.resolve_plain(),
                 output.is_quiet(),
                 scope.scope_override(),
                 &program_name,
@@ -76,7 +77,7 @@ pub fn run() -> Result<()> {
                 dry_run,
                 json,
                 output.is_quiet(),
-                output.plain,
+                output.resolve_plain(),
                 scope.scope_override(),
             ),
             Commands::ManageSelf { action } => match action {

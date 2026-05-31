@@ -54,14 +54,24 @@ pub(crate) struct OutputArgs {
     #[arg(short = 'q', long, action = ArgAction::Count, global = false)]
     #[arg(help = "suppress non-error output (repeat for stricter silence)")]
     pub quiet: u8,
-    #[arg(long)]
-    #[arg(help = "disable colors and animations")]
+    #[arg(long, value_name = "WHEN", default_value_t = ColorMode::Auto)]
+    #[arg(help = "when to emit colors: auto, always, never")]
+    pub color: ColorMode,
+    #[arg(long, hide = true)]
+    #[arg(help = "[deprecated] alias for --color never")]
     pub plain: bool,
 }
 
 impl OutputArgs {
     pub(crate) fn is_quiet(&self) -> bool {
         self.quiet > 0
+    }
+
+    /// Resolve color flags to an effective `plain` boolean.
+    /// Sets `CLICOLOR_FORCE=1` for `--color always` and prints a one-line
+    /// deprecation warning to stderr when the legacy `--plain` flag is used.
+    pub(crate) fn resolve_plain(&self) -> bool {
+        resolve_plain(self.plain, self.color)
     }
 }
 
@@ -73,6 +83,25 @@ pub(crate) enum ListKind {
     Skills,
     Mcps,
     Commands,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[clap(rename_all = "lowercase")]
+pub(crate) enum ColorMode {
+    #[default]
+    Auto,
+    Always,
+    Never,
+}
+
+impl std::fmt::Display for ColorMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ColorMode::Auto => "auto",
+            ColorMode::Always => "always",
+            ColorMode::Never => "never",
+        })
+    }
 }
 
 #[derive(Args, Clone, Debug, Default)]
@@ -92,8 +121,11 @@ pub(crate) struct SyncArgs {
     #[arg(long)]
     #[arg(help = "print final report as JSON")]
     pub json: bool,
-    #[arg(long)]
-    #[arg(help = "disable colors and animations")]
+    #[arg(long, value_name = "WHEN", default_value_t = ColorMode::Auto)]
+    #[arg(help = "when to emit colors: auto, always, never")]
+    pub color: ColorMode,
+    #[arg(long, hide = true)]
+    #[arg(help = "[deprecated] alias for --color never")]
     pub plain: bool,
     #[arg(short = 'v', long, action = ArgAction::Count)]
     #[arg(help = "increase output detail (-v, -vv, -vvv)")]
@@ -128,6 +160,26 @@ impl SyncArgs {
 
     pub(crate) fn is_verbose(&self) -> bool {
         self.verbose > 0
+    }
+
+    pub(crate) fn resolve_plain(&self) -> bool {
+        resolve_plain(self.plain, self.color)
+    }
+}
+
+/// Apply color-flag side effects (CLICOLOR_FORCE for `always`, deprecation
+/// warning for the legacy `--plain`) and return the effective `plain` value.
+fn resolve_plain(plain_flag: bool, color: ColorMode) -> bool {
+    if plain_flag {
+        eprintln!("warning: --plain is deprecated; use --color never instead");
+    }
+    match color {
+        ColorMode::Always => {
+            std::env::set_var("CLICOLOR_FORCE", "1");
+            plain_flag
+        }
+        ColorMode::Never => true,
+        ColorMode::Auto => plain_flag,
     }
 }
 
