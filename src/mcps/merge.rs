@@ -36,12 +36,12 @@ fn merge_into_json_key(
     Ok(())
 }
 
-fn identity(_name: &str, v: serde_json::Value) -> Result<serde_json::Value> {
+fn identity(v: serde_json::Value) -> Result<serde_json::Value> {
     Ok(v)
 }
 
 pub(super) fn merge_mcp_servers_object(source_path: &Path, target_path: &Path) -> Result<()> {
-    merge_into_json_key(source_path, target_path, "mcpServers", identity)
+    merge_into_json_key(source_path, target_path, "mcpServers", |_name, v| identity(v))
 }
 
 pub(super) fn merge_vscode_servers_object(source_path: &Path, target_path: &Path) -> Result<()> {

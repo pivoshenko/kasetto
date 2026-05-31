@@ -10,7 +10,10 @@ use crate::prompts::{apply_command, destination_path};
 use crate::source::{discover_commands, materialize_source, resolve_command_entry};
 use crate::ui::with_spinner_transient;
 
-use super::{sync_label_with, update_active_for_source, SyncContext};
+use super::{
+    remove_stale as remove_stale_shared, sync_label_with, update_active_for_source, StaleEntry,
+    SyncContext,
+};
 
 struct PendingCommand {
     source: String,
@@ -66,7 +69,7 @@ pub(super) fn sync_commands(
         }
 
         let update_active = update_active_for_source(ctx, &desired_names);
-        let fetch = update_active || needs_fetch_commands(ctx, src, &desired_names, lock, &targets);
+        let fetch = update_active || needs_fetch_commands(src, &desired_names, lock, &targets);
 
         if fetch && ctx.locked {
             summary.failed += 1;
@@ -285,7 +288,6 @@ fn desired_command_names(src: &crate::model::CommandSourceSpec, lock: &LockFile)
 /// lock entry, or when any expected destination file is missing (no local
 /// repair exists for commands — the installed file is a transform of the source).
 fn needs_fetch_commands(
-    _ctx: &SyncContext,
     src: &crate::model::CommandSourceSpec,
     desired: &[String],
     lock: &LockFile,
@@ -428,40 +430,43 @@ fn remove_stale(
         .iter()
         .map(|(id, dest)| (id.to_string(), dest.to_string()))
         .collect();
-    for (old_id, dest_csv) in &existing {
-        if desired_ids.contains(old_id) {
-            continue;
-        }
-        let name = lock
-            .assets
-            .get(old_id)
-            .map(|a| a.name.clone())
-            .unwrap_or_else(|| old_id.rsplit("::").next().unwrap_or(old_id).to_string());
-        if ctx.dry_run {
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("command:{name}")),
-                status: "would_remove".into(),
-                error: None,
-            });
-        } else {
-            for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
-                let path = crate::fsops::resolve_dest(p, &ctx.scope_root);
-                if path.exists() && path.is_file() {
-                    let _ = fs::remove_file(path);
+    let dest_by_id: std::collections::HashMap<String, String> =
+        existing.iter().cloned().collect();
+    let candidates: Vec<StaleEntry> = existing
+        .into_iter()
+        .map(|(id, _)| {
+            let name = lock
+                .assets
+                .get(&id)
+                .map(|a| a.name.clone())
+                .unwrap_or_else(|| id.rsplit("::").next().unwrap_or(&id).to_string());
+            StaleEntry {
+                id,
+                action_source: None,
+                action_skill: format!("command:{name}"),
+            }
+        })
+        .collect();
+
+    let scope_root = ctx.scope_root.clone();
+    remove_stale_shared(
+        ctx.dry_run,
+        summary,
+        actions,
+        desired_ids,
+        candidates,
+        |id| {
+            if let Some(dest_csv) = dest_by_id.get(id) {
+                for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
+                    let path = crate::fsops::resolve_dest(p, &scope_root);
+                    if path.exists() && path.is_file() {
+                        let _ = fs::remove_file(path);
+                    }
                 }
             }
-            lock.remove_tracked_asset(old_id);
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("command:{name}")),
-                status: "removed".into(),
-                error: None,
-            });
-        }
-    }
+            lock.remove_tracked_asset(id);
+        },
+    );
 }
 
 #[cfg(test)]

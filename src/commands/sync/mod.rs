@@ -2,6 +2,7 @@ mod commands;
 mod mcps;
 mod skills;
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -10,8 +11,8 @@ use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
 use crate::error::Result;
 use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, scope_root};
 use crate::lock::{load_lock, save_lock};
-use crate::model::{resolve_scope, Config, Report, Scope, Summary};
-use crate::state::{load_runtime_state, save_runtime_state};
+use crate::model::{resolve_scope, Action, Config, Report, Scope, State, Summary};
+use crate::state::{load_runtime_state, save_runtime_state, RuntimeState};
 use crate::ui::{
     action_glyph, animations_enabled, print_json, print_source_header, print_sync_chips,
     print_tree_leaf, short_source, status_tail,
@@ -35,6 +36,58 @@ pub(super) struct SyncContext<'a> {
     pub(super) update_only: Vec<String>,
     /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
     pub(super) locked: bool,
+}
+
+/// Bundle of the mutable bookkeeping state threaded through the skill sync
+/// path. Replaces what used to be four separate `&mut` parameters.
+pub(super) struct SyncMut<'a> {
+    pub(super) state: &'a mut State,
+    pub(super) runtime: &'a mut RuntimeState,
+    pub(super) summary: &'a mut Summary,
+    pub(super) actions: &'a mut Vec<Action>,
+}
+
+/// One stale asset candidate processed by [`remove_stale`].
+///
+/// `action_source` matches what the original per-kind helper emitted: skills
+/// preserve the locked `entry.source`; commands/MCPs emit `None`.
+/// `action_skill` is the pre-formatted action label (e.g. `"alpha"`,
+/// `"command:foo"`, `"mcp:github.json"`).
+pub(super) struct StaleEntry {
+    pub(super) id: String,
+    pub(super) action_source: Option<String>,
+    pub(super) action_skill: String,
+}
+
+/// Shared orphan-cleanup pass: bumps `summary.removed`, pushes a `removed` or
+/// `would_remove` action, and (when not a dry run) invokes `on_remove` so each
+/// caller can drop its lock/state entry plus tear down on-disk artifacts.
+pub(super) fn remove_stale<F>(
+    dry_run: bool,
+    summary: &mut Summary,
+    actions: &mut Vec<Action>,
+    desired_ids: &HashSet<String>,
+    candidates: Vec<StaleEntry>,
+    mut on_remove: F,
+) where
+    F: FnMut(&str),
+{
+    for entry in candidates {
+        if desired_ids.contains(&entry.id) {
+            continue;
+        }
+        let status = if dry_run { "would_remove" } else { "removed" };
+        if !dry_run {
+            on_remove(&entry.id);
+        }
+        summary.removed += 1;
+        actions.push(Action {
+            source: entry.action_source,
+            skill: Some(entry.action_skill),
+            status: status.into(),
+            error: None,
+        });
+    }
 }
 
 /// Options for the `sync` command.
@@ -98,7 +151,15 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     let mut summary = Summary::default();
     let mut actions = Vec::new();
 
-    skills::sync_skills(&ctx, &mut state, &mut runtime, &mut summary, &mut actions)?;
+    {
+        let mut sm = SyncMut {
+            state: &mut state,
+            runtime: &mut runtime,
+            summary: &mut summary,
+            actions: &mut actions,
+        };
+        skills::sync_skills(&ctx, &mut sm)?;
+    }
     commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
     mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 

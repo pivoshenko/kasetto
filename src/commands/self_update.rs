@@ -140,8 +140,6 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         }
     }
 
-    let _ = ACCENT;
-
     Ok(())
 }
 
@@ -265,9 +263,6 @@ fn install_from_archive(body: &[u8], exe_path: &std::path::Path) -> Result<()> {
     let _ = fs::remove_dir_all(&tmp_dir);
     Ok(())
 }
-
-#[allow(dead_code)]
-fn _placeholder() {}
 
 /// Verify that the SHA256 of `data` matches the expected hash for `asset_name`
 /// found in the checksums text (one `<hash>  <filename>` per line).

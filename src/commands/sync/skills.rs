@@ -6,33 +6,30 @@ use crate::error::{err, Result};
 use crate::fsops::{
     copy_dir, hash_dir, now_iso, now_unix, relativize_dest, select_targets, BrokenSkill,
 };
-use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State, Summary};
+use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
-use crate::state::RuntimeState;
+#[cfg(test)]
+use crate::{model::Summary, state::RuntimeState};
 use crate::ui::{eprint_fail, with_spinner_transient};
 
-use super::{sync_label_with, update_active_for_source, SyncContext};
+use super::{
+    remove_stale, sync_label_with, update_active_for_source, StaleEntry, SyncContext, SyncMut,
+};
 
-pub(super) fn sync_skills(
-    ctx: &SyncContext,
-    state: &mut State,
-    runtime: &mut RuntimeState,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
-) -> Result<()> {
+pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()> {
     let mut desired_keys = HashSet::new();
 
     for (i, src) in ctx.cfg.skills.iter().enumerate() {
         // Desired skill names for this source, derived without any network:
         // explicit config names for a list, or the locked set for a wildcard.
-        let desired = desired_skill_names(src, state);
+        let desired = desired_skill_names(src, sm.state);
 
         // `--locked`/`--frozen`: the lock must be able to satisfy the config.
         if ctx.locked {
-            if let Err(e) = ensure_locked_satisfiable(src, &desired, state) {
-                summary.failed += 1;
-                actions.push(Action {
+            if let Err(e) = ensure_locked_satisfiable(src, &desired, sm.state) {
+                sm.summary.failed += 1;
+                sm.actions.push(Action {
                     source: Some(src.source.clone()),
                     skill: None,
                     status: "locked_error".into(),
@@ -43,13 +40,13 @@ pub(super) fn sync_skills(
         }
 
         let update_active = update_active_for_source(ctx, &desired);
-        let fetch = update_active || needs_fetch(ctx, src, &desired, state);
+        let fetch = update_active || needs_fetch(ctx, src, &desired, sm.state);
 
         if fetch && ctx.locked {
             // --locked must never fetch. If the lock cannot satisfy the config
             // without a fetch (and local repair is impossible), this is an error.
-            summary.failed += 1;
-            actions.push(Action {
+            sm.summary.failed += 1;
+            sm.actions.push(Action {
                 source: Some(src.source.clone()),
                 skill: None,
                 status: "locked_error".into(),
@@ -62,42 +59,20 @@ pub(super) fn sync_skills(
         }
 
         if fetch {
-            sync_source_via_fetch(
-                ctx,
-                state,
-                runtime,
-                summary,
-                actions,
-                &mut desired_keys,
-                src,
-                i,
-            );
+            sync_source_via_fetch(ctx, sm, &mut desired_keys, src, i);
         } else {
-            sync_source_from_lock(
-                ctx,
-                state,
-                runtime,
-                summary,
-                actions,
-                &mut desired_keys,
-                src,
-                &desired,
-            );
+            sync_source_from_lock(ctx, sm, &mut desired_keys, src, &desired);
         }
     }
 
-    remove_stale_skills(ctx, state, runtime, &desired_keys, summary, actions);
+    remove_stale_skills(ctx, sm, &desired_keys);
     Ok(())
 }
 
 /// Download path: materialize the source and install/update each selected skill.
-#[allow(clippy::too_many_arguments)]
 fn sync_source_via_fetch(
     ctx: &SyncContext,
-    state: &mut State,
-    runtime: &mut RuntimeState,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
+    sm: &mut SyncMut<'_>,
     desired_keys: &mut HashSet<String>,
     src: &SourceSpec,
     i: usize,
@@ -111,7 +86,7 @@ fn sync_source_via_fetch(
                 &materialized.source_root,
             ) {
                 Ok((targets, broken_skills)) => {
-                    record_broken_skills(ctx, &src.source, broken_skills, summary, actions);
+                    record_broken_skills(ctx, &src.source, broken_skills, sm);
 
                     let mut first_in_run = true;
                     for (skill_name, skill_path) in targets {
@@ -120,10 +95,7 @@ fn sync_source_via_fetch(
                         first_in_run = false;
                         if let Err(e) = process_single_skill(
                             ctx,
-                            state,
-                            runtime,
-                            summary,
-                            actions,
+                            sm,
                             desired_keys,
                             &src.source,
                             &materialized.source_revision,
@@ -131,8 +103,8 @@ fn sync_source_via_fetch(
                             &skill_path,
                             &label,
                         ) {
-                            summary.failed += 1;
-                            actions.push(Action {
+                            sm.summary.failed += 1;
+                            sm.actions.push(Action {
                                 source: Some(src.source.clone()),
                                 skill: Some(skill_name),
                                 status: "source_error".into(),
@@ -142,8 +114,8 @@ fn sync_source_via_fetch(
                     }
                 }
                 Err(e) => {
-                    summary.failed += 1;
-                    actions.push(Action {
+                    sm.summary.failed += 1;
+                    sm.actions.push(Action {
                         source: Some(src.source.clone()),
                         skill: None,
                         status: "source_error".into(),
@@ -156,8 +128,8 @@ fn sync_source_via_fetch(
             }
         }
         Err(e) => {
-            summary.failed += 1;
-            actions.push(Action {
+            sm.summary.failed += 1;
+            sm.actions.push(Action {
                 source: Some(src.source.clone()),
                 skill: None,
                 status: "source_error".into(),
@@ -169,13 +141,9 @@ fn sync_source_via_fetch(
 
 /// Skip path: no network. Each desired skill is honored from the lock; the
 /// copy source is a known-good on-disk destination (re-hashed to verify).
-#[allow(clippy::too_many_arguments)]
 fn sync_source_from_lock(
     ctx: &SyncContext,
-    state: &mut State,
-    runtime: &mut RuntimeState,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
+    sm: &mut SyncMut<'_>,
     desired_keys: &mut HashSet<String>,
     src: &SourceSpec,
     desired: &[String],
@@ -184,17 +152,15 @@ fn sync_source_from_lock(
     for skill_name in desired {
         let key = format!("{}::{}", src.source, skill_name);
         desired_keys.insert(key.clone());
-        let Some(entry) = state.skills.get(&key).cloned() else {
+        let Some(entry) = sm.state.skills.get(&key).cloned() else {
             // needs_fetch would have been true; defensive guard.
             continue;
         };
         let label = sync_label_with(skill_name, &src.source, ctx.plain, first_in_run);
         first_in_run = false;
-        if let Err(e) =
-            process_locked_skill(ctx, runtime, summary, actions, &entry, skill_name, &label)
-        {
-            summary.failed += 1;
-            actions.push(Action {
+        if let Err(e) = process_locked_skill(ctx, sm, &entry, skill_name, &label) {
+            sm.summary.failed += 1;
+            sm.actions.push(Action {
                 source: Some(src.source.clone()),
                 skill: Some(skill_name.clone()),
                 status: "source_error".into(),
@@ -208,12 +174,11 @@ fn record_broken_skills(
     ctx: &SyncContext,
     source: &str,
     broken_skills: Vec<BrokenSkill>,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
+    sm: &mut SyncMut<'_>,
 ) {
     for broken in broken_skills {
-        summary.broken += 1;
-        actions.push(Action {
+        sm.summary.broken += 1;
+        sm.actions.push(Action {
             source: Some(source.to_string()),
             skill: Some(broken.name.clone()),
             status: "broken".into(),
@@ -228,10 +193,7 @@ fn record_broken_skills(
 #[allow(clippy::too_many_arguments)]
 fn process_single_skill(
     ctx: &SyncContext,
-    state: &mut State,
-    runtime: &mut RuntimeState,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
+    sm: &mut SyncMut<'_>,
     desired_keys: &mut HashSet<String>,
     source: &str,
     source_revision: &str,
@@ -249,7 +211,8 @@ fn process_single_skill(
 
         // Unchanged only if the locked hash matches AND every destination already
         // holds an identical copy (fixes the latent destinations[0]-only bug).
-        let is_unchanged = state
+        let is_unchanged = sm
+            .state
             .skills
             .get(&key)
             .map(|prev| prev.hash == hash && all_destinations_match(ctx, skill_name, &prev.hash))
@@ -257,12 +220,12 @@ fn process_single_skill(
 
         if is_unchanged {
             if !ctx.dry_run {
-                if let Some(entry) = state.skills.get_mut(&key) {
+                if let Some(entry) = sm.state.skills.get_mut(&key) {
                     entry.description = profile_description.clone();
                 }
             }
-            summary.unchanged += 1;
-            actions.push(Action {
+            sm.summary.unchanged += 1;
+            sm.actions.push(Action {
                 source: Some(source.to_string()),
                 skill: Some(skill_name.to_string()),
                 status: "unchanged".into(),
@@ -272,14 +235,14 @@ fn process_single_skill(
         }
 
         if ctx.dry_run {
-            let status = if state.skills.contains_key(&key) {
-                summary.updated += 1;
+            let status = if sm.state.skills.contains_key(&key) {
+                sm.summary.updated += 1;
                 "would_update"
             } else {
-                summary.installed += 1;
+                sm.summary.installed += 1;
                 "would_install"
             };
-            actions.push(Action {
+            sm.actions.push(Action {
                 source: Some(source.to_string()),
                 skill: Some(skill_name.to_string()),
                 status: status.into(),
@@ -291,15 +254,15 @@ fn process_single_skill(
         for agent_dest in ctx.destinations {
             copy_dir(skill_path, &agent_dest.join(skill_name))?;
         }
-        let status = if state.skills.contains_key(&key) {
-            summary.updated += 1;
+        let status = if sm.state.skills.contains_key(&key) {
+            sm.summary.updated += 1;
             "updated"
         } else {
-            summary.installed += 1;
+            sm.summary.installed += 1;
             "installed"
         };
-        runtime.set_updated_at(&key, now_iso());
-        state.skills.insert(
+        sm.runtime.set_updated_at(&key, now_iso());
+        sm.state.skills.insert(
             key,
             SkillEntry {
                 destination: relativize_dest(&dest, &ctx.scope_root),
@@ -311,7 +274,7 @@ fn process_single_skill(
                 scope: Some(ctx.scope),
             },
         );
-        actions.push(Action {
+        sm.actions.push(Action {
             source: Some(source.to_string()),
             skill: Some(skill_name.to_string()),
             status: status.into(),
@@ -324,12 +287,9 @@ fn process_single_skill(
 /// Skip-path install: honor a locked skill without any fetch. The skill is
 /// re-hashed on every destination; a known-good destination repairs any
 /// missing/mismatched copy. The lock entry is left untouched (same hash + revision).
-#[allow(clippy::too_many_arguments)]
 fn process_locked_skill(
     ctx: &SyncContext,
-    runtime: &mut RuntimeState,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
+    sm: &mut SyncMut<'_>,
     entry: &SkillEntry,
     skill_name: &str,
     label: &str,
@@ -341,8 +301,8 @@ fn process_locked_skill(
         let all_ok = all_destinations_match(ctx, skill_name, &entry.hash);
 
         if all_ok {
-            summary.unchanged += 1;
-            actions.push(Action {
+            sm.summary.unchanged += 1;
+            sm.actions.push(Action {
                 source: Some(entry.source.clone()),
                 skill: Some(skill_name.to_string()),
                 status: "unchanged".into(),
@@ -352,8 +312,8 @@ fn process_locked_skill(
         }
 
         if ctx.dry_run {
-            summary.updated += 1;
-            actions.push(Action {
+            sm.summary.updated += 1;
+            sm.actions.push(Action {
                 source: Some(entry.source.clone()),
                 skill: Some(skill_name.to_string()),
                 status: "would_update".into(),
@@ -375,10 +335,10 @@ fn process_locked_skill(
                 copy_dir(&src_dir, &dst)?;
             }
         }
-        runtime.set_updated_at(&key, now_iso());
+        sm.runtime.set_updated_at(&key, now_iso());
         // Lock entry is unchanged (hash + revision identical); nothing to rewrite.
-        summary.updated += 1;
-        actions.push(Action {
+        sm.summary.updated += 1;
+        sm.actions.push(Action {
             source: Some(entry.source.clone()),
             skill: Some(skill_name.to_string()),
             status: "updated".into(),
@@ -493,43 +453,61 @@ fn all_destinations_match(ctx: &SyncContext, skill_name: &str, expected_hash: &s
     })
 }
 
-fn remove_stale_skills(
-    ctx: &SyncContext,
-    state: &mut State,
-    runtime: &mut RuntimeState,
-    desired_keys: &HashSet<String>,
-    summary: &mut Summary,
-    actions: &mut Vec<Action>,
-) {
-    let existing_keys: Vec<String> = state.skills.keys().cloned().collect();
-    for k in existing_keys {
-        if desired_keys.contains(&k) {
-            continue;
-        }
-        if let Some(entry) = state.skills.get(&k).cloned() {
-            if ctx.dry_run {
-                summary.removed += 1;
-                actions.push(Action {
-                    source: Some(entry.source),
-                    skill: Some(entry.skill),
-                    status: "would_remove".into(),
-                    error: None,
-                });
-            } else {
-                let abs = crate::fsops::resolve_dest(&entry.destination, &ctx.scope_root);
+/// Stale-skill cleanup. Routes through the shared [`remove_stale`] helper so
+/// the bookkeeping (summary bump + action push) stays identical across kinds;
+/// the closure handles the skill-specific teardown (rm dir, drop state entry,
+/// drop runtime timestamp).
+fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &HashSet<String>) {
+    // Snapshot what we need from `state` so the teardown closure doesn't
+    // alias the borrow `remove_stale` needs on `summary` / `actions`.
+    let snapshot: Vec<(String, String, String, String)> = sm
+        .state
+        .skills
+        .iter()
+        .map(|(k, e)| {
+            (
+                k.clone(),
+                e.source.clone(),
+                e.skill.clone(),
+                e.destination.clone(),
+            )
+        })
+        .collect();
+    let dest_by_id: std::collections::HashMap<String, String> = snapshot
+        .iter()
+        .map(|(k, _, _, d)| (k.clone(), d.clone()))
+        .collect();
+    let candidates: Vec<StaleEntry> = snapshot
+        .into_iter()
+        .map(|(id, source, name, _)| StaleEntry {
+            id,
+            action_source: Some(source),
+            action_skill: name,
+        })
+        .collect();
+
+    let scope_root = ctx.scope_root.clone();
+    let SyncMut {
+        state,
+        runtime,
+        summary,
+        actions,
+    } = sm;
+    remove_stale(
+        ctx.dry_run,
+        summary,
+        actions,
+        desired_keys,
+        candidates,
+        |id| {
+            if let Some(dest) = dest_by_id.get(id) {
+                let abs = crate::fsops::resolve_dest(dest, &scope_root);
                 let _ = fs::remove_dir_all(&abs);
-                state.skills.remove(&k);
-                runtime.forget(&k);
-                summary.removed += 1;
-                actions.push(Action {
-                    source: Some(entry.source),
-                    skill: Some(entry.skill),
-                    status: "removed".into(),
-                    error: None,
-                });
             }
-        }
-    }
+            state.skills.remove(id);
+            runtime.forget(id);
+        },
+    );
 }
 
 #[cfg(test)]
@@ -598,7 +576,13 @@ mod tests {
         let mut runtime = RuntimeState::default();
         let mut summary = Summary::default();
         let mut actions = Vec::new();
-        sync_skills(&ctx, state, &mut runtime, &mut summary, &mut actions).unwrap();
+        let mut sm = SyncMut {
+            state,
+            runtime: &mut runtime,
+            summary: &mut summary,
+            actions: &mut actions,
+        };
+        sync_skills(&ctx, &mut sm).unwrap();
         summary
     }
 

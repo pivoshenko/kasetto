@@ -13,7 +13,10 @@ use crate::model::{
 use crate::source::{discover_mcps, materialize_source, resolve_mcp_entry};
 use crate::ui::with_spinner_transient;
 
-use super::{file_name_str, sync_label_with, update_active_for_source, SyncContext};
+use super::{
+    file_name_str, remove_stale as remove_stale_shared, sync_label_with, update_active_for_source,
+    StaleEntry, SyncContext,
+};
 
 /// An MCP entry ready to be installed or updated.
 struct PendingMcp {
@@ -470,35 +473,37 @@ fn remove_stale(
         .iter()
         .map(|(id, dest)| (id.to_string(), dest.to_string()))
         .collect();
-    for (old_id, old_servers_csv) in &existing_mcps {
-        if desired_mcp_ids.contains(old_id) {
-            continue;
-        }
-        let mcp_name = old_id.rsplit("::").next().unwrap_or(old_id).to_string();
-        if ctx.dry_run {
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("mcp:{mcp_name}")),
-                status: "would_remove".into(),
-                error: None,
-            });
-        } else {
-            for target in mcp_settings_list {
-                for server_name in old_servers_csv.split(',').filter(|s| !s.is_empty()) {
-                    let _ = remove_mcp_server(server_name, target);
+    let servers_by_id: std::collections::HashMap<String, String> =
+        existing_mcps.iter().cloned().collect();
+    let candidates: Vec<StaleEntry> = existing_mcps
+        .into_iter()
+        .map(|(id, _)| {
+            let mcp_name = id.rsplit("::").next().unwrap_or(&id).to_string();
+            StaleEntry {
+                id,
+                action_source: None,
+                action_skill: format!("mcp:{mcp_name}"),
+            }
+        })
+        .collect();
+
+    remove_stale_shared(
+        ctx.dry_run,
+        summary,
+        actions,
+        desired_mcp_ids,
+        candidates,
+        |id| {
+            if let Some(servers_csv) = servers_by_id.get(id) {
+                for target in mcp_settings_list {
+                    for server_name in servers_csv.split(',').filter(|s| !s.is_empty()) {
+                        let _ = remove_mcp_server(server_name, target);
+                    }
                 }
             }
-            lock.remove_tracked_asset(old_id);
-            summary.removed += 1;
-            actions.push(Action {
-                source: None,
-                skill: Some(format!("mcp:{mcp_name}")),
-                status: "removed".into(),
-                error: None,
-            });
-        }
-    }
+            lock.remove_tracked_asset(id);
+        },
+    );
 }
 
 #[cfg(test)]
