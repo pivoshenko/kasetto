@@ -1,16 +1,12 @@
 use std::io::{self, IsTerminal, Write};
 use std::{fs, path::PathBuf};
 
-use crate::banner::print_banner;
 use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS, WARNING};
 use crate::error::{err, Result};
 use crate::fsops::{dirs_kasetto_config, dirs_kasetto_data};
 use crate::ui::{SYM_FAIL, SYM_OK};
 
 pub(crate) fn run(yes: bool) -> Result<()> {
-    print_banner();
-    println!();
-
     if !yes {
         if !io::stdin().is_terminal() {
             return Err(err(

@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use crate::banner::print_banner;
 use crate::colors::{ACCENT, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
@@ -8,7 +7,7 @@ use crate::lock::{load_lock, lock_path};
 use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
-use crate::ui::{animations_enabled, print_field, print_json, print_label};
+use crate::ui::{print_field, print_json, print_label};
 
 #[derive(serde::Serialize)]
 struct DoctorOutput {
@@ -115,16 +114,7 @@ pub(crate) fn run(
         return print_json(&output);
     }
 
-    let animate = animations_enabled(false, false, plain);
     let color = list_color_enabled() && !plain;
-    if std::io::IsTerminal::is_terminal(&std::io::stdout()) {
-        if color && animate {
-            print_banner();
-        } else {
-            println!("kasetto | カセット");
-        }
-        println!();
-    }
     let last_sync_text = match &output.last_sync {
         Some(ts) => format!("{} ({})", format_updated_ago(ts), ts),
         None => "none".to_string(),

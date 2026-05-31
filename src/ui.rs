@@ -21,10 +21,6 @@ pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> boo
     !quiet && !as_json && !plain && std::io::stderr().is_terminal()
 }
 
-// ---------------------------------------------------------------------------
-// Shared output helpers
-// ---------------------------------------------------------------------------
-
 /// Print a serializable value as pretty JSON.
 pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(val)?);

@@ -37,7 +37,6 @@ pub fn run() -> Result<()> {
                     plain: sync.plain,
                     verbose: sync.verbose,
                     scope_override: sync.scope.scope_override(),
-                    show_banner: true,
                     update,
                     update_only,
                     locked: sync.locked,

@@ -5,7 +5,6 @@ mod skills;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, RESET, SECONDARY, SUCCESS, WARNING};
 use crate::error::Result;
 use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, scope_root};
@@ -43,7 +42,6 @@ pub(crate) struct SyncOptions<'a> {
     pub plain: bool,
     pub verbose: bool,
     pub scope_override: Option<Scope>,
-    pub show_banner: bool,
     pub update: bool,
     pub update_only: Vec<String>,
     pub locked: bool,
@@ -57,13 +55,6 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         ));
     }
     let animate = animations_enabled(opts.quiet, opts.as_json, opts.plain);
-    if opts.show_banner
-        && !opts.quiet
-        && !opts.as_json
-        && std::io::IsTerminal::is_terminal(&std::io::stdout())
-    {
-        print_banner_or_plain(opts.plain);
-    }
 
     let (cfg, cfg_dir, cfg_label) = load_config_any(opts.config_path)?;
     let scope = resolve_scope(opts.scope_override, Some(&cfg));

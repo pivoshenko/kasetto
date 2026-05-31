@@ -1,6 +1,5 @@
 use std::fs;
 
-use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, ERROR, RESET, SUCCESS, WARNING};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
@@ -11,7 +10,7 @@ use crate::model::{
 };
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
-use crate::ui::{animations_enabled, print_json, SYM_OK};
+use crate::ui::{print_json, SYM_OK};
 
 #[derive(serde::Serialize)]
 struct CleanOutput {
@@ -28,11 +27,6 @@ pub(crate) fn run(
     plain: bool,
     scope_override: Option<Scope>,
 ) -> Result<()> {
-    let animate = animations_enabled(quiet, as_json, plain);
-    if !as_json && !quiet {
-        print_banner_or_plain(plain || !animate);
-    }
-
     let scope = resolve_scope(scope_override, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let mut lock = load_lock(scope, &project_root)?;

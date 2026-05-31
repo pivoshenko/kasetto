@@ -24,10 +24,8 @@
 
 use clap::builder::styling::{Color as ClapColor, Effects, RgbColor, Style, Styles};
 
-// ─── Brand RGB anchors (mirror `site/app/globals.css:7-103`) ──────────────────
-//
-// `dead_code` is allowed: these are palette anchors, kept exhaustive so the TUI
-// matches the site DNA even when a given tone isn't yet wired into any role.
+// Brand RGB anchors — mirror `site/app/globals.css:7-103`. Kept exhaustive
+// (with `dead_code` allowed) so the palette can be referenced as roles emerge.
 
 #[allow(dead_code)]
 pub(crate) const RGB_MAUVE: (u8, u8, u8) = (0xb8, 0x9c, 0xdc);

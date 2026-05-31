@@ -2,7 +2,6 @@ use std::io::IsTerminal;
 
 use serde::Serialize;
 
-use crate::banner::print_banner;
 use crate::cli::ListKind;
 use crate::colors::{RESET, SECONDARY, WARNING_EMPHASIS};
 use crate::error::Result;
@@ -11,7 +10,7 @@ use crate::lock::{load_lock, LockFile};
 use crate::model::{resolve_scope, InstalledSkill, Scope};
 use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
-use crate::ui::{animations_enabled, print_json};
+use crate::ui::print_json;
 
 #[derive(Clone, Serialize)]
 pub(crate) struct AssetEntry {
@@ -32,7 +31,6 @@ pub(crate) fn run(
         return Ok(());
     }
 
-    let animate = animations_enabled(quiet, as_json, plain);
     let color = std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none() && !plain;
 
     let project_root = std::env::current_dir().unwrap_or_default();
@@ -58,14 +56,6 @@ pub(crate) fn run(
             "merged_scopes": merged,
         });
         return print_json(&output);
-    }
-
-    if !quiet {
-        if plain || !animate {
-            println!("kasetto | カセット");
-        } else {
-            print_banner();
-        }
     }
 
     let has_anything = !skills.is_empty() || !mcps.is_empty() || !commands.is_empty();

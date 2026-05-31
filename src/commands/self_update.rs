@@ -1,9 +1,6 @@
 use std::fs;
-use std::io::IsTerminal;
-
 use sha2::{Digest, Sha256};
 
-use crate::banner::print_banner_or_plain;
 use crate::colors::{ACCENT, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::http_client;
@@ -36,10 +33,6 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
     let color = list_color_enabled();
     let animate = animations_enabled(false, as_json, !color);
 
-    if !as_json && std::io::stdout().is_terminal() {
-        print_banner_or_plain(!color);
-        println!();
-    }
 
     let release = with_spinner(animate, !color, "Checking for updates", || {
         fetch_latest_release()

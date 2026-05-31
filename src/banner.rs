@@ -147,11 +147,3 @@ pub(crate) fn print_banner() {
     }
 }
 
-/// Print the full banner, or fall back to a one-line plain title when `use_plain` is true.
-pub(crate) fn print_banner_or_plain(use_plain: bool) {
-    if use_plain {
-        println!("kasetto | カセット");
-    } else {
-        print_banner();
-    }
-}
