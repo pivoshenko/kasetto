@@ -20,9 +20,7 @@
 
 Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills and MCPs as cassettes you plug in, swap out, and share across machines.
 
-<p align="center">
-  <img alt="kasetto sync output" src="assets/sync-demo.svg" width="580" />
-</p>
+<img alt="kasetto sync output" src="assets/demo.svg" width="100%" />
 
 ## Why Kasetto
 
