@@ -256,7 +256,12 @@ pub(super) fn sync_commands(
         let _ = fs::remove_dir_all(d);
     }
 
-    remove_stale(ctx, lock, summary, actions, &desired_ids);
+    // Same hazard as `sync_skills`: a partial failure (e.g. `locked_error`)
+    // would have skipped extending `desired_ids` for the failed source. Defer
+    // stale removal until the next clean run.
+    if summary.failed == 0 {
+        remove_stale(ctx, lock, summary, actions, &desired_ids);
+    }
     Ok(())
 }
 

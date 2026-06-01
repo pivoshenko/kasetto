@@ -65,7 +65,13 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         }
     }
 
-    remove_stale_skills(ctx, sm, &desired_keys);
+    // Never prune when any source errored: a `locked_error` continue would
+    // have skipped extending `desired_keys` for that source, so the already-
+    // locked entries would look like orphans here and get destroyed before the
+    // non-zero exit. Wait until the next clean sync to clean up.
+    if sm.summary.failed == 0 {
+        remove_stale_skills(ctx, sm, &desired_keys);
+    }
     Ok(())
 }
 

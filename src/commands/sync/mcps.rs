@@ -289,15 +289,19 @@ pub(super) fn sync_mcps(
     apply_pending(ctx, lock, summary, actions, &mcp_settings_list, &pending)?;
     cleanup_staged(&cleanup_dirs);
 
-    // Remove MCP servers no longer in config
-    remove_stale(
-        ctx,
-        lock,
-        summary,
-        actions,
-        &desired_mcp_ids,
-        &mcp_settings_list,
-    );
+    // Remove MCP servers no longer in config. Skipped when any source failed
+    // (locked_error et al.) — `desired_mcp_ids` would be missing the failed
+    // source's existing entries and they'd be treated as orphans.
+    if summary.failed == 0 {
+        remove_stale(
+            ctx,
+            lock,
+            summary,
+            actions,
+            &desired_mcp_ids,
+            &mcp_settings_list,
+        );
+    }
 
     Ok(())
 }
