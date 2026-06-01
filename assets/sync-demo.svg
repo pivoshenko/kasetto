@@ -26,7 +26,7 @@
     </text>
 
     <!-- Resolved -->
-    <text x="20" y="98" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">Resolved </tspan><tspan fill="#e8a94d">5 sources</tspan><tspan fill="#a8a195"> · 16 items</tspan>
+    <text x="20" y="98" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">Resolved </tspan><tspan fill="#e8a94d">5 sources</tspan><tspan fill="#a8a195"> · 18 items</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.057;0.071;0.93;1" dur="7s" repeatCount="indefinite"/>
     </text>
 
@@ -110,7 +110,7 @@
     </text>
 
     <!-- chip strip -->
-    <text x="20" y="546" opacity="0"><tspan>  </tspan><tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">updated  </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#a8a195">added  </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#a8a195">removed  </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 9 </tspan><tspan fill="#a8a195">unchanged</tspan>
+    <text x="20" y="546" opacity="0"><tspan>  </tspan><tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">updated  </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#a8a195">added  </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#a8a195">removed  </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 11 </tspan><tspan fill="#a8a195">unchanged</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.414;0.443;0.93;1" dur="7s" repeatCount="indefinite"/>
     </text>
 

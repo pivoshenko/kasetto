@@ -20,6 +20,10 @@
 
 Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills and MCPs as cassettes you plug in, swap out, and share across machines.
 
+<p align="center">
+  <img alt="kasetto sync output" src="assets/sync-demo.svg" width="580" />
+</p>
+
 ## Why Kasetto
 
 There are good tools in this space already - [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config.
@@ -90,10 +94,6 @@ kst sync
 # or point at a shared team config over HTTPS
 kst sync --config https://example.com/team-skills.yaml
 ```
-
-<p align="center">
-  <img alt="kasetto sync output" src="assets/sync-demo.svg" width="580" />
-</p>
 
 Want bare `kst sync` to always pull from a remote URL? Persist it in `~/.config/kasetto/config.yaml`:
 
