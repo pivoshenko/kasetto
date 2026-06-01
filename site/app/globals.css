@@ -2,58 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Palette: warm-neutral dark, warmth as accent only ─── */
-/* OKLCH is canonical; sRGB hex declared first as fallback for non-OKLCH UAs. */
+/* ─── Cassette palette — dark-only · warm "tape stock" + amber "tape gold"
+   Source of truth: kasetto-cli design package. All component classes pull
+   from the semantic aliases below; the ramps stay as the raw tokens. */
 :root {
-  /* Surfaces — soft warm light (light is the default theme; never pure white) */
-  --base: #f4f1ea;
-  --mantle: #efece4;
-  --surface0: #e8e4da;
-  --surface1: #ddd8cc;
-  --surface2: #cdc7b8;
+  /* ── Palette: kasetto-cli is the source of truth (src/colors.rs).
+     All site tokens resolve to one of:
+       - popil neutral-grey surfaces (base, mantle, surface0..2)
+       - the 7 CLI semantic hues (ATTENTION, SUCCESS, ERROR, INFO, BRAND,
+         SECONDARY, INFRA). Cassette ramp aliases (--n-*, --a-*) are
+         preserved for downstream call sites and remapped to the canonical
+         CLI hex anchors. */
 
-  /* Text — warm near-black, never pure black */
-  --overlay1: #6b675f;
-  --subtext0: #57534b;
-  --subtext1: #3d3a33;
-  --text: #2a2722;
+  /* ── neutral · popil warm-grey ── */
+  --n-950: #151514; /* crust */
+  --n-900: #1f1f1e; /* base */
+  --n-850: #1a1a19; /* mantle */
+  --n-800: #262625; /* surface0 */
+  --n-700: #2e2e2c; /* surface1 */
+  --n-600: #373634; /* surface2 */
+  --n-500: #6e6759; /* CLI INFRA */
+  --n-400: #a8a195; /* CLI SECONDARY */
+  --n-300: #b8b3a8; /* popil subtext1 */
+  --n-200: #d4cdbf;
+  --n-100: #e4e2de; /* popil text */
+  --n-50: #f7f2e9;
 
-  /* Accents — darkened/desaturated for AA contrast on a light field */
-  --mauve: #6f4fa6;
-  --lavender: #5d57a0;
-  --sky: #3f6275;
-  --blue: #2f5fb0;
-  --green: #4a7338;
-  --yellow: #8a6516;
-  --rust: #b3502f;
-  --tape: #8a7a55;
+  /* ── amber · CLI ATTENTION (#e8a94d) anchored at --a-500 ── */
+  --a-900: #5e3a0e;
+  --a-800: #854f15;
+  --a-700: #ab6c22;
+  --a-600: #e8a94d; /* collapsed onto CLI ATTENTION */
+  --a-500: #e8a94d; /* CLI ATTENTION */
+  --a-400: #f4bd66;
+  --a-300: #f8cf8a;
+  --a-200: #fbe0b3;
+  --a-100: #fdefd6;
+  --a-50: #fdf7ec;
 
-  /* Semantic */
+  /* ── semantic — CLI hues are canonical; -d twins fall back to the same
+       bright tone because the site is dark-only (no docs-on-light surface). */
+  --green: #84c578; /* CLI SUCCESS */
+  --green-d: #84c578;
+  --red: #e87e6c; /* CLI ERROR */
+  --red-d: #e87e6c;
+  --cyan: #6cbfd3; /* CLI INFO */
+  --cyan-d: #6cbfd3;
+  --violet: #b6a6ef; /* CLI BRAND */
+  --violet-d: #b6a6ef;
+
+  /* ── surface semantic aliases — popil neutral warm-grey ── */
+  --base: #1f1f1e;
+  --mantle: #1a1a19;
+  --surface0: #262625;
+  --surface1: #2e2e2c;
+  --surface2: #373634;
+
+  --overlay1: var(--n-500);
+  --subtext0: var(--n-400);
+  --subtext1: var(--n-300);
+  --text: var(--n-100);
+
+  /* ── legacy named tones → CLI hues ── */
+  --mauve: var(--violet); /* CLI BRAND */
+  --lavender: var(--violet);
+  --sky: var(--cyan); /* CLI INFO */
+  --blue: var(--cyan);
+  --yellow: var(--a-500); /* CLI ATTENTION */
+  --rust: var(--a-500);
+  --tape: var(--a-500);
+
+  /* ── chrome/prose roles ── */
   --bg: var(--base);
   --bg-elevated: var(--mantle);
   --border: var(--surface1);
   --border-strong: var(--surface2);
   --fg: var(--text);
-  --fg-muted: var(--subtext0);
-  --fg-subtle: var(--overlay1);
-  --accent: var(--mauve);
-  --accent-cool: var(--lavender);
-  /* Side B accent: amber pairs split-complementary with mauve (H≈80 vs H≈300, equal chroma).
-     Rust is kept as a named tone but no longer the primary warm accent — it competed with mauve
-     for attention and sat too close to error red. */
-  --accent-warm: var(--yellow);
-  --accent-rust: var(--yellow);
+  --fg-muted: var(--subtext0); /* → CLI SECONDARY */
+  --fg-subtle: var(--overlay1); /* → CLI INFRA */
+  --accent: var(--a-500); /* → CLI ATTENTION */
+  --accent-cool: var(--violet); /* → CLI BRAND */
+  --accent-warm: var(--a-500);
+  --accent-rust: var(--a-500);
 
-  /* Always-light text on accent fills (buttons, skip link) — overridden per theme */
-  --btn-on-accent: #f4f1ea;
+  --btn-on-accent: var(--n-900);
 
-  /* Theme-dependent surface treatments (light defaults; dark overrides below) */
-  --grid-color: rgba(60, 50, 35, 0.05);
+  --grid-color: rgba(255, 245, 230, 0.035);
   --grid-size: 96px;
-  --grain-opacity: 0;
-  --grain-blend: multiply;
-  --shadow-card: 0 8px 24px -14px rgba(60, 50, 35, 0.22);
-  --shadow-terminal: 0 24px 48px -28px rgba(60, 50, 35, 0.28);
+  --grain-opacity: 0.025;
+  --grain-blend: overlay;
+  --shadow-card: 0 1px 0 rgba(255, 220, 170, 0.02) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-terminal: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
 
   /* Film-grain texture — analog cassette texture cue, ~1.5% opacity */
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.96  0 0 0 0 0.89  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
@@ -96,72 +135,6 @@
 
   /* ─── Font stacks ─── */
   --font-mono: "JetBrains Mono", "Courier New", Courier, monospace;
-}
-
-/* ─── Dark theme overrides ─── */
-.dark,
-[data-theme="dark"] {
-  /* Surfaces — warm-neutral dark, never cold slate */
-  --base: #0a0908;
-  --base: oklch(0.13 0.004 50);
-  --mantle: #111110;
-  --mantle: oklch(0.16 0.004 50);
-  --surface0: #181715;
-  --surface0: oklch(0.19 0.005 50);
-  --surface1: #232220;
-  --surface1: oklch(0.23 0.005 50);
-  --surface2: #34322f;
-  --surface2: oklch(0.3 0.006 55);
-
-  /* Text — warm cream, not pure white */
-  --overlay1: #8e8b86;
-  --overlay1: oklch(0.62 0.005 55);
-  --subtext0: #a8a5a0;
-  --subtext0: oklch(0.71 0.005 55);
-  --subtext1: #cfcbc4;
-  --subtext1: oklch(0.83 0.008 60);
-  --text: #ebe8e2;
-  --text: oklch(0.92 0.008 65);
-
-  /* Accents */
-  --mauve: #b89cdc;
-  --mauve: oklch(0.71 0.1 300);
-  --lavender: #a8a3d8;
-  --lavender: oklch(0.7 0.07 280);
-  --sky: #8aaab8;
-  --sky: oklch(0.69 0.04 230);
-  --blue: #7aa2e3;
-  --blue: oklch(0.7 0.11 255);
-  --green: #9ab28a;
-  --green: oklch(0.73 0.05 140);
-  --yellow: #d4b070;
-  --yellow: oklch(0.78 0.1 80);
-  --rust: #d97757;
-  --rust: oklch(0.66 0.13 38);
-  --tape: #c4ad88;
-  --tape: oklch(0.74 0.05 75);
-
-  --btn-on-accent: #0a0908;
-  --grid-color: rgba(255, 245, 230, 0.035);
-  --grain-opacity: 0.025;
-  --grain-blend: overlay;
-  --shadow-card: 0 1px 0 rgba(255, 220, 170, 0.02) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
-  --shadow-terminal: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
-}
-
-/* ─── P3 wide-gamut enrichment (accents only; surfaces stay sRGB) ─── */
-@supports (color: color(display-p3 1 1 1)) {
-  .dark,
-  [data-theme="dark"] {
-    --mauve: color(display-p3 0.74 0.62 0.88);
-    --lavender: color(display-p3 0.68 0.65 0.86);
-    --rust: color(display-p3 0.84 0.48 0.36);
-    --yellow: color(display-p3 0.83 0.7 0.46);
-    --sky: color(display-p3 0.56 0.67 0.73);
-    --blue: color(display-p3 0.5 0.64 0.89);
-    --green: color(display-p3 0.62 0.7 0.56);
-    --tape: color(display-p3 0.76 0.68 0.55);
-  }
 }
 
 /* ─── Reset ─── */
@@ -516,8 +489,10 @@ button {
 
 .feat-code-block {
   border: 1px solid var(--border);
-  overflow-x: auto;
-  background: var(--bg);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-terminal);
 }
 
 .feat-code-header {
@@ -526,7 +501,7 @@ button {
   letter-spacing: 0.16em;
   color: var(--fg-subtle);
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg-elevated) 60%, var(--bg) 40%);
 }
 
 .feat-code-body {
@@ -534,8 +509,9 @@ button {
   font-size: var(--fs-base);
   line-height: 1.9;
   letter-spacing: var(--tracking-tight);
-  background: var(--bg);
+  background: var(--bg-elevated);
   white-space: pre;
+  overflow-x: auto;
 }
 
 /* Syntax lines */
@@ -757,44 +733,24 @@ button {
   }
 }
 
-/* ─── Fumadocs theme bridge (HSL components) ─── */
+/* ─── Fumadocs theme bridge (HSL — dark cassette, muted accents) ─── */
 :root {
-  --fd-background: 48 23% 94%; /* #f4f1ea */
-  --fd-foreground: 40 9% 15%; /* #2a2722 */
-  --fd-card: 45 22% 92%; /* #efece4 */
-  --fd-card-foreground: 40 9% 15%;
-  --fd-popover: 45 22% 92%;
-  --fd-popover-foreground: 40 9% 15%;
-  --fd-primary: 265 36% 48%; /* mauve #6f4fa6 */
-  --fd-primary-foreground: 48 23% 94%;
-  --fd-secondary: 44 19% 89%;
-  --fd-secondary-foreground: 40 9% 15%;
-  --fd-muted: 44 19% 91%;
-  --fd-muted-foreground: 40 6% 35%;
-  --fd-accent: 36 72% 31%; /* amber #8a6516 */
-  --fd-accent-foreground: 48 23% 94%;
-  --fd-border: 45 17% 83%; /* #ddd8cc */
-  --fd-ring: 265 36% 48%;
-}
-
-html.dark,
-html[data-theme="dark"] {
-  --fd-background: 30 9% 4%; /* #0a0908 */
-  --fd-foreground: 38 21% 90%; /* #ebe8e2 */
-  --fd-card: 30 5% 7%; /* #111110 */
-  --fd-card-foreground: 38 21% 90%;
-  --fd-popover: 30 5% 7%;
-  --fd-popover-foreground: 38 21% 90%;
-  --fd-primary: 270 39% 74%; /* mauve #b89cdc */
-  --fd-primary-foreground: 30 9% 4%;
-  --fd-secondary: 30 6% 11%;
-  --fd-secondary-foreground: 38 21% 90%;
-  --fd-muted: 30 6% 9%;
-  --fd-muted-foreground: 30 7% 64%;
-  --fd-accent: 36 53% 64%; /* amber #d4b070 */
-  --fd-accent-foreground: 30 9% 4%;
-  --fd-border: 30 6% 13%;
-  --fd-ring: 270 39% 74%;
+  --fd-background: 60 2% 12%; /* popil base #1f1f1e */
+  --fd-foreground: 36 12% 88%; /* popil text #e4e2de */
+  --fd-card: 60 2% 10%; /* popil mantle #1a1a19 */
+  --fd-card-foreground: 36 12% 88%;
+  --fd-popover: 60 2% 10%;
+  --fd-popover-foreground: 36 12% 88%;
+  --fd-primary: 36 78% 61%; /* CLI ATTENTION #e8a94d */
+  --fd-primary-foreground: 60 2% 12%;
+  --fd-secondary: 60 2% 15%; /* popil surface0 #262625 */
+  --fd-secondary-foreground: 36 12% 88%;
+  --fd-muted: 60 2% 10%;
+  --fd-muted-foreground: 40 11% 62%; /* CLI SECONDARY #a8a195 */
+  --fd-accent: 250 67% 80%; /* CLI BRAND #b6a6ef — muted hover wash */
+  --fd-accent-foreground: 36 12% 88%;
+  --fd-border: 60 3% 18%; /* popil surface1 #2e2e2c */
+  --fd-ring: 36 78% 61%;
 }
 
 /* ─── Top nav (shared across landing + docs) ─── */
@@ -1031,14 +987,107 @@ html[data-theme="dark"] {
   padding-top: var(--space-3);
 }
 .t-prompt {
-  color: var(--accent);
+  color: var(--a-500);
   font-weight: 700;
 }
 .t-ok {
   color: var(--green);
 }
 .t-dim {
-  color: var(--fg-subtle);
+  color: var(--n-400);
+}
+.t-fg {
+  color: var(--n-100);
+}
+.t-amber {
+  color: var(--a-500);
+}
+.t-green {
+  color: var(--green);
+}
+.t-red {
+  color: var(--red);
+}
+.t-cyan {
+  color: var(--cyan);
+}
+.t-faint {
+  color: var(--n-600);
+}
+.t-strike {
+  color: var(--n-600);
+  text-decoration: line-through var(--n-600);
+  font-weight: 600;
+}
+
+.t-group {
+  grid-column: 1 / -1;
+}
+.t-srch {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-left: var(--space-2);
+  margin-top: var(--space-2);
+}
+.t-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(24ch, max-content) auto 1fr;
+  column-gap: var(--space-2);
+  align-items: baseline;
+  padding-left: var(--space-2);
+}
+.t-row strong {
+  font-weight: 500;
+}
+.t-tail {
+  color: var(--n-400);
+  text-align: left;
+  padding-left: var(--space-2);
+}
+
+.t-summary-lead {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--surface2);
+}
+.t-chips {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding-left: calc(var(--space-2) + 1.6ch);
+  margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+}
+.t-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6ch;
+  color: var(--n-300);
+}
+.t-chip strong {
+  font-weight: 700;
+  color: var(--n-100);
+}
+.t-dot {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  display: inline-block;
+  transform: translateY(0.05em);
+}
+.t-dot-amber {
+  background: var(--a-500);
+}
+.t-dot-green {
+  background: var(--green);
+}
+.t-dot-red {
+  background: var(--red);
+}
+.t-dot-faint {
+  background: var(--n-600);
 }
 .t-divider {
   height: 1px;
@@ -1335,6 +1384,63 @@ body:has(#nd-docs-layout) {
 }
 .fd-codeblock pre {
   background: transparent;
+}
+
+/* ─── Cassette callouts (MDX) — glyph + tint per skill table ─── */
+.kasetto-callout {
+  margin: var(--space-5) 0;
+  border-left: 3px solid var(--kc-accent, var(--a-500));
+  background: var(--kc-tint, rgba(232, 169, 77, 0.08));
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  color: var(--n-100);
+}
+.kasetto-callout-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  color: var(--kc-accent, var(--a-500));
+  margin-bottom: var(--space-2);
+}
+.kasetto-callout-glyph {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  line-height: 1;
+}
+.kasetto-callout-body {
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--n-200);
+}
+.kasetto-callout-body > :last-child {
+  margin-bottom: 0;
+}
+.kasetto-callout-body code {
+  background: var(--n-800);
+  padding: 0 0.4ch;
+  border-radius: var(--radius-sm);
+  font-size: 0.95em;
+}
+
+.kasetto-callout.kc-info {
+  --kc-accent: var(--cyan-d);
+  --kc-tint: rgba(47, 129, 151, 0.1);
+}
+.kasetto-callout.kc-tip {
+  --kc-accent: var(--green-d);
+  --kc-tint: rgba(63, 138, 60, 0.1);
+}
+.kasetto-callout.kc-warn {
+  --kc-accent: var(--a-700);
+  --kc-tint: rgba(171, 108, 34, 0.1);
+}
+.kasetto-callout.kc-danger {
+  --kc-accent: var(--red-d);
+  --kc-tint: rgba(200, 73, 58, 0.1);
 }
 
 /* ─── kbd: keyboard key chip ─── */
