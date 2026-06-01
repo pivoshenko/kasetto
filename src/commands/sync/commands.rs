@@ -22,6 +22,7 @@ struct PendingCommand {
     hash: String,
     asset_id: String,
     is_new: bool,
+    source_revision: String,
 }
 
 pub(super) fn sync_commands(
@@ -242,6 +243,7 @@ pub(super) fn sync_commands(
                     hash,
                     asset_id,
                     is_new: existing.is_none(),
+                    source_revision: materialized.source_revision.clone(),
                 });
             }
         }
@@ -307,9 +309,14 @@ fn needs_fetch_commands(
     {
         return true;
     }
+    let expected_revision = src.as_source_spec().expected_revision();
     for name in desired {
         let asset_id = format!("command::{}::{}", src.source, name);
-        if lock.get_tracked_asset("command", &asset_id).is_none() {
+        let Some(asset) = lock.assets.get(&asset_id).filter(|a| a.kind == "command") else {
+            return true;
+        };
+        // Retargeted source (ref/branch changed since the lock was written).
+        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
             return true;
         }
         let any_missing = targets.iter().any(|t| !destination_path(t, name).exists());
@@ -397,12 +404,15 @@ fn apply_pending(
                 }
                 let dest_csv = written.join(",");
                 lock.save_tracked_asset(
-                    "command",
                     &p.asset_id,
-                    &p.name,
-                    &p.hash,
-                    &p.source,
-                    &dest_csv,
+                    crate::lock::AssetEntry {
+                        kind: "command".into(),
+                        name: p.name.clone(),
+                        hash: p.hash.clone(),
+                        source: p.source.clone(),
+                        destination: dest_csv,
+                        source_revision: p.source_revision.clone(),
+                    },
                 );
             }
 

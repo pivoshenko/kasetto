@@ -417,12 +417,19 @@ fn needs_fetch(ctx: &SyncContext, src: &SourceSpec, desired: &[String], state: &
     {
         return true;
     }
+    let expected_revision = src.expected_revision();
     for skill_name in desired {
         let key = format!("{}::{}", src.source, skill_name);
         // A skill named in the config but absent from the lock must be fetched.
         let Some(entry) = state.skills.get(&key) else {
             return true;
         };
+        // The user retargeted this source (changed ref/branch) since the lock
+        // was written — the on-disk content might still hash correctly, but it
+        // no longer matches what the config asks for. Refetch.
+        if !entry.source_revision.is_empty() && entry.source_revision != expected_revision {
+            return true;
+        }
         // Re-hash every destination; if all match, this skill is satisfied.
         if all_destinations_match(ctx, skill_name, &entry.hash) {
             continue;

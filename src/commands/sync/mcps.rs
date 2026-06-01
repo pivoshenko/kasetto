@@ -29,6 +29,7 @@ struct PendingMcp {
     server_names: Vec<String>,
     asset_id: String,
     is_new: bool,
+    source_revision: String,
 }
 
 pub(super) fn sync_mcps(
@@ -265,6 +266,7 @@ pub(super) fn sync_mcps(
                         server_names,
                         asset_id,
                         is_new: existing.is_none(),
+                        source_revision: materialized.source_revision.clone(),
                     });
                 }
                 Ok(())
@@ -352,12 +354,18 @@ fn needs_fetch_mcps(
     {
         return true;
     }
+    let expected_revision = src.as_source_spec().expected_revision();
     for file_name in desired_file_names {
         let asset_id = format!("mcp::{}::{}", src.source, file_name);
-        let Some((_, servers_csv)) = lock.get_tracked_asset("mcp", &asset_id) else {
+        let Some(asset) = lock.assets.get(&asset_id).filter(|a| a.kind == "mcp") else {
             return true;
         };
-        let server_names: Vec<String> = servers_csv
+        // Retargeted source (ref/branch changed since the lock was written).
+        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
+            return true;
+        }
+        let server_names: Vec<String> = asset
+            .destination
             .split(',')
             .filter(|s| !s.is_empty())
             .map(String::from)
@@ -441,12 +449,15 @@ fn apply_pending(
                 }
                 let servers_csv = p.server_names.join(",");
                 lock.save_tracked_asset(
-                    "mcp",
                     &p.asset_id,
-                    &p.file_name,
-                    &p.hash,
-                    &p.source,
-                    &servers_csv,
+                    crate::lock::AssetEntry {
+                        kind: "mcp".into(),
+                        name: p.file_name.clone(),
+                        hash: p.hash.clone(),
+                        source: p.source.clone(),
+                        destination: servers_csv,
+                        source_revision: p.source_revision.clone(),
+                    },
                 );
             }
 
@@ -533,6 +544,7 @@ mod tests {
             server_names: vec!["server-a".into(), "server-b".into()],
             asset_id: "mcp::source::mcp.json".into(),
             is_new: true,
+            source_revision: "branch:main".into(),
         };
         let update_entry = PendingMcp {
             source: "https://github.com/org/pack".into(),
@@ -542,6 +554,7 @@ mod tests {
             server_names: vec!["server-c".into()],
             asset_id: "mcp::source::other.json".into(),
             is_new: false,
+            source_revision: "branch:main".into(),
         };
 
         let pending = [new_entry, update_entry];
@@ -567,6 +580,7 @@ mod tests {
             server_names: vec!["existing-server".into()],
             asset_id: "mcp::source::mcp.json".into(),
             is_new: false,
+            source_revision: "branch:main".into(),
         }];
 
         let new_servers: Vec<&PendingMcp> = update_only.iter().filter(|p| p.is_new).collect();
@@ -625,12 +639,15 @@ mod tests {
         // With a lock entry and no targets to satisfy, nothing is unsatisfied.
         let mut lock2 = LockFile::default();
         lock2.save_tracked_asset(
-            "mcp",
             "mcp::https://github.com/org/pack::foo.json",
-            "foo.json",
-            "h1",
-            "https://github.com/org/pack",
-            "server-a",
+            crate::lock::AssetEntry {
+                kind: "mcp".into(),
+                name: "foo.json".into(),
+                hash: "h1".into(),
+                source: "https://github.com/org/pack".into(),
+                destination: "server-a".into(),
+                source_revision: "branch:main".into(),
+            },
         );
         assert!(
             !needs_fetch_mcps(&ctx, &src, &desired, &lock2, &no_targets),

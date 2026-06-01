@@ -19,6 +19,12 @@ pub(crate) struct AssetEntry {
     /// For commands: install paths relative to the scope root (CSV).
     /// For MCPs: the merged server names (CSV).
     pub destination: String,
+    /// Resolved git revision label (e.g. `ref:v1.0`, `branch:main`, `local`).
+    /// Defaulted to empty for backwards compatibility with v2 locks written
+    /// before this field existed; `needs_fetch_*` skips the revision check
+    /// when this is empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub source_revision: String,
 }
 
 /// Portable, commit-friendly manifest (`kasetto.lock`) of installed skills and assets.
@@ -68,25 +74,8 @@ impl LockFile {
         })
     }
 
-    pub(crate) fn save_tracked_asset(
-        &mut self,
-        kind: &str,
-        id: &str,
-        name: &str,
-        hash: &str,
-        source: &str,
-        destination: &str,
-    ) {
-        self.assets.insert(
-            id.to_string(),
-            AssetEntry {
-                kind: kind.to_string(),
-                name: name.to_string(),
-                hash: hash.to_string(),
-                source: source.to_string(),
-                destination: destination.to_string(),
-            },
-        );
+    pub(crate) fn save_tracked_asset(&mut self, id: &str, entry: AssetEntry) {
+        self.assets.insert(id.to_string(), entry);
     }
 
     pub(crate) fn remove_tracked_asset(&mut self, id: &str) {
@@ -221,12 +210,15 @@ mod tests {
             },
         );
         lock.save_tracked_asset(
-            "mcp",
             "mcp::src::pack.json",
-            "pack.json",
-            "h1",
-            "src",
-            "srv1,srv2",
+            AssetEntry {
+                kind: "mcp".into(),
+                name: "pack.json".into(),
+                hash: "h1".into(),
+                source: "src".into(),
+                destination: "srv1,srv2".into(),
+                source_revision: "rev1".into(),
+            },
         );
 
         save_lock(&mut lock, Scope::Project, &dir).unwrap();
@@ -305,7 +297,7 @@ assets: {}\n";
                 ..Default::default()
             },
         );
-        lock.save_tracked_asset("mcp", "id", "n", "h", "s", "d");
+        lock.save_tracked_asset("id", test_asset("mcp", "n", "d"));
 
         lock.clear_all();
 
@@ -316,8 +308,8 @@ assets: {}\n";
     #[test]
     fn list_tracked_asset_ids_filters_by_kind() {
         let mut lock = LockFile::default();
-        lock.save_tracked_asset("mcp", "mcp::a", "a", "h", "s", "d1");
-        lock.save_tracked_asset("other", "other::b", "b", "h", "s", "d2");
+        lock.save_tracked_asset("mcp::a", test_asset("mcp", "a", "d1"));
+        lock.save_tracked_asset("other::b", test_asset("other", "b", "d2"));
 
         let mcps = lock.list_tracked_asset_ids("mcp");
         assert_eq!(mcps.len(), 1);
@@ -327,18 +319,29 @@ assets: {}\n";
     #[test]
     fn remove_tracked_asset_deletes_entry() {
         let mut lock = LockFile::default();
-        lock.save_tracked_asset("mcp", "mcp::a", "a", "h", "s", "d");
+        lock.save_tracked_asset("mcp::a", test_asset("mcp", "a", "d"));
         assert!(lock.get_tracked_asset("mcp", "mcp::a").is_some());
 
         lock.remove_tracked_asset("mcp::a");
         assert!(lock.get_tracked_asset("mcp", "mcp::a").is_none());
     }
 
+    fn test_asset(kind: &str, name: &str, destination: &str) -> AssetEntry {
+        AssetEntry {
+            kind: kind.into(),
+            name: name.into(),
+            hash: "h".into(),
+            source: "s".into(),
+            destination: destination.into(),
+            source_revision: "rev".into(),
+        }
+    }
+
     #[test]
     fn list_installed_mcps_deduplicates() {
         let mut lock = LockFile::default();
-        lock.save_tracked_asset("mcp", "a", "a", "h", "s", "srv1,srv2");
-        lock.save_tracked_asset("mcp", "b", "b", "h", "s", "srv2,srv3");
+        lock.save_tracked_asset("a", test_asset("mcp", "a", "srv1,srv2"));
+        lock.save_tracked_asset("b", test_asset("mcp", "b", "srv2,srv3"));
 
         let mcps = lock.list_installed_mcps();
         assert_eq!(mcps, vec!["srv1", "srv2", "srv3"]);

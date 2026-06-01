@@ -162,6 +162,21 @@ impl SourceSpec {
             GitPin::Default
         }
     }
+
+    /// Same label `source::materialize_source` records as `source_revision`
+    /// for this spec. Used by the `needs_fetch` paths to detect when a user
+    /// retargeted a source (changed `ref` / `branch`) so we don't skip the
+    /// fetch just because the old destination still hashes correctly.
+    pub(crate) fn expected_revision(&self) -> String {
+        if !self.source.contains("://") {
+            return "local".into();
+        }
+        match self.git_pin() {
+            GitPin::Ref(r) => format!("ref:{r}"),
+            GitPin::Branch(b) => format!("branch:{b}"),
+            GitPin::Default => "branch:main".into(),
+        }
+    }
 }
 
 /// An MCP source: where to fetch from and which MCP servers to install.
