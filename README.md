@@ -18,9 +18,9 @@
   A declarative AI agent environment manager, written in Rust.
 </p>
 
-Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills and MCPs as cassettes you plug in, swap out, and share across machines.
-
 <img alt="kasetto sync output" src="assets/demo.svg" width="100%" />
+
+**About the name** — comes from the Japanese word **カセット** (*kasetto*), cassette. Think of Skills and MCPs as cassettes you plug in, swap out, and share across machines.
 
 ## Why Kasetto
 
