@@ -91,37 +91,9 @@ kst sync
 kst sync --config https://example.com/team-skills.yaml
 ```
 
-```text
-❯ kasetto sync
-
-✓ Resolved 5 sources · 16 items
-
-✓ github.com/pivoshenko/pivoshenko.ai
-  ├─ ↑ git-commit              updated
-  ├─ ↑ git-pr-create           updated
-  ├─ ↑ pivoshenko-brand        updated
-  ├─ + command:gsd             added
-  ├─ ✓ git-branch-create       unchanged
-  ├─ ✓ git-branch-sync         unchanged
-  ├─ ✓ git-branches-cleanup    unchanged
-  ├─ ✓ mcp:github.json         unchanged
-  └─ ✓ mcp:vercel.json         unchanged
-✓ github.com/anthropics/skills
-  ├─ ✓ design-thinking         unchanged
-  ├─ ✓ doc-coauthoring         unchanged
-  ├─ ✓ pdf                     unchanged
-  ├─ ✓ pptx                    unchanged
-  └─ ✓ skill-creator           unchanged
-✓ github.com/vercel-labs/agent-skills
-  ├─ ✓ deploy-to-vercel        unchanged
-  └─ ↑ web-design-guidelines   updated
-✓ github.com/apollographql/skills
-  └─ + rust-best-practices     added
-✓ github.com/mattpocock/skills
-  └─ − grill-me                removed
-
-  ● 4 updated  ● 2 added  ● 1 removed  ● 9 unchanged
-```
+<p align="center">
+  <img alt="kasetto sync output" src="assets/sync-demo.svg" width="580" />
+</p>
 
 Want bare `kst sync` to always pull from a remote URL? Persist it in `~/.config/kasetto/config.yaml`:
 

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Animated kasetto sync mock — mirrors the hero terminal on kasetto.dev.
+  Palette aligned with `src/colors.rs` (CLI source of truth) and popil
+  surfaces from `site/app/globals.css`. SMIL animations are sandboxed via
+  GitHub's camo proxy when embedded as an <img>; no scripts, no external
+  fonts. 7-second loop with line-by-line reveal, hold, then reset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 580" width="580" height="580" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13">
+  <!-- frame -->
+  <rect x="0" y="0" width="580" height="580" rx="8" ry="8" fill="#1f1f1e"/>
+  <rect x="0" y="0" width="580" height="36" rx="8" ry="8" fill="#1a1a19"/>
+  <rect x="0" y="28" width="580" height="8" fill="#1a1a19"/>
+  <line x1="0" y1="36" x2="580" y2="36" stroke="#2e2e2c" stroke-width="1"/>
+  <circle cx="16" cy="18" r="5" fill="#373634"/>
+  <circle cx="32" cy="18" r="5" fill="#373634"/>
+  <circle cx="48" cy="18" r="5" fill="#373634"/>
+  <text x="70" y="23" fill="#6e6759" font-size="11" letter-spacing="0.08em">~/dev/kasetto</text>
+
+  <!-- body lines -->
+  <g xml:space="preserve" fill="#e4e2de">
+
+    <!-- prompt -->
+    <text x="20" y="64" opacity="0"><tspan fill="#e8a94d">❯</tspan> <tspan fill="#e4e2de">kasetto </tspan><tspan fill="#e8a94d">sync</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.014;0.029;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- Resolved -->
+    <text x="20" y="98" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">Resolved </tspan><tspan fill="#e8a94d">5 sources</tspan><tspan fill="#a8a195"> · 16 items</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.057;0.071;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- source 1 -->
+    <text x="20" y="128" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/pivoshenko/pivoshenko.ai</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.100;0.114;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="146" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">git-commit</tspan><tspan fill="#a8a195">              updated</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.111;0.125;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="164" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">git-pr-create</tspan><tspan fill="#a8a195">           updated</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.123;0.137;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="182" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">pivoshenko-brand</tspan><tspan fill="#a8a195">        updated</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.134;0.149;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="200" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">command:gsd</tspan><tspan fill="#a8a195">             added</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.146;0.160;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="218" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">git-branch-create</tspan><tspan fill="#a8a195">       unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.157;0.171;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="236" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">git-branch-sync</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.169;0.183;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="254" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">git-branches-cleanup</tspan><tspan fill="#a8a195">    unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.180;0.194;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="272" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:github.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.191;0.206;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="290" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:vercel.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.203;0.217;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- source 2 -->
+    <text x="20" y="308" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/anthropics/skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.221;0.236;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="326" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">design-thinking</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.233;0.247;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="344" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">doc-coauthoring</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.244;0.259;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="362" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pdf</tspan><tspan fill="#a8a195">                     unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.256;0.270;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="380" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pptx</tspan><tspan fill="#a8a195">                    unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.267;0.281;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="398" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">skill-creator</tspan><tspan fill="#a8a195">           unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.279;0.293;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- source 3 -->
+    <text x="20" y="416" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/vercel-labs/agent-skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.300;0.314;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="434" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">deploy-to-vercel</tspan><tspan fill="#a8a195">        unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.311;0.326;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="452" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">web-design-guidelines</tspan><tspan fill="#a8a195">   updated</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.323;0.337;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- source 4 -->
+    <text x="20" y="470" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/apollographql/skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.343;0.357;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="488" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">rust-best-practices</tspan><tspan fill="#a8a195">     added</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.354;0.369;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- source 5 -->
+    <text x="20" y="506" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/mattpocock/skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.371;0.386;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="524" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e87e6c">−</tspan> <tspan fill="#e4e2de">grill-me</tspan><tspan fill="#a8a195">                removed</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.383;0.397;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- chip strip -->
+    <text x="20" y="546" opacity="0"><tspan>  </tspan><tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">updated  </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#a8a195">added  </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#a8a195">removed  </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 9 </tspan><tspan fill="#a8a195">unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.414;0.443;0.93;1" dur="7s" repeatCount="indefinite"/>
+    </text>
+
+  </g>
+</svg>
