@@ -242,26 +242,26 @@ export function HeroTerminal() {
 
           {summaryVisible && (
             <div className="t-line t-summary-chips">
-                <span />
-                <span>
-                  {"  "}
-                  <span className="t-amber">●</span>
-                  <span className="t-fg"> {COUNTS.updated} </span>
-                  <span className="t-dim">updated</span>
-                  {"  "}
-                  <span className="t-green">●</span>
-                  <span className="t-fg"> {COUNTS.added} </span>
-                  <span className="t-dim">added</span>
-                  {"  "}
-                  <span className="t-red">●</span>
-                  <span className="t-fg"> {COUNTS.removed} </span>
-                  <span className="t-dim">removed</span>
-                  {"  "}
-                  <span className="t-faint">●</span>
-                  <span className="t-fg"> {COUNTS.unchanged} </span>
-                  <span className="t-dim">unchanged</span>
-                </span>
-              </div>
+              <span />
+              <span>
+                {"  "}
+                <span className="t-amber">●</span>
+                <span className="t-fg"> {COUNTS.updated} </span>
+                <span className="t-dim">updated</span>
+                {"  "}
+                <span className="t-green">●</span>
+                <span className="t-fg"> {COUNTS.added} </span>
+                <span className="t-dim">added</span>
+                {"  "}
+                <span className="t-red">●</span>
+                <span className="t-fg"> {COUNTS.removed} </span>
+                <span className="t-dim">removed</span>
+                {"  "}
+                <span className="t-faint">●</span>
+                <span className="t-fg"> {COUNTS.unchanged} </span>
+                <span className="t-dim">unchanged</span>
+              </span>
+            </div>
           )}
         </div>
       </div>
