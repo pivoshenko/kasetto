@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::dirs_kasetto_config;
-use crate::ui::{animations_enabled, with_spinner_transient};
+use crate::ui::{animations_enabled, eprint_warn, print_group_header, with_spinner_transient};
 use crate::{DEFAULT_CONFIG_FILENAME, DEFAULT_GLOBAL_CONFIG_FILENAME};
 
 const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
@@ -58,10 +58,8 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
     let path = init_config_path(global)?;
 
     if path.exists() && !force {
-        println!(
-            "{ATTENTION}{ACCENT}warning:{RESET} {} already exists",
-            path.display()
-        );
+        let color = crate::ui::color_stdout_enabled();
+        eprint_warn(&format!("{} already exists", path.display()), !color);
         if io::stdin().is_terminal() {
             print!("{ACCENT}Overwrite?{RESET} {SECONDARY}[y/N]{RESET} ");
             io::stdout().flush()?;
@@ -94,12 +92,12 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         },
     )?;
 
+    let color = crate::ui::color_stdout_enabled();
     println!(
         "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Created{RESET} {ACCENT}{}{RESET}",
         path.display()
     );
-    println!();
-    println!("{ACCENT}{ATTENTION}NEXT STEPS{RESET}");
+    print_group_header("Next steps", color);
     println!(
         "  {ATTENTION}{ACCENT}1{RESET}   Edit {ATTENTION}{}{RESET} to add your sources and target agent",
         path.display()

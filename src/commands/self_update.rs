@@ -1,5 +1,5 @@
-use std::fs;
 use sha2::{Digest, Sha256};
+use std::fs;
 
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
@@ -35,7 +35,6 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
     let current_version = env!("CARGO_PKG_VERSION");
     let color = list_color_enabled();
     let animate = animations_enabled(false, as_json, !color);
-
 
     let release = with_spinner(animate, !color, "Checking for updates", || {
         fetch_latest_release()

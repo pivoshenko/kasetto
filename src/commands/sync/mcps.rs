@@ -3,7 +3,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::error::{err, Result};
-use crate::fsops::{dirs_home, dirs_kasetto_config, hash_file, now_unix, resolve_mcp_settings_targets};
+use crate::fsops::{
+    dirs_home, dirs_kasetto_config, hash_file, now_unix, resolve_mcp_settings_targets,
+};
 use crate::lock::LockFile;
 use crate::mcps::{merge_mcp_config, remove_mcp_server, servers_present_in_settings};
 use crate::model::{
@@ -51,7 +53,14 @@ pub(super) fn sync_mcps(
                     _ => Vec::new(),
                 },
             };
-            remove_stale(ctx, lock, summary, actions, &desired_mcp_ids, &fallback_targets);
+            remove_stale(
+                ctx,
+                lock,
+                summary,
+                actions,
+                &desired_mcp_ids,
+                &fallback_targets,
+            );
         }
         return Ok(());
     }

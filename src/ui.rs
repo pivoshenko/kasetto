@@ -20,7 +20,6 @@ pub(crate) const BRAND_GLYPH: &str = "◆";
 /// Brand flourish star — accompanies the wordmark tagline and the farewell.
 pub(crate) const STAR_GLYPH: &str = "✦";
 
-
 pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
     !quiet && !as_json && !plain && std::io::stderr().is_terminal()
 }
@@ -214,10 +213,18 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
 /// Past-tense status verb + dim metadata tail per design — pairs with
 /// [`action_glyph`] in source-grouped trees. Returns the colored tail (e.g.
 /// `updated  2.1.0 → 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
-pub(crate) fn status_tail(status: &str, version_from: Option<&str>, version_to: Option<&str>, plain: bool) -> String {
+pub(crate) fn status_tail(
+    status: &str,
+    version_from: Option<&str>,
+    version_to: Option<&str>,
+    plain: bool,
+) -> String {
     if plain {
         return match status {
-            "installed" | "would_install" => format!("added{}", version_to.map(|v| format!("  v{v}")).unwrap_or_default()),
+            "installed" | "would_install" => format!(
+                "added{}",
+                version_to.map(|v| format!("  v{v}")).unwrap_or_default()
+            ),
             "updated" | "would_update" => match (version_from, version_to) {
                 (Some(f), Some(t)) => format!("updated  {f} → {t}"),
                 _ => "updated".to_string(),
@@ -230,7 +237,9 @@ pub(crate) fn status_tail(status: &str, version_from: Option<&str>, version_to: 
     }
     match status {
         "installed" | "would_install" => {
-            let tail = version_to.map(|v| format!("{SECONDARY}  v{v}{RESET}")).unwrap_or_default();
+            let tail = version_to
+                .map(|v| format!("{SECONDARY}  v{v}{RESET}"))
+                .unwrap_or_default();
             format!("{SUCCESS}added{RESET}{tail}")
         }
         "updated" | "would_update" => match (version_from, version_to) {
@@ -245,8 +254,11 @@ pub(crate) fn status_tail(status: &str, version_from: Option<&str>, version_to: 
 }
 
 /// Amber, uppercase, letter-spaced section header per design — `SKILLS   23 installed`.
-/// `count_unit` is `(count, "installed")` for inline metadata.
+/// `count_unit` is `(count, "installed")` for inline metadata. Emits a leading
+/// blank line to match [`print_group_header`] — body content follows
+/// immediately, no trailing blank.
 pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)>, plain: bool) {
+    println!();
     if plain {
         match count_unit {
             Some((n, unit)) => println!("{label}   {n} {unit}"),
@@ -256,7 +268,9 @@ pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)
     }
     let label_up = label.to_uppercase();
     match count_unit {
-        Some((n, unit)) => println!("{ACCENT}{ATTENTION}{label_up}{RESET}   {SECONDARY}{n} {unit}{RESET}"),
+        Some((n, unit)) => {
+            println!("{ACCENT}{ATTENTION}{label_up}{RESET}   {SECONDARY}{n} {unit}{RESET}")
+        }
         None => println!("{ACCENT}{ATTENTION}{label_up}{RESET}"),
     }
 }
@@ -332,7 +346,11 @@ pub(crate) fn print_tree_leaf(
         } else {
             format!("{name}{}", " ".repeat(name_pad))
         };
-        let t = if tail.is_empty() { String::new() } else { format!("  {tail}") };
+        let t = if tail.is_empty() {
+            String::new()
+        } else {
+            format!("  {tail}")
+        };
         println!("{branch}{g} {padded_name}{t}");
         return;
     }
@@ -347,7 +365,11 @@ pub(crate) fn print_tree_leaf(
         format!("{name_styled}{}", " ".repeat(name_pad))
     };
     let glyph_part = glyph.map(|g| format!(" {g}")).unwrap_or_default();
-    let tail_part = if tail.is_empty() { String::new() } else { format!("  {tail}") };
+    let tail_part = if tail.is_empty() {
+        String::new()
+    } else {
+        format!("  {tail}")
+    };
     println!("{INFRA}{branch}{RESET}{glyph_part} {padded_name}{tail_part}");
 }
 
@@ -362,9 +384,7 @@ pub(crate) fn print_sync_chips(
     plain: bool,
 ) {
     if plain {
-        println!(
-            "  {updated} updated  {added} added  {removed} removed  {unchanged} unchanged"
-        );
+        println!("  {updated} updated  {added} added  {removed} removed  {unchanged} unchanged");
         return;
     }
     println!(
@@ -414,7 +434,13 @@ pub(crate) fn relativize_home(path: &str) -> String {
 /// Print a `KEY  value` row for the cassette doctor panel: key in foreground
 /// (no color), padded to `key_w` chars, value in the supplied color (default
 /// foreground; pass `Some(ATTENTION)` for INVENTORY counts).
-pub(crate) fn print_doctor_kv(key: &str, value: &str, key_w: usize, value_color: Option<&str>, plain: bool) {
+pub(crate) fn print_doctor_kv(
+    key: &str,
+    value: &str,
+    key_w: usize,
+    value_color: Option<&str>,
+    plain: bool,
+) {
     if plain {
         println!("{key:<key_w$}  {value}");
         return;
@@ -479,9 +505,7 @@ pub(crate) fn print_uninstall_closer(version: &str, plain: bool) {
         println!("Thanks for using kasetto.  またね");
         return;
     }
-    println!(
-        "{BRAND}{BRAND_GLYPH}{RESET} {ACCENT}kasetto v{version} uninstalled{RESET}"
-    );
+    println!("{BRAND}{BRAND_GLYPH}{RESET} {ACCENT}kasetto v{version} uninstalled{RESET}");
     println!(
         "  {SECONDARY}Thanks for using kasetto.{RESET}  {ATTENTION}またね{RESET}  {SECONDARY}{STAR_GLYPH}{RESET}"
     );

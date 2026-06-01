@@ -614,5 +614,4 @@ mcps:
             matches!(&entries[0], McpEntry::Obj { name, path: Some(p) } if name == "my-server" && p == "tools")
         );
     }
-
 }

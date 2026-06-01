@@ -189,13 +189,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         let elapsed = started.elapsed();
         print_resolution_header(&report, opts.plain);
         print_sync_tree(&report, opts.plain);
-        print_sync_summary(
-            &report,
-            opts.plain,
-            opts.verbose,
-            elapsed,
-            opts.locked,
-        );
+        print_sync_summary(&report, opts.plain, opts.verbose, elapsed, opts.locked);
     }
 
     if report.summary.failed > 0 {
@@ -245,13 +239,7 @@ fn format_elapsed(d: Duration) -> String {
     }
 }
 
-fn print_sync_summary(
-    report: &Report,
-    plain: bool,
-    verbose: u8,
-    elapsed: Duration,
-    locked: bool,
-) {
+fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Duration, locked: bool) {
     let s = &report.summary;
     let dry = report.dry_run;
     let timing = format_elapsed(elapsed);
@@ -390,7 +378,6 @@ fn print_sync_tree(report: &Report, plain: bool) {
             let tail = status_tail(&a.status, None, None, plain);
             print_tree_leaf(is_last, Some(&glyph), name, strike, &tail, 24, plain);
         }
-        println!();
     }
 }
 
@@ -421,7 +408,6 @@ pub(super) fn sync_label_with(name: &str, source: &str, plain: bool, show_source
         (false, false) => format!(" {ACCENT}{name}{RESET}"),
     }
 }
-
 
 pub(super) fn file_name_str(path: &std::path::Path) -> String {
     path.file_name()

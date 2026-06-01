@@ -59,7 +59,6 @@ pub(crate) fn run(
                 "Removing {skills_count} skills, {mcps_count} MCP servers, and {commands_count} commands."
             );
         }
-        println!();
     }
 
     if !dry_run {
@@ -167,9 +166,7 @@ fn print_report(
         print_tip("run without `--dry-run` to apply", plain);
     } else {
         if color {
-            println!(
-                "{ERROR}{ACCENT}Removed{RESET} {total} items {SECONDARY}in {timing}{RESET}"
-            );
+            println!("{ERROR}{ACCENT}Removed{RESET} {total} items {SECONDARY}in {timing}{RESET}");
             println!(
                 "  {SECONDARY}lock file reset · run{RESET} {ATTENTION}kasetto sync{RESET} {SECONDARY}to restore{RESET}"
             );
@@ -199,7 +196,6 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             }
         }
         print_section_header("Skills", Some((state.skills.len(), "to remove")), plain);
-        println!();
         for (source, items) in &by_source {
             let repo = short_source(source);
             print_source_header(&repo, None, Some(true), None, plain);
@@ -209,18 +205,20 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
                 let tail = status_tail(status, None, None, plain);
                 print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
             }
-            println!();
         }
     }
 
-    let mcp_packs: Vec<_> = lock.assets.iter().filter(|(_, a)| a.kind == "mcp").collect();
+    let mcp_packs: Vec<_> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "mcp")
+        .collect();
     if !mcp_packs.is_empty() {
         let total_servers: usize = mcp_packs
             .iter()
             .map(|(_, a)| a.destination.split(',').filter(|s| !s.is_empty()).count())
             .sum();
         print_section_header("Mcp Servers", Some((total_servers, "to remove")), plain);
-        println!();
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &mcp_packs {
             for server in a.destination.split(',').filter(|s| !s.is_empty()) {
@@ -241,14 +239,16 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
                 let tail = status_tail(status, None, None, plain);
                 print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
             }
-            println!();
         }
     }
 
-    let cmd_assets: Vec<_> = lock.assets.iter().filter(|(_, a)| a.kind == "command").collect();
+    let cmd_assets: Vec<_> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "command")
+        .collect();
     if !cmd_assets.is_empty() {
         print_section_header("Commands", Some((cmd_assets.len(), "to remove")), plain);
-        println!();
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &cmd_assets {
             let key = a.source.clone();
@@ -267,7 +267,6 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
                 let tail = status_tail(status, None, None, plain);
                 print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
             }
-            println!();
         }
     }
 }
@@ -280,4 +279,3 @@ fn format_elapsed(d: Duration) -> String {
         format!("{:.2}s", d.as_secs_f64())
     }
 }
-

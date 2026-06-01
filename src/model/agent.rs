@@ -140,10 +140,7 @@ pub(crate) fn command_global_targets(home: &Path, agents: &[Agent]) -> Vec<Comma
 }
 
 /// Deduped project command directories for a specific set of agents.
-pub(crate) fn command_project_targets(
-    project_root: &Path,
-    agents: &[Agent],
-) -> Vec<CommandTarget> {
+pub(crate) fn command_project_targets(project_root: &Path, agents: &[Agent]) -> Vec<CommandTarget> {
     dedup_command_targets(agents.iter().map(|a| a.commands_project_path(project_root)))
 }
 

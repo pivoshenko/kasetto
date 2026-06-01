@@ -1,7 +1,7 @@
 use std::collections::HashSet;
+use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::{fs};
 
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
@@ -43,8 +43,8 @@ pub(crate) fn run(yes: bool) -> Result<()> {
     let config_removed = remove_dir_if_exists(dirs_kasetto_config().ok().as_deref())?;
     let data_removed = remove_dir_if_exists(dirs_kasetto_data().ok().as_deref())?;
 
-    let exe = std::env::current_exe()
-        .map_err(|e| err(format!("could not resolve binary path: {e}")))?;
+    let exe =
+        std::env::current_exe().map_err(|e| err(format!("could not resolve binary path: {e}")))?;
     let install_dir = exe
         .parent()
         .ok_or_else(|| err("could not determine install directory"))?;

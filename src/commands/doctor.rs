@@ -8,8 +8,8 @@ use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
 use crate::ui::{
-    print_check, print_dir_row, print_doctor_head, print_doctor_kv, print_group_header,
-    print_json, relativize_home,
+    print_check, print_dir_row, print_doctor_head, print_doctor_kv, print_group_header, print_json,
+    relativize_home,
 };
 
 #[derive(serde::Serialize)]
@@ -153,8 +153,7 @@ pub(crate) fn run(
     let _ = program_name;
 
     print_group_header("Checks", color);
-    let lock_ok = std::path::Path::new(&output.lock_file).exists()
-        || !output.lock_file.is_empty();
+    let lock_ok = std::path::Path::new(&output.lock_file).exists() || !output.lock_file.is_empty();
     print_check(lock_ok, "Lock file readable", !color);
     let install_ok = std::path::Path::new(&output.installation_path).exists()
         || output.installation_path == "none";
@@ -168,15 +167,9 @@ pub(crate) fn run(
         },
         !color,
     );
-    let dirs_writable = output
-        .command_dirs
-        .iter()
-        .filter(|d| d.writable)
-        .count();
+    let dirs_writable = output.command_dirs.iter().filter(|d| d.writable).count();
     let dirs_total = output.command_dirs.len();
-    let dirs_label = format!(
-        "{dirs_writable} of {dirs_total} command directories writable"
-    );
+    let dirs_label = format!("{dirs_writable} of {dirs_total} command directories writable");
     print_check(dirs_writable == dirs_total, &dirs_label, !color);
 
     if !output.command_dirs.is_empty() {

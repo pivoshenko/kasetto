@@ -9,9 +9,9 @@ use crate::fsops::{
 use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
+use crate::ui::{eprint_fail, with_spinner_transient};
 #[cfg(test)]
 use crate::{model::Summary, state::RuntimeState};
-use crate::ui::{eprint_fail, with_spinner_transient};
 
 use super::{
     remove_stale, sync_label_with, update_active_for_source, StaleEntry, SyncContext, SyncMut,

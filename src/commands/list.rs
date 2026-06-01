@@ -81,7 +81,6 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
         return;
     }
     print_section_header("Skills", Some((skills.len(), "installed")), plain);
-    println!();
 
     // Group by source, preserve first-seen order, keep skills inside sorted.
     let mut groups: Vec<(String, Vec<&InstalledSkill>)> = Vec::new();
@@ -104,7 +103,6 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
             };
             print_tree_leaf(is_last, None, &s.name, false, &tail, 30, plain);
         }
-        println!();
     }
 }
 
@@ -113,7 +111,6 @@ fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) 
         return;
     }
     print_section_header(label, Some((rows.len(), unit)), plain);
-    println!();
 
     let mut groups: Vec<(String, Vec<&AssetEntry>)> = Vec::new();
     for a in rows {
@@ -130,7 +127,6 @@ fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) 
             let is_last = i == items.len() - 1;
             print_tree_leaf(is_last, None, &a.name, false, "—", 30, plain);
         }
-        println!();
     }
 }
 

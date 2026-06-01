@@ -430,8 +430,7 @@ fn remove_stale(
         .iter()
         .map(|(id, dest)| (id.to_string(), dest.to_string()))
         .collect();
-    let dest_by_id: std::collections::HashMap<String, String> =
-        existing.iter().cloned().collect();
+    let dest_by_id: std::collections::HashMap<String, String> = existing.iter().cloned().collect();
     let candidates: Vec<StaleEntry> = existing
         .into_iter()
         .map(|(id, _)| {
