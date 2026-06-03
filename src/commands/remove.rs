@@ -10,6 +10,7 @@ use crate::colors::{INFO, RESET};
 use crate::error::{err, Result};
 use crate::model::Scope;
 use crate::source::derive_browse_url;
+use crate::ui::{print_json, print_tip};
 
 use crate::fsops::{remove_item, remove_names, RemoveOutcome, Section};
 
@@ -23,7 +24,10 @@ pub(crate) struct RemoveOptions<'a> {
     pub config: Option<&'a str>,
     pub scope_override: Option<Scope>,
     pub no_sync: bool,
-    pub quiet: bool,
+    pub dry_run: bool,
+    pub locked: bool,
+    pub as_json: bool,
+    pub quiet: u8,
     pub plain: bool,
 }
 
@@ -41,11 +45,19 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
     let mut text = fs::read_to_string(&path)
         .map_err(|e| err(format!("failed to read {}: {e}", path.display())))?;
 
+    // Strip a trailing `@<ref>` shorthand so `remove foo@v1` matches `--ref v1`.
+    let (raw_source, at_ref) = super::source_edit::split_at_ref(opts.source);
+    if at_ref.is_some() && (opts.git_ref.is_some() || opts.branch.is_some()) {
+        return Err(err(
+            "`@<ref>` shorthand conflicts with --ref/--branch; pass only one",
+        ));
+    }
+
     // A deep browse URL identifies the same source `add` would have written.
-    let source = derive_browse_url(opts.source)
+    let source = derive_browse_url(&raw_source)
         .map(|d| d.source)
-        .unwrap_or_else(|| opts.source.to_string());
-    let pin = opts.git_ref.or(opts.branch);
+        .unwrap_or(raw_source);
+    let pin = opts.git_ref.or(opts.branch).or(at_ref.as_deref());
 
     let kinds = [
         (Section::Skills, opts.skills),
@@ -60,16 +72,24 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
         remove_whole_source(&mut text, &source, pin)?
     };
 
-    fs::write(&path, &text).map_err(|e| err(format!("failed to write {}: {e}", path.display())))?;
-
-    if !opts.quiet {
-        for r in &removed {
-            print_removed(&r.target, r.section);
-        }
+    if opts.dry_run {
+        emit_result(opts, &removed, true)?;
+        return Ok(());
     }
 
+    fs::write(&path, &text).map_err(|e| err(format!("failed to write {}: {e}", path.display())))?;
+    emit_result(opts, &removed, false)?;
+
     if !opts.no_sync {
-        super::source_edit::sync_after(&path, opts.scope_override, opts.quiet, opts.plain)?;
+        super::source_edit::sync_after(
+            &path,
+            opts.scope_override,
+            opts.quiet,
+            opts.plain,
+            opts.locked,
+        )?;
+    } else if !opts.as_json && opts.quiet == 0 {
+        print_tip("run `kasetto sync` to prune the removed assets", opts.plain);
     }
     Ok(())
 }
@@ -144,12 +164,34 @@ fn remove_by_kind(
     Ok(removed)
 }
 
-/// Terse, uncolored edit confirmation — only the target is colored; the sync
-/// summary that follows carries the prune result (see kasetto-cli-style).
-fn print_removed(target: &str, section: &str) {
-    if crate::ui::color_stdout_enabled() {
-        println!("Removed {INFO}{target}{RESET} from {section}");
-    } else {
-        println!("Removed {target} from {section}");
+/// JSON or text confirmation. JSON emits a structured list; text prints one
+/// uncolored line per removal (only the target is colored), matching the
+/// kasetto-cli-style edit-line conventions.
+fn emit_result(opts: &RemoveOptions, removed: &[Removed], dry: bool) -> Result<()> {
+    if opts.as_json {
+        let items: Vec<_> = removed
+            .iter()
+            .map(|r| serde_json::json!({"target": r.target, "section": r.section}))
+            .collect();
+        print_json(&serde_json::json!({
+            "action": if dry { "would_remove" } else { "removed" },
+            "items": items,
+            "dry_run": dry,
+        }))?;
+        return Ok(());
     }
+    if opts.quiet > 0 {
+        return Ok(());
+    }
+    // Present continuous for the in-progress edit line (cargo precedent); the
+    // sync summary that follows carries the past-tense `Removed N items` closer.
+    let verb = if dry { "Would remove" } else { "Removing" };
+    for r in removed {
+        if crate::ui::color_stdout_enabled() {
+            println!("{verb} {INFO}{}{RESET} from {}", r.target, r.section);
+        } else {
+            println!("{verb} {} from {}", r.target, r.section);
+        }
+    }
+    Ok(())
 }

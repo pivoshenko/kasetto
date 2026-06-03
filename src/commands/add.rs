@@ -3,9 +3,10 @@
 //! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command`) select both
 //! the asset kind and the named entries, so a single `add` can touch several
 //! sections of `kasetto.yaml` at once (a repo that ships skills + MCPs +
-//! commands). The source may be a plain repo URL or a deep `blob`/`tree` browse
-//! URL, which is decomposed into `source` + `ref`/`branch` + `sub-dir` (+ skill
-//! name for a `SKILL.md` link); explicit flags override the derived pieces.
+//! commands). The source may be a plain repo URL, a `<source>@<ref>` shorthand,
+//! or a deep `blob`/`tree` browse URL — the latter is decomposed into `source` +
+//! `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); explicit
+//! flags override the derived pieces.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,6 +18,7 @@ use crate::fsops::{
 };
 use crate::model::{Scope, SkillTarget, SkillsField, SourceSpec};
 use crate::source::{derive_browse_url, materialize_source, BrowseDerived};
+use crate::ui::{print_json, print_tip};
 
 pub(crate) struct AddOptions<'a> {
     pub source: &'a str,
@@ -30,7 +32,10 @@ pub(crate) struct AddOptions<'a> {
     pub scope_override: Option<Scope>,
     pub no_verify: bool,
     pub no_sync: bool,
-    pub quiet: bool,
+    pub dry_run: bool,
+    pub locked: bool,
+    pub as_json: bool,
+    pub quiet: u8,
     pub plain: bool,
 }
 
@@ -46,19 +51,28 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     }
     let path = super::source_edit::resolve_local_config_path(opts.config)?;
 
+    // Strip cargo/uv-style `@<ref>` shorthand off the positional before any
+    // URL decomposition. Explicit `--ref`/`--branch` win if also passed.
+    let (raw_source, at_ref) = super::source_edit::split_at_ref(opts.source);
+    if at_ref.is_some() && (opts.git_ref.is_some() || opts.branch.is_some()) {
+        return Err(err(
+            "`@<ref>` shorthand conflicts with --ref/--branch; pass only one",
+        ));
+    }
+
     // Decompose a deep browse URL; explicit flags below take precedence.
-    let derived = derive_browse_url(opts.source).unwrap_or_else(|| BrowseDerived {
-        source: opts.source.to_string(),
+    let derived = derive_browse_url(&raw_source).unwrap_or_else(|| BrowseDerived {
+        source: raw_source.clone(),
         ..Default::default()
     });
     let source = derived.source.clone();
-    let pin = resolve_pin(opts, &derived);
+    let pin = resolve_pin(opts, &derived, at_ref.as_deref());
     let sub_dir = opts
         .sub_dir
         .map(str::to_string)
         .or_else(|| derived.sub_dir.clone());
 
-    let edits = plan_edits(opts, &source, &pin, sub_dir.as_deref(), &derived)?;
+    let edits = plan_edits(opts, &source, &pin, sub_dir.as_deref(), &derived);
 
     let mut text = if path.exists() {
         fs::read_to_string(&path)
@@ -76,6 +90,11 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
         }
     }
 
+    if opts.dry_run {
+        emit_result(opts, &source, &edits, true)?;
+        return Ok(());
+    }
+
     if !opts.no_verify {
         verify_source(&source, &pin, sub_dir.as_deref(), &edits, &path)?;
     }
@@ -85,22 +104,31 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     }
     fs::write(&path, &text).map_err(|e| err(format!("failed to write {}: {e}", path.display())))?;
 
-    if !opts.quiet {
-        print_added(&source, &edits);
-    }
+    emit_result(opts, &source, &edits, false)?;
 
     if !opts.no_sync {
-        super::source_edit::sync_after(&path, opts.scope_override, opts.quiet, opts.plain)?;
+        super::source_edit::sync_after(
+            &path,
+            opts.scope_override,
+            opts.quiet,
+            opts.plain,
+            opts.locked,
+        )?;
+    } else if !opts.as_json && opts.quiet == 0 {
+        print_tip("run `kasetto sync` to install the new source", opts.plain);
     }
     Ok(())
 }
 
-fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived) -> Pin {
+fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>) -> Pin {
     if let Some(r) = opts.git_ref {
         return Pin::Ref(r.to_string());
     }
     if let Some(b) = opts.branch {
         return Pin::Branch(b.to_string());
+    }
+    if let Some(r) = at_ref {
+        return Pin::Ref(r.to_string());
     }
     if let Some(r) = &derived.git_ref {
         return Pin::Ref(r.clone());
@@ -124,7 +152,7 @@ fn plan_edits(
     pin: &Pin,
     sub_dir: Option<&str>,
     derived: &BrowseDerived,
-) -> Result<Vec<SectionEdit>> {
+) -> Vec<SectionEdit> {
     let skill_names: Vec<String> = if !opts.skills.is_empty() {
         opts.skills.to_vec()
     } else if let Some(name) = &derived.skill_name {
@@ -164,7 +192,7 @@ fn plan_edits(
     if !opts.commands.is_empty() {
         push(Section::Commands, selector_from(opts.commands));
     }
-    Ok(edits)
+    edits
 }
 
 /// A lone `*` value means "discover everything"; any other list stays explicit.
@@ -240,15 +268,35 @@ fn named_skills(edits: &[SectionEdit]) -> Option<&Vec<String>> {
         })
 }
 
-/// Terse, uncolored edit confirmation — only the source is colored; the sync
-/// summary that follows carries the real result (see kasetto-cli-style).
-fn print_added(source: &str, edits: &[SectionEdit]) {
+/// Print the action confirmation in the requested format. JSON output is
+/// structured; text output is the terse, source-only-colored line that the
+/// sync summary follows (see kasetto-cli-style).
+fn emit_result(opts: &AddOptions, source: &str, edits: &[SectionEdit], dry: bool) -> Result<()> {
+    if opts.as_json {
+        let mut sections: Vec<&str> = edits.iter().map(|e| e.section.key()).collect();
+        sections.dedup();
+        print_json(&serde_json::json!({
+            "action": if dry { "would_add" } else { "added" },
+            "source": source,
+            "sections": sections,
+            "dry_run": dry,
+        }))?;
+        return Ok(());
+    }
+    if opts.quiet > 0 {
+        return Ok(());
+    }
+    // Present continuous for the in-progress edit line — cargo says
+    // `Adding serde v1.0... to dependencies`; the sync summary that follows
+    // (`Installed N items in 84ms`) carries the past-tense closer.
+    let verb = if dry { "Would add" } else { "Adding" };
     let mut sections: Vec<&str> = edits.iter().map(|e| e.section.key()).collect();
     sections.dedup();
     let sections = sections.join(", ");
     if crate::ui::color_stdout_enabled() {
-        println!("Added {INFO}{source}{RESET} to {sections}");
+        println!("{verb} {INFO}{source}{RESET} to {sections}");
     } else {
-        println!("Added {source} to {sections}");
+        println!("{verb} {source} to {sections}");
     }
+    Ok(())
 }

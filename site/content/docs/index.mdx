@@ -39,8 +39,11 @@ Use `kst init --global` to create `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~
 Or let Kasetto edit the config for you — `kst add <source>` appends a source (preserving your comments) and syncs it in, and `kst remove <source>` reverses it, the cargo/uv way:
 
 ```bash
-kst add https://github.com/org/skill-pack                  # add every skill
-kst add https://github.com/org/skill-pack --skill code-reviewer   # or just named ones
+kst add https://github.com/org/skill-pack                       # add every skill
+kst add https://github.com/org/skill-pack@v1.2.0                # `@<ref>` shorthand (cargo/uv-style)
+kst add https://github.com/org/skill-pack --skill code-reviewer # or just named ones
+kst add https://github.com/org/skill-pack --dry-run             # preview the edit, don't write
+kst remove https://github.com/org/skill-pack --skill code-reviewer  # reverses the add
 ```
 
 Or create a `kasetto.yaml` by hand:

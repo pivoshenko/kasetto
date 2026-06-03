@@ -42,6 +42,61 @@ kst sync --locked --project
 
 `--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works → The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
 
+## Edit Your Config Without Leaving The Shell
+
+`kst add` / `kst remove` rewrite `kasetto.yaml` (comments preserved), then sync — the cargo/uv way. Paste a tag-pinned URL with the `@<ref>` shorthand and you're done:
+
+```bash
+# Pin a pack to a specific tag — `@<ref>` shorthand equals `--ref <ref>`.
+kst add https://github.com/anthropics/skills@v1.2.0
+
+# Add named skills from a multi-pack repo (kind-tagged, repeatable).
+kst add https://github.com/example/repo --skill code-reviewer --skill find-skills
+
+# Touch several sections in one edit — skills + MCPs + commands together.
+kst add https://github.com/example/repo --skill find --mcp github --command review
+
+# Preview the edit without writing kasetto.yaml or running sync.
+kst add https://github.com/example/repo --dry-run
+
+# Edit the config but skip the install (sync later or in CI).
+kst add https://github.com/example/repo --no-sync
+```
+
+`kst remove` is the symmetric reverse — same kind-tagged flags, with `*` to drop a whole entry:
+
+```bash
+# Drop the source from every list it appears in, prune installed assets.
+kst remove https://github.com/example/repo
+
+# Subtract just one skill; if it was the last name, the whole entry is dropped.
+kst remove https://github.com/example/repo --skill code-reviewer
+
+# Drop the whole MCP entry (the lone `*` means "this kind's entry").
+kst remove https://github.com/example/repo --mcp "*"
+
+# Same `@<ref>` shorthand for disambiguating when one URL appears twice.
+kst remove https://github.com/example/repo@v1.2.0
+```
+
+Both honor `--locked`/`--frozen` (the follow-up sync refuses to fetch), `--json` (structured output for scripts), and `--no-sync` (edit the YAML only). Deep `blob`/`tree` browse URLs work too — paste the URL you're already looking at and Kasetto decomposes it into `source` + `ref`/`branch` + `sub-dir`.
+
+## Verify The Lock In CI Without Installing
+
+`kst lock --check` (aliases `--locked`/`--frozen`) re-resolves the config and compares against `kasetto.lock` — exits non-zero on drift, never writes. Cheaper than a full `sync --locked` when you only need to know "is the committed lock still accurate?":
+
+```bash
+kst lock --check
+```
+
+When a single dependency needs to roll forward without re-resolving everything, target it with `-P` / `--upgrade-package` (mirrors `sync --update <name>...`):
+
+```bash
+kst lock --upgrade-package code-reviewer
+```
+
+Other sources keep their existing lock entries; only the source providing `code-reviewer` is re-resolved.
+
 ## Team Bootstrap From A URL Config
 
 Host a shared `kasetto.yaml` somewhere reachable over HTTPS (public or private), then have each developer run:

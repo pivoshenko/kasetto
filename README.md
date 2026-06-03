@@ -18,7 +18,7 @@
   A declarative AI agent environment manager, written in Rust.
 </p>
 
-<img alt="kasetto sync output" src="assets/demo.svg?v=3" width="100%" />
+<img alt="kasetto sync output" src="assets/demo.svg?v=4" width="100%" />
 
 **About the name**
 
@@ -87,6 +87,7 @@ Edit the generated `kasetto.yaml` — pick an `agent`, add a `skills:` source, a
 
 ```bash
 kst add https://github.com/anthropics/skills              # add every skill in the pack
+kst add https://github.com/anthropics/skills@v1.2.0       # `@<ref>` shorthand (cargo/uv-style)
 kst add https://github.com/anthropics/skills --skill pptx # or just named ones
 kst add https://github.com/example/repo --skill find --mcp github --command review
 ```
@@ -128,9 +129,9 @@ kst doctor                  # version, paths, last sync status
 One-line synopsis below. Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
 
 - **`kst init`** — generate a starter `kasetto.yaml` (local or `--global`).
-- **`kst add <source>`** — append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command` name entries (a lone `*` is a wildcard; no flags ⇒ `skills: "*"`), so one `add` can touch several lists. The source can be a deep `blob`/`tree` browse URL — decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--no-sync` edits only.
-- **`kst remove <source>`** (alias `rm`) — drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` disambiguate a repeated URL, `--no-sync` to edit only.
-- **`kst lock`** — re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command revision pins refresh.
+- **`kst add <source>`** — append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command` name entries (a lone `*` is a wildcard; no flags ⇒ `skills: "*"`), so one `add` can touch several lists. Accepts a cargo/uv-style `<source>@<ref>` shorthand and deep `blob`/`tree` browse URLs — the latter decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--dry-run` previews the edit; `--no-sync` edits without installing; `--locked` keeps the follow-up sync offline; `--json` for scripting.
+- **`kst remove <source>`** (alias `rm`) — drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` (or the `@<ref>` shorthand) disambiguate a repeated URL. `--dry-run` previews; `--no-sync` edits only; `--locked` and `--json` mirror `add`.
+- **`kst lock`** — re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command revision pins refresh. `--check` (alias `--locked`/`--frozen`) verifies the lock matches the config without writing (CI-friendly); `-P`/`--upgrade-package <name>...` re-resolves only the named skills' sources.
 - **`kst sync`** — read config, install skills + MCPs into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
 - **`kst list`** — print a uv-style table of installed skills, MCPs, and commands from the lock file; `--type skills|mcps|commands` filters; `--json` for scripting.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.
