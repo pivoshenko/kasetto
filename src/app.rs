@@ -45,6 +45,74 @@ pub fn run() -> Result<()> {
                     locked: sync.locked,
                 })
             }
+            Commands::Add {
+                source,
+                skill,
+                mcp,
+                command,
+                git_ref,
+                branch,
+                sub_dir,
+                config,
+                no_verify,
+                no_sync,
+                output,
+                scope,
+            } => crate::commands::add::run(&crate::commands::add::AddOptions {
+                source: &source,
+                skills: &skill,
+                mcps: &mcp,
+                commands: &command,
+                git_ref: git_ref.as_deref(),
+                branch: branch.as_deref(),
+                sub_dir: sub_dir.as_deref(),
+                config: config.as_deref(),
+                scope_override: scope.scope_override(),
+                no_verify,
+                no_sync,
+                quiet: output.is_quiet(),
+                plain: output.resolve_plain(),
+            }),
+            Commands::Remove {
+                source,
+                skill,
+                mcp,
+                command,
+                git_ref,
+                branch,
+                config,
+                no_sync,
+                output,
+                scope,
+            } => crate::commands::remove::run(&crate::commands::remove::RemoveOptions {
+                source: &source,
+                skills: &skill,
+                mcps: &mcp,
+                commands: &command,
+                git_ref: git_ref.as_deref(),
+                branch: branch.as_deref(),
+                config: config.as_deref(),
+                scope_override: scope.scope_override(),
+                no_sync,
+                quiet: output.is_quiet(),
+                plain: output.resolve_plain(),
+            }),
+            Commands::Lock {
+                config,
+                json,
+                output,
+                scope,
+            } => {
+                // Apply color side effects (CLICOLOR_FORCE for `--color always`);
+                // `lock` renders via `color_stdout_enabled()`, not a plain flag.
+                let _ = output.resolve_plain();
+                crate::commands::lock::run(&crate::commands::lock::LockOptions {
+                    config: config.as_deref(),
+                    scope_override: scope.scope_override(),
+                    as_json: json,
+                    quiet: output.is_quiet(),
+                })
+            }
             Commands::List {
                 json,
                 kind,
@@ -107,6 +175,9 @@ pub fn run() -> Result<()> {
 fn should_suppress_notice(command: &Option<Commands>) -> bool {
     match command {
         Some(Commands::Sync { sync }) => sync.json || sync.plain || sync.is_quiet(),
+        Some(Commands::Add { output, .. }) => output.plain || output.is_quiet(),
+        Some(Commands::Remove { output, .. }) => output.plain || output.is_quiet(),
+        Some(Commands::Lock { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::List { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Clean { json, output, .. }) => *json || output.plain || output.is_quiet(),

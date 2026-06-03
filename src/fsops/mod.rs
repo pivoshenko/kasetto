@@ -1,4 +1,5 @@
 mod config;
+mod config_edit;
 mod copy;
 mod dirs;
 mod hash;
@@ -6,6 +7,10 @@ mod http;
 mod settings;
 
 pub(crate) use config::load_config_any;
+pub(crate) use config_edit::{
+    insert_item, item_exists, remove_item, remove_names, Pin, RemoveOutcome, Section, Selector,
+    SourceItem,
+};
 pub(crate) use copy::copy_dir;
 pub(crate) use dirs::{dirs_home, dirs_kasetto_cache, dirs_kasetto_config, dirs_kasetto_data};
 pub(crate) use hash::{hash_dir, hash_file, hash_str};

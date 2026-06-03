@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Reference for kst sync, list, doctor, init, clean, and self-update.
+description: Reference for kst add, remove, lock, sync, list, doctor, init, clean, and self-update.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -19,6 +19,100 @@ kst init [OPTIONS]
 | ---------- | --------------------------------------------------------------------------------- |
 | `--global` | Write `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`) |
 | `--force`  | Overwrite an existing config file without prompting                               |
+
+## `kst add`
+
+Appends a source to your local `kasetto.yaml` and syncs it in — the cargo/uv-style way to grow a config without hand-editing YAML. Comments and formatting in the file are preserved; only the targeted lists gain a new entry.
+
+```bash
+kst add <SOURCE> [OPTIONS]
+```
+
+Kind-tagged flags `--skill`, `--mcp`, and `--command` (each repeatable) name the entries to add. Because skills, MCPs, and commands are separate lists, a single `add` can write to several of them at once — handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
+
+```bash
+kst add https://github.com/anthropics/skills                 # every skill in the pack
+kst add https://github.com/anthropics/skills --skill pptx --skill pdf
+kst add https://github.com/example/repo --skill find --mcp github --command review
+kst add https://github.com/example/pack --branch develop --no-sync
+```
+
+**Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab — `add` decomposes a `blob`/`tree` URL into the repo, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
+
+```bash
+kst add https://github.com/mattpocock/skills/blob/main/skills/personal/edit-article/SKILL.md
+```
+
+writes:
+
+```yaml
+skills:
+  - source: https://github.com/mattpocock/skills
+    branch: main
+    sub-dir: skills/personal
+    skills:
+      - edit-article
+```
+
+A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `branch:` so `--update` keeps tracking it. Explicit `--ref`/`--branch`/`--sub-dir` override the derived pieces — e.g. add a `tree/` URL for the sub-dir and name the skills yourself with `--skill`.
+
+### Options
+
+| Flag                  | Description                                                            |
+| --------------------- | --------------------------------------------------------------------- |
+| `--skill <name>`      | Skill to add (repeatable; `*` for all). Default kind when none given  |
+| `--mcp <name>`        | MCP server to add (repeatable; `*` for all)                           |
+| `--command <name>`    | Command to add (repeatable; `*` for all)                              |
+| `--ref <ref>`         | Pin to a git tag, commit SHA, or ref (conflicts with `--branch`)      |
+| `--branch <branch>`   | Track a specific branch (conflicts with `--ref`)                      |
+| `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands)   |
+| `--config <path>`     | Config file to edit (default: `./kasetto.yaml`); must be a local file |
+| `--no-verify`         | Skip the upfront fetch that validates the source resolves             |
+| `--no-sync`           | Edit the config without installing                                    |
+| `-q`, `--quiet`       | Suppress non-error output                                             |
+| `--color <when>`      | `auto` (default), `always`, or `never`                                |
+| `--project`           | Sync into the current project                                         |
+| `--global`            | Sync globally (default)                                               |
+
+Before writing, `add` fetches the source once to confirm it resolves (and, for a named skill list, that the names exist) — skip with `--no-verify`. Adding a source whose `(source, ref/branch, sub-dir)` identity already exists in a list is rejected; edit it directly or `kst remove` it first. MCP entries never carry `sub-dir` (the schema has none there). Remote configs (HTTPS) can't be edited in place.
+
+## `kst remove`
+
+Deletes entries from your local `kasetto.yaml`, then syncs so the now-unconfigured skills, MCPs, and commands are pruned from disk and the lock. Aliased as `kst rm`.
+
+```bash
+kst remove <SOURCE> [OPTIONS]
+```
+
+`remove` mirrors `add`. The kind-tagged flags `--skill`, `--mcp`, and `--command` (each repeatable) **subtract** named entries from a list; when the last name goes, the whole entry is dropped. A lone `*` value drops that kind's entry outright. With **no** kind flags, the source is removed from every list it appears in.
+
+```bash
+kst remove https://github.com/anthropics/skills               # drop the whole source
+kst remove https://github.com/vercel-labs/skills --skill find-skills
+kst remove https://github.com/example/repo --mcp github --command review
+kst remove https://github.com/example/pack --mcp "*"          # drop the whole mcps entry
+kst rm ./local/pack --no-sync                                 # edit config only
+```
+
+Deep `blob`/`tree` browse URLs are accepted too — they resolve to the same repo-root source `add` would have written, so you can paste the URL you're looking at.
+
+### Options
+
+| Flag                | Description                                                       |
+| ------------------- | ---------------------------------------------------------------- |
+| `--skill <name>`    | Skill to remove (repeatable; `*` drops the whole skills entry)   |
+| `--mcp <name>`      | MCP to remove (repeatable; `*` drops the whole mcps entry)       |
+| `--command <name>`  | Command to remove (repeatable; `*` drops the whole commands entry) |
+| `--ref <ref>`       | Disambiguate by pinned ref when a URL appears more than once      |
+| `--branch <branch>` | Disambiguate by tracked branch                                    |
+| `--config <path>`   | Config file to edit (default: `./kasetto.yaml`); must be local    |
+| `--no-sync`         | Edit the config without pruning installed assets                  |
+| `-q`, `--quiet`     | Suppress non-error output                                         |
+| `--color <when>`    | `auto` (default), `always`, or `never`                           |
+| `--project`         | Prune from the current project                                    |
+| `--global`          | Prune globally (default)                                          |
+
+Subtracting a name from a `"*"` wildcard entry is an error (there are no named entries to drop — use `--<kind> "*"` to remove the whole entry); so is naming a skill that isn't in the list. When several entries share a source URL, pass `--ref` or `--branch` to pick one. Entries inherited via `extends:` live in the parent config and must be removed there.
 
 ## `kst sync`
 
@@ -49,6 +143,34 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 `--dry-run` is great in CI — verify your config without touching anything on disk.
 
 </Callout>
+
+## `kst lock`
+
+Re-resolves every source and pins it into `kasetto.lock` **without installing** to your agent directories — the equivalent of `cargo generate-lockfile` / `uv lock`. Like `sync --update`, it re-resolves moving refs (branches and the default HEAD).
+
+```bash
+kst lock [OPTIONS]
+```
+
+### Options
+
+| Flag                     | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| `--config <path-or-url>` | Path or HTTPS URL to a YAML config (same default order as `sync`) |
+| `--json`                 | Print the result as JSON                              |
+| `-q`, `--quiet`          | Suppress non-error output                             |
+| `--color <when>`         | `auto` (default), `always`, or `never`                |
+| `--project`              | Lock the project scope (`./kasetto.lock`)             |
+| `--global`               | Lock the global scope (default)                       |
+
+Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination — so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
+
+<Callout type="info">
+
+`kst lock` reads remote configs fine (it only writes the lock, never the config). `kst add` / `kst remove`, which rewrite the config, require a local file.
+
+</Callout>
+
 ## `kst list`
 
 Prints a uv-style table of installed assets from the lock file — name, scope, and source per row.

@@ -83,7 +83,15 @@ kst init            # creates ./kasetto.yaml in the current directory
 kst init --global   # or a global one at ~/.config/kasetto/kasetto.yaml
 ```
 
-Edit the generated `kasetto.yaml` — pick an `agent`, add a `skills:` source, and you're ready to sync.
+Edit the generated `kasetto.yaml` — pick an `agent`, add a `skills:` source, and you're ready to sync. Or let Kasetto edit the config for you:
+
+```bash
+kst add https://github.com/anthropics/skills              # add every skill in the pack
+kst add https://github.com/anthropics/skills --skill pptx # or just named ones
+kst add https://github.com/example/repo --skill find --mcp github --command review
+```
+
+`kst add` appends the source (keeping your comments) and syncs it in one step; `kst remove <source>` reverses it. See [cargo/uv-style editing](#commands) below.
 
 **2. Sync skills into your agents:**
 
@@ -120,6 +128,9 @@ kst doctor                  # version, paths, last sync status
 One-line synopsis below. Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
 
 - **`kst init`** — generate a starter `kasetto.yaml` (local or `--global`).
+- **`kst add <source>`** — append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command` name entries (a lone `*` is a wildcard; no flags ⇒ `skills: "*"`), so one `add` can touch several lists. The source can be a deep `blob`/`tree` browse URL — decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--no-sync` edits only.
+- **`kst remove <source>`** (alias `rm`) — drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` disambiguate a repeated URL, `--no-sync` to edit only.
+- **`kst lock`** — re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command revision pins refresh.
 - **`kst sync`** — read config, install skills + MCPs into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
 - **`kst list`** — print a uv-style table of installed skills, MCPs, and commands from the lock file; `--type skills|mcps|commands` filters; `--json` for scripting.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.

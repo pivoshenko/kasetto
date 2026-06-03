@@ -221,6 +221,116 @@ pub(crate) enum Commands {
         sync: SyncArgs,
     },
     #[command(
+        about = "Add a source to the config and sync it",
+        long_about = "Append a skill/MCP/command source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL — the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
+        after_help = crate::cli_examples!(
+            "kasetto add https://github.com/example/skill-pack",
+            "kasetto add https://github.com/example/pack --skill alpha --skill beta",
+            "kasetto add https://github.com/example/pack --skill find --mcp github --command review",
+            "kasetto add https://github.com/org/repo/blob/main/skills/personal/edit-article/SKILL.md",
+            "kasetto add https://github.com/example/pack --ref v2.0 --no-sync",
+        )
+    )]
+    Add {
+        #[arg(value_name = "SOURCE")]
+        #[arg(help = "repo URL, deep blob/tree URL, or local path to add")]
+        source: String,
+        #[arg(long = "skill", value_name = "NAME")]
+        #[arg(help = "skill name to add (repeatable; \"*\" for all)")]
+        skill: Vec<String>,
+        #[arg(long = "mcp", value_name = "NAME")]
+        #[arg(help = "MCP name to add (repeatable; \"*\" for all)")]
+        mcp: Vec<String>,
+        #[arg(long = "command", value_name = "NAME")]
+        #[arg(help = "command name to add (repeatable; \"*\" for all)")]
+        command: Vec<String>,
+        #[arg(long = "ref", value_name = "REF", conflicts_with = "branch")]
+        #[arg(help = "pin to a git tag, commit SHA, or ref")]
+        git_ref: Option<String>,
+        #[arg(long, value_name = "BRANCH", conflicts_with = "git_ref")]
+        #[arg(help = "track a specific branch")]
+        branch: Option<String>,
+        #[arg(long = "sub-dir", value_name = "DIR")]
+        #[arg(help = "subdirectory inside the source to use as the root")]
+        sub_dir: Option<String>,
+        #[arg(long, value_name = "PATH")]
+        #[arg(help = "config file to edit (default: ./kasetto.yaml)")]
+        config: Option<String>,
+        #[arg(long = "no-verify")]
+        #[arg(help = "skip the upfront fetch that validates the source")]
+        no_verify: bool,
+        #[arg(long = "no-sync")]
+        #[arg(help = "edit the config without installing")]
+        no_sync: bool,
+        #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
+        scope: ScopeArgs,
+    },
+    #[command(
+        visible_alias = "rm",
+        about = "Remove a source or named entries from the config and prune them",
+        long_about = "Delete entries from your local kasetto.yaml (preserving comments), then run a sync so the now-unconfigured assets are removed from disk and the lock.\n\nMirrors `add`: the kind-tagged flags --skill / --mcp / --command (each repeatable) name entries to subtract from a list; when the last name goes, the whole entry is dropped. A lone `*` value (e.g. --mcp \"*\") drops that kind's whole entry. With no kind flags, the source is removed from every list it appears in.\n\nThe source may be a repo URL or a deep blob/tree browse URL. When multiple entries share a source URL, pass --ref or --branch to pick one. Use --no-sync to edit the config without pruning.",
+        after_help = crate::cli_examples!(
+            "kasetto remove https://github.com/example/skill-pack",
+            "kasetto remove https://github.com/example/pack --skill find-skills",
+            "kasetto remove https://github.com/example/repo --mcp github --command review",
+            "kasetto remove https://github.com/example/pack --mcp \"*\"",
+            "kasetto rm ./local/pack --no-sync",
+        )
+    )]
+    Remove {
+        #[arg(value_name = "SOURCE")]
+        #[arg(help = "repo URL, deep blob/tree URL, or local path to remove")]
+        source: String,
+        #[arg(long = "skill", value_name = "NAME")]
+        #[arg(help = "skill name to remove (repeatable; \"*\" drops the whole entry)")]
+        skill: Vec<String>,
+        #[arg(long = "mcp", value_name = "NAME")]
+        #[arg(help = "MCP name to remove (repeatable; \"*\" drops the whole entry)")]
+        mcp: Vec<String>,
+        #[arg(long = "command", value_name = "NAME")]
+        #[arg(help = "command name to remove (repeatable; \"*\" drops the whole entry)")]
+        command: Vec<String>,
+        #[arg(long = "ref", value_name = "REF", conflicts_with = "branch")]
+        #[arg(help = "disambiguate by pinned ref")]
+        git_ref: Option<String>,
+        #[arg(long, value_name = "BRANCH", conflicts_with = "git_ref")]
+        #[arg(help = "disambiguate by tracked branch")]
+        branch: Option<String>,
+        #[arg(long, value_name = "PATH")]
+        #[arg(help = "config file to edit (default: ./kasetto.yaml)")]
+        config: Option<String>,
+        #[arg(long = "no-sync")]
+        #[arg(help = "edit the config without pruning installed assets")]
+        no_sync: bool,
+        #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
+        scope: ScopeArgs,
+    },
+    #[command(
+        about = "Resolve the config and pin it into kasetto.lock",
+        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree — identical to the hash a later sync computes at the destination — so the lock is immediately usable with `sync --locked`. MCP/command entries get refreshed revision pins; their content hash fills in on the next sync.",
+        after_help = crate::cli_examples!(
+            "kasetto lock",
+            "kasetto lock --project",
+            "kasetto lock --config https://example.com/kasetto.yaml",
+        )
+    )]
+    Lock {
+        #[arg(long, value_name = "PATH")]
+        #[arg(help = "config path or HTTP(S) URL")]
+        config: Option<String>,
+        #[arg(long)]
+        #[arg(help = "print the result as JSON")]
+        json: bool,
+        #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
+        scope: ScopeArgs,
+    },
+    #[command(
         about = "List installed skills, MCPs, and commands",
         long_about = "Read installed assets from the lock file and print them as plain tables.\n\nFilter the output with `--type skills|mcps|commands|all` (default: all). Use --json for scripting.",
         after_help = crate::cli_examples!(
