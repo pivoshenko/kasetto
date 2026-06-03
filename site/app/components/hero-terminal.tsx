@@ -89,6 +89,7 @@ type EditStep =
   | "add-resolving"
   | "add-running"
   | "add-done"
+  | "clear-after-add"
   | "rm-typing"
   | "rm-resolving"
   | "rm-running"
@@ -208,6 +209,8 @@ export function HeroTerminal() {
   useEffect(() => {
     if (scene !== "edit" || step !== "add-typing") return;
     if (reduced) {
+      // Land on the final remove screen so reduced-motion users still see what
+      // the remove flow looks like (the add output has already played through).
       setAddTyped(ADD_COMMAND.length);
       setAddItemShown(true);
       setRmTyped(REMOVE_COMMAND.length);
@@ -239,10 +242,16 @@ export function HeroTerminal() {
     };
   }, [scene, step]);
 
-  // add settled → start typing the remove command in the same session
+  // add settled → hold briefly → clear screen → start typing remove
   useEffect(() => {
     if (scene !== "edit" || step !== "add-done") return;
-    const t = setTimeout(() => setStep("rm-typing"), 1400);
+    const t = setTimeout(() => setStep("clear-after-add"), 2200);
+    return () => clearTimeout(t);
+  }, [scene, step]);
+
+  useEffect(() => {
+    if (scene !== "edit" || step !== "clear-after-add") return;
+    const t = setTimeout(() => setStep("rm-typing"), 280);
     return () => clearTimeout(t);
   }, [scene, step]);
 
@@ -305,6 +314,7 @@ export function HeroTerminal() {
     "add-resolving",
     "add-running",
     "add-done",
+    "clear-after-add",
     "rm-typing",
     "rm-resolving",
     "rm-running",
@@ -313,12 +323,22 @@ export function HeroTerminal() {
   const stepIdx = scene === "edit" ? stepOrder.indexOf(step) : -1;
   const past = (s: EditStep) => stepIdx > stepOrder.indexOf(s);
   const inOrPast = (s: EditStep) => stepIdx >= stepOrder.indexOf(s);
+  // True while we're still in any of the add-* steps. The screen "clears" once
+  // we move into clear-after-add: every add-* element hides so the remove
+  // session starts on an empty terminal.
+  const inAddPhase =
+    scene === "edit" &&
+    (step === "add-typing" ||
+      step === "add-resolving" ||
+      step === "add-running" ||
+      step === "add-done");
 
   const addTypingCursor = scene === "edit" && step === "add-typing";
-  const addLineVisible = scene === "edit" && past("add-typing");
-  const addResolvedVisible = scene === "edit" && inOrPast("add-resolving");
-  const addGroupVisible = scene === "edit" && inOrPast("add-running");
-  const addSummaryVisible = scene === "edit" && inOrPast("add-done");
+  const addLineVisible = inAddPhase && past("add-typing");
+  const addResolvedVisible = inAddPhase && inOrPast("add-resolving");
+  const addGroupVisible = inAddPhase && inOrPast("add-running");
+  const addSummaryVisible = inAddPhase && inOrPast("add-done");
+  const addPromptVisible = inAddPhase;
 
   const rmPromptVisible = scene === "edit" && inOrPast("rm-typing");
   const rmTypingCursor = scene === "edit" && step === "rm-typing";
@@ -444,16 +464,18 @@ export function HeroTerminal() {
 
           {scene === "edit" && (
             <>
-              <div className="t-line">
-                <span className="t-prompt">❯</span>
-                <span>
-                  <span className="t-fg">kst </span>
-                  <span className="t-amber">
-                    {addTyped > 4 ? ADD_COMMAND.slice(4, addTyped) : ""}
+              {addPromptVisible && (
+                <div className="t-line">
+                  <span className="t-prompt">❯</span>
+                  <span>
+                    <span className="t-fg">kst </span>
+                    <span className="t-amber">
+                      {addTyped > 4 ? ADD_COMMAND.slice(4, addTyped) : ""}
+                    </span>
                   </span>
-                </span>
-                {addTypingCursor && <span className="t-cursor" aria-hidden />}
-              </div>
+                  {addTypingCursor && <span className="t-cursor" aria-hidden />}
+                </div>
+              )}
 
               {addLineVisible && (
                 <div className="t-line">
