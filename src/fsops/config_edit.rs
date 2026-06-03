@@ -725,6 +725,32 @@ mod tests {
     }
 
     #[test]
+    fn remove_last_item_leaves_bare_section_header() {
+        // Dropping the final entry of a section leaves the section header
+        // behind without trailing whitespace; a later `insert_item` can repopulate.
+        let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n";
+        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None).unwrap();
+        assert!(removed);
+        assert_eq!(out, "skills:\n");
+        let reinserted = insert_item(&out, Section::Skills, &wildcard("https://x/b")).unwrap();
+        assert_eq!(
+            reinserted,
+            "skills:\n  - source: https://x/b\n    skills: \"*\"\n"
+        );
+    }
+
+    #[test]
+    fn remove_last_named_item_collapses_then_can_be_reused() {
+        // The same invariant for the names path: stripping the last name drops
+        // the entry, leaving only the section header.
+        let text = "mcps:\n  - source: https://x/a\n    mcps:\n      - foo\n";
+        let (out, outcome) =
+            remove_names(text, Section::Mcps, "https://x/a", None, &["foo".into()]).unwrap();
+        assert_eq!(outcome, RemoveOutcome::WholeItem);
+        assert_eq!(out, "mcps:\n");
+    }
+
+    #[test]
     fn remove_then_insert_round_trips_indentation() {
         // Four-space-indented list must round-trip without breaking the sequence.
         let text = "skills:\n    - source: https://x/a\n      skills: \"*\"\n";

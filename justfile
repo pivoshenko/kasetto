@@ -67,21 +67,4 @@ sync-config:
     node scripts/sync-config-example.mjs
     cd site && pnpm exec biome format --write app/components/feature-tabs.tsx
 
-demo-vhs:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    command -v vhs >/dev/null || { echo "vhs not installed — https://github.com/charmbracelet/vhs" >&2; exit 1; }
-    command -v kst >/dev/null || { echo "kst not on PATH — run 'cargo install --path .' first" >&2; exit 1; }
-    command -v bat >/dev/null || { echo "bat not installed — brew install bat" >&2; exit 1; }
-    stage=$(mktemp -d)
-    trap 'rm -rf "$stage"' EXIT
-    curl -fsSL https://raw.githubusercontent.com/pivoshenko/pivoshenko.ai/main/kasetto.yaml -o "$stage/kasetto.yaml"
-    cp assets/scripts/demo.tape "$stage/demo.tape"
-    ( cd "$stage" && vhs demo.tape )
-    mv "$stage/demo.gif" assets/demo.gif
-    echo "rendered → assets/demo.gif"
-
-demo-fish:
-    fish assets/scripts/demo.fish
-
 check: format lint test build

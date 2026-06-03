@@ -22,10 +22,9 @@ async function getStars(): Promise<string | null> {
 
 async function getLatestRelease(): Promise<string | null> {
   try {
-    const res = await fetch(
-      "https://api.github.com/repos/pivoshenko/kasetto/releases/latest",
-      { next: { revalidate: 3600 } },
-    );
+    const res = await fetch("https://api.github.com/repos/pivoshenko/kasetto/releases/latest", {
+      next: { revalidate: 3600 },
+    });
     if (!res.ok) return null;
     const data = (await res.json()) as { tag_name?: string };
     return data.tag_name ?? null;

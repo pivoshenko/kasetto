@@ -56,6 +56,9 @@ pub fn run() -> Result<()> {
                 config,
                 no_verify,
                 no_sync,
+                dry_run,
+                locked,
+                json,
                 output,
                 scope,
             } => crate::commands::add::run(&crate::commands::add::AddOptions {
@@ -70,7 +73,10 @@ pub fn run() -> Result<()> {
                 scope_override: scope.scope_override(),
                 no_verify,
                 no_sync,
-                quiet: output.is_quiet(),
+                dry_run,
+                locked,
+                as_json: json,
+                quiet: output.quiet,
                 plain: output.resolve_plain(),
             }),
             Commands::Remove {
@@ -82,6 +88,9 @@ pub fn run() -> Result<()> {
                 branch,
                 config,
                 no_sync,
+                dry_run,
+                locked,
+                json,
                 output,
                 scope,
             } => crate::commands::remove::run(&crate::commands::remove::RemoveOptions {
@@ -94,12 +103,17 @@ pub fn run() -> Result<()> {
                 config: config.as_deref(),
                 scope_override: scope.scope_override(),
                 no_sync,
-                quiet: output.is_quiet(),
+                dry_run,
+                locked,
+                as_json: json,
+                quiet: output.quiet,
                 plain: output.resolve_plain(),
             }),
             Commands::Lock {
                 config,
                 json,
+                check,
+                upgrade_package,
                 output,
                 scope,
             } => {
@@ -110,7 +124,9 @@ pub fn run() -> Result<()> {
                     config: config.as_deref(),
                     scope_override: scope.scope_override(),
                     as_json: json,
-                    quiet: output.is_quiet(),
+                    quiet: output.quiet,
+                    check,
+                    upgrade_only: upgrade_package,
                 })
             }
             Commands::List {
@@ -175,8 +191,8 @@ pub fn run() -> Result<()> {
 fn should_suppress_notice(command: &Option<Commands>) -> bool {
     match command {
         Some(Commands::Sync { sync }) => sync.json || sync.plain || sync.is_quiet(),
-        Some(Commands::Add { output, .. }) => output.plain || output.is_quiet(),
-        Some(Commands::Remove { output, .. }) => output.plain || output.is_quiet(),
+        Some(Commands::Add { json, output, .. }) => *json || output.plain || output.is_quiet(),
+        Some(Commands::Remove { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Lock { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::List { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.is_quiet(),

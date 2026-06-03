@@ -32,9 +32,11 @@ Kind-tagged flags `--skill`, `--mcp`, and `--command` (each repeatable) name the
 
 ```bash
 kst add https://github.com/anthropics/skills                 # every skill in the pack
+kst add https://github.com/anthropics/skills@v1.2.0           # `@<ref>` shorthand (cargo/uv-style)
 kst add https://github.com/anthropics/skills --skill pptx --skill pdf
 kst add https://github.com/example/repo --skill find --mcp github --command review
 kst add https://github.com/example/pack --branch develop --no-sync
+kst add https://github.com/example/pack --dry-run             # preview the edit, don't write
 ```
 
 **Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab — `add` decomposes a `blob`/`tree` URL into the repo, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
@@ -69,12 +71,17 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | `--config <path>`     | Config file to edit (default: `./kasetto.yaml`); must be a local file |
 | `--no-verify`         | Skip the upfront fetch that validates the source resolves             |
 | `--no-sync`           | Edit the config without installing                                    |
-| `-q`, `--quiet`       | Suppress non-error output                                             |
+| `--dry-run`           | Preview the edit without writing the config or syncing                |
+| `--locked`, `--frozen` | During the follow-up sync, never fetch; honor the lock               |
+| `--json`              | Print the edit summary as JSON                                        |
+| `-q`, `--quiet`       | Suppress non-error output (repeat for stricter silence)               |
 | `--color <when>`      | `auto` (default), `always`, or `never`                                |
 | `--project`           | Sync into the current project                                         |
 | `--global`            | Sync globally (default)                                               |
 
 Before writing, `add` fetches the source once to confirm it resolves (and, for a named skill list, that the names exist) — skip with `--no-verify`. Adding a source whose `(source, ref/branch, sub-dir)` identity already exists in a list is rejected; edit it directly or `kst remove` it first. MCP entries never carry `sub-dir` (the schema has none there). Remote configs (HTTPS) can't be edited in place.
+
+The `<SOURCE>@<REF>` shorthand (cargo/uv-style) splits the trailing `@<ref>` off the positional and is equivalent to `--ref <REF>`. Passing both the shorthand and `--ref`/`--branch` is rejected. SSH (`git@host:org/repo`) and URLs with userinfo (`https://user@host/repo`) round-trip unchanged.
 
 ## `kst remove`
 
@@ -88,9 +95,11 @@ kst remove <SOURCE> [OPTIONS]
 
 ```bash
 kst remove https://github.com/anthropics/skills               # drop the whole source
+kst remove https://github.com/anthropics/skills@v1.2.0         # disambiguate via `@<ref>` shorthand
 kst remove https://github.com/vercel-labs/skills --skill find-skills
 kst remove https://github.com/example/repo --mcp github --command review
 kst remove https://github.com/example/pack --mcp "*"          # drop the whole mcps entry
+kst remove https://github.com/example/pack --dry-run          # preview, don't write
 kst rm ./local/pack --no-sync                                 # edit config only
 ```
 
@@ -107,7 +116,10 @@ Deep `blob`/`tree` browse URLs are accepted too — they resolve to the same rep
 | `--branch <branch>` | Disambiguate by tracked branch                                    |
 | `--config <path>`   | Config file to edit (default: `./kasetto.yaml`); must be local    |
 | `--no-sync`         | Edit the config without pruning installed assets                  |
-| `-q`, `--quiet`     | Suppress non-error output                                         |
+| `--dry-run`         | Preview the edit without writing the config or pruning            |
+| `--locked`, `--frozen` | During the follow-up sync, never fetch; honor the lock         |
+| `--json`            | Print the edit summary as JSON                                    |
+| `-q`, `--quiet`     | Suppress non-error output (repeat for stricter silence)           |
 | `--color <when>`    | `auto` (default), `always`, or `never`                           |
 | `--project`         | Prune from the current project                                    |
 | `--global`          | Prune globally (default)                                          |
@@ -158,7 +170,9 @@ kst lock [OPTIONS]
 | ------------------------ | ------------------------------------------------------ |
 | `--config <path-or-url>` | Path or HTTPS URL to a YAML config (same default order as `sync`) |
 | `--json`                 | Print the result as JSON                              |
-| `-q`, `--quiet`          | Suppress non-error output                             |
+| `--check`, `--locked`, `--frozen` | Verify the lock matches the config without writing; exit 1 on drift |
+| `-P`, `--upgrade-package <name>...` | Only re-resolve sources providing these skills (mirrors `sync --update <name>...`) |
+| `-q`, `--quiet`          | Suppress non-error output (repeat for stricter silence) |
 | `--color <when>`         | `auto` (default), `always`, or `never`                |
 | `--project`              | Lock the project scope (`./kasetto.lock`)             |
 | `--global`               | Lock the global scope (default)                       |
