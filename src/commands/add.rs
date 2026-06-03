@@ -49,6 +49,18 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     if opts.git_ref.is_some() && opts.branch.is_some() {
         return Err(err("--ref and --branch are mutually exclusive"));
     }
+    // `--locked` forbids fetching, but a brand-new source has no lock entry yet
+    // — the follow-up sync would fail mid-flight after the manifest edit. Reject
+    // the combination up front and point at the two valid workflows. cargo
+    // follows the same "lock would need updating but --locked was passed" model.
+    if opts.locked && !opts.no_sync {
+        return Err(err(
+            "`--locked` on `add` requires `--no-sync` — a newly added source \
+             cannot be installed without fetching. Either pass `--no-sync --locked` \
+             (edit the manifest only, then run `kasetto lock` + `kasetto sync --locked` \
+             to install offline), or drop `--locked` to fetch the new source now.",
+        ));
+    }
     let path = super::source_edit::resolve_local_config_path(opts.config)?;
 
     // Strip cargo/uv-style `@<ref>` shorthand off the positional before any
