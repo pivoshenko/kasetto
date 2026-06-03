@@ -36,6 +36,13 @@ kst init
 
 Use `kst init --global` to create `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`).
 
+Or let Kasetto edit the config for you — `kst add <source>` appends a source (preserving your comments) and syncs it in, and `kst remove <source>` reverses it, the cargo/uv way:
+
+```bash
+kst add https://github.com/org/skill-pack                  # add every skill
+kst add https://github.com/org/skill-pack --skill code-reviewer   # or just named ones
+```
+
 Or create a `kasetto.yaml` by hand:
 
 ```yaml

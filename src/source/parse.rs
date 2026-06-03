@@ -114,6 +114,88 @@ fn path_segments(path: &str) -> Vec<&str> {
     path.split('/').filter(|s| !s.is_empty()).collect()
 }
 
+/// A repo-browse URL decomposed into the pieces `add` needs: the repo root, the
+/// pinned ref, the sub-directory, and (when the URL points at a `SKILL.md`) the
+/// skill name. Lets a user paste the exact URL they're looking at.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct BrowseDerived {
+    pub source: String,
+    pub branch: Option<String>,
+    pub git_ref: Option<String>,
+    pub sub_dir: Option<String>,
+    pub skill_name: Option<String>,
+}
+
+/// Decompose a GitHub/Gitea/GitLab `blob`/`tree` browse URL. Returns `None` for
+/// plain repo URLs and local paths (the caller uses the source verbatim).
+///
+/// - `…/{owner}/{repo}/blob/{ref}/{path}/SKILL.md` → sub-dir = parent of the
+///   skill dir, skill_name = the skill dir's name.
+/// - `…/{owner}/{repo}/tree/{ref}/{path}` → sub-dir = `{path}`, no name.
+/// - GitLab uses a `/-/` separator before `blob`/`tree`.
+/// - A 40-hex `{ref}` is stored as `git_ref` (pinned); anything else as `branch`
+///   (so `--update` keeps tracking it). Explicit flags override either.
+pub(crate) fn derive_browse_url(url: &str) -> Option<BrowseDerived> {
+    let scheme = if url.starts_with("https://") {
+        "https://"
+    } else if url.starts_with("http://") {
+        "http://"
+    } else {
+        return None;
+    };
+    let without = url.trim_end_matches('/').strip_prefix(scheme)?;
+    let segs: Vec<&str> = without.split('/').filter(|s| !s.is_empty()).collect();
+
+    // Need at least host/owner/repo/<marker>/<ref>.
+    let marker = segs.iter().position(|s| *s == "blob" || *s == "tree")?;
+    if marker < 3 || marker + 1 >= segs.len() {
+        return None;
+    }
+
+    // Repo path is everything before the marker, dropping a trailing GitLab `-`.
+    let mut repo_end = marker;
+    if segs[repo_end - 1] == "-" {
+        repo_end -= 1;
+    }
+    if repo_end < 3 {
+        return None;
+    }
+    let host_and_repo = segs[..repo_end].join("/");
+    let source = format!("{scheme}{host_and_repo}");
+
+    let git_ref_seg = segs[marker + 1];
+    let rest: Vec<&str> = segs[marker + 2..].to_vec();
+
+    let (sub_dir, skill_name) = if rest.last() == Some(&"SKILL.md") {
+        let skill_segs = &rest[..rest.len() - 1];
+        match skill_segs.split_last() {
+            Some((name, parent)) => {
+                let sub = (!parent.is_empty()).then(|| parent.join("/"));
+                (sub, Some((*name).to_string()))
+            }
+            None => (None, None),
+        }
+    } else {
+        let sub = (!rest.is_empty()).then(|| rest.join("/"));
+        (sub, None)
+    };
+
+    let is_sha = git_ref_seg.len() == 40 && git_ref_seg.bytes().all(|b| b.is_ascii_hexdigit());
+    let (branch, git_ref) = if is_sha {
+        (None, Some(git_ref_seg.to_string()))
+    } else {
+        (Some(git_ref_seg.to_string()), None)
+    };
+
+    Some(BrowseDerived {
+        source,
+        branch,
+        git_ref,
+        sub_dir,
+        skill_name,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,6 +276,53 @@ mod tests {
             ),
             "expected Bitbucket URL"
         );
+    }
+
+    #[test]
+    fn derive_blob_skill_md_splits_subdir_and_name() {
+        let d = derive_browse_url(
+            "https://github.com/mattpocock/skills/blob/main/skills/personal/edit-article/SKILL.md",
+        )
+        .expect("derive");
+        assert_eq!(d.source, "https://github.com/mattpocock/skills");
+        assert_eq!(d.branch.as_deref(), Some("main"));
+        assert_eq!(d.git_ref, None);
+        assert_eq!(d.sub_dir.as_deref(), Some("skills/personal"));
+        assert_eq!(d.skill_name.as_deref(), Some("edit-article"));
+    }
+
+    #[test]
+    fn derive_tree_uses_path_as_subdir_no_name() {
+        let d = derive_browse_url("https://github.com/mattpocock/skills/tree/main/skills/personal")
+            .expect("derive");
+        assert_eq!(d.source, "https://github.com/mattpocock/skills");
+        assert_eq!(d.branch.as_deref(), Some("main"));
+        assert_eq!(d.sub_dir.as_deref(), Some("skills/personal"));
+        assert_eq!(d.skill_name, None);
+    }
+
+    #[test]
+    fn derive_sha_ref_is_pinned_not_branch() {
+        let sha = "a".repeat(40);
+        let d =
+            derive_browse_url(&format!("https://github.com/o/r/tree/{sha}/pack")).expect("derive");
+        assert_eq!(d.git_ref.as_deref(), Some(sha.as_str()));
+        assert_eq!(d.branch, None);
+    }
+
+    #[test]
+    fn derive_gitlab_dash_separator() {
+        let d = derive_browse_url("https://gitlab.com/group/proj/-/tree/main/skills/a")
+            .expect("derive");
+        assert_eq!(d.source, "https://gitlab.com/group/proj");
+        assert_eq!(d.branch.as_deref(), Some("main"));
+        assert_eq!(d.sub_dir.as_deref(), Some("skills/a"));
+    }
+
+    #[test]
+    fn derive_plain_repo_url_is_none() {
+        assert_eq!(derive_browse_url("https://github.com/owner/repo"), None);
+        assert_eq!(derive_browse_url("./local/pack"), None);
     }
 
     #[test]
