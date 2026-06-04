@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2026-06-04
+
+### Bug fixes
+
+- **commands**: Match remove by sub-dir from deep browse URLs
+
+### CI/CD
+
+- Rename Deploy Site workflow to Site
+- Drop manual site deploy workflow and rename labels workflow
+
+### Documentation
+
+- **assets**: Tighten social preview centering
+- **assets**: Drop terminal chrome from social preview, center wordmark
+- **assets**: Restore ascii wordmark in social preview, use jetbrains mono
+- **assets**: Redesign social preview with clean wordmark
+- **readme**: Color inline status words (updated/added/removed) in demo svg
+- **readme**: Bust camo cache for demo svg
+- **readme**: Reflow demo svg into two columns for shorter full-width display
+- **readme**: Scale demo svg to 50% width, centered
+- **readme**: Shrink demo svg further (376h, 12px font, 11px rows)
+- **readme**: Compress demo svg vertically, restore full width
+- **readme**: Shrink demo svg to 720px and center
+- **readme**: Split about-the-name into its own paragraph
+- **readme**: Drop resolving spinner, move name blurb below demo
+- **readme**: Compress demo svg vertically
+- **readme**: Add resolving spinner, rename to demo.svg, span full width
+- **readme**: Fix mock totals and hoist the demo above why-kasetto
+- **readme**: Swap static mock for animated svg
+- **readme**: Mirror the site's sync output mock
+
+### Features
+
+- **commands**: Guard add --locked + split add/remove into separate demo screens
+- **commands**: Cargo/uv-style flags on add/remove/lock + two-scene demo
+- **commands**: Add cargo/uv-style add, remove, and lock subcommands
+- **site**: Show latest release next to stars and refresh og image
+
+### Revert
+
+- **readme**: Drop two-column demo layout, restore single column
+
 ## [3.0.0] - 2026-06-01
 
 ### Bug fixes
@@ -79,6 +122,10 @@ All notable changes to this project will be documented in this file.
 
 - Drop crossterm dependency and TUI scaffolding
 - **deps**: Update cargo lockfile
+
+### Release
+
+- V3.0.0
 
 ## [2.12.0] - 2026-05-25
 
