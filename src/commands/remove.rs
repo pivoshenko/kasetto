@@ -9,7 +9,7 @@ use std::fs;
 use crate::colors::{INFO, RESET};
 use crate::error::{err, Result};
 use crate::model::Scope;
-use crate::source::derive_browse_url;
+use crate::source::{derive_browse_url, BrowseDerived};
 use crate::ui::{print_json, print_tip};
 
 use crate::fsops::{remove_item, remove_names, RemoveOutcome, Section};
@@ -21,6 +21,7 @@ pub(crate) struct RemoveOptions<'a> {
     pub commands: &'a [String],
     pub git_ref: Option<&'a str>,
     pub branch: Option<&'a str>,
+    pub sub_dir: Option<&'a str>,
     pub config: Option<&'a str>,
     pub scope_override: Option<Scope>,
     pub no_sync: bool,
@@ -53,11 +54,24 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
         ));
     }
 
-    // A deep browse URL identifies the same source `add` would have written.
-    let source = derive_browse_url(&raw_source)
-        .map(|d| d.source)
-        .unwrap_or(raw_source);
-    let pin = opts.git_ref.or(opts.branch).or(at_ref.as_deref());
+    // A deep browse URL writes `source` + `ref`/`branch` + `sub-dir` (see
+    // `add`); honor the same identity here so a pasted deep URL targets the
+    // exact entry. Explicit flags override the derived pieces.
+    let derived = derive_browse_url(&raw_source).unwrap_or_else(|| BrowseDerived {
+        source: raw_source.clone(),
+        ..Default::default()
+    });
+    let source = derived.source.clone();
+    let derived_pin = derived
+        .git_ref
+        .as_deref()
+        .or(derived.branch.as_deref());
+    let pin = opts
+        .git_ref
+        .or(opts.branch)
+        .or(at_ref.as_deref())
+        .or(derived_pin);
+    let sub_dir = opts.sub_dir.or(derived.sub_dir.as_deref());
 
     let kinds = [
         (Section::Skills, opts.skills),
@@ -67,9 +81,9 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
     let any_kind = kinds.iter().any(|(_, names)| !names.is_empty());
 
     let removed = if any_kind {
-        remove_by_kind(&mut text, &source, pin, &kinds)?
+        remove_by_kind(&mut text, &source, pin, sub_dir, &kinds)?
     } else {
-        remove_whole_source(&mut text, &source, pin)?
+        remove_whole_source(&mut text, &source, pin, sub_dir)?
     };
 
     if opts.dry_run {
@@ -95,10 +109,22 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
 }
 
 /// No kind flags: drop the source's entry from every list it appears in.
-fn remove_whole_source(text: &mut String, source: &str, pin: Option<&str>) -> Result<Vec<Removed>> {
+fn remove_whole_source(
+    text: &mut String,
+    source: &str,
+    pin: Option<&str>,
+    sub_dir: Option<&str>,
+) -> Result<Vec<Removed>> {
     let mut removed = Vec::new();
     for section in [Section::Skills, Section::Mcps, Section::Commands] {
-        let (updated, did) = remove_item(text, section, source, pin)?;
+        // MCP entries never carry sub-dir; don't let a deep-URL sub-dir filter
+        // them out when the user is dropping the source from every list.
+        let section_sub = if section == Section::Mcps {
+            None
+        } else {
+            sub_dir
+        };
+        let (updated, did) = remove_item(text, section, source, pin, section_sub)?;
         if did {
             *text = updated;
             removed.push(Removed {
@@ -121,6 +147,7 @@ fn remove_by_kind(
     text: &mut String,
     source: &str,
     pin: Option<&str>,
+    sub_dir: Option<&str>,
     kinds: &[(Section, &[String])],
 ) -> Result<Vec<Removed>> {
     let mut removed = Vec::new();
@@ -128,8 +155,15 @@ fn remove_by_kind(
         if names.is_empty() {
             continue;
         }
+        // MCP entries never carry sub-dir (the schema has no such field there);
+        // pass None to avoid filtering MCPs out when sub-dir came from a deep URL.
+        let section_sub = if *section == Section::Mcps {
+            None
+        } else {
+            sub_dir
+        };
         if names.len() == 1 && names[0] == "*" {
-            let (updated, did) = remove_item(text, *section, source, pin)?;
+            let (updated, did) = remove_item(text, *section, source, pin, section_sub)?;
             if !did {
                 return Err(err(format!("`{source}` not found in `{}:`", section.key())));
             }
@@ -140,7 +174,7 @@ fn remove_by_kind(
             });
             continue;
         }
-        let (updated, outcome) = remove_names(text, *section, source, pin, names)?;
+        let (updated, outcome) = remove_names(text, *section, source, pin, section_sub, names)?;
         match outcome {
             RemoveOutcome::NotFound => {
                 return Err(err(format!("`{source}` not found in `{}:`", section.key())));

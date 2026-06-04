@@ -163,6 +163,15 @@ pub(crate) fn derive_browse_url(url: &str) -> Option<BrowseDerived> {
     let host_and_repo = segs[..repo_end].join("/");
     let source = format!("{scheme}{host_and_repo}");
 
+    // TODO: branches that contain `/` (`feature/foo`, `release/2026-Q1`) are
+    // genuinely ambiguous from URL syntax alone — `…/tree/feature/foo/skills/a`
+    // could be ref `feature` + subdir `foo/skills/a` *or* ref `feature/foo` +
+    // subdir `skills/a`. We take the first segment as the ref, which matches
+    // the most common case (single-segment branches, tags, SHAs). For a proper
+    // fix, probe the host's branches API for the longest existing prefix.
+    // Today's failure modes: with verify on (the default), `add` errors at
+    // fetch time; with `--no-verify`, a wrong entry can be written — override
+    // with explicit `--branch` + `--sub-dir` in that case.
     let git_ref_seg = segs[marker + 1];
     let rest: Vec<&str> = segs[marker + 2..].to_vec();
 
