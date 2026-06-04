@@ -311,6 +311,9 @@ pub(crate) enum Commands {
         #[arg(long, value_name = "BRANCH", conflicts_with = "git_ref")]
         #[arg(help = "disambiguate by tracked branch")]
         branch: Option<String>,
+        #[arg(long = "sub-dir", value_name = "PATH")]
+        #[arg(help = "disambiguate by sub-dir (or pass a deep blob/tree URL)")]
+        sub_dir: Option<String>,
         #[arg(long, value_name = "PATH")]
         #[arg(help = "config file to edit (default: ./kasetto.yaml)")]
         config: Option<String>,

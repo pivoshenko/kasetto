@@ -146,12 +146,15 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
     Ok(join_lines(lines, text))
 }
 
-/// Find the single section item matching `source` (and `pin`, when given).
-/// `Ok(None)` for no match; `Err` when ambiguous (same source, differing pins).
+/// Find the single section item matching `source` (and `pin` / `sub_dir`, when
+/// given). `Ok(None)` for no match; `Err` when ambiguous (same source, same
+/// filters, multiple entries). `sub_dir == Some("")` matches entries that have
+/// no `sub-dir:` field.
 fn find_match<'a>(
     items: &'a [ParsedItem],
     source: &str,
     pin: Option<&str>,
+    sub_dir: Option<&str>,
     key: &str,
 ) -> Result<Option<&'a ParsedItem>> {
     let matches: Vec<&ParsedItem> = items
@@ -161,12 +164,16 @@ fn find_match<'a>(
             Some(p) => it.pin.as_deref() == Some(p),
             None => true,
         })
+        .filter(|it| match sub_dir {
+            Some(s) => it.sub_dir.as_deref().unwrap_or("") == s,
+            None => true,
+        })
         .collect();
     match matches.len() {
         0 => Ok(None),
         1 => Ok(Some(matches[0])),
         _ => Err(err(format!(
-            "multiple `{source}` entries in `{key}:`; pass --ref or --branch to disambiguate"
+            "multiple `{source}` entries in `{key}:`; pass --ref, --branch, or --sub-dir to disambiguate"
         ))),
     }
 }
@@ -179,6 +186,7 @@ pub(crate) fn remove_item(
     section: Section,
     source: &str,
     pin: Option<&str>,
+    sub_dir: Option<&str>,
 ) -> Result<(String, bool)> {
     let mut lines = split_lines(text);
     let key = section.key();
@@ -189,7 +197,7 @@ pub(crate) fn remove_item(
     let sec_end = next_top_level(&lines, idx + 1);
     let items = parse_items(&lines, idx + 1, sec_end);
 
-    match find_match(&items, source, pin, key)? {
+    match find_match(&items, source, pin, sub_dir, key)? {
         None => Ok((text.to_string(), false)),
         Some(it) => {
             let (start, end) = (it.start, it.end);
@@ -209,6 +217,7 @@ pub(crate) fn remove_names(
     section: Section,
     source: &str,
     pin: Option<&str>,
+    sub_dir: Option<&str>,
     names: &[String],
 ) -> Result<(String, RemoveOutcome)> {
     let mut lines = split_lines(text);
@@ -220,7 +229,7 @@ pub(crate) fn remove_names(
     };
     let sec_end = next_top_level(&lines, idx + 1);
     let items = parse_items(&lines, idx + 1, sec_end);
-    let Some(it) = find_match(&items, source, pin, key)? else {
+    let Some(it) = find_match(&items, source, pin, sub_dir, key)? else {
         return Ok((text.to_string(), RemoveOutcome::NotFound));
     };
     let (istart, iend) = (it.start, it.end);
@@ -586,7 +595,7 @@ mod tests {
     #[test]
     fn remove_deletes_only_the_matching_item() {
         let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n  - source: https://x/b\n    skills: \"*\"\n";
-        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None).unwrap();
+        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None, None).unwrap();
         assert!(removed);
         assert_eq!(out, "skills:\n  - source: https://x/b\n    skills: \"*\"\n");
     }
@@ -594,7 +603,7 @@ mod tests {
     #[test]
     fn remove_absent_source_is_noop() {
         let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n";
-        let (out, removed) = remove_item(text, Section::Skills, "https://x/z", None).unwrap();
+        let (out, removed) = remove_item(text, Section::Skills, "https://x/z", None, None).unwrap();
         assert!(!removed);
         assert_eq!(out, text);
     }
@@ -602,17 +611,43 @@ mod tests {
     #[test]
     fn remove_ambiguous_without_pin_errors() {
         let text = "skills:\n  - source: https://x/a\n    ref: v1\n    skills: \"*\"\n  - source: https://x/a\n    ref: v2\n    skills: \"*\"\n";
-        let err = remove_item(text, Section::Skills, "https://x/a", None).unwrap_err();
+        let err = remove_item(text, Section::Skills, "https://x/a", None, None).unwrap_err();
         assert!(err.to_string().contains("disambiguate"));
     }
 
     #[test]
     fn remove_disambiguates_by_pin() {
         let text = "skills:\n  - source: https://x/a\n    ref: v1\n    skills: \"*\"\n  - source: https://x/a\n    ref: v2\n    skills: \"*\"\n";
-        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", Some("v1")).unwrap();
+        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", Some("v1"), None).unwrap();
         assert!(removed);
         assert!(out.contains("ref: v2"));
         assert!(!out.contains("ref: v1"));
+    }
+
+    #[test]
+    fn remove_ambiguous_same_pin_different_sub_dir_errors() {
+        let text = "skills:\n  - source: https://x/a\n    sub-dir: pack-a\n    skills: \"*\"\n  - source: https://x/a\n    sub-dir: pack-b\n    skills: \"*\"\n";
+        let err = remove_item(text, Section::Skills, "https://x/a", None, None).unwrap_err();
+        assert!(err.to_string().contains("disambiguate"));
+    }
+
+    #[test]
+    fn remove_disambiguates_by_sub_dir() {
+        let text = "skills:\n  - source: https://x/a\n    sub-dir: pack-a\n    skills: \"*\"\n  - source: https://x/a\n    sub-dir: pack-b\n    skills: \"*\"\n";
+        let (out, removed) =
+            remove_item(text, Section::Skills, "https://x/a", None, Some("pack-a")).unwrap();
+        assert!(removed);
+        assert!(out.contains("sub-dir: pack-b"));
+        assert!(!out.contains("sub-dir: pack-a"));
+    }
+
+    #[test]
+    fn remove_sub_dir_empty_matches_entry_without_sub_dir() {
+        let text = "skills:\n  - source: https://x/a\n    sub-dir: pack-a\n    skills: \"*\"\n  - source: https://x/a\n    skills: \"*\"\n";
+        let (out, removed) =
+            remove_item(text, Section::Skills, "https://x/a", None, Some("")).unwrap();
+        assert!(removed);
+        assert!(out.contains("sub-dir: pack-a"));
     }
 
     #[test]
@@ -642,6 +677,7 @@ mod tests {
             Section::Skills,
             "https://x/a",
             None,
+            None,
             &["alpha".into()],
         )
         .unwrap();
@@ -660,6 +696,7 @@ mod tests {
             Section::Skills,
             "https://x/a",
             None,
+            None,
             &["alpha".into()],
         )
         .unwrap();
@@ -675,6 +712,7 @@ mod tests {
             Section::Skills,
             "https://x/a",
             None,
+            None,
             &["ghost".into()],
         )
         .unwrap_err();
@@ -688,6 +726,7 @@ mod tests {
             text,
             Section::Skills,
             "https://x/a",
+            None,
             None,
             &["alpha".into()],
         )
@@ -703,6 +742,7 @@ mod tests {
             Section::Skills,
             "https://x/a",
             None,
+            None,
             &["alpha".into()],
         )
         .unwrap_err();
@@ -717,6 +757,7 @@ mod tests {
             Section::Skills,
             "https://x/z",
             None,
+            None,
             &["alpha".into()],
         )
         .unwrap();
@@ -729,7 +770,7 @@ mod tests {
         // Dropping the final entry of a section leaves the section header
         // behind without trailing whitespace; a later `insert_item` can repopulate.
         let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n";
-        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None).unwrap();
+        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None, None).unwrap();
         assert!(removed);
         assert_eq!(out, "skills:\n");
         let reinserted = insert_item(&out, Section::Skills, &wildcard("https://x/b")).unwrap();
@@ -745,7 +786,7 @@ mod tests {
         // the entry, leaving only the section header.
         let text = "mcps:\n  - source: https://x/a\n    mcps:\n      - foo\n";
         let (out, outcome) =
-            remove_names(text, Section::Mcps, "https://x/a", None, &["foo".into()]).unwrap();
+            remove_names(text, Section::Mcps, "https://x/a", None, None, &["foo".into()]).unwrap();
         assert_eq!(outcome, RemoveOutcome::WholeItem);
         assert_eq!(out, "mcps:\n");
     }
