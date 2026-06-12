@@ -1,5 +1,4 @@
 use std::fs;
-use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
 use crate::error::{err, Result};
@@ -49,10 +48,20 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
     if let Some(parent) = dst.parent() {
         fs::create_dir_all(parent)?;
     }
-    let mut reader = BufReader::new(fs::File::open(src)?);
-    let mut writer = BufWriter::new(fs::File::create(dst)?);
-    std::io::copy(&mut reader, &mut writer)?;
-    writer.flush()?;
+    // fs::copy uses kernel-level copy where available and preserves
+    // permissions, so executable scripts inside skills keep their +x bit.
+    fs::copy(src, dst)?;
+    // A propagated READONLY attribute would wedge every later re-sync on
+    // Windows: remove_dir_all fails with PermissionDenied on read-only files.
+    // Unix is unaffected (unlink is governed by the parent dir).
+    #[cfg(windows)]
+    {
+        let mut perms = fs::metadata(dst)?.permissions();
+        if perms.readonly() {
+            perms.set_readonly(false);
+            fs::set_permissions(dst, perms)?;
+        }
+    }
     Ok(())
 }
 
@@ -60,6 +69,30 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fsops::temp_dir;
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_dir_preserves_executable_bit() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let src = temp_dir("kasetto-copy-perm-src");
+        fs::create_dir_all(&src).expect("create src");
+        let script = src.join("run.sh");
+        fs::write(&script, "#!/bin/sh\n").expect("write script");
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).expect("chmod");
+
+        let dst = temp_dir("kasetto-copy-perm-dst");
+        copy_dir(&src, &dst).expect("copy dir");
+
+        let mode = fs::metadata(dst.join("run.sh"))
+            .expect("metadata")
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o111, 0o111, "executable bit must survive the copy");
+
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&dst);
+    }
 
     #[cfg(unix)]
     #[test]
