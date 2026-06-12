@@ -74,16 +74,8 @@ fn resolve_config_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use std::fs;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> std::path::PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     #[test]
     fn env_var_takes_highest_priority() {

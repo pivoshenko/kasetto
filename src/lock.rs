@@ -165,15 +165,7 @@ pub(crate) fn save_lock(lock: &mut LockFile, scope: Scope, project_root: &Path) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
+    use crate::fsops::temp_dir;
 
     #[test]
     fn round_trip_empty_lock_file() {

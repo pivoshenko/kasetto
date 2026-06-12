@@ -117,16 +117,7 @@ pub(crate) fn list_color_enabled() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
+    use crate::fsops::temp_dir;
 
     #[test]
     fn profile_prefers_heading_and_frontmatter_description() {

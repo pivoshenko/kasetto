@@ -34,16 +34,8 @@ pub(crate) fn apply_command(source: &Path, target: &CommandTarget, name: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use crate::model::CommandFormat;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     #[test]
     fn apply_command_writes_nested_markdown() {

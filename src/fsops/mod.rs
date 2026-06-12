@@ -255,13 +255,18 @@ pub(crate) fn now_iso() -> String {
     format!("{}", now_unix())
 }
 
+/// Unique scratch directory for tests. Parallel test threads can observe the
+/// same nanosecond, so a process-wide counter keeps concurrently created dirs
+/// distinct; the nanos guard against stale dirs from a crashed earlier run.
 #[cfg(test)]
 pub(crate) fn temp_dir(prefix: &str) -> PathBuf {
+    static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock")
         .as_nanos();
-    std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
+    std::env::temp_dir().join(format!("{prefix}-{}-{seq}-{nonce}", std::process::id()))
 }
 
 #[cfg(test)]

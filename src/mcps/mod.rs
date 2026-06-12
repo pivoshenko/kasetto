@@ -90,17 +90,10 @@ fn json_all_keys_present(server_names: &[String], path: &Path, root_key: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use crate::model::McpSettingsTarget;
     use std::fs;
     use toml::Value as TomlVal;
-
-    fn temp_dir(prefix: &str) -> std::path::PathBuf {
-        let nonce = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     fn mcp_target(path: std::path::PathBuf) -> McpSettingsTarget {
         McpSettingsTarget {

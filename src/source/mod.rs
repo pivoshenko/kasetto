@@ -358,16 +358,8 @@ fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use crate::model::{SkillsField, SourceSpec};
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     #[test]
     fn local_materialize_does_not_set_cleanup_dir() {

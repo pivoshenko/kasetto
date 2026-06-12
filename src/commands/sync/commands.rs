@@ -486,16 +486,8 @@ fn remove_stale(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use crate::model::{Agent, AgentField, CommandSourceSpec, CommandsField, Config, Scope};
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("kasetto-{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     fn write(path: &std::path::Path, contents: &str) {
         if let Some(parent) = path.parent() {
@@ -507,14 +499,14 @@ mod tests {
     #[test]
     fn sync_writes_to_supported_agents_and_skips_unsupported() {
         // Source: a local path with one command file.
-        let src_root = temp_dir("src");
+        let src_root = temp_dir("kasetto-src");
         write(
             &src_root.join("commands/git/commit.md"),
             "---\ndescription: commit\n---\nBody $ARGUMENTS\n",
         );
 
         // Project root that doubles as the project scope target for the agents.
-        let project = temp_dir("proj");
+        let project = temp_dir("kasetto-proj");
         fs::create_dir_all(&project).unwrap();
 
         // Pre-existing user file under .claude/commands that must be preserved.
@@ -672,12 +664,12 @@ mod tests {
 
     #[test]
     fn second_run_unchanged_without_source_no_fetch() {
-        let src_root = temp_dir("src");
+        let src_root = temp_dir("kasetto-src");
         write(
             &src_root.join("commands/foo.md"),
             "---\ndescription: foo\n---\nBody\n",
         );
-        let project = temp_dir("proj");
+        let project = temp_dir("kasetto-proj");
         fs::create_dir_all(&project).unwrap();
         let dests = vec![project.clone()];
 
@@ -705,12 +697,12 @@ mod tests {
 
     #[test]
     fn locked_errors_when_command_absent_from_lock() {
-        let src_root = temp_dir("src");
+        let src_root = temp_dir("kasetto-src");
         write(
             &src_root.join("commands/foo.md"),
             "---\ndescription: foo\n---\nBody\n",
         );
-        let project = temp_dir("proj");
+        let project = temp_dir("kasetto-proj");
         fs::create_dir_all(&project).unwrap();
         let dests = vec![project.clone()];
 

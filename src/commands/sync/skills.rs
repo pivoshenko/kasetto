@@ -526,16 +526,8 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
     use crate::model::{Config, Scope, SkillTarget};
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn temp_dir(prefix: &str) -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos();
-        std::env::temp_dir().join(format!("kasetto-{prefix}-{}-{nonce}", std::process::id()))
-    }
 
     fn write_skill(root: &Path, name: &str, body: &str) {
         let dir = root.join(name);
@@ -600,11 +592,11 @@ mod tests {
     }
 
     fn setup(skill_names: &[&str]) -> Harness {
-        let src_root = temp_dir("src");
+        let src_root = temp_dir("kasetto-src");
         for n in skill_names {
             write_skill(&src_root, n, &format!("# {n}\n\nbody\n"));
         }
-        let scope_root = temp_dir("scope");
+        let scope_root = temp_dir("kasetto-scope");
         let dest = scope_root.join(".agent/skills");
         fs::create_dir_all(&dest).unwrap();
         Harness {
