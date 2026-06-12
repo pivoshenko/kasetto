@@ -38,6 +38,9 @@ pub(crate) fn select_targets(
             for (k, v) in available {
                 out.push((k.clone(), v.clone()));
             }
+            // HashMap iteration order is random; sort so install order, labels,
+            // and --json output are stable across runs.
+            out.sort_by(|a, b| a.0.cmp(&b.0));
         }
         SkillsField::List(items) => {
             for it in items {
@@ -289,6 +292,19 @@ mod tests {
             resolve_path(base, "backup~old/skills"),
             Path::new("/base/backup~old/skills")
         );
+    }
+
+    #[test]
+    fn select_targets_wildcard_is_sorted() {
+        let mut available = HashMap::new();
+        for name in ["zeta", "alpha", "mid"] {
+            available.insert(name.to_string(), PathBuf::from(format!("/tmp/{name}")));
+        }
+        let sf = SkillsField::Wildcard("*".into());
+
+        let (targets, _) = select_targets(&sf, &available, Path::new("/tmp")).expect("select");
+        let names: Vec<&str> = targets.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, vec!["alpha", "mid", "zeta"]);
     }
 
     #[test]
