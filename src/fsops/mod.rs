@@ -254,8 +254,8 @@ pub(crate) fn now_unix() -> u64 {
         .unwrap_or(0)
 }
 
-pub(crate) fn now_iso() -> String {
-    format!("{}", now_unix())
+pub(crate) fn now_unix_str() -> String {
+    now_unix().to_string()
 }
 
 /// Unique scratch directory for tests. Parallel test threads can observe the

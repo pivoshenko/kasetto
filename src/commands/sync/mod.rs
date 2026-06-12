@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
 use crate::error::Result;
-use crate::fsops::{load_config_any, now_iso, now_unix, resolve_destinations, scope_root};
+use crate::fsops::{load_config_any, now_unix, now_unix_str, resolve_destinations, scope_root};
 use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Action, Config, Report, Scope, State, Summary};
 use crate::state::{load_runtime_state, save_runtime_state, RuntimeState};
@@ -178,7 +178,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
 
     if !opts.dry_run {
         save_lock(&mut lock, scope, &cfg_dir)?;
-        runtime.last_run = Some(now_iso());
+        runtime.last_run = Some(now_unix_str());
         runtime.save_report_json(&serde_json::to_string(&report)?);
         save_runtime_state(&runtime, scope, &cfg_dir)?;
     }

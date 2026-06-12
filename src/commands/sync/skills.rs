@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
 use crate::fsops::{
-    copy_dir, hash_dir, now_iso, now_unix, relativize_dest, select_targets, BrokenSkill,
+    copy_dir, hash_dir, now_unix, now_unix_str, relativize_dest, select_targets, BrokenSkill,
 };
 use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State};
 use crate::profile::read_skill_profile_from_dir;
@@ -267,7 +267,7 @@ fn process_single_skill(
             sm.summary.installed += 1;
             "installed"
         };
-        sm.runtime.set_updated_at(&key, now_iso());
+        sm.runtime.set_updated_at(&key, now_unix_str());
         sm.state.skills.insert(
             key,
             SkillEntry {
@@ -341,7 +341,7 @@ fn process_locked_skill(
                 copy_dir(&src_dir, &dst)?;
             }
         }
-        sm.runtime.set_updated_at(&key, now_iso());
+        sm.runtime.set_updated_at(&key, now_unix_str());
         // Lock entry is unchanged (hash + revision identical); nothing to rewrite.
         sm.summary.updated += 1;
         sm.actions.push(Action {
