@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -23,8 +23,70 @@ fn skill_key(source: &str, skill: &str) -> String {
     format!("{source}::{skill}")
 }
 
+/// Per-run memo of destination-directory hashes. `needs_fetch` and the
+/// process step would otherwise re-walk and re-SHA256 the same skill dir up to
+/// three times per sync; with the memo each dir is hashed once. Entries are
+/// refreshed after a copy writes new content. `None` = missing or unreadable.
+#[derive(Default)]
+struct HashCache(HashMap<PathBuf, Option<String>>);
+
+impl HashCache {
+    fn get(&mut self, dir: &Path) -> Option<&str> {
+        self.0
+            .entry(dir.to_path_buf())
+            .or_insert_with(|| {
+                if dir.exists() {
+                    hash_dir(dir).ok()
+                } else {
+                    None
+                }
+            })
+            .as_deref()
+    }
+
+    fn set(&mut self, dir: PathBuf, hash: String) {
+        self.0.insert(dir, Some(hash));
+    }
+
+    /// Mark a destination unknown before a copy rewrites it. `copy_dir`
+    /// deletes the destination before writing, so a mid-copy failure would
+    /// otherwise leave a stale "good" hash memoized for a missing/partial dir.
+    fn invalidate(&mut self, dir: &Path) {
+        self.0.insert(dir.to_path_buf(), None);
+    }
+}
+
+/// One pass over all destinations of a skill: whether every copy matches the
+/// expected hash, and the first verified-good copy (usable as a repair source).
+struct DestStatus {
+    all_match: bool,
+    good: Option<PathBuf>,
+}
+
+fn dest_status(
+    ctx: &SyncContext,
+    cache: &mut HashCache,
+    skill_name: &str,
+    expected_hash: &str,
+) -> DestStatus {
+    let mut all_match = true;
+    let mut good = None;
+    for agent_dest in ctx.destinations {
+        let dir = agent_dest.join(skill_name);
+        if cache.get(&dir) == Some(expected_hash) {
+            if good.is_none() {
+                good = Some(dir);
+            }
+        } else {
+            all_match = false;
+        }
+    }
+    DestStatus { all_match, good }
+}
+
 pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()> {
     let mut desired_keys = HashSet::new();
+    let mut cache = HashCache::default();
 
     for (i, src) in ctx.cfg.skills.iter().enumerate() {
         // Desired skill names for this source, derived without any network:
@@ -46,7 +108,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         }
 
         let update_active = update_active_for_source(ctx, &desired);
-        let fetch = update_active || needs_fetch(ctx, src, &desired, sm.state);
+        let fetch = update_active || needs_fetch(ctx, &mut cache, src, &desired, sm.state);
 
         if fetch && ctx.locked {
             // --locked must never fetch. If the lock cannot satisfy the config
@@ -65,9 +127,9 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         }
 
         if fetch {
-            sync_source_via_fetch(ctx, sm, &mut desired_keys, src, i);
+            sync_source_via_fetch(ctx, sm, &mut cache, &mut desired_keys, src, i);
         } else {
-            sync_source_from_lock(ctx, sm, &mut desired_keys, src, &desired);
+            sync_source_from_lock(ctx, sm, &mut cache, &mut desired_keys, src, &desired);
         }
     }
 
@@ -85,6 +147,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
 fn sync_source_via_fetch(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
+    cache: &mut HashCache,
     desired_keys: &mut HashSet<String>,
     src: &SourceSpec,
     i: usize,
@@ -108,6 +171,7 @@ fn sync_source_via_fetch(
                         if let Err(e) = process_single_skill(
                             ctx,
                             sm,
+                            cache,
                             desired_keys,
                             &src.source,
                             &materialized.source_revision,
@@ -156,6 +220,7 @@ fn sync_source_via_fetch(
 fn sync_source_from_lock(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
+    cache: &mut HashCache,
     desired_keys: &mut HashSet<String>,
     src: &SourceSpec,
     desired: &[String],
@@ -170,7 +235,7 @@ fn sync_source_from_lock(
         };
         let label = sync_label_with(skill_name, &src.source, ctx.plain, first_in_run);
         first_in_run = false;
-        if let Err(e) = process_locked_skill(ctx, sm, &entry, skill_name, &label) {
+        if let Err(e) = process_locked_skill(ctx, sm, cache, &entry, skill_name, &label) {
             sm.summary.failed += 1;
             sm.actions.push(Action {
                 source: Some(src.source.clone()),
@@ -206,6 +271,7 @@ fn record_broken_skills(
 fn process_single_skill(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
+    cache: &mut HashCache,
     desired_keys: &mut HashSet<String>,
     source: &str,
     source_revision: &str,
@@ -227,7 +293,9 @@ fn process_single_skill(
             .state
             .skills
             .get(&key)
-            .map(|prev| prev.hash == hash && all_destinations_match(ctx, skill_name, &prev.hash))
+            .map(|prev| {
+                prev.hash == hash && dest_status(ctx, cache, skill_name, &prev.hash).all_match
+            })
             .unwrap_or(false);
 
         if is_unchanged {
@@ -264,7 +332,10 @@ fn process_single_skill(
         }
 
         for agent_dest in ctx.destinations {
-            copy_dir(skill_path, &agent_dest.join(skill_name))?;
+            let dst = agent_dest.join(skill_name);
+            cache.invalidate(&dst);
+            copy_dir(skill_path, &dst)?;
+            cache.set(dst, hash.clone());
         }
         let status = if sm.state.skills.contains_key(&key) {
             sm.summary.updated += 1;
@@ -302,17 +373,18 @@ fn process_single_skill(
 fn process_locked_skill(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
+    cache: &mut HashCache,
     entry: &SkillEntry,
     skill_name: &str,
     label: &str,
 ) -> Result<()> {
     let key = skill_key(&entry.source, skill_name);
     with_spinner_transient(ctx.animate, ctx.plain, label, || {
-        // A destination is good when it exists and re-hashes to the locked hash.
-        let good = good_destination(ctx, skill_name, &entry.hash);
-        let all_ok = all_destinations_match(ctx, skill_name, &entry.hash);
+        // One pass: per-destination match against the locked hash, plus the
+        // first verified-good copy as the repair source.
+        let DestStatus { all_match, good } = dest_status(ctx, cache, skill_name, &entry.hash);
 
-        if all_ok {
+        if all_match {
             sm.summary.unchanged += 1;
             sm.actions.push(Action {
                 source: Some(entry.source.clone()),
@@ -344,7 +416,9 @@ fn process_locked_skill(
         for agent_dest in ctx.destinations {
             let dst = agent_dest.join(skill_name);
             if dst != src_dir {
+                cache.invalidate(&dst);
                 copy_dir(&src_dir, &dst)?;
+                cache.set(dst, entry.hash.clone());
             }
         }
         sm.runtime.set_updated_at(&key, now_unix_str());
@@ -415,7 +489,13 @@ fn ensure_locked_satisfiable(src: &SourceSpec, desired: &[String], state: &State
 /// Per-source fetch decision (computed before any download). Fetch when any
 /// desired skill lacks a lock entry, or its locked copy is missing/mismatched on
 /// any destination with no good local copy available to repair from.
-fn needs_fetch(ctx: &SyncContext, src: &SourceSpec, desired: &[String], state: &State) -> bool {
+fn needs_fetch(
+    ctx: &SyncContext,
+    cache: &mut HashCache,
+    src: &SourceSpec,
+    desired: &[String],
+    state: &State,
+) -> bool {
     // A wildcard source with no lock entries has never been resolved — bootstrap
     // it by fetching (the locked set is empty only because nothing is pinned yet).
     if matches!(src.skills, SkillsField::Wildcard(_))
@@ -436,40 +516,15 @@ fn needs_fetch(ctx: &SyncContext, src: &SourceSpec, desired: &[String], state: &
         if !entry.source_revision.is_empty() && entry.source_revision != expected_revision {
             return true;
         }
-        // Re-hash every destination; if all match, this skill is satisfied.
-        if all_destinations_match(ctx, skill_name, &entry.hash) {
-            continue;
-        }
-        // Some destination is missing/mismatched. If at least one good local copy
-        // exists we can repair without a fetch; otherwise we must fetch.
-        if good_destination(ctx, skill_name, &entry.hash).is_none() {
+        // Hash every destination once (memoized for the process step). All
+        // matching → satisfied; some mismatched but one good copy → local
+        // repair is possible; no good copy → must fetch.
+        let status = dest_status(ctx, cache, skill_name, &entry.hash);
+        if !status.all_match && status.good.is_none() {
             return true;
         }
     }
     false
-}
-
-/// The first destination that exists and re-hashes to `expected_hash`.
-fn good_destination(ctx: &SyncContext, skill_name: &str, expected_hash: &str) -> Option<PathBuf> {
-    for agent_dest in ctx.destinations {
-        let dir = agent_dest.join(skill_name);
-        if dir.exists() {
-            if let Ok(h) = hash_dir(&dir) {
-                if h == expected_hash {
-                    return Some(dir);
-                }
-            }
-        }
-    }
-    None
-}
-
-/// True when every destination holds a copy that re-hashes to `expected_hash`.
-fn all_destinations_match(ctx: &SyncContext, skill_name: &str, expected_hash: &str) -> bool {
-    ctx.destinations.iter().all(|agent_dest| {
-        let dir = agent_dest.join(skill_name);
-        dir.exists() && hash_dir(&dir).map(|h| h == expected_hash).unwrap_or(false)
-    })
 }
 
 /// Stale-skill cleanup. Routes through the shared [`remove_stale`] helper so
