@@ -98,17 +98,17 @@ pub(crate) struct BrokenSkill {
 }
 
 pub(crate) fn resolve_path(base: &Path, raw: &str) -> PathBuf {
-    let p = if raw.contains('~') {
-        PathBuf::from(
-            raw.replace(
-                '~',
-                &dirs_home()
-                    .unwrap_or_else(|_| PathBuf::from("~"))
-                    .to_string_lossy(),
-            ),
-        )
-    } else {
-        PathBuf::from(raw)
+    // Expand only a leading `~` (home prefix); a `~` elsewhere in the path is
+    // an ordinary character (e.g. `./backup~old`) and must not be rewritten.
+    let p = match raw
+        .strip_prefix("~/")
+        .or(if raw == "~" { Some("") } else { None })
+    {
+        Some(rest) => match dirs_home() {
+            Ok(home) => home.join(rest),
+            Err(_) => PathBuf::from(raw),
+        },
+        None => PathBuf::from(raw),
     };
     if p.is_absolute() {
         p
@@ -277,6 +277,19 @@ mod tests {
     };
     use std::fs;
     use std::path::Path;
+
+    #[test]
+    fn resolve_path_expands_only_leading_tilde() {
+        let base = Path::new("/base");
+        let home = dirs_home().expect("home");
+        assert_eq!(resolve_path(base, "~/skills"), home.join("skills"));
+        assert_eq!(resolve_path(base, "~"), home);
+        // A `~` that is not the home prefix is an ordinary path character.
+        assert_eq!(
+            resolve_path(base, "backup~old/skills"),
+            Path::new("/base/backup~old/skills")
+        );
+    }
 
     #[test]
     fn select_targets_reports_missing_skill() {
