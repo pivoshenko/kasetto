@@ -17,6 +17,12 @@ use super::{
     remove_stale, sync_label_with, update_active_for_source, StaleEntry, SyncContext, SyncMut,
 };
 
+/// Lock key for a skill: `<source>::<name>`. Single point of truth so the key
+/// format cannot drift between the lock writer and the lookup sites.
+fn skill_key(source: &str, skill: &str) -> String {
+    format!("{source}::{skill}")
+}
+
 pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()> {
     let mut desired_keys = HashSet::new();
 
@@ -156,7 +162,7 @@ fn sync_source_from_lock(
 ) {
     let mut first_in_run = true;
     for skill_name in desired {
-        let key = format!("{}::{}", src.source, skill_name);
+        let key = skill_key(&src.source, skill_name);
         desired_keys.insert(key.clone());
         let Some(entry) = sm.state.skills.get(&key).cloned() else {
             // needs_fetch would have been true; defensive guard.
@@ -210,7 +216,7 @@ fn process_single_skill(
     let destination = &ctx.destinations[0];
     let (_, profile_description) = read_skill_profile_from_dir(skill_path, skill_name);
     with_spinner_transient(ctx.animate, ctx.plain, label, || {
-        let key = format!("{source}::{skill_name}");
+        let key = skill_key(source, skill_name);
         desired_keys.insert(key.clone());
         let hash = hash_dir(skill_path)?;
         let dest = destination.join(skill_name);
@@ -300,7 +306,7 @@ fn process_locked_skill(
     skill_name: &str,
     label: &str,
 ) -> Result<()> {
-    let key = format!("{}::{}", entry.source, skill_name);
+    let key = skill_key(&entry.source, skill_name);
     with_spinner_transient(ctx.animate, ctx.plain, label, || {
         // A destination is good when it exists and re-hashes to the locked hash.
         let good = good_destination(ctx, skill_name, &entry.hash);
@@ -381,7 +387,7 @@ fn ensure_locked_satisfiable(src: &SourceSpec, desired: &[String], state: &State
     match &src.skills {
         SkillsField::List(_) => {
             for name in desired {
-                let key = format!("{}::{}", src.source, name);
+                let key = skill_key(&src.source, name);
                 if !state.skills.contains_key(&key) {
                     return Err(err(format!(
                         "--locked: skill `{name}` from `{}` is not in the lock",
@@ -419,7 +425,7 @@ fn needs_fetch(ctx: &SyncContext, src: &SourceSpec, desired: &[String], state: &
     }
     let expected_revision = src.expected_revision();
     for skill_name in desired {
-        let key = format!("{}::{}", src.source, skill_name);
+        let key = skill_key(&src.source, skill_name);
         // A skill named in the config but absent from the lock must be fetched.
         let Some(entry) = state.skills.get(&key) else {
             return true;
