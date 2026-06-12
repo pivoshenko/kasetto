@@ -359,7 +359,7 @@ command = "b"
 
         assert!(servers_present_in_settings(
             &["airflow".into(), "git".into()],
-            &mcp_target(settings.clone())
+            &mcp_target(settings)
         ));
         let _ = fs::remove_dir_all(&dir);
     }
@@ -373,7 +373,7 @@ command = "b"
 
         assert!(!servers_present_in_settings(
             &["airflow".into(), "git".into()],
-            &mcp_target(settings.clone())
+            &mcp_target(settings)
         ));
         let _ = fs::remove_dir_all(&dir);
     }

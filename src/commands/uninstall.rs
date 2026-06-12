@@ -120,7 +120,7 @@ fn remove_dir_if_exists(path: Option<&Path>) -> Result<bool> {
     Ok(true)
 }
 
-fn remove_file_if_exists(path: &PathBuf) -> Result<bool> {
+fn remove_file_if_exists(path: &Path) -> Result<bool> {
     if path.exists() || path.symlink_metadata().is_ok() {
         fs::remove_file(path)
             .map_err(|e| err(format!("failed to remove {}: {e}", path.display())))?;

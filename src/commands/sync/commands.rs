@@ -569,12 +569,8 @@ mod tests {
         assert!(user_file.is_file());
 
         // Lock contains 1 command asset (one source × one command name).
-        let lock_assets: Vec<_> = lock
-            .assets
-            .iter()
-            .filter(|(_, a)| a.kind == "command")
-            .collect();
-        assert_eq!(lock_assets.len(), 1);
+        let lock_assets = lock.assets.values().filter(|a| a.kind == "command").count();
+        assert_eq!(lock_assets, 1);
 
         // Second sync that removes the command (empty commands).
         let cfg2 = Config {

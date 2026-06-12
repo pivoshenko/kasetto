@@ -190,15 +190,15 @@ fn record_broken_skills(
 ) {
     for broken in broken_skills {
         sm.summary.broken += 1;
-        sm.actions.push(Action {
-            source: Some(source.to_string()),
-            skill: Some(broken.name.clone()),
-            status: "broken".into(),
-            error: Some(broken.reason.clone()),
-        });
         if !ctx.as_json && !ctx.quiet {
             eprint_fail(&broken.name, source, ctx.plain);
         }
+        sm.actions.push(Action {
+            source: Some(source.to_string()),
+            skill: Some(broken.name),
+            status: "broken".into(),
+            error: Some(broken.reason),
+        });
     }
 }
 

@@ -160,7 +160,7 @@ fn discover_with_root_name(
     discover_skills_in_subdir(root, &mut out)?;
     discover_skills_in_subdir(&root.join("skills"), &mut out)?;
     if let Some(ref name) = root_skill_name {
-        if out.get(name).map(|p| p != root) == Some(true) {
+        if out.get(name).is_some_and(|p| p != root) {
             eprintln!("warning: subdirectory skill `{name}` shadows root-level SKILL.md");
         }
     }
@@ -178,7 +178,7 @@ fn discover_skills_in_subdir(base: &Path, out: &mut HashMap<String, PathBuf>) ->
         }
         let d = e.path();
         if d.join("SKILL.md").is_file() {
-            out.insert(e.file_name().to_string_lossy().to_string(), d);
+            out.insert(e.file_name().to_string_lossy().into_owned(), d);
         }
     }
     Ok(())
@@ -209,9 +209,7 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         for e in fs::read_dir(mcp_dir)? {
             let e = e?;
             let path = e.path();
-            if e.file_type()?.is_file()
-                && path.extension().map(|ext| ext == "json").unwrap_or(false)
-            {
+            if e.file_type()?.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 out.push(path);
             }
         }
@@ -292,17 +290,14 @@ fn walk_commands(base: &Path, cur: &Path, out: &mut HashMap<String, PathBuf>) ->
                 _ => None,
             })
             .collect();
-        if let Some(last) = parts.last_mut() {
-            if let Some(stem) = Path::new(last)
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .map(str::to_string)
-            {
-                *last = stem;
-            }
-        }
-        if parts.is_empty() {
+        let Some(last) = parts.last_mut() else {
             continue;
+        };
+        if let Some(stem) = Path::new(last.as_str())
+            .file_stem()
+            .and_then(|s| s.to_str())
+        {
+            *last = stem.to_string();
         }
         let name = parts.join(":");
         out.insert(name, path);

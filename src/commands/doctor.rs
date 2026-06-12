@@ -77,7 +77,7 @@ pub(crate) fn run(
     let installation_path = if install_paths.is_empty() {
         "none".to_string()
     } else if install_paths.len() == 1 {
-        install_paths[0].clone()
+        install_paths.remove(0)
     } else {
         install_paths.join(", ")
     };
@@ -86,7 +86,7 @@ pub(crate) fn run(
     skills.sort();
 
     let failures = runtime.load_latest_failures();
-    let last_sync = runtime.last_run.clone();
+    let last_sync = runtime.last_run;
 
     let managed_mcps = lock.list_installed_mcps();
     let managed_commands = lock.list_installed_commands();
@@ -132,7 +132,7 @@ pub(crate) fn run(
         ("Lock file", relativize_home(&output.lock_file)),
         ("Install path", relativize_home(&output.installation_path)),
         ("Last sync", last_sync_short),
-        ("Updates", update_check_text.clone()),
+        ("Updates", update_check_text),
     ];
     let env_key_w = env_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &env_rows {

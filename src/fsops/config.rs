@@ -90,10 +90,8 @@ fn fetch_config_text(
     parent_base_dir: Option<&Path>,
 ) -> Result<(String, ConfigOrigin)> {
     if config_ref.starts_with("http://") || config_ref.starts_with("https://") {
-        let fetch_url = match rewrite_browse_to_raw_url(config_ref) {
-            Some(rewritten) => rewritten,
-            None => config_ref.to_string(),
-        };
+        let fetch_url =
+            rewrite_browse_to_raw_url(config_ref).unwrap_or_else(|| config_ref.to_string());
         let auth = auth_for_request_url(&fetch_url);
         let request = auth.apply(http_client()?.get(&fetch_url));
         let response = request
@@ -120,7 +118,7 @@ fn fetch_config_text(
         return Ok((
             text,
             ConfigOrigin {
-                canonical_id: fetch_url.clone(),
+                canonical_id: fetch_url,
                 base_dir: None,
                 label: config_ref.to_string(),
             },

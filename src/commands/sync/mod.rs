@@ -358,11 +358,11 @@ fn print_sync_tree(report: &Report, plain: bool) {
     // Group actions by source, preserving first-seen order.
     let mut groups: Vec<(String, Vec<&crate::model::Action>)> = Vec::new();
     for a in &report.actions {
-        let src = a.source.clone().unwrap_or_else(|| "-".to_string());
-        if let Some(g) = groups.iter_mut().find(|(k, _)| k == &src) {
+        let src = a.source.as_deref().unwrap_or("-");
+        if let Some(g) = groups.iter_mut().find(|(k, _)| k == src) {
             g.1.push(a);
         } else {
-            groups.push((src, vec![a]));
+            groups.push((src.to_owned(), vec![a]));
         }
     }
 

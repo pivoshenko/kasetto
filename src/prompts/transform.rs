@@ -21,10 +21,9 @@ fn derive_relpath(name: &str, format: CommandFormat) -> PathBuf {
 
 fn name_to_nested_path(name: &str, ext: &str) -> PathBuf {
     let mut parts: Vec<&str> = name.split(':').filter(|p| !p.is_empty()).collect();
-    if parts.is_empty() {
+    let Some(last) = parts.pop() else {
         return PathBuf::from(format!("command.{ext}"));
-    }
-    let last = parts.pop().unwrap();
+    };
     let mut path = PathBuf::new();
     for p in parts {
         path.push(p);

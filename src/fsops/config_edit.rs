@@ -143,7 +143,7 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
         }
     }
 
-    Ok(join_lines(lines, text))
+    Ok(join_lines(&lines, text))
 }
 
 /// Find the single section item matching `source` (and `pin` / `sub_dir`, when
@@ -202,7 +202,7 @@ pub(crate) fn remove_item(
         Some(it) => {
             let (start, end) = (it.start, it.end);
             lines.drain(start..end);
-            Ok((join_lines(lines, text), true))
+            Ok((join_lines(&lines, text), true))
         }
     }
 }
@@ -303,7 +303,7 @@ pub(crate) fn remove_names(
     if remaining == 0 {
         // Removing every name empties the list — drop the whole entry.
         lines.drain(istart..iend);
-        return Ok((join_lines(lines, text), RemoveOutcome::WholeItem));
+        return Ok((join_lines(&lines, text), RemoveOutcome::WholeItem));
     }
 
     let mut to_delete: Vec<usize> = name_lines
@@ -316,7 +316,7 @@ pub(crate) fn remove_names(
         lines.remove(i);
     }
     Ok((
-        join_lines(lines, text),
+        join_lines(&lines, text),
         RemoveOutcome::Names(names.to_vec()),
     ))
 }
@@ -330,12 +330,12 @@ pub(crate) fn item_exists(text: &str, section: Section, item: &SourceItem) -> bo
         return false;
     };
     let sec_end = next_top_level(&lines, idx + 1);
-    let want_pin = item.pin.value().unwrap_or("").to_string();
-    let want_sub = item.sub_dir.clone().unwrap_or_default();
+    let want_pin = item.pin.value().unwrap_or("");
+    let want_sub = item.sub_dir.as_deref().unwrap_or("");
     parse_items(&lines, idx + 1, sec_end).iter().any(|it| {
         it.source.as_deref() == Some(item.source.as_str())
-            && it.pin.clone().unwrap_or_default() == want_pin
-            && it.sub_dir.clone().unwrap_or_default() == want_sub
+            && it.pin.as_deref().unwrap_or("") == want_pin
+            && it.sub_dir.as_deref().unwrap_or("") == want_sub
     })
 }
 
@@ -370,7 +370,7 @@ fn split_lines(text: &str) -> Vec<String> {
     text.lines().map(String::from).collect()
 }
 
-fn join_lines(lines: Vec<String>, original: &str) -> String {
+fn join_lines(lines: &[String], original: &str) -> String {
     let mut out = lines.join("\n");
     if original.ends_with('\n') || original.is_empty() {
         out.push('\n');
@@ -618,7 +618,8 @@ mod tests {
     #[test]
     fn remove_disambiguates_by_pin() {
         let text = "skills:\n  - source: https://x/a\n    ref: v1\n    skills: \"*\"\n  - source: https://x/a\n    ref: v2\n    skills: \"*\"\n";
-        let (out, removed) = remove_item(text, Section::Skills, "https://x/a", Some("v1"), None).unwrap();
+        let (out, removed) =
+            remove_item(text, Section::Skills, "https://x/a", Some("v1"), None).unwrap();
         assert!(removed);
         assert!(out.contains("ref: v2"));
         assert!(!out.contains("ref: v1"));
@@ -664,7 +665,7 @@ mod tests {
 
         let diff_ref = SourceItem {
             pin: Pin::Ref("v2".into()),
-            ..same.clone()
+            ..same
         };
         assert!(!item_exists(text, Section::Skills, &diff_ref));
     }
@@ -785,8 +786,15 @@ mod tests {
         // The same invariant for the names path: stripping the last name drops
         // the entry, leaving only the section header.
         let text = "mcps:\n  - source: https://x/a\n    mcps:\n      - foo\n";
-        let (out, outcome) =
-            remove_names(text, Section::Mcps, "https://x/a", None, None, &["foo".into()]).unwrap();
+        let (out, outcome) = remove_names(
+            text,
+            Section::Mcps,
+            "https://x/a",
+            None,
+            None,
+            &["foo".into()],
+        )
+        .unwrap();
         assert_eq!(outcome, RemoveOutcome::WholeItem);
         assert_eq!(out, "mcps:\n");
     }

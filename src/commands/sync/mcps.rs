@@ -494,17 +494,19 @@ fn remove_stale(
 ) {
     let existing_mcps: Vec<(String, String)> = lock
         .list_tracked_asset_ids("mcp")
-        .iter()
-        .map(|(id, dest)| (id.to_string(), dest.to_string()))
-        .collect();
-    let servers_by_id: std::collections::HashMap<String, String> =
-        existing_mcps.iter().cloned().collect();
-    let candidates: Vec<StaleEntry> = existing_mcps
         .into_iter()
+        .map(|(id, dest)| (id.to_owned(), dest.to_owned()))
+        .collect();
+    let servers_by_id: std::collections::HashMap<&str, &str> = existing_mcps
+        .iter()
+        .map(|(id, dest)| (id.as_str(), dest.as_str()))
+        .collect();
+    let candidates: Vec<StaleEntry> = existing_mcps
+        .iter()
         .map(|(id, _)| {
-            let mcp_name = id.rsplit("::").next().unwrap_or(&id).to_string();
+            let mcp_name = id.rsplit("::").next().unwrap_or(id);
             StaleEntry {
-                id,
+                id: id.clone(),
                 action_source: None,
                 action_skill: format!("mcp:{mcp_name}"),
             }
@@ -583,9 +585,8 @@ mod tests {
             source_revision: "branch:main".into(),
         }];
 
-        let new_servers: Vec<&PendingMcp> = update_only.iter().filter(|p| p.is_new).collect();
         assert!(
-            new_servers.is_empty(),
+            !update_only.iter().any(|p| p.is_new),
             "updates should not trigger the gate"
         );
     }

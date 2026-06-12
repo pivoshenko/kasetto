@@ -38,11 +38,7 @@ pub(crate) fn run(
 
     let state = lock.state();
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
-    let command_assets: Vec<(String, String)> = lock
-        .list_tracked_asset_ids("command")
-        .iter()
-        .map(|(id, dest)| (id.to_string(), dest.to_string()))
-        .collect();
+    let command_assets = lock.list_tracked_asset_ids("command");
 
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
@@ -94,7 +90,7 @@ pub(crate) fn run(
 fn apply_removals(
     state: &State,
     mcp_assets: &[(&str, &str)],
-    command_assets: &[(String, String)],
+    command_assets: &[(&str, &str)],
     scope: Scope,
     project_root: &std::path::Path,
 ) -> Result<()> {

@@ -175,10 +175,10 @@ fn current_target() -> String {
     let arch = std::env::consts::ARCH;
     let os = std::env::consts::OS;
     match (arch, os) {
-        ("aarch64", "macos") => "aarch64-apple-darwin".to_string(),
-        ("x86_64", "macos") => "x86_64-apple-darwin".to_string(),
-        ("x86_64", "linux") => "x86_64-unknown-linux-gnu".to_string(),
-        ("aarch64", "linux") => "aarch64-unknown-linux-gnu".to_string(),
+        ("aarch64", "macos") => "aarch64-apple-darwin".to_owned(),
+        ("x86_64", "macos") => "x86_64-apple-darwin".to_owned(),
+        ("x86_64", "linux") => "x86_64-unknown-linux-gnu".to_owned(),
+        ("aarch64", "linux") => "aarch64-unknown-linux-gnu".to_owned(),
         _ => format!("{arch}-unknown-{os}"),
     }
 }

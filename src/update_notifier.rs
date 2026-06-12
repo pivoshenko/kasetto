@@ -170,11 +170,9 @@ enum InstallMethod {
 
 fn detect_install_method() -> InstallMethod {
     let exe = std::env::current_exe().ok();
-    let path = exe
-        .as_ref()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_default();
-    classify_install_path(&path)
+    let lossy = exe.as_ref().map(|p| p.to_string_lossy());
+    let path = lossy.as_deref().unwrap_or("");
+    classify_install_path(path)
 }
 
 fn classify_install_path(path: &str) -> InstallMethod {

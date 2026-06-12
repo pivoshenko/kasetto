@@ -12,7 +12,7 @@ pub(crate) fn extract_extends(v: &mut Value) -> Vec<String> {
     let Value::Mapping(map) = v else {
         return Vec::new();
     };
-    let Some(raw) = map.remove(Value::String("extends".into())) else {
+    let Some(raw) = map.remove("extends") else {
         return Vec::new();
     };
     match raw {
@@ -31,24 +31,24 @@ pub(crate) fn extract_extends(v: &mut Value) -> Vec<String> {
 /// Merge `overlay` on top of `base`. Both should be top-level config mappings.
 /// Returns `overlay` unchanged if either side is not a mapping.
 pub(crate) fn merge_yaml(base: Value, overlay: Value) -> Value {
-    let (Value::Mapping(base_map), Value::Mapping(overlay_map)) = (&base, &overlay) else {
+    let Value::Mapping(mut out) = base else {
         return overlay;
     };
-    let mut out = base_map.clone();
-    for (key, ov_val) in overlay_map.clone() {
+    let overlay_map = match overlay {
+        Value::Mapping(m) => m,
+        other => return other,
+    };
+    for (key, ov_val) in overlay_map {
         let key_str = key.as_str().unwrap_or("");
-        if matches!(key_str, "skills" | "mcps" | "commands") {
-            if let Some(base_val) = out.get(&key) {
-                if let (Value::Sequence(base_seq), Value::Sequence(ov_seq)) =
-                    (base_val.clone(), ov_val.clone())
-                {
-                    let merged = merge_source_list(base_seq, ov_seq);
-                    out.insert(key, Value::Sequence(merged));
-                    continue;
-                }
+        let is_source_list = matches!(key_str, "skills" | "mcps" | "commands");
+        match (is_source_list.then(|| out.remove(&key)).flatten(), ov_val) {
+            (Some(Value::Sequence(base_seq)), Value::Sequence(ov_seq)) => {
+                out.insert(key, Value::Sequence(merge_source_list(base_seq, ov_seq)));
+            }
+            (_, ov) => {
+                out.insert(key, ov);
             }
         }
-        out.insert(key, ov_val);
     }
     Value::Mapping(out)
 }
@@ -84,9 +84,7 @@ fn identity_of(entry: &Value) -> (String, String, String) {
 }
 
 fn string_field(m: &Mapping, key: &str) -> Option<String> {
-    m.get(Value::String(key.into()))
-        .and_then(Value::as_str)
-        .map(str::to_string)
+    m.get(key).and_then(Value::as_str).map(str::to_string)
 }
 
 #[cfg(test)]

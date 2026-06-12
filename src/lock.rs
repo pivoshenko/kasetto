@@ -110,7 +110,7 @@ impl LockFile {
     pub(crate) fn list_installed_mcps(&self) -> Vec<String> {
         let mut servers: Vec<String> = self
             .list_tracked_asset_ids("mcp")
-            .iter()
+            .into_iter()
             .flat_map(|(_, dest_csv)| {
                 dest_csv
                     .split(',')

@@ -62,10 +62,7 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
         ..Default::default()
     });
     let source = derived.source.clone();
-    let derived_pin = derived
-        .git_ref
-        .as_deref()
-        .or(derived.branch.as_deref());
+    let derived_pin = derived.git_ref.as_deref().or(derived.branch.as_deref());
     let pin = opts
         .git_ref
         .or(opts.branch)
