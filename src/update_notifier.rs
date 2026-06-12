@@ -61,7 +61,8 @@ fn write_cache(path: &std::path::Path, entry: &CacheEntry) -> std::io::Result<()
         fs::create_dir_all(parent)?;
     }
     let tmp = path.with_extension("json.tmp");
-    let text = serde_json::to_string(entry).unwrap_or_default();
+    let text = serde_json::to_string(entry)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     fs::write(&tmp, text)?;
     fs::rename(&tmp, path)?;
     Ok(())
