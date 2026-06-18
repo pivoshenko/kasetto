@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::error::Result;
+use crate::frontmatter::Parsed;
 use crate::model::{CommandFormat, CommandTarget};
-
-use super::parse::Parsed;
 
 /// Returns the on-disk relative filename for a command, given its name and format.
 ///
@@ -117,7 +116,7 @@ pub(crate) fn ensure_parent_dirs(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prompts::parse::parse;
+    use crate::frontmatter::parse;
 
     fn sample() -> Parsed {
         parse("---\ndescription: do thing\nargument-hint: <n>\n---\nUse $ARGUMENTS here.\n")

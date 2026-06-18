@@ -216,6 +216,42 @@ pub(crate) fn resolve_command_targets(
     Ok(out)
 }
 
+/// Returns one rules destination per configured agent (filtering unsupported), deduped.
+pub(crate) fn resolve_rule_targets(
+    cfg: &Config,
+    scope: Scope,
+    project_root: &Path,
+) -> Result<Vec<crate::model::RuleTarget>> {
+    let agents = cfg.agents();
+    if agents.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out = Vec::new();
+    match scope {
+        Scope::Project => {
+            for a in agents {
+                if let Some(t) = a.rules_project_path(project_root) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
+                }
+            }
+        }
+        Scope::Global => {
+            let home = dirs_home()?;
+            for a in agents {
+                if let Some(t) = a.rules_global_path(&home) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Root that lock-file `destination` paths are stored relative to, so the
 /// committed lock stays portable across machines and users.
 /// Project scope → the project root; Global scope → the user's home directory.

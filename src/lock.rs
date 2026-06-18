@@ -107,6 +107,18 @@ impl LockFile {
         names
     }
 
+    pub(crate) fn list_installed_rules(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "rules")
+            .map(|(_, a)| a.name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
     pub(crate) fn list_installed_mcps(&self) -> Vec<String> {
         let mut servers: Vec<String> = self
             .list_tracked_asset_ids("mcp")
@@ -176,7 +188,7 @@ mod tests {
         save_lock(&mut lock, Scope::Project, &dir).unwrap();
 
         let loaded = load_lock(Scope::Project, &dir).unwrap();
-        assert_eq!(loaded.version, 2);
+        assert_eq!(loaded.version, 3);
         assert!(loaded.skills.is_empty());
         assert!(loaded.assets.is_empty());
 
@@ -258,7 +270,7 @@ assets: {}\n";
 
         save_lock(&mut loaded, Scope::Project, &dir).unwrap();
         let resaved = fs::read_to_string(dir.join(LOCK_FILENAME)).unwrap();
-        assert!(resaved.starts_with("version: 2"));
+        assert!(resaved.starts_with("version: 3"));
         assert!(!resaved.contains("last_run"));
         assert!(!resaved.contains("latest_report"));
         assert!(!resaved.contains("updated_at"));
@@ -272,7 +284,7 @@ assets: {}\n";
         fs::create_dir_all(&dir).unwrap();
 
         let lock = load_lock(Scope::Project, &dir).unwrap();
-        assert_eq!(lock.version, 2);
+        assert_eq!(lock.version, 3);
         assert!(lock.skills.is_empty());
 
         let _ = fs::remove_dir_all(&dir);

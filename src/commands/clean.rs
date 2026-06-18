@@ -21,6 +21,7 @@ struct CleanOutput {
     skills_removed: usize,
     mcps_removed: usize,
     commands_removed: usize,
+    rules_removed: usize,
     dry_run: bool,
 }
 
@@ -39,26 +40,46 @@ pub(crate) fn run(
     let state = lock.state();
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
     let command_assets = lock.list_tracked_asset_ids("command");
+    // Rules need source + name (to recompute the managed-block id at teardown),
+    // so snapshot them directly rather than via the (id, dest) list helper.
+    let rule_meta: Vec<(String, String, String)> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "rules")
+        .map(|(_, a)| (a.source.clone(), a.name.clone(), a.destination.clone()))
+        .collect();
 
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
     let commands_count = command_assets.len();
+    let rules_count = rule_meta.len();
 
-    if !dry_run && !as_json && !quiet && (skills_count + mcps_count + commands_count) > 0 {
+    if !dry_run
+        && !as_json
+        && !quiet
+        && (skills_count + mcps_count + commands_count + rules_count) > 0
+    {
         let color = list_color_enabled() && !plain;
         if color {
             println!(
-                "{ATTENTION}⚠{RESET} Removing {skills_count} skills, {mcps_count} MCP servers, and {commands_count} commands."
+                "{ATTENTION}⚠{RESET} Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, and {rules_count} rules."
             );
         } else {
             println!(
-                "Removing {skills_count} skills, {mcps_count} MCP servers, and {commands_count} commands."
+                "Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, and {rules_count} rules."
             );
         }
     }
 
     if !dry_run {
-        apply_removals(&state, &mcp_assets, &command_assets, scope, &project_root)?;
+        apply_removals(
+            &state,
+            &mcp_assets,
+            &command_assets,
+            &rule_meta,
+            scope,
+            &project_root,
+        )?;
         lock.clear_all();
         save_lock(&mut lock, scope, &project_root)?;
         clear_runtime_state(scope, &project_root)?;
@@ -68,6 +89,7 @@ pub(crate) fn run(
         skills_removed: skills_count,
         mcps_removed: mcps_count,
         commands_removed: commands_count,
+        rules_removed: rules_count,
         dry_run,
     };
 
@@ -79,7 +101,7 @@ pub(crate) fn run(
             &state,
             dry_run,
             plain,
-            skills_count + mcps_count + commands_count,
+            skills_count + mcps_count + commands_count + rules_count,
             started.elapsed(),
         );
     }
@@ -91,6 +113,7 @@ fn apply_removals(
     state: &State,
     mcp_assets: &[(&str, &str)],
     command_assets: &[(&str, &str)],
+    rule_assets: &[(String, String, String)],
     scope: Scope,
     project_root: &std::path::Path,
 ) -> Result<()> {
@@ -105,6 +128,14 @@ fn apply_removals(
             if path.exists() && path.is_file() {
                 let _ = fs::remove_file(path);
             }
+        }
+    }
+
+    // Rules: strip the managed block from shared aggregate files (never deleting
+    // the user-owned file) or delete a standalone per-rule file.
+    for (source, name, dest_csv) in rule_assets {
+        for token in dest_csv.split(',').filter(|s| !s.is_empty()) {
+            crate::rules::teardown_dest(token, source, name, &root);
         }
     }
 
@@ -247,6 +278,34 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         print_section_header("Commands", Some((cmd_assets.len(), "to remove")), plain);
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &cmd_assets {
+            let key = a.source.clone();
+            if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                g.1.push(a.name.as_str());
+            } else {
+                by_source.push((key, vec![a.name.as_str()]));
+            }
+        }
+        for (source, items) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), None, plain);
+            for (i, name) in items.iter().enumerate() {
+                let is_last = i == items.len() - 1;
+                let glyph = action_glyph(status, plain);
+                let tail = status_tail(status, None, None, plain);
+                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+            }
+        }
+    }
+
+    let rule_assets: Vec<_> = lock
+        .assets
+        .iter()
+        .filter(|(_, a)| a.kind == "rules")
+        .collect();
+    if !rule_assets.is_empty() {
+        print_section_header("Rules", Some((rule_assets.len(), "to remove")), plain);
+        let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
+        for (_, a) in &rule_assets {
             let key = a.source.clone();
             if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
                 g.1.push(a.name.as_str());

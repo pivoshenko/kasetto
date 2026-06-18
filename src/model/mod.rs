@@ -10,10 +10,10 @@ pub(crate) use agent::{
     all_mcp_settings_targets, command_global_targets, command_project_targets, Agent, AgentField,
 };
 pub(crate) use config::{
-    resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, Scope,
-    SkillTarget, SkillsField, SourceSpec,
+    resolve_scope, CommandEntry, CommandsField, Config, GitPin, McpEntry, McpsField, RuleEntry,
+    RulesField, Scope, SkillTarget, SkillsField, SourceSpec,
 };
-pub(crate) use config::{CommandSourceSpec, McpSourceSpec};
+pub(crate) use config::{CommandSourceSpec, McpSourceSpec, RuleSourceSpec};
 pub(crate) use types::{
     Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure, LOCK_VERSION,
 };
@@ -58,4 +58,34 @@ pub(crate) enum CommandFormat {
 pub(crate) struct CommandTarget {
     pub path: PathBuf,
     pub format: CommandFormat,
+}
+
+/// On-disk shape Kasetto emits for a rule on a given agent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum RuleFormat {
+    /// Plain Markdown body merged into a single shared file (`CLAUDE.md`,
+    /// `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, …) via
+    /// managed comment-block markers so multiple rules and hand edits coexist.
+    AggregateMarkdown,
+    /// `<name>.mdc` per rule — Cursor MDC frontmatter (`description`, `globs`,
+    /// `alwaysApply`) reconstructed from the source, then the body.
+    CursorMdc,
+    /// `<name>.md` per rule — Markdown body only, frontmatter stripped.
+    PlainMarkdownDir,
+}
+
+impl RuleFormat {
+    /// Whether the target is a single shared file that rules merge into (as
+    /// opposed to a directory holding one file per rule).
+    pub(crate) fn is_aggregate(self) -> bool {
+        matches!(self, RuleFormat::AggregateMarkdown)
+    }
+}
+
+/// Destination (shared file or per-rule directory) and write format for rule
+/// sync / clean. `path` is a file when `format.is_aggregate()`, else a directory.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct RuleTarget {
+    pub path: PathBuf,
+    pub format: RuleFormat,
 }

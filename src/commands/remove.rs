@@ -19,6 +19,7 @@ pub(crate) struct RemoveOptions<'a> {
     pub skills: &'a [String],
     pub mcps: &'a [String],
     pub commands: &'a [String],
+    pub rules: &'a [String],
     pub git_ref: Option<&'a str>,
     pub branch: Option<&'a str>,
     pub sub_dir: Option<&'a str>,
@@ -74,6 +75,7 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
         (Section::Skills, opts.skills),
         (Section::Mcps, opts.mcps),
         (Section::Commands, opts.commands),
+        (Section::Rules, opts.rules),
     ];
     let any_kind = kinds.iter().any(|(_, names)| !names.is_empty());
 
@@ -113,7 +115,12 @@ fn remove_whole_source(
     sub_dir: Option<&str>,
 ) -> Result<Vec<Removed>> {
     let mut removed = Vec::new();
-    for section in [Section::Skills, Section::Mcps, Section::Commands] {
+    for section in [
+        Section::Skills,
+        Section::Mcps,
+        Section::Commands,
+        Section::Rules,
+    ] {
         // MCP entries never carry sub-dir; don't let a deep-URL sub-dir filter
         // them out when the user is dropping the source from every list.
         let section_sub = if section == Section::Mcps {

@@ -23,6 +23,7 @@ struct DoctorOutput {
     failures: Vec<SyncFailure>,
     mcps: Vec<String>,
     commands: Vec<String>,
+    rules: Vec<String>,
     command_dirs: Vec<CommandDirCheck>,
     update_check: UpdateCheckOutput,
 }
@@ -90,6 +91,7 @@ pub(crate) fn run(
 
     let managed_mcps = lock.list_installed_mcps();
     let managed_commands = lock.list_installed_commands();
+    let managed_rules = lock.list_installed_rules();
     let command_dirs = collect_command_dirs(scope, &project_root);
 
     let scope_label = match scope {
@@ -109,6 +111,7 @@ pub(crate) fn run(
         failures,
         mcps: managed_mcps,
         commands: managed_commands,
+        rules: managed_rules,
         command_dirs,
         update_check,
     };
@@ -145,6 +148,7 @@ pub(crate) fn run(
         ("Skills", output.skills.len().to_string()),
         ("MCP servers", output.mcps.len().to_string()),
         ("Commands", output.commands.len().to_string()),
+        ("Rules", output.rules.len().to_string()),
     ];
     let inv_key_w = inv_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &inv_rows {

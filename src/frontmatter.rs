@@ -1,6 +1,12 @@
+//! Shared Markdown-with-YAML-frontmatter parsing.
+//!
+//! Used by both the slash-command pipeline (`prompts`) and the rules pipeline
+//! (`rules`): a source file may open with a `---`-fenced YAML block, which is
+//! split off from the body so each pipeline can transform the two parts.
+
 use crate::error::{err, Result};
 
-/// A parsed Markdown-with-YAML-frontmatter command source.
+/// A parsed Markdown-with-YAML-frontmatter source.
 #[derive(Debug, Clone)]
 pub(crate) struct Parsed {
     /// Frontmatter YAML text (between the `---` fences), without the fences.
@@ -54,7 +60,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed> {
     }
     let Some((fm_end, body_start)) = found else {
         return Err(err(
-            "command source has an opening `---` but no closing `---` for the frontmatter",
+            "source has an opening `---` but no closing `---` for the frontmatter",
         ));
     };
     let frontmatter = rest[..fm_end].trim_end_matches('\n').to_string();

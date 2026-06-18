@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 
 use super::Scope;
 
-/// Schema version of `kasetto.lock`. Bumped to 2 for the portable format:
-/// relative `destination` paths and no machine-/run-specific fields.
-pub(crate) const LOCK_VERSION: u8 = 2;
+/// Schema version of `kasetto.lock`. Bumped to 2 for the portable format
+/// (relative `destination` paths, no machine-/run-specific fields), then to 3
+/// when the `rules` asset kind joined skills/commands/MCPs.
+pub(crate) const LOCK_VERSION: u8 = 3;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub(crate) struct SkillEntry {

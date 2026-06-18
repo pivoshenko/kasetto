@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use super::{CommandFormat, CommandTarget, McpSettingsFormat, McpSettingsTarget};
+use super::{
+    CommandFormat, CommandTarget, McpSettingsFormat, McpSettingsTarget, RuleFormat, RuleTarget,
+};
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
@@ -147,6 +149,14 @@ pub(crate) fn command_project_targets(project_root: &Path, agents: &[Agent]) -> 
 #[inline]
 fn cmd(base: &Path, rel: &str, format: CommandFormat) -> Option<CommandTarget> {
     Some(CommandTarget {
+        path: base.join(rel),
+        format,
+    })
+}
+
+#[inline]
+fn rule(base: &Path, rel: &str, format: RuleFormat) -> Option<RuleTarget> {
+    Some(RuleTarget {
         path: base.join(rel),
         format,
     })
@@ -413,6 +423,81 @@ impl Agent {
             | Agent::Warp => None,
         }
     }
+
+    /// Project-local rules destination and write format for this agent.
+    ///
+    /// Project paths are verified against each agent's official docs (early
+    /// 2026). Aggregate formats are single shared instruction files; dir formats
+    /// hold one file per rule. `OpenClaw` has no project-scoped rules concept
+    /// (its `AGENTS.md` lives in the machine-level workspace — see
+    /// `rules_global_path`).
+    pub(crate) fn rules_project_path(self, project_root: &Path) -> Option<RuleTarget> {
+        use RuleFormat::{AggregateMarkdown as Agg, CursorMdc, PlainMarkdownDir as Dir};
+        match self {
+            // Aggregate single-file instruction files.
+            Agent::ClaudeCode => rule(project_root, "CLAUDE.md", Agg),
+            Agent::Codex => rule(project_root, "AGENTS.md", Agg),
+            Agent::OpenCode => rule(project_root, "AGENTS.md", Agg),
+            Agent::Amp => rule(project_root, "AGENTS.md", Agg),
+            // Antigravity's native file is GEMINI.md (takes precedence over AGENTS.md).
+            Agent::Antigravity => rule(project_root, "GEMINI.md", Agg),
+            Agent::GeminiCli => rule(project_root, "GEMINI.md", Agg),
+            Agent::GithubCopilot => rule(project_root, ".github/copilot-instructions.md", Agg),
+            // Junie's current primary file is .junie/AGENTS.md (.junie/guidelines.md is legacy).
+            Agent::Junie => rule(project_root, ".junie/AGENTS.md", Agg),
+            Agent::Goose => rule(project_root, ".goosehints", Agg),
+            Agent::Warp => rule(project_root, "WARP.md", Agg),
+            // Replit Agent reads replit.md, not AGENTS.md.
+            Agent::Replit => rule(project_root, "replit.md", Agg),
+            // OpenHands' always-on repo instructions live in this single file.
+            Agent::OpenHands => rule(project_root, ".openhands/microagents/repo.md", Agg),
+            // Cursor MDC: per-rule files with reconstructed frontmatter.
+            Agent::Cursor => rule(project_root, ".cursor/rules", CursorMdc),
+            // Per-rule plain-markdown directories.
+            Agent::Windsurf => rule(project_root, ".windsurf/rules", Dir),
+            Agent::Cline => rule(project_root, ".clinerules", Dir),
+            Agent::Continue => rule(project_root, ".continue/rules", Dir),
+            Agent::Roo => rule(project_root, ".roo/rules", Dir),
+            Agent::Augment => rule(project_root, ".augment/rules", Dir),
+            Agent::KiroCli => rule(project_root, ".kiro/steering", Dir),
+            Agent::Trae => rule(project_root, ".trae/rules", Dir),
+            // OpenClaw has no per-project rules file (workspace-level only).
+            Agent::OpenClaw => None,
+        }
+    }
+
+    /// Global / user-level rules destination for this agent.
+    ///
+    /// Most are documented official paths; a few are community-reported and not
+    /// yet in official docs (notably Cursor `~/.cursor/rules`, Cline
+    /// `~/Documents/Cline/Rules`) — harmless where a given build ignores them.
+    /// Returns `None` for agents whose global rules are UI-managed (Warp, Trae)
+    /// or have no documented on-disk location (Continue, OpenHands, Replit).
+    pub(crate) fn rules_global_path(self, home: &Path) -> Option<RuleTarget> {
+        use RuleFormat::{AggregateMarkdown as Agg, CursorMdc, PlainMarkdownDir as Dir};
+        match self {
+            Agent::ClaudeCode => rule(home, ".claude/CLAUDE.md", Agg),
+            Agent::Codex => rule(home, ".codex/AGENTS.md", Agg),
+            Agent::GeminiCli => rule(home, ".gemini/GEMINI.md", Agg),
+            Agent::Antigravity => rule(home, ".gemini/GEMINI.md", Agg),
+            Agent::Junie => rule(home, ".junie/AGENTS.md", Agg),
+            Agent::OpenCode => rule(home, ".config/opencode/AGENTS.md", Agg),
+            Agent::Amp => rule(home, ".config/amp/AGENTS.md", Agg),
+            Agent::Goose => rule(home, ".config/goose/.goosehints", Agg),
+            Agent::GithubCopilot => rule(home, ".copilot/copilot-instructions.md", Agg),
+            Agent::OpenClaw => rule(home, ".openclaw/workspace/AGENTS.md", Agg),
+            Agent::Windsurf => rule(home, ".codeium/windsurf/memories/global_rules.md", Agg),
+            Agent::KiroCli => rule(home, ".kiro/steering", Dir),
+            Agent::Augment => rule(home, ".augment/rules", Dir),
+            Agent::Roo => rule(home, ".roo/rules", Dir),
+            Agent::Cline => rule(home, "Documents/Cline/Rules", Dir),
+            // Community-supported (not yet in official docs): global ~/.cursor/rules
+            // is read as .mdc by recent Cursor builds; harmless where it isn't.
+            Agent::Cursor => rule(home, ".cursor/rules", CursorMdc),
+            // UI-managed or no documented on-disk global rules.
+            Agent::Warp | Agent::Trae | Agent::Continue | Agent::OpenHands | Agent::Replit => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -458,6 +543,82 @@ mod tests {
         );
         assert!(Agent::Codex.commands_project_path(pr).is_none());
         assert!(Agent::Warp.commands_project_path(pr).is_none());
+    }
+
+    #[test]
+    fn rules_project_path_known_agents() {
+        let pr = Path::new("/work");
+        assert_eq!(
+            Agent::ClaudeCode.rules_project_path(pr).unwrap().path,
+            pr.join("CLAUDE.md")
+        );
+        assert!(Agent::ClaudeCode
+            .rules_project_path(pr)
+            .unwrap()
+            .format
+            .is_aggregate());
+        assert_eq!(
+            Agent::Cursor.rules_project_path(pr).unwrap().format,
+            RuleFormat::CursorMdc
+        );
+        assert_eq!(
+            Agent::Windsurf.rules_project_path(pr).unwrap().format,
+            RuleFormat::PlainMarkdownDir
+        );
+        assert_eq!(
+            Agent::Codex.rules_project_path(pr).unwrap().path,
+            pr.join("AGENTS.md")
+        );
+        // Doc-verified corrections.
+        assert_eq!(
+            Agent::Replit.rules_project_path(pr).unwrap().path,
+            pr.join("replit.md")
+        );
+        assert_eq!(
+            Agent::Antigravity.rules_project_path(pr).unwrap().path,
+            pr.join("GEMINI.md")
+        );
+        assert_eq!(
+            Agent::OpenHands.rules_project_path(pr).unwrap().path,
+            pr.join(".openhands/microagents/repo.md")
+        );
+        assert_eq!(
+            Agent::Junie.rules_project_path(pr).unwrap().path,
+            pr.join(".junie/AGENTS.md")
+        );
+        // OpenClaw has no per-project rules concept.
+        assert!(Agent::OpenClaw.rules_project_path(pr).is_none());
+        // Every other preset resolves to a project rules target.
+        for a in AGENT_PRESETS.iter().filter(|a| **a != Agent::OpenClaw) {
+            assert!(
+                a.rules_project_path(pr).is_some(),
+                "{a:?} missing project rules"
+            );
+        }
+    }
+
+    #[test]
+    fn rules_global_path_for_agents_with_global_location() {
+        let home = Path::new("/tmp/home");
+        assert_eq!(
+            Agent::ClaudeCode.rules_global_path(home).unwrap().path,
+            home.join(".claude/CLAUDE.md")
+        );
+        assert_eq!(
+            Agent::Junie.rules_global_path(home).unwrap().path,
+            home.join(".junie/AGENTS.md")
+        );
+        assert_eq!(
+            Agent::OpenClaw.rules_global_path(home).unwrap().path,
+            home.join(".openclaw/workspace/AGENTS.md")
+        );
+        // Cursor global ~/.cursor/rules (community-supported .mdc dir).
+        let cursor = Agent::Cursor.rules_global_path(home).unwrap();
+        assert_eq!(cursor.path, home.join(".cursor/rules"));
+        assert_eq!(cursor.format, RuleFormat::CursorMdc);
+        // Warp / Trae globals are UI-managed → no syncable file.
+        assert!(Agent::Warp.rules_global_path(home).is_none());
+        assert!(Agent::Trae.rules_global_path(home).is_none());
     }
 
     #[test]

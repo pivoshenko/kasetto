@@ -22,7 +22,7 @@
 
 **About the name**
 
-Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands as cassettes you plug in, swap out, and share across machines.
+Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands, and rules as cassettes you plug in, swap out, and share across machines.
 
 ## Why Kasetto
 
@@ -30,10 +30,10 @@ There are good tools in this space already - [Vercel Skills](https://github.com/
 
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible skill management across machines and agents.**
 
-- **Declarative** — one YAML file, your whole setup: skills, commands, MCPs, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.
+- **Declarative** — one YAML file, your whole setup: skills, commands, MCPs, rules, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.
 - **Enterprise & private repositories** — pull from anywhere: GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift.
 - **Multi-agent** — write once, ship everywhere. Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, and [many more](#supported-agents) — one sync keeps them all current.
-- **Skills, Commands & MCPs** — all three asset kinds, one source: skills, commands, and MCPs. Everything is transformed into each agent's native format, and auto-merged. Distribute rules, tools, and prompts as easily as sharing a repository link.
+- **Skills, Commands, MCPs & Rules** — four asset kinds, one source: skills, commands, MCPs, and rules (`CLAUDE.md`, `.cursor/rules`, `AGENTS.md`, …). Everything is transformed into each agent's native format, and auto-merged. Distribute rules, tools, and prompts as easily as sharing a repository link.
 - **Speed** — instant by design. Built in Rust, it hashes content and diffs a lock file so only what changed gets touched — full syncs finish in seconds.
 - **Universal** — one static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and real exit codes.
 
@@ -131,11 +131,11 @@ kst doctor                  # version, paths, last sync status
 One-line synopsis below. Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
 
 - **`kst init`** — generate a starter `kasetto.yaml` (local or `--global`).
-- **`kst add <source>`** — append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command` name entries (a lone `*` is a wildcard; no flags ⇒ `skills: "*"`), so one `add` can touch several lists. Accepts a cargo/uv-style `<source>@<ref>` shorthand and deep `blob`/`tree` browse URLs — the latter decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--dry-run` previews the edit; `--no-sync` edits without installing; `--locked` keeps the follow-up sync offline; `--json` for scripting.
-- **`kst remove <source>`** (alias `rm`) — drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` (or the `@<ref>` shorthand) disambiguate a repeated URL. `--dry-run` previews; `--no-sync` edits only; `--locked` and `--json` mirror `add`.
-- **`kst lock`** — re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command revision pins refresh. `--check` (alias `--locked`/`--frozen`) verifies the lock matches the config without writing (CI-friendly); `-P`/`--upgrade-package <name>...` re-resolves only the named skills' sources.
-- **`kst sync`** — read config, install skills + MCPs into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
-- **`kst list`** — print a uv-style table of installed skills, MCPs, and commands from the lock file; `--type skills|mcps|commands` filters; `--json` for scripting.
+- **`kst add <source>`** — append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command`/`--rule` name entries (a lone `*` is a wildcard; no flags ⇒ `skills: "*"`), so one `add` can touch several lists. Accepts a cargo/uv-style `<source>@<ref>` shorthand and deep `blob`/`tree` browse URLs — the latter decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--dry-run` previews the edit; `--no-sync` edits without installing; `--locked` keeps the follow-up sync offline; `--json` for scripting.
+- **`kst remove <source>`** (alias `rm`) — drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command`/`--rule` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` (or the `@<ref>` shorthand) disambiguate a repeated URL. `--dry-run` previews; `--no-sync` edits only; `--locked` and `--json` mirror `add`.
+- **`kst lock`** — re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command/rule revision pins refresh. `--check` (alias `--locked`/`--frozen`) verifies the lock matches the config without writing (CI-friendly); `-P`/`--upgrade-package <name>...` re-resolves only the named skills' sources.
+- **`kst sync`** — read config, install skills + MCPs + commands + rules into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
+- **`kst list`** — print a uv-style table of installed skills, MCPs, commands, and rules from the lock file; `--type skills|mcps|commands|rules` filters; `--json` for scripting.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.
 - **`kst clean`** — remove tracked skills and MCP configs for the given scope.
 - **`kst self update`** — fetch latest release, verify SHA256, replace binary in place.
@@ -198,6 +198,12 @@ commands:
     commands:
       - gsd:explore
       - gsd:fast
+
+rules:
+  # rules wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from rules/<name>.{md,mdc}
+  # "*" syncs every rule; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
+  - source: https://github.com/example/agent-rules
+    rules: "*"
 
 mcps:
   # names resolve to mcps/<name>.json in the source

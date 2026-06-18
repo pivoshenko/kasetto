@@ -260,23 +260,32 @@ pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>>
     if !base.exists() {
         return Ok(out);
     }
-    walk_commands(&base, &base, &mut out)?;
+    walk_md(&base, &base, &["md"], &mut out)?;
     Ok(out)
 }
 
-fn walk_commands(base: &Path, cur: &Path, out: &mut HashMap<String, PathBuf>) -> Result<()> {
+/// Recursively walk `cur`, collecting files whose extension is in `exts` into a
+/// map of `:`-namespaced name (relative path with separators → `:`, stem only)
+/// → path. Shared by command (`md`) and rule (`md`/`mdc`) discovery.
+fn walk_md(
+    base: &Path,
+    cur: &Path,
+    exts: &[&str],
+    out: &mut HashMap<String, PathBuf>,
+) -> Result<()> {
     for e in fs::read_dir(cur)? {
         let e = e?;
         let path = e.path();
         let ft = e.file_type()?;
         if ft.is_dir() {
-            walk_commands(base, &path, out)?;
+            walk_md(base, &path, exts, out)?;
             continue;
         }
         if !ft.is_file() {
             continue;
         }
-        if path.extension().and_then(|s| s.to_str()) != Some("md") {
+        let ext = path.extension().and_then(|s| s.to_str());
+        if !ext.is_some_and(|ext| exts.contains(&ext)) {
             continue;
         }
         let rel = match path.strip_prefix(base) {
@@ -347,6 +356,71 @@ fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
     }
     Err(err(format!(
         "command entry not found: {name} (looked in commands/ with subdir namespaces)"
+    )))
+}
+
+/// Walk `<root>/rules/**/*.{md,mdc}` and return a map of namespaced name → file path.
+///
+/// Mirrors [`discover_commands`]: subdirectory nesting becomes `:`-separated
+/// namespaces. Both `.md` and `.mdc` (Cursor) sources are picked up.
+pub(crate) fn discover_rules(root: &Path) -> Result<HashMap<String, PathBuf>> {
+    let mut out = HashMap::new();
+    let base = root.join("rules");
+    if !base.exists() {
+        return Ok(out);
+    }
+    walk_md(&base, &base, &["md", "mdc"], &mut out)?;
+    Ok(out)
+}
+
+/// Resolve one `RuleEntry` to a file path.
+///
+/// - `Name("style")` → look up by namespaced name in `discover_rules`.
+/// - `Obj { name: "style", path: Some("house") }` → `<root>/house/style.{md,mdc}`.
+/// - `Obj { name: "style", path: None }` → look up by namespaced name.
+pub(crate) fn resolve_rule_entry(
+    root: &Path,
+    entry: &crate::model::RuleEntry,
+) -> Result<(String, PathBuf)> {
+    match entry {
+        crate::model::RuleEntry::Name(n) => resolve_named_rule(root, n),
+        crate::model::RuleEntry::Obj { name, path } => {
+            let Some(dir) = path else {
+                return resolve_named_rule(root, name);
+            };
+            let base = root.join(dir);
+            // Accept an explicit extension, else try .md then .mdc.
+            let candidates: Vec<PathBuf> = if name.ends_with(".md") || name.ends_with(".mdc") {
+                vec![base.join(name)]
+            } else {
+                vec![
+                    base.join(format!("{name}.md")),
+                    base.join(format!("{name}.mdc")),
+                ]
+            };
+            for target in &candidates {
+                if target.is_file() {
+                    let derived = name
+                        .trim_end_matches(".mdc")
+                        .trim_end_matches(".md")
+                        .to_string();
+                    return Ok((derived, target.clone()));
+                }
+            }
+            Err(err(format!(
+                "rule entry not found: {name} in {dir}/ (looked for .md/.mdc)"
+            )))
+        }
+    }
+}
+
+fn resolve_named_rule(root: &Path, name: &str) -> Result<(String, PathBuf)> {
+    let available = discover_rules(root)?;
+    if let Some(path) = available.get(name) {
+        return Ok((name.to_string(), path.clone()));
+    }
+    Err(err(format!(
+        "rule entry not found: {name} (looked in rules/ with subdir namespaces)"
     )))
 }
 
@@ -598,6 +672,40 @@ mod tests {
         let (name, path) = resolve_command_entry(&root, &entry).unwrap();
         assert_eq!(name, "git:commit");
         assert!(path.ends_with("commands/git/commit.md"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn discover_rules_walks_nested_and_picks_mdc() {
+        let root = temp_dir("kasetto-rule-disc");
+        let nested = root.join("rules/house");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(root.join("rules/style.md"), "---\n---\nbody\n").unwrap();
+        fs::write(nested.join("security.mdc"), "x").unwrap();
+        fs::write(root.join("rules/not-md.txt"), "ignored").unwrap();
+
+        let map = discover_rules(&root).unwrap();
+        assert_eq!(map.len(), 2);
+        assert!(map.contains_key("style"));
+        assert!(map.contains_key("house:security"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_rule_entry_obj_with_path_tries_mdc() {
+        let root = temp_dir("kasetto-rule-obj");
+        fs::create_dir_all(root.join("house")).unwrap();
+        fs::write(root.join("house/style.mdc"), "x").unwrap();
+
+        let entry = crate::model::RuleEntry::Obj {
+            name: "style".to_string(),
+            path: Some("house".to_string()),
+        };
+        let (name, path) = resolve_rule_entry(&root, &entry).unwrap();
+        assert_eq!(name, "style");
+        assert!(path.ends_with("house/style.mdc"));
 
         let _ = fs::remove_dir_all(&root);
     }

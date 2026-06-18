@@ -1,12 +1,12 @@
 //! Command (slash-command / prompt template) parsing and per-agent transforms.
 
-mod parse;
 mod transform;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
+use crate::frontmatter::parse;
 use crate::model::CommandTarget;
 
 pub(crate) use transform::destination_path;
@@ -22,7 +22,7 @@ pub(crate) fn apply_command(source: &Path, target: &CommandTarget, name: &str) -
             source.display()
         ))
     })?;
-    let parsed = parse::parse(&text)?;
+    let parsed = parse(&text)?;
     let rendered = transform::render(&parsed, target.format);
     let dest = transform::destination_path(target, name);
     transform::ensure_parent_dirs(&dest)?;

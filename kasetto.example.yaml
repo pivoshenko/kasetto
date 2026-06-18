@@ -40,6 +40,12 @@ commands:
       - gsd:explore
       - gsd:fast
 
+rules:
+  # rules wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from rules/<name>.{md,mdc}
+  # "*" syncs every rule; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
+  - source: https://github.com/example/agent-rules
+    rules: "*"
+
 mcps:
   # names resolve to mcps/<name>.json in the source
   - source: https://github.com/pivoshenko/pivoshenko.ai

@@ -61,6 +61,12 @@ commands:
       - gsd:explore
       - gsd:fast
 
+rules:
+  # rules wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from rules/<name>.{md,mdc}
+  # "*" syncs every rule; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
+  - source: https://github.com/example/agent-rules
+    rules: "*"
+
 mcps:
   # names resolve to mcps/<name>.json in the source
   - source: https://github.com/pivoshenko/pivoshenko.ai
@@ -83,6 +89,8 @@ mcps:
 | `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`      | **yes**  | List of skill sources                                               |
 | `mcps`        | no       | List of MCP server sources                                          |
+| `commands`    | no       | List of slash-command sources                                       |
+| `rules`       | no       | List of rule sources (CLAUDE.md / .cursor/rules / AGENTS.md …)      |
 | `extends`     | no       | Path or URL of a parent config to inherit from (string or list)     |
 
 ### Skill Source Fields
@@ -145,6 +153,49 @@ MCP config files must contain a `mcpServers` object with server definitions. Ser
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](/docs/how-sync-works) for merge behavior details.
 
+### Rule Source Fields
+
+Rules wire each agent's instruction file — `CLAUDE.md`, `.cursor/rules/*.mdc`, `AGENTS.md`,
+`.github/copilot-instructions.md`, and so on — from a single source. A rule is Markdown with
+optional YAML frontmatter, discovered in the source's `rules/` directory.
+
+| Key       | Required | Description                                                                                    |
+| --------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `source`  | **yes**  | Git host URL or local path containing a `rules/` directory                                      |
+| `branch`  | no       | Branch for remote sources (default: `main`, falls back to `master`)                            |
+| `ref`     | no       | Git tag, commit SHA, or ref - takes priority over `branch`                                     |
+| `sub-dir` | no       | Relative subdirectory within the source used as the discovery root (`sub_dir` alias supported) |
+| `rules`   | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects                           |
+
+When `rules: "*"`, Kasetto walks `rules/**/*.{md,mdc}` (nested directories namespace with `:`,
+e.g. `house:security`).
+
+### Rule Entry Fields
+
+Each entry in the `rules` list can be a plain string (name) or an object — mirrors command entries:
+
+| Form                              | Resolves to                       |
+| --------------------------------- | --------------------------------- |
+| `- style`                         | `rules/style.{md,mdc}`            |
+| `- house:security`                | `rules/house/security.{md,mdc}`   |
+| `- { name: x, path: dir }`        | `dir/x.{md,mdc}`                  |
+
+### How Rules Land Per Agent
+
+Each rule is transformed into the target agent's native format. Two destination shapes exist:
+
+- **Aggregate file** — many rules merge into one shared file (`CLAUDE.md`, `AGENTS.md`,
+  `GEMINI.md`, `.github/copilot-instructions.md`, …). Each rule is wrapped in a managed
+  `<!-- kasetto:rule:ID … -->` comment block, so your own hand-written content and other rules in
+  the same file are preserved. `remove`/`clean` strip only kasetto's blocks — they never delete the
+  file.
+- **Per-rule directory** — one file per rule. Cursor (`.cursor/rules/<name>.mdc`) gets reconstructed
+  MDC frontmatter (`description`, `globs`, `alwaysApply`); other directory agents
+  (`.windsurf/rules`, `.clinerules`, `.continue/rules`, …) get the Markdown body only.
+
+`globs`/`alwaysApply` are only meaningful for Cursor; they are dropped for agents that don't scope
+rules. See [supported agents](/docs/agents) for the per-agent destinations.
+
 ## Extending Another Config
 
 Use `extends` to inherit from a parent config. Local relative paths resolve against the extending file's directory; HTTPS URLs are fetched with the same auth env vars as `--config`.
@@ -175,6 +226,8 @@ extends:
 | `agent`       | Replace - child wins                                                                                                          |
 | `skills`      | Merge by `(source, ref-or-branch, sub-dir)` identity. Same identity replaces; new entries append.                             |
 | `mcps`        | Same as `skills` (`sub-dir` is always empty for MCP sources, so identity is `(source, ref-or-branch)`).                       |
+| `commands`    | Same as `skills`.                                                                                                            |
+| `rules`       | Same as `skills`.                                                                                                            |
 
 Identity-based merging lets a child *narrow* a parent's `skills: "*"` to a specific list, or pin a different `ref`, while still adding new sources.
 

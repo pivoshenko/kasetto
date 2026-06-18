@@ -25,6 +25,8 @@ pub(crate) struct Config {
     pub mcps: Vec<McpSourceSpec>,
     #[serde(default)]
     pub commands: Vec<CommandSourceSpec>,
+    #[serde(default)]
+    pub rules: Vec<RuleSourceSpec>,
 }
 
 impl Config {
@@ -108,6 +110,45 @@ commands:
         assert!(matches!(&entries[0], CommandEntry::Name(n) if n == "review-pr"));
         assert!(
             matches!(&entries[1], CommandEntry::Obj { name, path: Some(p) } if name == "deploy" && p == "ops")
+        );
+    }
+
+    #[test]
+    fn config_rules_parses_wildcard() {
+        let yaml = r#"
+skills: []
+rules:
+  - source: https://github.com/me/rules
+    rules: "*"
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.rules.len(), 1);
+        assert!(matches!(cfg.rules[0].rules, RulesField::Wildcard(_)));
+    }
+
+    #[test]
+    fn config_rules_parses_plain_strings_and_objects() {
+        let yaml = r#"
+skills: []
+rules:
+  - source: https://github.com/me/rules
+    ref: v1.0
+    sub-dir: rules
+    rules:
+      - style
+      - name: security
+        path: house
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.rules[0].git_ref.as_deref(), Some("v1.0"));
+        assert_eq!(cfg.rules[0].sub_dir.as_deref(), Some("rules"));
+        let RulesField::List(ref entries) = cfg.rules[0].rules else {
+            panic!("expected list");
+        };
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(&entries[0], RuleEntry::Name(n) if n == "style"));
+        assert!(
+            matches!(&entries[1], RuleEntry::Obj { name, path: Some(p) } if name == "security" && p == "house")
         );
     }
 
@@ -262,6 +303,49 @@ pub(crate) enum CommandsField {
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum CommandEntry {
+    Name(String),
+    Obj { name: String, path: Option<String> },
+}
+
+/// A rules source: where to fetch from and which rule files to install.
+#[derive(Debug, Deserialize)]
+pub(crate) struct RuleSourceSpec {
+    pub source: String,
+    pub branch: Option<String>,
+    #[serde(rename = "ref")]
+    pub git_ref: Option<String>,
+    #[serde(default, rename = "sub-dir", alias = "sub_dir")]
+    pub sub_dir: Option<String>,
+    pub rules: RulesField,
+}
+
+impl RuleSourceSpec {
+    pub(crate) fn as_source_spec(&self) -> SourceSpec {
+        SourceSpec {
+            source: self.source.clone(),
+            branch: self.branch.clone(),
+            git_ref: self.git_ref.clone(),
+            sub_dir: self.sub_dir.clone(),
+            skills: SkillsField::Wildcard("*".to_string()),
+        }
+    }
+}
+
+/// The `rules` field on a `RuleSourceSpec` — mirrors `CommandsField`.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum RulesField {
+    Wildcard(String),
+    List(Vec<RuleEntry>),
+}
+
+/// One entry in `rules[].rules` — mirrors `CommandEntry`.
+///
+/// - Plain string `"style"` → resolves through `discover_rules` (namespaced names)
+/// - Object `{ name: style, path: house }` → `<path>/style.{md,mdc}`
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum RuleEntry {
     Name(String),
     Obj { name: String, path: Option<String> },
 }
