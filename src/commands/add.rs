@@ -25,7 +25,7 @@ pub(crate) struct AddOptions<'a> {
     pub skills: &'a [String],
     pub mcps: &'a [String],
     pub commands: &'a [String],
-    pub rules: &'a [String],
+    pub instructions: &'a [String],
     pub git_ref: Option<&'a str>,
     pub branch: Option<&'a str>,
     pub sub_dir: Option<&'a str>,
@@ -176,7 +176,7 @@ fn plan_edits(
     let nothing_specified = skill_names.is_empty()
         && opts.mcps.is_empty()
         && opts.commands.is_empty()
-        && opts.rules.is_empty();
+        && opts.instructions.is_empty();
 
     let mut edits = Vec::new();
     let mut push = |section: Section, selector: Selector| {
@@ -207,8 +207,8 @@ fn plan_edits(
     if !opts.commands.is_empty() {
         push(Section::Commands, selector_from(opts.commands));
     }
-    if !opts.rules.is_empty() {
-        push(Section::Rules, selector_from(opts.rules));
+    if !opts.instructions.is_empty() {
+        push(Section::Instructions, selector_from(opts.instructions));
     }
     edits
 }

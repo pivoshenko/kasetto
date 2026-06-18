@@ -26,7 +26,7 @@ pub(crate) struct Config {
     #[serde(default)]
     pub commands: Vec<CommandSourceSpec>,
     #[serde(default)]
-    pub rules: Vec<RuleSourceSpec>,
+    pub instructions: Vec<InstructionSourceSpec>,
 }
 
 impl Config {
@@ -114,41 +114,44 @@ commands:
     }
 
     #[test]
-    fn config_rules_parses_wildcard() {
+    fn config_instructions_parses_wildcard() {
         let yaml = r#"
 skills: []
-rules:
+instructions:
   - source: https://github.com/me/rules
-    rules: "*"
+    instructions: "*"
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert_eq!(cfg.rules.len(), 1);
-        assert!(matches!(cfg.rules[0].rules, RulesField::Wildcard(_)));
+        assert_eq!(cfg.instructions.len(), 1);
+        assert!(matches!(
+            cfg.instructions[0].instructions,
+            InstructionsField::Wildcard(_)
+        ));
     }
 
     #[test]
-    fn config_rules_parses_plain_strings_and_objects() {
+    fn config_instructions_parses_plain_strings_and_objects() {
         let yaml = r#"
 skills: []
-rules:
+instructions:
   - source: https://github.com/me/rules
     ref: v1.0
-    sub-dir: rules
-    rules:
+    sub-dir: instructions
+    instructions:
       - style
       - name: security
         path: house
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert_eq!(cfg.rules[0].git_ref.as_deref(), Some("v1.0"));
-        assert_eq!(cfg.rules[0].sub_dir.as_deref(), Some("rules"));
-        let RulesField::List(ref entries) = cfg.rules[0].rules else {
+        assert_eq!(cfg.instructions[0].git_ref.as_deref(), Some("v1.0"));
+        assert_eq!(cfg.instructions[0].sub_dir.as_deref(), Some("instructions"));
+        let InstructionsField::List(ref entries) = cfg.instructions[0].instructions else {
             panic!("expected list");
         };
         assert_eq!(entries.len(), 2);
-        assert!(matches!(&entries[0], RuleEntry::Name(n) if n == "style"));
+        assert!(matches!(&entries[0], InstructionEntry::Name(n) if n == "style"));
         assert!(
-            matches!(&entries[1], RuleEntry::Obj { name, path: Some(p) } if name == "security" && p == "house")
+            matches!(&entries[1], InstructionEntry::Obj { name, path: Some(p) } if name == "security" && p == "house")
         );
     }
 
@@ -307,19 +310,19 @@ pub(crate) enum CommandEntry {
     Obj { name: String, path: Option<String> },
 }
 
-/// A rules source: where to fetch from and which rule files to install.
+/// A instructions source: where to fetch from and which instruction files to install.
 #[derive(Debug, Deserialize)]
-pub(crate) struct RuleSourceSpec {
+pub(crate) struct InstructionSourceSpec {
     pub source: String,
     pub branch: Option<String>,
     #[serde(rename = "ref")]
     pub git_ref: Option<String>,
     #[serde(default, rename = "sub-dir", alias = "sub_dir")]
     pub sub_dir: Option<String>,
-    pub rules: RulesField,
+    pub instructions: InstructionsField,
 }
 
-impl RuleSourceSpec {
+impl InstructionSourceSpec {
     pub(crate) fn as_source_spec(&self) -> SourceSpec {
         SourceSpec {
             source: self.source.clone(),
@@ -331,21 +334,21 @@ impl RuleSourceSpec {
     }
 }
 
-/// The `rules` field on a `RuleSourceSpec` — mirrors `CommandsField`.
+/// The `instructions` field on a `InstructionSourceSpec` — mirrors `CommandsField`.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub(crate) enum RulesField {
+pub(crate) enum InstructionsField {
     Wildcard(String),
-    List(Vec<RuleEntry>),
+    List(Vec<InstructionEntry>),
 }
 
-/// One entry in `rules[].rules` — mirrors `CommandEntry`.
+/// One entry in `instructions[].instructions` — mirrors `CommandEntry`.
 ///
-/// - Plain string `"style"` → resolves through `discover_rules` (namespaced names)
+/// - Plain string `"style"` → resolves through `discover_instructions` (namespaced names)
 /// - Object `{ name: style, path: house }` → `<path>/style.{md,mdc}`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub(crate) enum RuleEntry {
+pub(crate) enum InstructionEntry {
     Name(String),
     Obj { name: String, path: Option<String> },
 }

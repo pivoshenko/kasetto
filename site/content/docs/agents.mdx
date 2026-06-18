@@ -31,14 +31,14 @@ Set the `agent` field in your [config](/docs/configuration) and Kasetto figures 
 | Warp           | `warp`           | `~/.agents/skills/`             |
 | Windsurf       | `windsurf`       | `~/.codeium/windsurf/skills/`   |
 
-## Rule Destinations
+## Instruction Destinations
 
-`rules` land in each agent's native instruction file or directory rather than the skills path
+`instructions` land in each agent's native instruction file or directory rather than the skills path
 above. Paths are verified against each agent's official docs. **Aggregate** files (one shared file,
-many rules merged via managed comment blocks so your own edits survive) and **directories** (one
-file per rule) are noted below; project paths are relative to the repo root, global paths to `$HOME`.
+many instructions merged via managed comment blocks so your own edits survive) and **directories** (one
+file per instruction) are noted below; project paths are relative to the repo root, global paths to `$HOME`.
 
-| Agent          | Project rules path                   | Global rules path                              | Shape     |
+| Agent          | Project instructions path                   | Global instructions path                              | Shape     |
 | -------------- | ------------------------------------ | ---------------------------------------------- | --------- |
 | Claude Code    | `CLAUDE.md`                          | `~/.claude/CLAUDE.md`                          | aggregate |
 | Codex          | `AGENTS.md`                          | `~/.codex/AGENTS.md`                           | aggregate |
@@ -52,7 +52,7 @@ file per rule) are noted below; project paths are relative to the repo root, glo
 | Warp           | `WARP.md`                            | — (UI-managed)                                 | aggregate |
 | Replit         | `replit.md`                          | —                                              | aggregate |
 | OpenHands      | `.openhands/microagents/repo.md`     | —                                              | aggregate |
-| OpenClaw       | — (no project rules)                 | `~/.openclaw/workspace/AGENTS.md`              | aggregate |
+| OpenClaw       | — (no project instructions)                 | `~/.openclaw/workspace/AGENTS.md`              | aggregate |
 | Cursor         | `.cursor/rules/<name>.mdc`           | `~/.cursor/rules/<name>.mdc`                    | directory (MDC) |
 | Windsurf       | `.windsurf/rules/<name>.md`          | `~/.codeium/windsurf/memories/global_rules.md` | directory / global aggregate |
 | Cline          | `.clinerules/<name>.md`              | `~/Documents/Cline/Rules/`                     | directory |
@@ -65,7 +65,7 @@ file per rule) are noted below; project paths are relative to the repo root, glo
 Only Cursor (`.cursor/rules/*.mdc`) gets reconstructed `description`/`globs`/`alwaysApply`
 frontmatter; every other agent receives the Markdown body. Many of these agents also read the
 cross-tool `AGENTS.md` standard as a fallback. See the
-[rule source reference](/docs/configuration#rule-source-fields) for how rules are transformed and merged.
+[instruction source reference](/docs/configuration#instruction-source-fields) for how instructions are transformed and merged.
 
 ## Custom Paths
 

@@ -1,38 +1,40 @@
 use std::path::{Path, PathBuf};
 
 use crate::frontmatter::Parsed;
-use crate::model::{RuleFormat, RuleTarget};
+use crate::model::{InstructionFormat, InstructionTarget};
 
-/// Returns the on-disk relative filename for a rule in a per-rule directory
+/// Returns the on-disk relative filename for an instruction in a per-instruction directory
 /// format. Namespaced names are flattened with `-`. Not used for aggregate
-/// formats, where the destination is the shared file in `RuleTarget.path`.
-fn derive_relpath(name: &str, format: RuleFormat) -> PathBuf {
+/// formats, where the destination is the shared file in `InstructionTarget.path`.
+fn derive_relpath(name: &str, format: InstructionFormat) -> PathBuf {
     let flat = name.replace(':', "-");
     match format {
-        RuleFormat::CursorMdc => PathBuf::from(format!("{flat}.mdc")),
-        RuleFormat::PlainMarkdownDir => PathBuf::from(format!("{flat}.md")),
-        // Aggregate formats have no per-rule relpath; callers must not ask.
-        RuleFormat::AggregateMarkdown => PathBuf::from(format!("{flat}.md")),
+        InstructionFormat::CursorMdc => PathBuf::from(format!("{flat}.mdc")),
+        InstructionFormat::PlainMarkdownDir => PathBuf::from(format!("{flat}.md")),
+        // Aggregate formats have no per-instruction relpath; callers must not ask.
+        InstructionFormat::AggregateMarkdown => PathBuf::from(format!("{flat}.md")),
     }
 }
 
-/// Render the content a rule contributes for the given format.
+/// Render the content an instruction contributes for the given format.
 ///
 /// For dir formats this is the full file body. For aggregate formats this is
 /// the block content that [`upsert_block`] wraps in managed markers.
-pub(crate) fn render(parsed: &Parsed, format: RuleFormat) -> String {
+pub(crate) fn render(parsed: &Parsed, format: InstructionFormat) -> String {
     match format {
-        RuleFormat::CursorMdc => render_cursor_mdc(parsed),
+        InstructionFormat::CursorMdc => render_cursor_mdc(parsed),
         // Body only — frontmatter stripped. globs/alwaysApply have no meaning
-        // for agents that don't scope rules, so they are dropped here.
-        RuleFormat::PlainMarkdownDir | RuleFormat::AggregateMarkdown => parsed.body.clone(),
+        // for agents that don't scope instructions, so they are dropped here.
+        InstructionFormat::PlainMarkdownDir | InstructionFormat::AggregateMarkdown => {
+            parsed.body.clone()
+        }
     }
 }
 
 /// Cursor MDC: reconstruct the `description` / `globs` / `alwaysApply`
 /// frontmatter from whatever the source carried, then the body.
 fn render_cursor_mdc(parsed: &Parsed) -> String {
-    let meta = RuleMeta::from(parsed.frontmatter.as_deref());
+    let meta = InstructionMeta::from(parsed.frontmatter.as_deref());
     let mut fm: Vec<String> = Vec::new();
     if let Some(d) = &meta.description {
         fm.push(format!("description: {d}"));
@@ -49,17 +51,17 @@ fn render_cursor_mdc(parsed: &Parsed) -> String {
     format!("---\n{}\n---\n{}", fm.join("\n"), parsed.body)
 }
 
-/// The Cursor-relevant fields extracted from a rule's source frontmatter.
-struct RuleMeta {
+/// The Cursor-relevant fields extracted from an instruction's source frontmatter.
+struct InstructionMeta {
     description: Option<String>,
     /// Stored as the rendered string (a CSV when the source used a list).
     globs: Option<String>,
     always_apply: Option<bool>,
 }
 
-impl RuleMeta {
+impl InstructionMeta {
     fn from(frontmatter: Option<&str>) -> Self {
-        let mut out = RuleMeta {
+        let mut out = InstructionMeta {
             description: None,
             globs: None,
             always_apply: None,
@@ -98,8 +100,8 @@ fn globs_to_string(v: &serde_yaml::Value) -> Option<String> {
     }
 }
 
-/// Stable, markdown-comment-safe identity for a rule's managed block in a shared
-/// file. Keyed on `(source, name)` so two sources contributing a same-named rule
+/// Stable, markdown-comment-safe identity for an instruction's managed block in a shared
+/// file. Keyed on `(source, name)` so two sources contributing a same-named instruction
 /// (e.g. `style`) get distinct blocks. Recomputable at removal time from the
 /// lock entry's `source` + `name`.
 pub(crate) fn block_id(source: &str, name: &str) -> String {
@@ -109,8 +111,8 @@ pub(crate) fn block_id(source: &str, name: &str) -> String {
 
 fn markers(id: &str) -> (String, String) {
     (
-        format!("<!-- kasetto:rule:{id} START -->"),
-        format!("<!-- kasetto:rule:{id} END -->"),
+        format!("<!-- kasetto:instruction:{id} START -->"),
+        format!("<!-- kasetto:instruction:{id} END -->"),
     )
 }
 
@@ -120,7 +122,7 @@ fn markers(id: &str) -> (String, String) {
 /// Scoping the END search to *after* START is what keeps this correct — a naive
 /// independent `find(end)` would match an earlier block's END (or a stray END in
 /// someone's prose) and slice the wrong region. Combined with the content-hashed
-/// block id, a collision with a marker embedded in a rule body is implausible.
+/// block id, a collision with a marker embedded in an instruction body is implausible.
 fn find_block(existing: &str, start: &str, end: &str) -> Option<(usize, usize)> {
     let s = existing.find(start)?;
     let after_start = s + start.len();
@@ -137,7 +139,7 @@ fn strip_leading_newline(s: &str) -> &str {
 }
 
 /// Insert or replace the managed block for `id` in `existing`, preserving every
-/// byte outside the block (user content and other rules' blocks).
+/// byte outside the block (user content and other instructions' blocks).
 pub(crate) fn upsert_block(existing: &str, id: &str, content: &str) -> String {
     let (start, end) = markers(id);
     let body = content.trim_matches('\n');
@@ -180,9 +182,9 @@ pub(crate) fn remove_block(existing: &str, id: &str) -> String {
     }
 }
 
-/// Absolute path a rule is written to for the given target. For aggregate
+/// Absolute path an instruction is written to for the given target. For aggregate
 /// formats this is the shared file; for dir formats it joins the derived name.
-pub(crate) fn destination_path(target: &RuleTarget, name: &str) -> PathBuf {
+pub(crate) fn destination_path(target: &InstructionTarget, name: &str) -> PathBuf {
     if target.format.is_aggregate() {
         target.path.clone()
     } else {
@@ -190,10 +192,10 @@ pub(crate) fn destination_path(target: &RuleTarget, name: &str) -> PathBuf {
     }
 }
 
-/// Whether a rule's output is already present at the destination: for dir
+/// Whether an instruction's output is already present at the destination: for dir
 /// formats the file exists; for aggregate formats the managed block is present
 /// in the shared file (so a user-deleted block triggers a reinstall).
-pub(crate) fn dest_present(target: &RuleTarget, name: &str, source: &str) -> bool {
+pub(crate) fn dest_present(target: &InstructionTarget, name: &str, source: &str) -> bool {
     let dest = destination_path(target, name);
     if !dest.is_file() {
         return false;
@@ -228,18 +230,18 @@ mod tests {
     #[test]
     fn relpaths_flatten_namespaces() {
         assert_eq!(
-            derive_relpath("house:style", RuleFormat::CursorMdc),
+            derive_relpath("house:style", InstructionFormat::CursorMdc),
             PathBuf::from("house-style.mdc")
         );
         assert_eq!(
-            derive_relpath("house:style", RuleFormat::PlainMarkdownDir),
+            derive_relpath("house:style", InstructionFormat::PlainMarkdownDir),
             PathBuf::from("house-style.md")
         );
     }
 
     #[test]
     fn cursor_mdc_reconstructs_frontmatter() {
-        let rendered = render(&sample(), RuleFormat::CursorMdc);
+        let rendered = render(&sample(), InstructionFormat::CursorMdc);
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("description: house style"));
         assert!(rendered.contains("globs: *.rs"));
@@ -250,13 +252,13 @@ mod tests {
     #[test]
     fn cursor_mdc_joins_globs_list() {
         let p = parse("---\nglobs:\n  - \"*.ts\"\n  - \"*.tsx\"\n---\nbody\n").unwrap();
-        let rendered = render(&p, RuleFormat::CursorMdc);
+        let rendered = render(&p, InstructionFormat::CursorMdc);
         assert!(rendered.contains("globs: *.ts, *.tsx"));
     }
 
     #[test]
     fn plain_dir_strips_frontmatter() {
-        let rendered = render(&sample(), RuleFormat::PlainMarkdownDir);
+        let rendered = render(&sample(), InstructionFormat::PlainMarkdownDir);
         assert!(!rendered.contains("description:"));
         assert!(rendered.contains("Use tabs."));
     }
@@ -271,20 +273,20 @@ mod tests {
 
     #[test]
     fn upsert_into_empty_file() {
-        let out = upsert_block("", "style-abc", "rule body");
+        let out = upsert_block("", "style-abc", "instruction body");
         assert_eq!(
             out,
-            "<!-- kasetto:rule:style-abc START -->\nrule body\n<!-- kasetto:rule:style-abc END -->\n"
+            "<!-- kasetto:instruction:style-abc START -->\ninstruction body\n<!-- kasetto:instruction:style-abc END -->\n"
         );
     }
 
     #[test]
     fn upsert_appends_and_preserves_user_content() {
         let existing = "# CLAUDE.md\n\nMy own notes.\n";
-        let out = upsert_block(existing, "style-abc", "rule body");
+        let out = upsert_block(existing, "style-abc", "instruction body");
         assert!(out.starts_with("# CLAUDE.md\n\nMy own notes.\n"));
-        assert!(out.contains("<!-- kasetto:rule:style-abc START -->"));
-        assert!(out.contains("rule body"));
+        assert!(out.contains("<!-- kasetto:instruction:style-abc START -->"));
+        assert!(out.contains("instruction body"));
     }
 
     #[test]
@@ -300,15 +302,15 @@ mod tests {
 
     #[test]
     fn remove_block_keeps_surrounding_content() {
-        let existing = upsert_block("user text.\n", "style-abc", "rule body");
+        let existing = upsert_block("user text.\n", "style-abc", "instruction body");
         let after = remove_block(&existing, "style-abc");
         assert!(after.contains("user text."));
         assert!(!after.contains("style-abc"));
-        assert!(!after.contains("rule body"));
+        assert!(!after.contains("instruction body"));
     }
 
     #[test]
-    fn two_rules_coexist_in_one_file() {
+    fn two_instructions_coexist_in_one_file() {
         let one = upsert_block("", "a-1", "alpha");
         let two = upsert_block(&one, "b-2", "beta");
         assert!(two.contains("alpha"));
@@ -335,9 +337,9 @@ mod tests {
 
     #[test]
     fn body_containing_a_different_marker_string_is_safe() {
-        // A rule that documents kasetto's marker format (a DIFFERENT id) must not
+        // An instruction that documents kasetto's marker format (a DIFFERENT id) must not
         // confuse block detection for this id.
-        let body = "see <!-- kasetto:rule:other-xyz END --> for the format";
+        let body = "see <!-- kasetto:instruction:other-xyz END --> for the format";
         let out = upsert_block("user.\n", "style-abc", body);
         // Update this block; the embedded other-id marker must not truncate it.
         let updated = upsert_block(&out, "style-abc", "clean body");
@@ -365,7 +367,7 @@ mod tests {
         let out = upsert_block("", "style-abc", "\n\n");
         assert_eq!(
             out,
-            "<!-- kasetto:rule:style-abc START -->\n\n<!-- kasetto:rule:style-abc END -->\n"
+            "<!-- kasetto:instruction:style-abc START -->\n\n<!-- kasetto:instruction:style-abc END -->\n"
         );
         let removed = remove_block(&out, "style-abc");
         assert_eq!(removed, "");

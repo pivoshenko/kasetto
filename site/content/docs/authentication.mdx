@@ -20,7 +20,7 @@ Kasetto can pull skills and MCP configs from private repositories. No login comm
 | Gitea              | `https://gitea.com/owner/repo`                      |
 | Forgejo            | `https://forgejo.org/owner/repo`                    |
 
-### Host Detection Rules
+### Host Detection Instructions
 
 Kasetto identifies the git host from the URL hostname:
 
@@ -29,7 +29,7 @@ Kasetto identifies the git host from the URL hostname:
 - **Bitbucket** - `bitbucket.org` or `www.bitbucket.org`.
 - **Codeberg / Gitea / Forgejo** - `codeberg.org`, `gitea.com`, `forgejo.org` (and their `www.`
   variants).
-- **GitHub** - `github.com` and any other hostname not matching the rules above.
+- **GitHub** - `github.com` and any other hostname not matching the instructions above.
 
 <Callout type="info">
 
@@ -112,7 +112,7 @@ All three are checked in order — the first one found is used for any Gitea-fam
 
 ## Remote Configs
 
-Authentication also applies when you fetch a config via `--config <url>`. The token is chosen based on the URL hostname, using the same detection rules above.
+Authentication also applies when you fetch a config via `--config <url>`. The token is chosen based on the URL hostname, using the same detection instructions above.
 
 ```bash
 export GITHUB_TOKEN=ghp_...

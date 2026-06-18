@@ -623,7 +623,7 @@ mod tests {
             }],
             mcps: Vec::new(),
             commands: Vec::new(),
-            rules: Vec::new(),
+            instructions: Vec::new(),
         };
         let ctx = SyncContext {
             cfg: &cfg,

@@ -35,7 +35,7 @@ pub(crate) fn run(
 
     let project_root = std::env::current_dir().unwrap_or_default();
     let merged = scope_override.is_none();
-    let (mut skills, mut mcps, mut commands, mut rules) =
+    let (mut skills, mut mcps, mut commands, mut instructions) =
         load_installed_assets(scope_override, &project_root)?;
 
     if !matches!(kind, ListKind::All | ListKind::Skills) {
@@ -47,8 +47,8 @@ pub(crate) fn run(
     if !matches!(kind, ListKind::All | ListKind::Commands) {
         commands.clear();
     }
-    if !matches!(kind, ListKind::All | ListKind::Rules) {
-        rules.clear();
+    if !matches!(kind, ListKind::All | ListKind::Instructions) {
+        instructions.clear();
     }
 
     if as_json {
@@ -56,14 +56,14 @@ pub(crate) fn run(
             "skills": skills,
             "mcps": mcps,
             "commands": commands,
-            "rules": rules,
+            "instructions": instructions,
             "merged_scopes": merged,
         });
         return print_json(&output);
     }
 
     let has_anything =
-        !skills.is_empty() || !mcps.is_empty() || !commands.is_empty() || !rules.is_empty();
+        !skills.is_empty() || !mcps.is_empty() || !commands.is_empty() || !instructions.is_empty();
     if !has_anything {
         println!("Nothing installed.");
         print_tip(
@@ -77,7 +77,7 @@ pub(crate) fn run(
     print_skills_tree(&skills, plain);
     print_assets_tree("MCP Servers", "connected", &mcps, plain);
     print_assets_tree("Commands", "available", &commands, plain);
-    print_assets_tree("Rules", "active", &rules, plain);
+    print_assets_tree("Instructions", "active", &instructions, plain);
 
     Ok(())
 }
@@ -155,7 +155,7 @@ fn load_installed_assets(
             installed_skills_from_lock(&lock, &runtime, scope, project_root, false),
             mcp_asset_entries(&lock, scope),
             kind_asset_entries(&lock, scope, "command"),
-            kind_asset_entries(&lock, scope, "rules"),
+            kind_asset_entries(&lock, scope, "instructions"),
         ));
     }
     let global_lock = load_lock(Scope::Global, project_root)?;
@@ -183,10 +183,14 @@ fn load_installed_assets(
     let mut commands = kind_asset_entries(&global_lock, Scope::Global, "command");
     commands.extend(kind_asset_entries(&project_lock, Scope::Project, "command"));
     commands.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
-    let mut rules = kind_asset_entries(&global_lock, Scope::Global, "rules");
-    rules.extend(kind_asset_entries(&project_lock, Scope::Project, "rules"));
-    rules.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
-    Ok((skills, mcps, commands, rules))
+    let mut instructions = kind_asset_entries(&global_lock, Scope::Global, "instructions");
+    instructions.extend(kind_asset_entries(
+        &project_lock,
+        Scope::Project,
+        "instructions",
+    ));
+    instructions.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
+    Ok((skills, mcps, commands, instructions))
 }
 
 fn kind_asset_entries(lock: &LockFile, scope: Scope, kind: &str) -> Vec<AssetEntry> {

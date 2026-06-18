@@ -1,6 +1,6 @@
 mod commands;
+mod instructions;
 mod mcps;
-mod rules;
 mod skills;
 
 use std::collections::HashSet;
@@ -162,7 +162,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         skills::sync_skills(&ctx, &mut sm)?;
     }
     commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
-    rules::sync_rules(&ctx, &mut lock, &mut summary, &mut actions)?;
+    instructions::sync_instructions(&ctx, &mut lock, &mut summary, &mut actions)?;
     mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {

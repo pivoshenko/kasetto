@@ -107,11 +107,11 @@ impl LockFile {
         names
     }
 
-    pub(crate) fn list_installed_rules(&self) -> Vec<String> {
+    pub(crate) fn list_installed_instructions(&self) -> Vec<String> {
         let mut names: Vec<String> = self
             .assets
             .iter()
-            .filter(|(_, a)| a.kind == "rules")
+            .filter(|(_, a)| a.kind == "instructions")
             .map(|(_, a)| a.name.clone())
             .collect();
         names.sort();

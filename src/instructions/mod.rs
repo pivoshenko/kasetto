@@ -1,10 +1,10 @@
-//! Rule (CLAUDE.md / .cursor/rules / AGENTS.md …) parsing and per-agent transforms.
+//! Instruction (CLAUDE.md / .cursor/rules / AGENTS.md …) parsing and per-agent transforms.
 //!
-//! A rule source is Markdown with optional YAML frontmatter, the same shape as a
+//! An instruction source is Markdown with optional YAML frontmatter, the same shape as a
 //! slash command. The divergence from commands is the destination: some agents
-//! take a single shared file that many rules merge into (`AggregateMarkdown`,
-//! handled with managed `<!-- kasetto:rule:ID … -->` comment blocks so user
-//! hand-edits survive), while others take a directory of one file per rule.
+//! take a single shared file that many instructions merge into (`AggregateMarkdown`,
+//! handled with managed `<!-- kasetto:instruction:ID … -->` comment blocks so user
+//! hand-edits survive), while others take a directory of one file per instruction.
 
 mod transform;
 
@@ -14,25 +14,25 @@ use std::path::{Path, PathBuf};
 use crate::error::{err, Result};
 use crate::frontmatter::parse;
 use crate::fsops::resolve_dest;
-use crate::model::RuleTarget;
+use crate::model::InstructionTarget;
 
 pub(crate) use transform::{dest_present, destination_path};
 
-/// Read a rule source file, parse it, and write the transformed output to
-/// `target`. For dir formats this writes a per-rule file; for aggregate formats
-/// it inserts/updates this rule's managed block in the shared file, preserving
+/// Read an instruction source file, parse it, and write the transformed output to
+/// `target`. For dir formats this writes a per-instruction file; for aggregate formats
+/// it inserts/updates this instruction's managed block in the shared file, preserving
 /// everything else. `source_url` + `name` key the managed block.
 ///
 /// Returns the absolute path of the file that was written.
-pub(crate) fn apply_rule(
+pub(crate) fn apply_instruction(
     source: &Path,
-    target: &RuleTarget,
+    target: &InstructionTarget,
     source_url: &str,
     name: &str,
 ) -> Result<PathBuf> {
     let text = fs::read_to_string(source).map_err(|e| {
         err(format!(
-            "failed to read rule source {}: {e}",
+            "failed to read instruction source {}: {e}",
             source.display()
         ))
     })?;
@@ -45,19 +45,27 @@ pub(crate) fn apply_rule(
         let existing = fs::read_to_string(&dest).unwrap_or_default();
         let merged =
             transform::upsert_block(&existing, &transform::block_id(source_url, name), &content);
-        fs::write(&dest, merged)
-            .map_err(|e| err(format!("failed to write rule {}: {e}", dest.display())))?;
+        fs::write(&dest, merged).map_err(|e| {
+            err(format!(
+                "failed to write instruction {}: {e}",
+                dest.display()
+            ))
+        })?;
     } else {
-        fs::write(&dest, content)
-            .map_err(|e| err(format!("failed to write rule {}: {e}", dest.display())))?;
+        fs::write(&dest, content).map_err(|e| {
+            err(format!(
+                "failed to write instruction {}: {e}",
+                dest.display()
+            ))
+        })?;
     }
     Ok(dest)
 }
 
-/// The token stored in the lock `destination` CSV for one written rule file:
-/// `agg:<rel>` for a shared aggregate file (teardown strips this rule's block)
-/// or `file:<rel>` for a standalone per-rule file (teardown deletes it).
-pub(crate) fn dest_token(target: &RuleTarget, rel: &str) -> String {
+/// The token stored in the lock `destination` CSV for one written instruction file:
+/// `agg:<rel>` for a shared aggregate file (teardown strips this instruction's block)
+/// or `file:<rel>` for a standalone per-instruction file (teardown deletes it).
+pub(crate) fn dest_token(target: &InstructionTarget, rel: &str) -> String {
     if target.format.is_aggregate() {
         format!("agg:{rel}")
     } else {
@@ -65,9 +73,9 @@ pub(crate) fn dest_token(target: &RuleTarget, rel: &str) -> String {
     }
 }
 
-/// Reverse one stored destination token: strip the rule's managed block from a
+/// Reverse one stored destination token: strip the instruction's managed block from a
 /// shared aggregate file (never deleting the user-owned file), or delete a
-/// standalone per-rule file. `source_url` + `name` recompute the block id.
+/// standalone per-instruction file. `source_url` + `name` recompute the block id.
 pub(crate) fn teardown_dest(token: &str, source_url: &str, name: &str, root: &Path) {
     // Only the known `agg:`/`file:` prefixes are stripped — splitting on the
     // first `:` would mangle an absolute Windows destination (`C:\…`), which
@@ -95,21 +103,21 @@ pub(crate) fn teardown_dest(token: &str, source_url: &str, name: &str, root: &Pa
 mod tests {
     use super::*;
     use crate::fsops::temp_dir;
-    use crate::model::RuleFormat;
+    use crate::model::InstructionFormat;
 
     #[test]
-    fn apply_rule_writes_cursor_mdc_file() {
-        let src_dir = temp_dir("kasetto-rule-src");
+    fn apply_instruction_writes_cursor_mdc_file() {
+        let src_dir = temp_dir("kasetto-instruction-src");
         fs::create_dir_all(&src_dir).unwrap();
         let src = src_dir.join("style.mdc");
         fs::write(&src, "---\ndescription: hi\nglobs: \"*.rs\"\n---\nbody\n").unwrap();
 
-        let dst_dir = temp_dir("kasetto-rule-dst");
-        let target = RuleTarget {
+        let dst_dir = temp_dir("kasetto-instruction-dst");
+        let target = InstructionTarget {
             path: dst_dir.clone(),
-            format: RuleFormat::CursorMdc,
+            format: InstructionFormat::CursorMdc,
         };
-        let out = apply_rule(&src, &target, "https://x/a", "style").unwrap();
+        let out = apply_instruction(&src, &target, "https://x/a", "style").unwrap();
         assert!(out.ends_with("style.mdc"));
         let text = fs::read_to_string(&out).unwrap();
         assert!(text.contains("description: hi"));
@@ -120,22 +128,22 @@ mod tests {
     }
 
     #[test]
-    fn apply_rule_aggregate_preserves_user_content_then_teardown() {
-        let src_dir = temp_dir("kasetto-rule-agg-src");
+    fn apply_instruction_aggregate_preserves_user_content_then_teardown() {
+        let src_dir = temp_dir("kasetto-instruction-agg-src");
         fs::create_dir_all(&src_dir).unwrap();
         let src = src_dir.join("style.md");
         fs::write(&src, "---\ndescription: hi\n---\nUse tabs.\n").unwrap();
 
-        let proj = temp_dir("kasetto-rule-agg-proj");
+        let proj = temp_dir("kasetto-instruction-agg-proj");
         fs::create_dir_all(&proj).unwrap();
         let claude = proj.join("CLAUDE.md");
         fs::write(&claude, "# Project\n\nUser paragraph.\n").unwrap();
 
-        let target = RuleTarget {
+        let target = InstructionTarget {
             path: claude.clone(),
-            format: RuleFormat::AggregateMarkdown,
+            format: InstructionFormat::AggregateMarkdown,
         };
-        let out = apply_rule(&src, &target, "https://x/a", "style").unwrap();
+        let out = apply_instruction(&src, &target, "https://x/a", "style").unwrap();
         assert_eq!(out, claude);
         let text = fs::read_to_string(&claude).unwrap();
         assert!(text.contains("User paragraph."));
@@ -143,9 +151,9 @@ mod tests {
         assert!(dest_present(&target, "style", "https://x/a"));
 
         // Re-apply is idempotent (still one block).
-        apply_rule(&src, &target, "https://x/a", "style").unwrap();
+        apply_instruction(&src, &target, "https://x/a", "style").unwrap();
         let text2 = fs::read_to_string(&claude).unwrap();
-        assert_eq!(text2.matches("kasetto:rule").count(), 2); // START + END
+        assert_eq!(text2.matches("kasetto:instruction").count(), 2); // START + END
 
         // Teardown strips the block but keeps the user file + content.
         let token = dest_token(&target, "CLAUDE.md");

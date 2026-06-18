@@ -51,14 +51,14 @@ Examples:
 - GitLab / self-hosted GitLab: `GITLAB_TOKEN` or `CI_JOB_TOKEN`
 - Bitbucket Cloud: `BITBUCKET_EMAIL` + `BITBUCKET_TOKEN` (or app password variants)
 
-See [Authentication](/docs/authentication) for the full list and host detection rules.
+See [Authentication](/docs/authentication) for the full list and host detection instructions.
 
 ## Remote Config Fetching (`--config https://...`)
 
 When you pass a URL to `--config`, Kasetto:
 
 - Fetches the YAML over HTTPS
-- Applies the same host-based token selection rules as skill/MCP sources
+- Applies the same host-based token selection instructions as skill/MCP sources
 
 This means a private config hosted on a git provider can be accessed by setting the appropriate token env var for that host.
 

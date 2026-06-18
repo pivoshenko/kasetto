@@ -193,7 +193,7 @@ fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     for c in &cfg.commands {
         rev_by_source.insert(c.source.clone(), c.as_source_spec().expected_revision());
     }
-    for r in &cfg.rules {
+    for r in &cfg.instructions {
         rev_by_source.insert(r.source.clone(), r.as_source_spec().expected_revision());
     }
     for asset in lock.assets.values_mut() {

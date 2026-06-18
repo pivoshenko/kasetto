@@ -532,7 +532,7 @@ mod tests {
                 sub_dir: None,
                 commands: CommandsField::Wildcard("*".to_string()),
             }],
-            rules: Vec::new(),
+            instructions: Vec::new(),
         };
 
         let mut lock = LockFile::default();
@@ -583,7 +583,7 @@ mod tests {
                 skills: Vec::new(),
                 mcps: Vec::new(),
                 commands: Vec::new(),
-                rules: Vec::new(),
+                instructions: Vec::new(),
             }
         };
         let mut summary2 = Summary::default();
@@ -657,7 +657,7 @@ mod tests {
                 sub_dir: None,
                 commands,
             }],
-            rules: Vec::new(),
+            instructions: Vec::new(),
         }
     }
 

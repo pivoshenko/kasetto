@@ -1,7 +1,7 @@
 //! Shared Markdown-with-YAML-frontmatter parsing.
 //!
-//! Used by both the slash-command pipeline (`prompts`) and the rules pipeline
-//! (`rules`): a source file may open with a `---`-fenced YAML block, which is
+//! Used by both the slash-command pipeline (`prompts`) and the instructions pipeline
+//! (`instructions`): a source file may open with a `---`-fenced YAML block, which is
 //! split off from the body so each pipeline can transform the two parts.
 
 use crate::error::{err, Result};

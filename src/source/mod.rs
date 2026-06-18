@@ -266,7 +266,7 @@ pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>>
 
 /// Recursively walk `cur`, collecting files whose extension is in `exts` into a
 /// map of `:`-namespaced name (relative path with separators → `:`, stem only)
-/// → path. Shared by command (`md`) and rule (`md`/`mdc`) discovery.
+/// → path. Shared by command (`md`) and instruction (`md`/`mdc`) discovery.
 fn walk_md(
     base: &Path,
     cur: &Path,
@@ -359,13 +359,13 @@ fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
     )))
 }
 
-/// Walk `<root>/rules/**/*.{md,mdc}` and return a map of namespaced name → file path.
+/// Walk `<root>/instructions/**/*.{md,mdc}` and return a map of namespaced name → file path.
 ///
 /// Mirrors [`discover_commands`]: subdirectory nesting becomes `:`-separated
 /// namespaces. Both `.md` and `.mdc` (Cursor) sources are picked up.
-pub(crate) fn discover_rules(root: &Path) -> Result<HashMap<String, PathBuf>> {
+pub(crate) fn discover_instructions(root: &Path) -> Result<HashMap<String, PathBuf>> {
     let mut out = HashMap::new();
-    let base = root.join("rules");
+    let base = root.join("instructions");
     if !base.exists() {
         return Ok(out);
     }
@@ -373,20 +373,20 @@ pub(crate) fn discover_rules(root: &Path) -> Result<HashMap<String, PathBuf>> {
     Ok(out)
 }
 
-/// Resolve one `RuleEntry` to a file path.
+/// Resolve one `InstructionEntry` to a file path.
 ///
-/// - `Name("style")` → look up by namespaced name in `discover_rules`.
+/// - `Name("style")` → look up by namespaced name in `discover_instructions`.
 /// - `Obj { name: "style", path: Some("house") }` → `<root>/house/style.{md,mdc}`.
 /// - `Obj { name: "style", path: None }` → look up by namespaced name.
-pub(crate) fn resolve_rule_entry(
+pub(crate) fn resolve_instruction_entry(
     root: &Path,
-    entry: &crate::model::RuleEntry,
+    entry: &crate::model::InstructionEntry,
 ) -> Result<(String, PathBuf)> {
     match entry {
-        crate::model::RuleEntry::Name(n) => resolve_named_rule(root, n),
-        crate::model::RuleEntry::Obj { name, path } => {
+        crate::model::InstructionEntry::Name(n) => resolve_named_instruction(root, n),
+        crate::model::InstructionEntry::Obj { name, path } => {
             let Some(dir) = path else {
-                return resolve_named_rule(root, name);
+                return resolve_named_instruction(root, name);
             };
             let base = root.join(dir);
             // Accept an explicit extension, else try .md then .mdc.
@@ -408,19 +408,19 @@ pub(crate) fn resolve_rule_entry(
                 }
             }
             Err(err(format!(
-                "rule entry not found: {name} in {dir}/ (looked for .md/.mdc)"
+                "instruction entry not found: {name} in {dir}/ (looked for .md/.mdc)"
             )))
         }
     }
 }
 
-fn resolve_named_rule(root: &Path, name: &str) -> Result<(String, PathBuf)> {
-    let available = discover_rules(root)?;
+fn resolve_named_instruction(root: &Path, name: &str) -> Result<(String, PathBuf)> {
+    let available = discover_instructions(root)?;
     if let Some(path) = available.get(name) {
         return Ok((name.to_string(), path.clone()));
     }
     Err(err(format!(
-        "rule entry not found: {name} (looked in rules/ with subdir namespaces)"
+        "instruction entry not found: {name} (looked in instructions/ with subdir namespaces)"
     )))
 }
 
@@ -677,15 +677,15 @@ mod tests {
     }
 
     #[test]
-    fn discover_rules_walks_nested_and_picks_mdc() {
-        let root = temp_dir("kasetto-rule-disc");
-        let nested = root.join("rules/house");
+    fn discover_instructions_walks_nested_and_picks_mdc() {
+        let root = temp_dir("kasetto-instruction-disc");
+        let nested = root.join("instructions/house");
         fs::create_dir_all(&nested).unwrap();
-        fs::write(root.join("rules/style.md"), "---\n---\nbody\n").unwrap();
+        fs::write(root.join("instructions/style.md"), "---\n---\nbody\n").unwrap();
         fs::write(nested.join("security.mdc"), "x").unwrap();
-        fs::write(root.join("rules/not-md.txt"), "ignored").unwrap();
+        fs::write(root.join("instructions/not-md.txt"), "ignored").unwrap();
 
-        let map = discover_rules(&root).unwrap();
+        let map = discover_instructions(&root).unwrap();
         assert_eq!(map.len(), 2);
         assert!(map.contains_key("style"));
         assert!(map.contains_key("house:security"));
@@ -694,16 +694,16 @@ mod tests {
     }
 
     #[test]
-    fn resolve_rule_entry_obj_with_path_tries_mdc() {
-        let root = temp_dir("kasetto-rule-obj");
+    fn resolve_instruction_entry_obj_with_path_tries_mdc() {
+        let root = temp_dir("kasetto-instruction-obj");
         fs::create_dir_all(root.join("house")).unwrap();
         fs::write(root.join("house/style.mdc"), "x").unwrap();
 
-        let entry = crate::model::RuleEntry::Obj {
+        let entry = crate::model::InstructionEntry::Obj {
             name: "style".to_string(),
             path: Some("house".to_string()),
         };
-        let (name, path) = resolve_rule_entry(&root, &entry).unwrap();
+        let (name, path) = resolve_instruction_entry(&root, &entry).unwrap();
         assert_eq!(name, "style");
         assert!(path.ends_with("house/style.mdc"));
 

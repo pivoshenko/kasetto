@@ -40,7 +40,7 @@ pub(crate) fn merge_yaml(base: Value, overlay: Value) -> Value {
     };
     for (key, ov_val) in overlay_map {
         let key_str = key.as_str().unwrap_or("");
-        let is_source_list = matches!(key_str, "skills" | "mcps" | "commands" | "rules");
+        let is_source_list = matches!(key_str, "skills" | "mcps" | "commands" | "instructions");
         match (is_source_list.then(|| out.remove(&key)).flatten(), ov_val) {
             (Some(Value::Sequence(base_seq)), Value::Sequence(ov_seq)) => {
                 out.insert(key, Value::Sequence(merge_source_list(base_seq, ov_seq)));
@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn merge_mcps_uses_same_rules() {
+    fn merge_mcps_uses_same_instructions() {
         let base = yaml("mcps:\n  - source: https://x/a\n    ref: v1\n    mcps: \"*\"\n");
         let overlay =
             yaml("mcps:\n  - source: https://x/a\n    ref: v1\n    mcps:\n      - github\n");
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn merge_commands_uses_same_rules() {
+    fn merge_commands_uses_same_instructions() {
         let base = yaml("commands:\n  - source: https://x/a\n    ref: v1\n    commands: \"*\"\n");
         let overlay = yaml(
             "commands:\n  - source: https://x/a\n    ref: v1\n    commands:\n      - review\n",
@@ -201,23 +201,24 @@ mod tests {
     }
 
     #[test]
-    fn merge_rules_uses_same_rules() {
-        let base = yaml("rules:\n  - source: https://x/a\n    ref: v1\n    rules: \"*\"\n");
+    fn merge_instructions_uses_same_instructions() {
+        let base =
+            yaml("instructions:\n  - source: https://x/a\n    ref: v1\n    instructions: \"*\"\n");
         let overlay =
-            yaml("rules:\n  - source: https://x/a\n    ref: v1\n    rules:\n      - style\n");
+            yaml("instructions:\n  - source: https://x/a\n    ref: v1\n    instructions:\n      - style\n");
         let merged = merge_yaml(base, overlay);
-        let Value::Sequence(seq) = merged.get("rules").unwrap() else {
+        let Value::Sequence(seq) = merged.get("instructions").unwrap() else {
             panic!("expected sequence")
         };
         assert_eq!(seq.len(), 1);
     }
 
     #[test]
-    fn merge_rules_appends_distinct_sources() {
-        let base = yaml("rules:\n  - source: https://x/a\n    rules: \"*\"\n");
-        let overlay = yaml("rules:\n  - source: https://x/b\n    rules: \"*\"\n");
+    fn merge_instructions_appends_distinct_sources() {
+        let base = yaml("instructions:\n  - source: https://x/a\n    instructions: \"*\"\n");
+        let overlay = yaml("instructions:\n  - source: https://x/b\n    instructions: \"*\"\n");
         let merged = merge_yaml(base, overlay);
-        let Value::Sequence(seq) = merged.get("rules").unwrap() else {
+        let Value::Sequence(seq) = merged.get("instructions").unwrap() else {
             panic!("expected sequence")
         };
         assert_eq!(seq.len(), 2);

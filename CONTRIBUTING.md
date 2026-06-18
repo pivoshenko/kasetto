@@ -13,7 +13,7 @@
 
 Thank you for taking the time to contribute.
 
-These guidelines are intended to make contributions consistent and easy to review across repositories. They are guidance, not hard rules, and maintainers may adapt them when needed.
+These guidelines are intended to make contributions consistent and easy to review across repositories. They are guidance, not hard instructions, and maintainers may adapt them when needed.
 
 ## Reporting Bugs
 

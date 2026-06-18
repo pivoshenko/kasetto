@@ -216,12 +216,12 @@ pub(crate) fn resolve_command_targets(
     Ok(out)
 }
 
-/// Returns one rules destination per configured agent (filtering unsupported), deduped.
-pub(crate) fn resolve_rule_targets(
+/// Returns one instructions destination per configured agent (filtering unsupported), deduped.
+pub(crate) fn resolve_instruction_targets(
     cfg: &Config,
     scope: Scope,
     project_root: &Path,
-) -> Result<Vec<crate::model::RuleTarget>> {
+) -> Result<Vec<crate::model::InstructionTarget>> {
     let agents = cfg.agents();
     if agents.is_empty() {
         return Ok(vec![]);
@@ -231,7 +231,7 @@ pub(crate) fn resolve_rule_targets(
     match scope {
         Scope::Project => {
             for a in agents {
-                if let Some(t) = a.rules_project_path(project_root) {
+                if let Some(t) = a.instructions_project_path(project_root) {
                     if seen.insert(t.path.clone()) {
                         out.push(t);
                     }
@@ -241,7 +241,7 @@ pub(crate) fn resolve_rule_targets(
         Scope::Global => {
             let home = dirs_home()?;
             for a in agents {
-                if let Some(t) = a.rules_global_path(&home) {
+                if let Some(t) = a.instructions_global_path(&home) {
                     if seen.insert(t.path.clone()) {
                         out.push(t);
                     }
