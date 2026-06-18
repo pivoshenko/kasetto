@@ -1039,7 +1039,7 @@ button {
 }
 .t-row {
   display: grid;
-  grid-template-columns: auto auto minmax(24ch, max-content) auto 1fr;
+  grid-template-columns: auto auto minmax(34ch, max-content) auto 1fr;
   column-gap: var(--space-2);
   align-items: baseline;
   padding-left: var(--space-2);
