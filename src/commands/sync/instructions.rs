@@ -41,7 +41,12 @@ pub(super) fn sync_instructions(
         return Ok(());
     }
 
+    // No agent in the resolved scope has an instruction target (e.g. only `warp`
+    // globally or `openclaw` per-project), yet `instructions:` is still set. Nothing
+    // can be installed, so treat previously-installed instructions as orphaned and
+    // prune them — same as the empty-config branch above.
     if targets.is_empty() {
+        remove_stale(ctx, lock, summary, actions, &HashSet::new());
         return Ok(());
     }
 
@@ -117,10 +122,10 @@ pub(super) fn sync_instructions(
                 continue;
             }
         };
-        let root = materialized
-            .cleanup_dir
-            .as_deref()
-            .unwrap_or(&materialized.source_root);
+        // `source_root` already honors `sub-dir` for both local and remote sources;
+        // `cleanup_dir` is the archive root (remote) and must not be used as the
+        // discovery root or a configured `sub-dir` would be ignored.
+        let root = materialized.source_root.as_path();
 
         let selected: Vec<(String, PathBuf)> = match &src.instructions {
             InstructionsField::Wildcard(s) if s == "*" => match discover_instructions(root) {
@@ -271,7 +276,13 @@ fn desired_instruction_names(
             .iter()
             .map(|e| match e {
                 crate::model::InstructionEntry::Name(n) => n.clone(),
-                crate::model::InstructionEntry::Obj { name, .. } => name.clone(),
+                // `resolve_instruction_entry` strips an explicit `.md`/`.mdc` extension
+                // when deriving the asset name; mirror that here so the lock lookup
+                // (and `--locked` validation) keys on the same stored name.
+                crate::model::InstructionEntry::Obj { name, .. } => name
+                    .trim_end_matches(".mdc")
+                    .trim_end_matches(".md")
+                    .to_string(),
             })
             .collect(),
         InstructionsField::Wildcard(s) if s == "*" => lock
@@ -635,6 +646,108 @@ mod tests {
         assert_eq!(summary2.failed, 0);
         assert_eq!(summary2.removed, 0);
 
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn reconfig_to_targetless_agent_prunes_installed_instructions() {
+        let src_root = temp_dir("kasetto-instruction-src4");
+        write(&src_root.join("instructions/style.md"), "---\n---\nbody\n");
+        let project = temp_dir("kasetto-instruction-proj4");
+        fs::create_dir_all(&project).unwrap();
+        write(&project.join("CLAUDE.md"), "# Project\n\nUser notes.\n");
+
+        // First sync installs into Claude's aggregate CLAUDE.md.
+        let cfg = base_cfg(
+            &src_root,
+            vec![Agent::ClaudeCode],
+            InstructionsField::Wildcard("*".into()),
+        );
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        let ctx = make_ctx(&cfg, &project, false);
+        sync_instructions(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
+        assert_eq!(summary.installed, 1);
+        assert!(fs::read_to_string(project.join("CLAUDE.md"))
+            .unwrap()
+            .contains("body"));
+
+        // Reconfigure to OpenClaw (no project instruction target) while keeping
+        // `instructions:` set: the orphaned managed block + lock entry must be pruned.
+        let cfg2 = base_cfg(
+            &src_root,
+            vec![Agent::OpenClaw],
+            InstructionsField::Wildcard("*".into()),
+        );
+        let ctx2 = make_ctx(&cfg2, &project, false);
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_instructions(&ctx2, &mut lock, &mut summary2, &mut actions2).unwrap();
+        assert_eq!(summary2.removed, 1);
+        let claude = fs::read_to_string(project.join("CLAUDE.md")).unwrap();
+        assert!(claude.contains("User notes."));
+        assert!(!claude.contains("body"));
+        assert_eq!(
+            lock.assets
+                .values()
+                .filter(|a| a.kind == "instructions")
+                .count(),
+            0
+        );
+
+        let _ = fs::remove_dir_all(&src_root);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn explicit_extension_object_entry_is_unchanged_on_second_sync() {
+        let src_root = temp_dir("kasetto-instruction-src5");
+        write(
+            &src_root.join("house/style.mdc"),
+            "---\ndescription: x\n---\nbody\n",
+        );
+        let project = temp_dir("kasetto-instruction-proj5");
+        fs::create_dir_all(&project).unwrap();
+
+        // Object entry carries an explicit `.mdc` extension; the resolver stores the
+        // asset under the stripped name, so desired-name derivation must strip too —
+        // otherwise the second sync re-fetches/re-installs instead of being unchanged.
+        let cfg = {
+            let mut c = base_cfg(
+                &src_root,
+                vec![Agent::ClaudeCode],
+                InstructionsField::Wildcard("*".into()),
+            );
+            c.instructions[0].instructions =
+                InstructionsField::List(vec![crate::model::InstructionEntry::Obj {
+                    name: "style.mdc".into(),
+                    path: Some("house".into()),
+                }]);
+            c
+        };
+        let mut lock = LockFile::default();
+        let ctx = make_ctx(&cfg, &project, false);
+
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_instructions(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
+        assert_eq!(summary.installed, 1);
+        assert!(lock
+            .get_tracked_asset(
+                "instructions",
+                &format!("instructions::{}::style", src_root.to_string_lossy())
+            )
+            .is_some());
+
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_instructions(&ctx, &mut lock, &mut summary2, &mut actions2).unwrap();
+        assert_eq!(summary2.unchanged, 1);
+        assert_eq!(summary2.installed, 0);
+        assert_eq!(summary2.updated, 0);
+
+        let _ = fs::remove_dir_all(&src_root);
         let _ = fs::remove_dir_all(&project);
     }
 
