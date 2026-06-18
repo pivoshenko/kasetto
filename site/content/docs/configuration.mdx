@@ -64,8 +64,10 @@ commands:
 instructions:
   # instructions wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from instructions/<name>.{md,mdc}
   # "*" syncs every instruction; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
-  - source: https://github.com/example/agent-instructions
-    instructions: "*"
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    instructions:
+      - docs-autoupdate
+      - multi-agent-dispatch
 
 mcps:
   # names resolve to mcps/<name>.json in the source
@@ -263,7 +265,7 @@ If the URL points to a private repository, Kasetto uses the same token-based aut
 
 ## Multiple Agents
 
-The `agent` field accepts a single value or a list. With a list, Kasetto installs skills to every agent's directory and merges MCPs into every agent's settings file:
+The `agent` field accepts a single value or a list. With a list, Kasetto installs skills, commands, and instructions to every agent's directory and merges MCPs into every agent's settings file:
 
 ```yaml
 agent:

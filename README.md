@@ -121,7 +121,7 @@ See [pivoshenko/pivoshenko.ai](https://github.com/pivoshenko/pivoshenko.ai) for 
 **3. See what's installed:**
 
 ```bash
-kst list                    # table of installed skills, MCPs, commands
+kst list                    # table of installed skills, MCPs, commands, instructions
 kst list --type skills      # filter to one asset kind
 kst doctor                  # version, paths, last sync status
 ```
@@ -137,7 +137,7 @@ One-line synopsis below. Full flags and examples in the [commands reference](htt
 - **`kst sync`** — read config, install skills + MCPs + commands + instructions into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching.
 - **`kst list`** — print a uv-style table of installed skills, MCPs, commands, and instructions from the lock file; `--type skills|mcps|commands|instructions` filters; `--json` for scripting.
 - **`kst doctor`** — local diagnostics: version, paths, last sync status, broken skills.
-- **`kst clean`** — remove tracked skills and MCP configs for the given scope.
+- **`kst clean`** — remove tracked skills, commands, MCP configs, and instructions for the given scope.
 - **`kst self update`** — fetch latest release, verify SHA256, replace binary in place.
 - **`kst self uninstall`** — remove installed assets, data, and the binary.
 - **`kst completions <shell>`** — emit shell completion script (`bash`/`zsh`/`fish`/`powershell`).
@@ -202,8 +202,10 @@ commands:
 instructions:
   # instructions wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from instructions/<name>.{md,mdc}
   # "*" syncs every instruction; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
-  - source: https://github.com/example/agent-instructions
-    instructions: "*"
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    instructions:
+      - docs-autoupdate
+      - multi-agent-dispatch
 
 mcps:
   # names resolve to mcps/<name>.json in the source

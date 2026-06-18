@@ -53,8 +53,8 @@ kst add https://github.com/anthropics/skills@v1.2.0
 # Add named skills from a multi-pack repo (kind-tagged, repeatable).
 kst add https://github.com/example/repo --skill code-reviewer --skill find-skills
 
-# Touch several sections in one edit — skills + MCPs + commands together.
-kst add https://github.com/example/repo --skill find --mcp github --command review
+# Touch several sections in one edit — skills + MCPs + commands + instructions together.
+kst add https://github.com/example/repo --skill find --mcp github --command review --instruction conventions
 
 # Preview the edit without writing kasetto.yaml or running sync.
 kst add https://github.com/example/repo --dry-run

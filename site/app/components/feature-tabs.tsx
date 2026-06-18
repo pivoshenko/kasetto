@@ -1,7 +1,7 @@
 const FEATURES = [
   {
     title: "DECLARATIVE",
-    desc: "One YAML file, your whole setup — skills, commands, MCPs, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.",
+    desc: "One YAML file, your whole setup — skills, commands, MCPs, instructions, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.",
   },
   {
     title: "ENTERPRISE & PRIVATE REPOSITORIES",
@@ -12,8 +12,8 @@ const FEATURES = [
     desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot, and every other major agent — one sync keeps them all current.",
   },
   {
-    title: "SKILLS, COMMANDS & MCPS",
-    desc: "All three asset kinds, one source — skills, commands, and MCPs. Everything is transformed into each agent's native format, and auto-merged. Distribute instructions, tools, and prompts as easily as sharing a repository link.",
+    title: "SKILLS, COMMANDS, MCPS & INSTRUCTIONS",
+    desc: "All four asset kinds, one source — skills, commands, MCPs, and instructions. Everything is transformed into each agent's native format, and auto-merged. Distribute instructions, tools, and prompts as easily as sharing a repository link.",
   },
   {
     title: "SPEED",
@@ -210,12 +210,19 @@ const CONFIG_LINES: Token[] = [
   { t: "punct", v: "- " },
   { t: "key", v: "source" },
   { t: "punct", v: ": " },
-  { t: "url", v: "github.com/example/agent-instructions" },
+  { t: "url", v: "github.com/pivoshenko/pivoshenko.ai" },
   { t: "nl" },
   { t: "dash", v: "    " },
   { t: "key", v: "instructions" },
-  { t: "punct", v: ": " },
-  { t: "str", v: '"*"' },
+  { t: "punct", v: ":" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "docs-autoupdate" },
+  { t: "nl" },
+  { t: "dash", v: "      " },
+  { t: "punct", v: "- " },
+  { t: "str", v: "multi-agent-dispatch" },
   { t: "nl" },
   { t: "nl" },
   { t: "key", v: "mcps" },

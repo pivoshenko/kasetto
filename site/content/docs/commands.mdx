@@ -28,7 +28,7 @@ Appends a source to your local `kasetto.yaml` and syncs it in — the cargo/uv-s
 kst add <SOURCE> [OPTIONS]
 ```
 
-Kind-tagged flags `--skill`, `--mcp`, and `--command` (each repeatable) name the entries to add. Because skills, MCPs, and commands are separate lists, a single `add` can write to several of them at once — handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
+Kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) name the entries to add. Because skills, MCPs, commands, and instructions are separate lists, a single `add` can write to several of them at once — handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
 
 ```bash
 kst add https://github.com/anthropics/skills                 # every skill in the pack
@@ -67,7 +67,7 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | `--command <name>`    | Command to add (repeatable; `*` for all)                              |
 | `--ref <ref>`         | Pin to a git tag, commit SHA, or ref (conflicts with `--branch`)      |
 | `--branch <branch>`   | Track a specific branch (conflicts with `--ref`)                      |
-| `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands)   |
+| `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands/instructions)   |
 | `--config <path>`     | Config file to edit (default: `./kasetto.yaml`); must be a local file |
 | `--no-verify`         | Skip the upfront fetch that validates the source resolves             |
 | `--no-sync`           | Edit the config without installing                                    |
@@ -85,13 +85,13 @@ The `<SOURCE>@<REF>` shorthand (cargo/uv-style) splits the trailing `@<ref>` off
 
 ## `kst remove`
 
-Deletes entries from your local `kasetto.yaml`, then syncs so the now-unconfigured skills, MCPs, and commands are pruned from disk and the lock. Aliased as `kst rm`.
+Deletes entries from your local `kasetto.yaml`, then syncs so the now-unconfigured skills, MCPs, commands, and instructions are pruned from disk and the lock. Aliased as `kst rm`.
 
 ```bash
 kst remove <SOURCE> [OPTIONS]
 ```
 
-`remove` mirrors `add`. The kind-tagged flags `--skill`, `--mcp`, and `--command` (each repeatable) **subtract** named entries from a list; when the last name goes, the whole entry is dropped. A lone `*` value drops that kind's entry outright. With **no** kind flags, the source is removed from every list it appears in.
+`remove` mirrors `add`. The kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) **subtract** named entries from a list; when the last name goes, the whole entry is dropped. A lone `*` value drops that kind's entry outright. With **no** kind flags, the source is removed from every list it appears in.
 
 ```bash
 kst remove https://github.com/anthropics/skills               # drop the whole source
@@ -197,14 +197,14 @@ kst list [OPTIONS]
 
 | Flag                | Description                                                            |
 | ------------------- | ---------------------------------------------------------------------- |
-| `--type <kind>`     | `all` (default), `skills`, `mcps`, or `commands`                       |
+| `--type <kind>`     | `all` (default), `skills`, `mcps`, `commands`, or `instructions`                       |
 | `--json`            | Output as JSON                                                         |
 | `-q`, `--quiet`     | Suppress output (unless `--json` is set)                               |
 | `--color <when>`    | `auto` (default), `always`, or `never`                                 |
 | `--project`         | Only read the project lock (`./kasetto.lock`) in the current directory |
 | `--global`          | Only read the global lock (under XDG data)                             |
 
-With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
+With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
 ## `kst doctor`
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
@@ -225,7 +225,7 @@ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes everything Kasetto installed for the given scope — skills, MCP configs, and lock file entries.
+Removes everything Kasetto installed for the given scope — skills, commands, MCP configs, instructions, and lock file entries.
 
 ```bash
 kst clean [OPTIONS]
@@ -280,7 +280,7 @@ The notice is suppressed when:
 
 ### `kst self uninstall`
 
-A full teardown: removes installed skills and MCP configs, clears Kasetto's data directories, and deletes the binary.
+A full teardown: removes installed skills, commands, instructions, and MCP configs, clears Kasetto's data directories, and deletes the binary.
 
 ```bash
 kst self uninstall [OPTIONS]

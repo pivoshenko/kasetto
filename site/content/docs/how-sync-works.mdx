@@ -101,7 +101,7 @@ This keeps re-sync fast — unchanged sources require no file I/O beyond reading
 
 ## The Lockfile Contract
 
-`kasetto.lock` is a real lockfile, in the same spirit as `Cargo.lock`, `package-lock.json`, or `go.sum`. It pins exactly which skills, commands, and MCP assets were installed — by source, revision, destination, and content hash — so that anyone who runs `kst sync` against the same config and lock gets an identical setup.
+`kasetto.lock` is a real lockfile, in the same spirit as `Cargo.lock`, `package-lock.json`, or `go.sum`. It pins exactly which skills, commands, instructions, and MCP assets were installed — by source, revision, destination, and content hash — so that anyone who runs `kst sync` against the same config and lock gets an identical setup.
 
 Where it lives depends on the scope:
 
