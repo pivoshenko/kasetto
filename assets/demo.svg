@@ -20,9 +20,9 @@
     9.70 → 10.50s    remove resolution → tree → chip
     12.60 → 13.00s   fade out, restart
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 376" width="100%" preserveAspectRatio="xMidYMid meet" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 398" width="100%" preserveAspectRatio="xMidYMid meet" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="12">
   <!-- frame -->
-  <rect x="0" y="0" width="580" height="376" rx="8" ry="8" fill="#1f1f1e"/>
+  <rect x="0" y="0" width="580" height="398" rx="8" ry="8" fill="#1f1f1e"/>
   <rect x="0" y="0" width="580" height="36" rx="8" ry="8" fill="#1a1a19"/>
   <rect x="0" y="28" width="580" height="8" fill="#1a1a19"/>
   <line x1="0" y1="36" x2="580" y2="36" stroke="#2e2e2c" stroke-width="1"/>
@@ -40,7 +40,7 @@
     </text>
 
     <!-- Resolved -->
-    <text x="20" y="74" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">Resolved </tspan><tspan fill="#e8a94d">5 sources</tspan><tspan fill="#a8a195"> · 18 items</tspan>
+    <text x="20" y="74" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">Resolved </tspan><tspan fill="#e8a94d">5 sources</tspan><tspan fill="#a8a195"> · 20 items</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0307;0.0382;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
@@ -69,63 +69,69 @@
     <text x="20" y="170" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">git-branches-cleanup</tspan><tspan fill="#a8a195">    unchanged</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0969;0.1045;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="181" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:github.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1028;0.1109;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="181" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">instruction:docs-autoupdate</tspan><tspan fill="#a8a195">       </tspan><tspan fill="#84c578">added</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1031;0.1107;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="192" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:vercel.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1093;0.1168;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="192" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">instruction:multi-agent-dispatch</tspan><tspan fill="#a8a195">  </tspan><tspan fill="#84c578">added</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1093;0.1169;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="203" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:github.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1152;0.1233;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="214" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">mcp:vercel.json</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1217;0.1292;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- source 2 -->
-    <text x="20" y="206" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/anthropics/skills</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1190;0.1271;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
-    </text>
-    <text x="20" y="217" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">design-thinking</tspan><tspan fill="#a8a195">         unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1255;0.1330;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
-    </text>
-    <text x="20" y="228" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">doc-coauthoring</tspan><tspan fill="#a8a195">         unchanged</tspan>
+    <text x="20" y="228" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/anthropics/skills</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1314;0.1395;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="239" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pdf</tspan><tspan fill="#a8a195">                     unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1378;0.1454;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="239" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">design-thinking</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1379;0.1454;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="250" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pptx</tspan><tspan fill="#a8a195">                    unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1438;0.1513;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="250" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">doc-coauthoring</tspan><tspan fill="#a8a195">         unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1438;0.1519;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="261" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">skill-creator</tspan><tspan fill="#a8a195">           unchanged</tspan>
+    <text x="20" y="261" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pdf</tspan><tspan fill="#a8a195">                     unchanged</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1502;0.1578;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="272" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">pptx</tspan><tspan fill="#a8a195">                    unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1562;0.1637;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="283" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">skill-creator</tspan><tspan fill="#a8a195">           unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1626;0.1702;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- source 3 -->
-    <text x="20" y="275" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/vercel-labs/agent-skills</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1615;0.1691;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
-    </text>
-    <text x="20" y="286" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">deploy-to-vercel</tspan><tspan fill="#a8a195">        unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1675;0.1755;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
-    </text>
-    <text x="20" y="297" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">web-design-guidelines</tspan><tspan fill="#a8a195">   </tspan><tspan fill="#e8a94d">updated</tspan>
+    <text x="20" y="297" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/vercel-labs/agent-skills</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1739;0.1815;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="308" opacity="0"><tspan fill="#6e6759">  ├─ </tspan><tspan fill="#84c578">✓</tspan> <tspan fill="#e4e2de">deploy-to-vercel</tspan><tspan fill="#a8a195">        unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1799;0.1879;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    </text>
+    <text x="20" y="319" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e8a94d">↑</tspan> <tspan fill="#e4e2de">web-design-guidelines</tspan><tspan fill="#a8a195">   </tspan><tspan fill="#e8a94d">updated</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1863;0.1939;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- source 4 -->
-    <text x="20" y="311" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/apollographql/skills</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1847;0.1922;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="333" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/apollographql/skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1971;0.2046;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="322" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">rust-best-practices</tspan><tspan fill="#a8a195">     </tspan><tspan fill="#84c578">added</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1906;0.1987;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="344" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#84c578">+</tspan> <tspan fill="#e4e2de">rust-best-practices</tspan><tspan fill="#a8a195">     </tspan><tspan fill="#84c578">added</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2030;0.2111;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- source 5 -->
-    <text x="20" y="336" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/mattpocock/skills</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1998;0.2078;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="358" opacity="0"><tspan fill="#84c578">✓</tspan> <tspan fill="#6cbfd3">github.com/mattpocock/skills</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2122;0.2202;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
-    <text x="20" y="347" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e87e6c">−</tspan> <tspan fill="#e4e2de">grill-me</tspan><tspan fill="#a8a195">                </tspan><tspan fill="#e87e6c">removed</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2062;0.2138;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="369" opacity="0"><tspan fill="#6e6759">  └─ </tspan><tspan fill="#e87e6c">−</tspan> <tspan fill="#e4e2de">grill-me</tspan><tspan fill="#a8a195">                </tspan><tspan fill="#e87e6c">removed</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2186;0.2262;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- chip strip -->
-    <text x="20" y="364" opacity="0"><tspan>  </tspan><tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">updated  </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#a8a195">added  </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#a8a195">removed  </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 11 </tspan><tspan fill="#a8a195">unchanged</tspan>
-      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2229;0.2385;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
+    <text x="20" y="386" opacity="0"><tspan>  </tspan><tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">updated  </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#a8a195">added  </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#a8a195">removed  </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 11 </tspan><tspan fill="#a8a195">unchanged</tspan>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2353;0.2509;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 
     <!-- scene 2: kst add then kst remove session (5.6s → 12.6s) -->
