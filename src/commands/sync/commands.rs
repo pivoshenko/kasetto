@@ -122,10 +122,11 @@ pub(super) fn sync_commands(
                 continue;
             }
         };
-        let root = materialized
-            .cleanup_dir
-            .as_deref()
-            .unwrap_or(&materialized.source_root);
+        // Resolve commands against `source_root`, which honors `sub-dir` for
+        // local, staged-remote, and cache-served sources alike. `cleanup_dir` is
+        // the archive root (no sub-dir applied) and a teardown-only handle — using
+        // it as the root would miss commands under a `sub-dir`.
+        let root = materialized.source_root.as_path();
 
         let selected: Vec<(String, PathBuf)> = match &src.commands {
             CommandsField::Wildcard(s) if s == "*" => match discover_commands(root) {
