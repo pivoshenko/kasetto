@@ -298,10 +298,11 @@ The `--project` / `--global` flags always override whatever `scope` is set in th
 
 ## Environment Variables
 
-These environment variables affect Kasetto's output behavior:
+These environment variables affect Kasetto's behavior:
 
 | Variable          | Effect                                                                                          |
 | ----------------- | ----------------------------------------------------------------------------------------------- |
 | `NO_COLOR`        | Disables colored output. Set to any value.                                                      |
 | `CLICOLOR_FORCE`  | Forces color even when stdout is not a TTY. Set automatically by `--color always`.              |
 | `KASETTO_CONFIG`  | Overrides config discovery to use the exact path or URL (see [Configuration](#configuration)).  |
+| `KASETTO_NO_CACHE`| Disables the on-disk source cache, forcing a fresh download + extract on every fetch. Set to any value. |
