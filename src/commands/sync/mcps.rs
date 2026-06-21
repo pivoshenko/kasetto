@@ -151,10 +151,11 @@ pub(super) fn sync_mcps(
                 continue;
             }
         };
-        let root = materialized
-            .cleanup_dir
-            .as_deref()
-            .unwrap_or_else(|| std::path::Path::new(&src.source));
+        // Resolve MCP files against the materialized source root. `source_root`
+        // is correct for every case — a local path, a freshly-staged remote, and
+        // a cache-served `ref:` source (which has no stage dir, so `cleanup_dir`
+        // is `None`). `cleanup_dir` is only a teardown handle, never the root.
+        let root = materialized.source_root.as_path();
         let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
             McpsField::Wildcard(s) if s == "*" => discover_mcps(root),
             McpsField::Wildcard(s) => Err(err(format!(
