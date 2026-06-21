@@ -73,3 +73,7 @@ sync-config:
     cd site && pnpm exec biome format --write app/components/feature-tabs.tsx
 
 check: format lint test build
+
+# cold-sync performance benchmark (needs hyperfine + network)
+bench:
+    ./scripts/bench-sync.sh
