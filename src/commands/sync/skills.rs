@@ -84,11 +84,25 @@ fn dest_status(
     DestStatus { all_match, good }
 }
 
+/// Per-source decision computed before any network access, so the download
+/// phase can run in parallel while the work order stays deterministic.
+enum Plan {
+    /// Materialize the source and install/update its skills.
+    Fetch,
+    /// No network: honor the locked skills (names carried here) from disk.
+    FromLock(Vec<String>),
+    /// `--locked` cannot satisfy this source without fetching.
+    LockedError(String),
+}
+
 pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()> {
     let mut desired_keys = HashSet::new();
     let mut cache = HashCache::default();
 
-    for (i, src) in ctx.cfg.skills.iter().enumerate() {
+    // Phase 1 — plan each source (sequential, local-only). `needs_fetch` here
+    // also memoizes destination hashes into `cache` for the process phase.
+    let mut plans: Vec<Plan> = Vec::with_capacity(ctx.cfg.skills.len());
+    for src in &ctx.cfg.skills {
         // Desired skill names for this source, derived without any network:
         // explicit config names for a list, or the locked set for a wildcard.
         let desired = desired_skill_names(src, sm.state);
@@ -96,13 +110,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         // `--locked`/`--frozen`: the lock must be able to satisfy the config.
         if ctx.locked {
             if let Err(e) = ensure_locked_satisfiable(src, &desired, sm.state) {
-                sm.summary.failed += 1;
-                sm.actions.push(Action {
-                    source: Some(src.source.clone()),
-                    skill: None,
-                    status: "locked_error".into(),
-                    error: Some(e.to_string()),
-                });
+                plans.push(Plan::LockedError(e.to_string()));
                 continue;
             }
         }
@@ -113,23 +121,66 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         if fetch && ctx.locked {
             // --locked must never fetch. If the lock cannot satisfy the config
             // without a fetch (and local repair is impossible), this is an error.
-            sm.summary.failed += 1;
-            sm.actions.push(Action {
-                source: Some(src.source.clone()),
-                skill: None,
-                status: "locked_error".into(),
-                error: Some(
-                    "lock requires a fetch to satisfy this source, but --locked forbids fetching"
-                        .into(),
-                ),
-            });
+            plans.push(Plan::LockedError(
+                "lock requires a fetch to satisfy this source, but --locked forbids fetching"
+                    .into(),
+            ));
             continue;
         }
 
-        if fetch {
-            sync_source_via_fetch(ctx, sm, &mut cache, &mut desired_keys, src, i);
+        plans.push(if fetch {
+            Plan::Fetch
         } else {
-            sync_source_from_lock(ctx, sm, &mut cache, &mut desired_keys, src, &desired);
+            Plan::FromLock(desired)
+        });
+    }
+
+    // Phase 2 — download + extract every Fetch source in parallel. Each source
+    // is independent (distinct stage dir / cache key), so this overlaps the
+    // network latency that dominates a cold sync.
+    let mut materialized = materialize_fetch_sources(ctx, &plans);
+
+    // Phase 3 — process in source order so output, lock writes, and
+    // last-writer-wins destination semantics stay deterministic.
+    for (i, src) in ctx.cfg.skills.iter().enumerate() {
+        match &plans[i] {
+            Plan::LockedError(msg) => {
+                sm.summary.failed += 1;
+                sm.actions.push(Action {
+                    source: Some(src.source.clone()),
+                    skill: None,
+                    status: "locked_error".into(),
+                    error: Some(msg.clone()),
+                });
+            }
+            Plan::FromLock(desired) => {
+                sync_source_from_lock(ctx, sm, &mut cache, &mut desired_keys, src, desired);
+            }
+            Plan::Fetch => match materialized.remove(&i) {
+                Some(Ok(m)) => {
+                    process_fetched_source(ctx, sm, &mut cache, &mut desired_keys, src, m);
+                }
+                Some(Err(e)) => {
+                    sm.summary.failed += 1;
+                    sm.actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: None,
+                        status: "source_error".into(),
+                        error: Some(e),
+                    });
+                }
+                None => {
+                    // Phase 2 produces exactly one entry per Fetch source; a gap
+                    // would be a logic bug, so surface it rather than skip silently.
+                    sm.summary.failed += 1;
+                    sm.actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: None,
+                        status: "source_error".into(),
+                        error: Some("internal: source was not materialized".into()),
+                    });
+                }
+            },
         }
     }
 
@@ -143,64 +194,78 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
     Ok(())
 }
 
-/// Download path: materialize the source and install/update each selected skill.
-fn sync_source_via_fetch(
+/// Phase 2: materialize every `Plan::Fetch` source in parallel, keyed by its
+/// index in `ctx.cfg.skills`. Downloads + extraction are independent across
+/// sources (distinct stage dirs; the source cache serializes same-key races),
+/// and `materialize_source` touches no shared mutable state — so this is the
+/// network-latency overlap that makes a multi-source cold sync fast. Errors are
+/// carried as strings (the error type need not cross threads) and surfaced in
+/// the deterministic Phase 3 walk.
+fn materialize_fetch_sources(
+    ctx: &SyncContext,
+    plans: &[Plan],
+) -> HashMap<usize, std::result::Result<crate::source::MaterializedSource, String>> {
+    use rayon::prelude::*;
+
+    let fetch_indices: Vec<usize> = plans
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| matches!(p, Plan::Fetch))
+        .map(|(i, _)| i)
+        .collect();
+
+    fetch_indices
+        .par_iter()
+        .map(|&i| {
+            let src = &ctx.cfg.skills[i];
+            let stage = std::env::temp_dir().join(format!("kasetto-{}-{}", now_unix(), i));
+            let res = materialize_source(src, ctx.cfg_dir, &stage).map_err(|e| e.to_string());
+            (i, res)
+        })
+        .collect()
+}
+
+/// Phase 3 (download path): install/update each selected skill from an
+/// already-materialized source, then clean up its throwaway stage dir.
+fn process_fetched_source(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
     cache: &mut HashCache,
     desired_keys: &mut HashSet<String>,
     src: &SourceSpec,
-    i: usize,
+    materialized: crate::source::MaterializedSource,
 ) {
-    let stage = std::env::temp_dir().join(format!("kasetto-{}-{}", now_unix(), i));
-    match materialize_source(src, ctx.cfg_dir, &stage) {
-        Ok(materialized) => {
-            match select_targets(
-                &src.skills,
-                &materialized.available,
-                &materialized.source_root,
-            ) {
-                Ok((targets, broken_skills)) => {
-                    record_broken_skills(ctx, &src.source, broken_skills, sm);
+    match select_targets(
+        &src.skills,
+        &materialized.available,
+        &materialized.source_root,
+    ) {
+        Ok((targets, broken_skills)) => {
+            record_broken_skills(ctx, &src.source, broken_skills, sm);
 
-                    let mut first_in_run = true;
-                    for (skill_name, skill_path) in targets {
-                        let label =
-                            sync_label_with(&skill_name, &src.source, ctx.plain, first_in_run);
-                        first_in_run = false;
-                        if let Err(e) = process_single_skill(
-                            ctx,
-                            sm,
-                            cache,
-                            desired_keys,
-                            &src.source,
-                            &materialized.source_revision,
-                            &skill_name,
-                            &skill_path,
-                            &label,
-                        ) {
-                            sm.summary.failed += 1;
-                            sm.actions.push(Action {
-                                source: Some(src.source.clone()),
-                                skill: Some(skill_name),
-                                status: "source_error".into(),
-                                error: Some(e.to_string()),
-                            });
-                        }
-                    }
-                }
-                Err(e) => {
+            let mut first_in_run = true;
+            for (skill_name, skill_path) in targets {
+                let label = sync_label_with(&skill_name, &src.source, ctx.plain, first_in_run);
+                first_in_run = false;
+                if let Err(e) = process_single_skill(
+                    ctx,
+                    sm,
+                    cache,
+                    desired_keys,
+                    &src.source,
+                    &materialized.source_revision,
+                    &skill_name,
+                    &skill_path,
+                    &label,
+                ) {
                     sm.summary.failed += 1;
                     sm.actions.push(Action {
                         source: Some(src.source.clone()),
-                        skill: None,
+                        skill: Some(skill_name),
                         status: "source_error".into(),
                         error: Some(e.to_string()),
                     });
                 }
-            }
-            if let Some(cleanup_dir) = materialized.cleanup_dir {
-                let _ = fs::remove_dir_all(cleanup_dir);
             }
         }
         Err(e) => {
@@ -212,6 +277,9 @@ fn sync_source_via_fetch(
                 error: Some(e.to_string()),
             });
         }
+    }
+    if let Some(cleanup_dir) = materialized.cleanup_dir {
+        let _ = fs::remove_dir_all(cleanup_dir);
     }
 }
 
@@ -284,8 +352,12 @@ fn process_single_skill(
     with_spinner_transient(ctx.animate, ctx.plain, label, || {
         let key = skill_key(source, skill_name);
         desired_keys.insert(key.clone());
-        let hash = hash_dir(skill_path)?;
+        let has_prior = sm.state.skills.contains_key(&key);
         let dest = destination.join(skill_name);
+
+        // Hash the source tree up front so the unchanged case short-circuits
+        // without writing.
+        let hash = hash_dir(skill_path)?;
 
         // Unchanged only if the locked hash matches AND every destination already
         // holds an identical copy (fixes the latent destinations[0]-only bug).
@@ -315,7 +387,7 @@ fn process_single_skill(
         }
 
         if ctx.dry_run {
-            let status = if sm.state.skills.contains_key(&key) {
+            let status = if has_prior {
                 sm.summary.updated += 1;
                 "would_update"
             } else {
@@ -331,13 +403,14 @@ fn process_single_skill(
             return Ok(());
         }
 
+        // Copy the skill into every destination.
         for agent_dest in ctx.destinations {
             let dst = agent_dest.join(skill_name);
             cache.invalidate(&dst);
             copy_dir(skill_path, &dst)?;
             cache.set(dst, hash.clone());
         }
-        let status = if sm.state.skills.contains_key(&key) {
+        let status = if has_prior {
             sm.summary.updated += 1;
             "updated"
         } else {
@@ -810,5 +883,83 @@ mod tests {
         assert_eq!(s.unchanged, 1);
         assert_eq!(s.failed, 0);
         cleanup(&h);
+    }
+
+    /// Two independent sources are materialized in parallel (Phase 2) but
+    /// processed in config order (Phase 3): both install, and the recorded
+    /// actions stay grouped and ordered by source so output is deterministic.
+    #[test]
+    fn multiple_sources_install_in_config_order() {
+        let src_a = temp_dir("kasetto-multi-a");
+        write_skill(&src_a, "alpha", "# alpha\n\nbody\n");
+        let src_b = temp_dir("kasetto-multi-b");
+        write_skill(&src_b, "beta", "# beta\n\nbody\n");
+        let scope_root = temp_dir("kasetto-multi-scope");
+        let dest = scope_root.join(".agent/skills");
+        fs::create_dir_all(&dest).unwrap();
+
+        let cfg = Config {
+            destination: None,
+            scope: Some(Scope::Project),
+            agent: None,
+            skills: vec![
+                SourceSpec {
+                    source: src_a.to_string_lossy().to_string(),
+                    branch: None,
+                    git_ref: None,
+                    sub_dir: None,
+                    skills: list(&["alpha"]),
+                },
+                SourceSpec {
+                    source: src_b.to_string_lossy().to_string(),
+                    branch: None,
+                    git_ref: None,
+                    sub_dir: None,
+                    skills: list(&["beta"]),
+                },
+            ],
+            mcps: Vec::new(),
+            commands: Vec::new(),
+            instructions: Vec::new(),
+        };
+        let dests = vec![dest.clone()];
+        let ctx = SyncContext {
+            cfg: &cfg,
+            cfg_dir: &scope_root,
+            destinations: &dests,
+            scope_root: scope_root.clone(),
+            scope: Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            as_json: false,
+            quiet: true,
+            update: false,
+            update_only: vec![],
+            locked: false,
+        };
+        let mut state = State::default();
+        let mut runtime = RuntimeState::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        let mut sm = SyncMut {
+            state: &mut state,
+            runtime: &mut runtime,
+            summary: &mut summary,
+            actions: &mut actions,
+        };
+        sync_skills(&ctx, &mut sm).unwrap();
+
+        assert_eq!(summary.installed, 2, "both sources install");
+        assert_eq!(summary.failed, 0);
+        assert!(dest.join("alpha/SKILL.md").is_file());
+        assert!(dest.join("beta/SKILL.md").is_file());
+        // Actions preserve config order: source A's skill before source B's.
+        let order: Vec<&str> = actions.iter().filter_map(|a| a.skill.as_deref()).collect();
+        assert_eq!(order, vec!["alpha", "beta"]);
+
+        let _ = fs::remove_dir_all(&src_a);
+        let _ = fs::remove_dir_all(&src_b);
+        let _ = fs::remove_dir_all(&scope_root);
     }
 }
