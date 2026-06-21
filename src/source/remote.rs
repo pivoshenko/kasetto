@@ -1,6 +1,7 @@
 //! Remote archive and tarball download (GitHub, GitLab, Bitbucket, Gitea).
 
 use std::fs;
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::{err, Result};
@@ -215,6 +216,7 @@ pub(super) fn download_extract(
     auth: &UrlRequestAuth,
     dst: &Path,
     user_source: &str,
+    sub_dir: Option<&str>,
 ) -> Result<()> {
     if dst.exists() {
         fs::remove_dir_all(dst)?;
@@ -227,22 +229,44 @@ pub(super) fn download_extract(
         .map_err(|e| err(format!("failed to reach {user_source}: {e}")))?;
     let status = response.status();
     let status_u16 = status.as_u16();
-    let body = response
-        .bytes()
-        .map_err(|e| err(format!("failed to read archive for {user_source}: {e}")))?;
     if !status.is_success() {
         return Err(err(format!(
             "failed to download {user_source} (HTTP {status_u16}){}",
             http_fetch_auth_hint(user_source, status_u16)
         )));
     }
-    if body.starts_with(b"<") || body.starts_with(b"<!") {
-        return Err(err(format!(
-            "failed to download {user_source}: server returned HTML instead of a .tar.gz - {}",
-            auth_env_inline_help(user_source)
-        )));
+
+    // Stream the response straight into the gzip decoder rather than buffering
+    // the whole archive in memory (a monorepo tarball can be tens of MB). Peek
+    // the first bytes without consuming them to catch an HTML error/login page
+    // served with a 200.
+    let mut reader = BufReader::with_capacity(64 * 1024, response);
+    {
+        let head = reader
+            .fill_buf()
+            .map_err(|e| err(format!("failed to read archive for {user_source}: {e}")))?;
+        if head.starts_with(b"<") || head.starts_with(b"<!") {
+            return Err(err(format!(
+                "failed to download {user_source}: server returned HTML instead of a .tar.gz - {}",
+                auth_env_inline_help(user_source)
+            )));
+        }
     }
-    let gz = flate2::read::GzDecoder::new(body.as_ref());
+
+    extract_tar(reader, dst, sub_dir)
+}
+
+/// Stream-extract a gzipped tarball into `dst`, stripping the archive's top-level
+/// directory (the `repo-<ref>/` wrapper GitHub/GitLab/… add).
+///
+/// When `sub_dir` is `Some`, only entries under that repo-relative path are
+/// written — **sparse extraction**. The gzip stream is still read in full (it is
+/// a single stream and cannot be range-fetched), but the bulk of a monorepo's
+/// files are never created on disk, which is where most of the extraction cost
+/// lives (one create/write/chmod syscall per file).
+fn extract_tar<R: Read>(reader: R, dst: &Path, sub_dir: Option<&str>) -> Result<()> {
+    let sub = sub_dir.map(Path::new);
+    let gz = flate2::read::GzDecoder::new(reader);
     let mut archive = tar::Archive::new(gz);
     for entry in archive.entries()? {
         let mut entry = entry?;
@@ -258,6 +282,12 @@ pub(super) fn download_extract(
             .collect::<PathBuf>();
         if rel.components().any(|c| c == Component::ParentDir) {
             return Err(err("unsafe archive path"));
+        }
+        if let Some(sub) = sub {
+            // Component-wise prefix match so `skills` does not match `skills-x`.
+            if !rel.starts_with(sub) {
+                continue;
+            }
         }
         let target = dst.join(rel);
         if let Some(parent) = target.parent() {
@@ -275,6 +305,88 @@ mod tests {
     use super::*;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Build an in-memory `.tar.gz` from `(path, contents)` pairs, mirroring a
+    /// host archive's `repo-<ref>/…` top-level wrapper.
+    fn make_targz(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        let mut buf = Vec::new();
+        {
+            let enc = GzEncoder::new(&mut buf, Compression::fast());
+            let mut builder = tar::Builder::new(enc);
+            for (path, data) in entries {
+                let mut header = tar::Header::new_gnu();
+                header.set_size(data.len() as u64);
+                header.set_mode(0o644);
+                header.set_cksum();
+                builder.append_data(&mut header, path, *data).unwrap();
+            }
+            builder.into_inner().unwrap().finish().unwrap();
+        }
+        buf
+    }
+
+    #[test]
+    fn extract_tar_full_writes_everything_stripping_top_dir() {
+        let gz = make_targz(&[
+            ("repo-main/SKILL.md", b"# root"),
+            ("repo-main/skills/alpha/SKILL.md", b"# alpha"),
+            ("repo-main/packages/big/file.bin", b"data"),
+        ]);
+        let dst = crate::fsops::temp_dir("kasetto-extract-full");
+        extract_tar(std::io::Cursor::new(gz), &dst, None).expect("extract");
+
+        assert!(dst.join("SKILL.md").is_file());
+        assert!(dst.join("skills/alpha/SKILL.md").is_file());
+        assert!(dst.join("packages/big/file.bin").is_file());
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn extract_tar_sparse_writes_only_subdir() {
+        let gz = make_targz(&[
+            ("repo-main/README.md", b"readme"),
+            ("repo-main/skills/alpha/SKILL.md", b"# alpha"),
+            ("repo-main/packages/huge/file.bin", b"xxxxxxxx"),
+            // A sibling with a shared prefix must NOT be captured by `skills`.
+            ("repo-main/skills-extra/beta/SKILL.md", b"# beta"),
+        ]);
+        let dst = crate::fsops::temp_dir("kasetto-extract-sparse");
+        extract_tar(std::io::Cursor::new(gz), &dst, Some("skills")).expect("extract");
+
+        assert!(dst.join("skills/alpha/SKILL.md").is_file());
+        assert!(!dst.join("packages").exists(), "non-subdir entries skipped");
+        assert!(!dst.join("README.md").exists(), "root files skipped");
+        assert!(
+            !dst.join("skills-extra").exists(),
+            "prefix match must be component-wise, not string-prefix"
+        );
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn extract_tar_sparse_nested_subdir() {
+        let gz = make_targz(&[
+            ("repo-main/fastapi/.agents/skills/fastapi/SKILL.md", b"# f"),
+            ("repo-main/fastapi/src/main.py", b"code"),
+            ("repo-main/docs/index.md", b"docs"),
+        ]);
+        let dst = crate::fsops::temp_dir("kasetto-extract-nested");
+        extract_tar(
+            std::io::Cursor::new(gz),
+            &dst,
+            Some("fastapi/.agents/skills"),
+        )
+        .expect("extract");
+
+        assert!(dst
+            .join("fastapi/.agents/skills/fastapi/SKILL.md")
+            .is_file());
+        assert!(!dst.join("fastapi/src").exists());
+        assert!(!dst.join("docs").exists());
+        let _ = fs::remove_dir_all(&dst);
+    }
 
     #[test]
     fn github_branch_archive_uses_refs_heads_prefix_without_token() {

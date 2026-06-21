@@ -29,16 +29,24 @@ fn fetch_ref_cached(
     auth: &UrlRequestAuth,
     user_source: &str,
     stage: &Path,
+    sub_dir: Option<&str>,
 ) -> Result<(PathBuf, Option<PathBuf>)> {
-    if let Some(tree) = source_cache_lookup(url) {
+    // Sparse extraction stores only the requested sub-tree, so the cache key must
+    // fold in the sub-dir — otherwise two sub-dirs of the same immutable ref would
+    // collide on one entry that holds only the first one's files.
+    let cache_key = match sub_dir {
+        Some(s) => format!("{url}\n{s}"),
+        None => url.to_string(),
+    };
+    if let Some(tree) = source_cache_lookup(&cache_key) {
         return Ok((tree, None));
     }
-    match source_cache_store(url, |tree_dir| {
-        remote::download_extract(url, auth, tree_dir, user_source)
+    match source_cache_store(&cache_key, |tree_dir| {
+        remote::download_extract(url, auth, tree_dir, user_source, sub_dir)
     }) {
         Some(result) => Ok((result?, None)),
         None => {
-            remote::download_extract(url, auth, stage, user_source)?;
+            remote::download_extract(url, auth, stage, user_source, sub_dir)?;
             Ok((stage.to_path_buf(), Some(stage.to_path_buf())))
         }
     }
@@ -105,6 +113,10 @@ pub(crate) fn materialize_source(
         let parsed = parse::parse_repo_url(&src.source)?;
         let pin = src.git_pin();
 
+        // Only the requested sub-dir needs extracting; pass it down so a monorepo
+        // tarball is filtered to that sub-tree instead of written out in full.
+        let sub = src.sub_dir.as_deref();
+
         // `root` is the materialized repository root (the cached tree on a hit,
         // else the freshly-extracted `stage`); `cleanup_dir` is `Some` only when
         // `root` is a throwaway stage the caller should delete afterwards.
@@ -112,12 +124,12 @@ pub(crate) fn materialize_source(
             GitPin::Ref(r) => {
                 // Immutable ref: URL fully determines content, so it is cacheable.
                 let (url, auth) = remote::remote_repo_archive_ref(&parsed, r);
-                let (root, cleanup) = fetch_ref_cached(&url, &auth, &src.source, stage)?;
+                let (root, cleanup) = fetch_ref_cached(&url, &auth, &src.source, stage, sub)?;
                 (root, format!("ref:{r}"), cleanup)
             }
             GitPin::Branch(b) => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, b);
-                remote::download_extract(&url, &auth, stage, &src.source)?;
+                remote::download_extract(&url, &auth, stage, &src.source, sub)?;
                 (
                     stage.to_path_buf(),
                     format!("branch:{b}"),
@@ -126,9 +138,9 @@ pub(crate) fn materialize_source(
             }
             GitPin::Default => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, "main");
-                remote::download_extract(&url, &auth, stage, &src.source).or_else(|_| {
+                remote::download_extract(&url, &auth, stage, &src.source, sub).or_else(|_| {
                     let (url, auth) = remote::remote_repo_archive_branch(&parsed, "master");
-                    remote::download_extract(&url, &auth, stage, &src.source).map_err(|e2| {
+                    remote::download_extract(&url, &auth, stage, &src.source, sub).map_err(|e2| {
                         err(format!("{e2} (also tried branch `master` after `main`)"))
                     })
                 })?;

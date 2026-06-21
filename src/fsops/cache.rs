@@ -1,11 +1,13 @@
-//! On-disk cache of extracted source trees, keyed by the resolved archive URL.
+//! On-disk cache of extracted source trees, keyed by a caller-supplied string
+//! (the resolved archive URL, plus the sub-dir when sparse extraction stores
+//! only a sub-tree).
 //!
 //! Only **immutable** refs (explicit tag/SHA `ref:`) are cached: a moving ref
 //! (branch/default) can change upstream without the URL changing, so caching it
 //! would serve stale content. An immutable ref's URL fully determines its bytes,
 //! so a hit is always correct — no TTL, no revalidation, zero network.
 //!
-//! Layout (`$XDG_CACHE_HOME/kasetto/sources/<sha256(url)>/`):
+//! Layout (`$XDG_CACHE_HOME/kasetto/sources/<sha256(key)>/`):
 //! - `tree/`       — the extracted repository root (what `materialize` reads)
 //! - `.complete`   — written last; its presence marks a fully-populated entry
 //!
@@ -35,16 +37,16 @@ fn sources_root() -> Result<PathBuf> {
     Ok(dirs_kasetto_cache()?.join("sources"))
 }
 
-fn entry_dir(root: &Path, url: &str) -> PathBuf {
-    root.join(hash_str(url))
+fn entry_dir(root: &Path, key: &str) -> PathBuf {
+    root.join(hash_str(key))
 }
 
-/// A complete cached tree for `url`, or `None` on a miss (or when caching is off).
-pub(crate) fn lookup(url: &str) -> Option<PathBuf> {
+/// A complete cached tree for `key`, or `None` on a miss (or when caching is off).
+pub(crate) fn lookup(key: &str) -> Option<PathBuf> {
     if disabled() {
         return None;
     }
-    let entry = entry_dir(&sources_root().ok()?, url);
+    let entry = entry_dir(&sources_root().ok()?, key);
     if entry.join(COMPLETE_MARKER).is_file() {
         let tree = entry.join(TREE_SUBDIR);
         if tree.is_dir() {
@@ -54,35 +56,35 @@ pub(crate) fn lookup(url: &str) -> Option<PathBuf> {
     None
 }
 
-/// Populate the cache for `url` by extracting into a private tmp tree via
+/// Populate the cache for `key` by extracting into a private tmp tree via
 /// `extract`, then atomically promote it. Returns the cached `tree/` path.
 ///
 /// `extract(tree_dir)` must materialize the source root at `tree_dir`. On any
 /// promotion race the existing complete entry wins and is returned instead.
 /// Returns `None` when caching is disabled (caller falls back to direct extract).
-pub(crate) fn store<F>(url: &str, extract: F) -> Option<Result<PathBuf>>
+pub(crate) fn store<F>(key: &str, extract: F) -> Option<Result<PathBuf>>
 where
     F: FnOnce(&Path) -> Result<()>,
 {
     if disabled() {
         return None;
     }
-    Some(store_inner(url, extract))
+    Some(store_inner(key, extract))
 }
 
-fn store_inner<F>(url: &str, extract: F) -> Result<PathBuf>
+fn store_inner<F>(key: &str, extract: F) -> Result<PathBuf>
 where
     F: FnOnce(&Path) -> Result<()>,
 {
     static SEQ: AtomicU64 = AtomicU64::new(0);
     let root = sources_root()?;
     std::fs::create_dir_all(&root)?;
-    let final_dir = entry_dir(&root, url);
+    let final_dir = entry_dir(&root, key);
 
     let nonce = SEQ.fetch_add(1, Ordering::Relaxed);
     let tmp = root.join(format!(
         ".tmp-{}-{}-{}",
-        hash_str(url),
+        hash_str(key),
         std::process::id(),
         nonce
     ));
