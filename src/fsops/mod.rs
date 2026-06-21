@@ -1,3 +1,4 @@
+mod cache;
 mod config;
 mod config_edit;
 mod copy;
@@ -6,6 +7,7 @@ mod hash;
 mod http;
 mod settings;
 
+pub(crate) use cache::{lookup as source_cache_lookup, store as source_cache_store};
 pub(crate) use config::load_config_any;
 pub(crate) use config_edit::{
     insert_item, item_exists, remove_item, remove_names, Pin, RemoveOutcome, Section, Selector,

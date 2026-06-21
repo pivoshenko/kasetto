@@ -14,8 +14,35 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::{err, Result};
-use crate::fsops::resolve_path;
+use crate::fsops::{resolve_path, source_cache_lookup, source_cache_store};
 use crate::model::{GitPin, SourceSpec};
+
+use auth::UrlRequestAuth;
+
+/// Materialize an immutable-ref archive, preferring the on-disk source cache.
+///
+/// - Cache hit → return the cached tree; no cleanup (the cache owns it).
+/// - Miss with caching on → populate the cache, return its tree; no cleanup.
+/// - Caching off → extract into the throwaway `stage`; caller cleans it up.
+fn fetch_ref_cached(
+    url: &str,
+    auth: &UrlRequestAuth,
+    user_source: &str,
+    stage: &Path,
+) -> Result<(PathBuf, Option<PathBuf>)> {
+    if let Some(tree) = source_cache_lookup(url) {
+        return Ok((tree, None));
+    }
+    match source_cache_store(url, |tree_dir| {
+        remote::download_extract(url, auth, tree_dir, user_source)
+    }) {
+        Some(result) => Ok((result?, None)),
+        None => {
+            remote::download_extract(url, auth, stage, user_source)?;
+            Ok((stage.to_path_buf(), Some(stage.to_path_buf())))
+        }
+    }
+}
 
 fn repo_name_hint(parsed: &parse::RepoUrl) -> String {
     match parsed {
@@ -78,16 +105,24 @@ pub(crate) fn materialize_source(
         let parsed = parse::parse_repo_url(&src.source)?;
         let pin = src.git_pin();
 
-        let source_revision = match &pin {
+        // `root` is the materialized repository root (the cached tree on a hit,
+        // else the freshly-extracted `stage`); `cleanup_dir` is `Some` only when
+        // `root` is a throwaway stage the caller should delete afterwards.
+        let (root, source_revision, cleanup_dir) = match &pin {
             GitPin::Ref(r) => {
+                // Immutable ref: URL fully determines content, so it is cacheable.
                 let (url, auth) = remote::remote_repo_archive_ref(&parsed, r);
-                remote::download_extract(&url, &auth, stage, &src.source)?;
-                format!("ref:{r}")
+                let (root, cleanup) = fetch_ref_cached(&url, &auth, &src.source, stage)?;
+                (root, format!("ref:{r}"), cleanup)
             }
             GitPin::Branch(b) => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, b);
                 remote::download_extract(&url, &auth, stage, &src.source)?;
-                format!("branch:{b}")
+                (
+                    stage.to_path_buf(),
+                    format!("branch:{b}"),
+                    Some(stage.to_path_buf()),
+                )
             }
             GitPin::Default => {
                 let (url, auth) = remote::remote_repo_archive_branch(&parsed, "main");
@@ -97,11 +132,15 @@ pub(crate) fn materialize_source(
                         err(format!("{e2} (also tried branch `master` after `main`)"))
                     })
                 })?;
-                "branch:main".into()
+                (
+                    stage.to_path_buf(),
+                    "branch:main".into(),
+                    Some(stage.to_path_buf()),
+                )
             }
         };
 
-        let source_root = resolve_source_root(stage, src.sub_dir.as_deref())?;
+        let source_root = resolve_source_root(&root, src.sub_dir.as_deref())?;
         let hint = src
             .sub_dir
             .as_deref()
@@ -115,7 +154,7 @@ pub(crate) fn materialize_source(
             source_revision,
             available,
             source_root,
-            cleanup_dir: Some(stage.to_path_buf()),
+            cleanup_dir,
         })
     } else {
         let root = resolve_path(cfg_dir, &src.source);
