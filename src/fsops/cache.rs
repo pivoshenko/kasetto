@@ -61,7 +61,11 @@ pub(crate) fn lookup(key: &str) -> Option<PathBuf> {
 ///
 /// `extract(tree_dir)` must materialize the source root at `tree_dir`. On any
 /// promotion race the existing complete entry wins and is returned instead.
-/// Returns `None` when caching is disabled (caller falls back to direct extract).
+///
+/// Returns `None` — so the caller falls back to direct extraction — when caching
+/// is disabled **or** the cache scratch dir cannot be prepared (no `HOME`,
+/// read-only `XDG_CACHE_HOME`, …). The cache is an optimization, so an
+/// unwritable cache must never break an otherwise-valid sync.
 pub(crate) fn store<F>(key: &str, extract: F) -> Option<Result<PathBuf>>
 where
     F: FnOnce(&Path) -> Result<()>,
@@ -69,16 +73,11 @@ where
     if disabled() {
         return None;
     }
-    Some(store_inner(key, extract))
-}
 
-fn store_inner<F>(key: &str, extract: F) -> Result<PathBuf>
-where
-    F: FnOnce(&Path) -> Result<()>,
-{
     static SEQ: AtomicU64 = AtomicU64::new(0);
-    let root = sources_root()?;
-    std::fs::create_dir_all(&root)?;
+    // Best-effort scratch setup: any infra failure here degrades to a miss.
+    let root = sources_root().ok()?;
+    std::fs::create_dir_all(&root).ok()?;
     let final_dir = entry_dir(&root, key);
 
     let nonce = SEQ.fetch_add(1, Ordering::Relaxed);
@@ -91,8 +90,23 @@ where
     // Clear any stale tmp from a crashed run before reusing the path.
     let _ = std::fs::remove_dir_all(&tmp);
     let tmp_tree = tmp.join(TREE_SUBDIR);
-    std::fs::create_dir_all(&tmp_tree)?;
+    std::fs::create_dir_all(&tmp_tree).ok()?;
 
+    Some(store_promote(extract, tmp, tmp_tree, final_dir))
+}
+
+/// Run `extract` into the prepared tmp tree, then atomically promote it into the
+/// cache. Split out so `store` can degrade scratch-setup failures to a miss
+/// (`None`) while genuine extraction/promotion errors still surface as `Err`.
+fn store_promote<F>(
+    extract: F,
+    tmp: PathBuf,
+    tmp_tree: PathBuf,
+    final_dir: PathBuf,
+) -> Result<PathBuf>
+where
+    F: FnOnce(&Path) -> Result<()>,
+{
     if let Err(e) = extract(&tmp_tree) {
         let _ = std::fs::remove_dir_all(&tmp);
         return Err(e);
@@ -194,5 +208,30 @@ mod tests {
         assert!(lookup(url).is_none(), "a failed populate must not cache");
 
         let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn unwritable_cache_dir_degrades_to_miss() {
+        let _g = ENV_LOCK.lock().unwrap();
+        // Point XDG_CACHE_HOME at a regular file so `sources/` cannot be created.
+        let base = temp_dir("kasetto-cache-blocked");
+        fs::create_dir_all(&base).unwrap();
+        let file = base.join("not-a-dir");
+        fs::write(&file, b"x").unwrap();
+        std::env::set_var("XDG_CACHE_HOME", &file);
+        std::env::remove_var("KASETTO_NO_CACHE");
+
+        // store() must return None (a miss) — not an Err — so the caller can fall
+        // back to direct extraction instead of failing the sync.
+        let mut extracted = false;
+        let out = store("https://example.com/o/r/archive/v4.0.tar.gz", |_| {
+            extracted = true;
+            Ok(())
+        });
+        assert!(out.is_none(), "uncreatable cache dir degrades to a miss");
+        assert!(!extracted, "extract closure must not run when setup fails");
+
+        std::env::remove_var("XDG_CACHE_HOME");
+        let _ = fs::remove_dir_all(&base);
     }
 }
