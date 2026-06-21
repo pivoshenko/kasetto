@@ -65,6 +65,7 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | `--skill <name>`      | Skill to add (repeatable; `*` for all). Default kind when none given  |
 | `--mcp <name>`        | MCP server to add (repeatable; `*` for all)                           |
 | `--command <name>`    | Command to add (repeatable; `*` for all)                              |
+| `--instruction <name>`| Instruction to add (repeatable; `*` for all)                          |
 | `--ref <ref>`         | Pin to a git tag, commit SHA, or ref (conflicts with `--branch`)      |
 | `--branch <branch>`   | Track a specific branch (conflicts with `--ref`)                      |
 | `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands/instructions)   |
@@ -112,8 +113,10 @@ Deep `blob`/`tree` browse URLs are accepted too — they resolve to the same rep
 | `--skill <name>`    | Skill to remove (repeatable; `*` drops the whole skills entry)   |
 | `--mcp <name>`      | MCP to remove (repeatable; `*` drops the whole mcps entry)       |
 | `--command <name>`  | Command to remove (repeatable; `*` drops the whole commands entry) |
+| `--instruction <name>` | Instruction to remove (repeatable; `*` drops the whole instructions entry) |
 | `--ref <ref>`       | Disambiguate by pinned ref when a URL appears more than once      |
 | `--branch <branch>` | Disambiguate by tracked branch                                    |
+| `--sub-dir <path>`  | Disambiguate by sub-dir (or pass a deep blob/tree URL)            |
 | `--config <path>`   | Config file to edit (default: `./kasetto.yaml`); must be local    |
 | `--no-sync`         | Edit the config without pruning installed assets                  |
 | `--dry-run`         | Preview the edit without writing the config or pruning            |

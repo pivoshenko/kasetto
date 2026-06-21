@@ -26,8 +26,7 @@ flowchart TD
     D1 --> D2[Resolve MCP files]
     D2 --> D3[Parse mcpServers]
     D3 --> D4[Hash & diff vs lock]
-    D4 --> D5[Confirmation gate]
-    D5 --> D6[Merge into agent settings]
+    D4 --> D6[Merge into agent settings]
     D6 --> D7[Update lock state]
 
     C6 --> E[Save lock file + report]
@@ -221,8 +220,8 @@ flowchart TD
     D --> F
     E --> F
 
-    F -->|global| G[~/.agent/skills/ per agent\nlock: ~/.config/kasetto/kasetto.lock]
-    F -->|project| H[./.agent/skills/ per agent\nlock: ./.kasetto.lock]
+    F -->|global| G[~/.agent/skills/ per agent\nlock: ~/.local/share/kasetto/kasetto.lock]
+    F -->|project| H[./.agent/skills/ per agent\nlock: ./kasetto.lock]
 ```
 
 ---

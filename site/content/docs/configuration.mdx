@@ -148,7 +148,7 @@ Each entry in the `mcps` list can be a plain string (name) or an object — mirr
 | `- { name: x, path: dir }`        | `dir/x.json`            |
 | `- { name: x, path: nested/dir }` | `nested/dir/x.json`     |
 
-Paths are resolved relative to the source root (or `sub-dir` if set); absolute paths are honored as-is. `.json` is appended automatically when the name has no extension.
+Paths are resolved relative to the source root; absolute paths are honored as-is. `.json` is appended automatically when the name has no extension.
 
 
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
