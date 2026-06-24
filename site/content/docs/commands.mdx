@@ -147,10 +147,12 @@ kst sync [OPTIONS]
 | `--json`                 | Print the sync report as JSON                                |
 | `--color <when>`         | `auto` (default), `always`, or `never`                       |
 | `-v`, `--verbose`        | Increase detail (`-v`, `-vv`, `-vvv`); per-skill action list at `-v` |
+| `--audit`                | Enforce the [skills.sh security gate](/docs/configuration#audit-security-gate) (default threshold: `high`) |
+| `--no-audit`             | Skip the gate even if `audit.fail-on` is configured          |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
-Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero only for source-level failures.
+Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero for source-level failures and, when the audit gate is active, for skills that meet or exceed the configured severity threshold.
 
 <Callout type="tip">
 
@@ -208,6 +210,46 @@ kst list [OPTIONS]
 | `--global`          | Only read the global lock (under XDG data)                             |
 
 With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
+
+## `kst audit`
+
+Checks your installed skills against the security verdicts published by [skills.sh](https://skills.sh) and prints the worst partner verdict per skill. Read-only and advisory — it never changes files or the lock.
+
+```bash
+kst audit [NAME...] [OPTIONS]
+```
+
+skills.sh aggregates several independent partners (Snyk, Socket, Gen Agent Trust Hub, Runlayer, ZeroLeaks), and **they routinely disagree** — so the headline severity for a skill is its _worst_ partner verdict, and `--verbose` shows the full breakdown so you can see who flagged what.
+
+```bash
+kst audit                       # audit every locked skill
+kst audit pdf pptx              # only these skills
+kst audit --verbose             # show each partner's verdict
+kst audit --refresh             # bypass the 24h cache and re-fetch
+```
+
+### Options
+
+| Flag             | Description                                                       |
+| ---------------- | ---------------------------------------------------------------- |
+| `--refresh`      | Bypass the 24h cache and re-fetch from skills.sh                 |
+| `-v`, `--verbose` | Show the per-partner verdict breakdown                          |
+| `--json`         | Print the audit as JSON                                          |
+| `-q`, `--quiet`  | Suppress output (unless `--json`)                                |
+| `--color <when>` | `auto` (default), `always`, or `never`                           |
+| `--project`      | Audit the project lock (`./kasetto.lock`)                        |
+| `--global`       | Audit the global lock (default)                                  |
+
+Results are cached for 24h under `$XDG_CACHE_HOME/kasetto/audits/`; set `KASETTO_NO_CACHE` to bypass the cache entirely. Only `github.com` sources are indexed by skills.sh — other hosts (GitLab, Codeberg, local paths) report as unaudited.
+
+<Callout type="warning">
+
+The verdict is **repo-level** — it reflects the source repository on skills.sh, not the exact commit you locked. Treat it as a signal to review, not a guarantee about the bytes you installed.
+
+</Callout>
+
+To make a risky skill _fail_ a sync rather than just report, see the [audit gate](/docs/configuration#audit-security-gate).
+
 ## `kst doctor`
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.

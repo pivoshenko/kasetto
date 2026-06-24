@@ -94,6 +94,7 @@ mcps:
 | `commands`    | no       | List of slash-command sources                                       |
 | `instructions`       | no       | List of instruction sources (CLAUDE.md / .cursor/rules / AGENTS.md …)      |
 | `extends`     | no       | Path or URL of a parent config to inherit from (string or list)     |
+| `audit`       | no       | Security-gate policy (skills.sh) — see [Audit (Security Gate)](#audit-security-gate) |
 
 ### Skill Source Fields
 
@@ -197,6 +198,27 @@ Each instruction is transformed into the target agent's native format. Two desti
 
 `globs`/`alwaysApply` are only meaningful for Cursor; they are dropped for agents that don't scope
 instructions. See [supported agents](/docs/agents) for the per-agent destinations.
+
+## Audit (Security Gate)
+
+The `audit` block opts a config into the [skills.sh](https://skills.sh) security gate. Without it, `kst audit` still reports verdicts on demand — the block only adds _enforcement_ during `sync`.
+
+```yaml
+audit:
+  fail-on: high # low | medium | high | critical — omit for advisory-only
+```
+
+When `fail-on` is set, every synced skill is checked against skills.sh and the run **fails (exit 1)** if any skill's worst partner verdict meets or exceeds the threshold. Override per-run with `kst sync --audit` (forces the gate on, defaulting to `high` when no `fail-on` is configured) or `kst sync --no-audit` (skips it).
+
+| Key       | Required | Description                                                                 |
+| --------- | -------- | --------------------------------------------------------------------------- |
+| `fail-on` | no       | Minimum severity that fails a sync: `low`, `medium`, `high`, or `critical`. Omit for advisory-only (report, never fail). |
+
+<Callout type="info">
+
+The gate degrades gracefully: a skill that can't be verified (skills.sh unreachable, or a non-`github.com` source) only warns — it never fails the run on missing data. Verdicts are repo-level, not pinned to your installed commit.
+
+</Callout>
 
 ## Extending Another Config
 

@@ -31,6 +31,20 @@ See [How Sync Works](/docs/how-sync-works) for details.
 
 New MCPs are merged into agent settings files automatically on `kst sync` — no confirmation prompt. Use `--dry-run` to preview what would be written before committing.
 
+## Skill Security Audits (skills.sh)
+
+Kasetto can overlay the security verdicts published by [skills.sh](https://skills.sh) onto your installed skills. The data comes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, Runlayer, ZeroLeaks) who scan the wider agent-skills ecosystem.
+
+- **`kst audit`** reports the worst partner verdict per skill (read-only). See [Commands](/docs/commands#kst-audit).
+- **The audit gate** (`audit.fail-on` in config, or `kst sync --audit`) fails a sync when a skill meets or exceeds a severity threshold. See [Configuration](/docs/configuration#audit-security-gate).
+
+Two honesty caveats are surfaced directly in the output rather than hidden behind a single trusted score:
+
+- **Partners disagree.** A skill's headline severity is its _worst_ partner verdict; `kst audit --verbose` shows the full breakdown. Kasetto never collapses the disagreement into one number.
+- **Verdicts are repo-level.** They describe the source repository on skills.sh, not the exact commit you locked, and only `github.com` sources are indexed. Treat the audit as a signal to review — not a guarantee.
+
+Lookups are cached for 24h under `$XDG_CACHE_HOME/kasetto/audits/` (bypass with `KASETTO_NO_CACHE`). Kasetto only **reads** the public audit endpoint; it sends no telemetry and requires no skills.sh credentials.
+
 ## Self-Update Integrity
 
 `kst self update` verifies the downloaded binary against `checksums.txt` from the same GitHub release using SHA256 — the same verification the shell installer (`install.sh`) performs. If the checksum doesn't match, the update is aborted and the existing binary is left untouched.
