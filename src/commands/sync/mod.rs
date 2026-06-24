@@ -1,4 +1,5 @@
 mod commands;
+mod gate;
 mod instructions;
 mod mcps;
 mod skills;
@@ -103,6 +104,8 @@ pub(crate) struct SyncOptions<'a> {
     pub update: bool,
     pub update_only: Vec<String>,
     pub locked: bool,
+    pub audit: bool,
+    pub no_audit: bool,
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
@@ -194,7 +197,15 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         print_sync_summary(&report, opts.plain, opts.verbose, elapsed, opts.locked);
     }
 
-    if report.summary.failed > 0 {
+    // Opt-in skills.sh security gate. Runs only when a threshold is in effect
+    // (config `audit.fail-on` or `--audit`); a breach fails the run.
+    let gate_failed =
+        match gate::effective_threshold(cfg.audit_fail_on(), opts.audit, opts.no_audit) {
+            Some(threshold) => gate::enforce(&ctx, &state, threshold),
+            None => false,
+        };
+
+    if report.summary.failed > 0 || gate_failed {
         std::process::exit(1);
     }
     Ok(())

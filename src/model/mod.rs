@@ -1,4 +1,5 @@
 mod agent;
+mod audit;
 mod config;
 pub(crate) mod extend;
 mod types;
@@ -9,6 +10,7 @@ pub(crate) use agent::{
     all_command_global_targets, all_command_project_targets, all_mcp_project_targets,
     all_mcp_settings_targets, command_global_targets, command_project_targets, Agent, AgentField,
 };
+pub(crate) use audit::{RawAudit, RiskLevel, SkillAudit};
 pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, InstructionEntry,
     InstructionsField, McpEntry, McpsField, Scope, SkillTarget, SkillsField, SourceSpec,

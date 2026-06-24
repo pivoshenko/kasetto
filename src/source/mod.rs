@@ -6,7 +6,7 @@ mod parse;
 mod remote;
 
 pub(crate) use auth::{auth_env_inline_help, auth_for_request_url, http_fetch_auth_hint};
-pub(crate) use parse::{derive_browse_url, BrowseDerived};
+pub(crate) use parse::{derive_browse_url, parse_repo_url, BrowseDerived, RepoUrl};
 pub(crate) use remote::rewrite_browse_to_raw_url;
 
 use std::collections::HashMap;

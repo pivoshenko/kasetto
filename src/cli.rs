@@ -140,6 +140,15 @@ pub(crate) struct SyncArgs {
     #[arg(long, visible_alias = "frozen")]
     #[arg(help = "fail if the lock cannot satisfy the config; never fetch (CI-friendly)")]
     pub locked: bool,
+    #[arg(long, conflicts_with = "no_audit")]
+    #[arg(
+        help = "enforce the skills.sh security gate (default threshold: high)",
+        long_help = "Check synced skills against skills.sh and fail the run if any meets or exceeds the threshold.\n\nThe threshold comes from `audit.fail-on` in the config; with this flag and no config value it defaults to `high`. skills.sh being unreachable warns but never fails the gate. See `kasetto audit` for the full report."
+    )]
+    pub audit: bool,
+    #[arg(long = "no-audit", conflicts_with = "audit")]
+    #[arg(help = "skip the security gate even if audit.fail-on is configured")]
+    pub no_audit: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
 }
@@ -394,6 +403,34 @@ pub(crate) enum Commands {
         #[arg(long = "type", value_enum, default_value_t = ListKind::All)]
         #[arg(help = "limit output to one asset kind")]
         kind: ListKind,
+        #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
+        scope: ScopeArgs,
+    },
+    #[command(
+        about = "Check installed skills against skills.sh security audits",
+        long_about = "Resolve the scope's locked skills and look each up on skills.sh, reporting the worst partner verdict per skill.\n\nAdvisory and read-only — it never changes files or the lock. Verdicts aggregate several independent partners (Snyk, Socket, Gen Agent Trust Hub, …) that often disagree, so the full per-partner breakdown is shown with --verbose. Two caveats the output repeats: the audit is repo-level (not pinned to your installed commit), and only github.com sources are indexed (others report as unaudited).\n\nResults are cached for 24h under the kasetto cache dir; pass --refresh to re-fetch, or set KASETTO_NO_CACHE to bypass the cache entirely.",
+        after_help = crate::cli_examples!(
+            "kasetto audit",
+            "kasetto audit --verbose",
+            "kasetto audit --refresh",
+            "kasetto audit --json",
+        )
+    )]
+    Audit {
+        #[arg(value_name = "NAME")]
+        #[arg(help = "limit the audit to these skill names (default: all installed)")]
+        names: Vec<String>,
+        #[arg(long)]
+        #[arg(help = "print the audit as JSON")]
+        json: bool,
+        #[arg(long)]
+        #[arg(help = "bypass the 24h cache and re-fetch from skills.sh")]
+        refresh: bool,
+        #[arg(short = 'v', long, action = ArgAction::Count)]
+        #[arg(help = "show the per-partner verdict breakdown")]
+        verbose: u8,
         #[command(flatten)]
         output: OutputArgs,
         #[command(flatten)]

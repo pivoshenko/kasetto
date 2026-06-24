@@ -63,6 +63,10 @@ pub(super) fn sync_after(
         update: false,
         update_only: Vec::new(),
         locked,
+        // No CLI gate flags on add/remove; a configured `audit.fail-on` still
+        // applies via the config, so adding a risky skill is still caught.
+        audit: false,
+        no_audit: false,
     })
 }
 

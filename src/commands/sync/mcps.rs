@@ -617,6 +617,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            audit: None,
         };
         let root = PathBuf::from("/tmp");
         let ctx = SyncContext {

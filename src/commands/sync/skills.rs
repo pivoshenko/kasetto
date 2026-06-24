@@ -697,6 +697,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            audit: None,
         };
         let ctx = SyncContext {
             cfg: &cfg,
@@ -921,6 +922,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            audit: None,
         };
         let dests = vec![dest.clone()];
         let ctx = SyncContext {

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Agent, AgentField};
+use super::{Agent, AgentField, RiskLevel};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum Scope {
@@ -27,9 +27,30 @@ pub(crate) struct Config {
     pub commands: Vec<CommandSourceSpec>,
     #[serde(default)]
     pub instructions: Vec<InstructionSourceSpec>,
+    /// Optional security-audit policy (skills.sh gate). Absent = advisory only.
+    #[serde(default)]
+    pub audit: Option<AuditConfig>,
+}
+
+/// `audit:` config block — the opt-in security gate.
+///
+/// ```yaml
+/// audit:
+///   fail-on: high   # low | medium | high | critical — omit for advisory-only
+/// ```
+#[derive(Debug, Deserialize, Clone, Default)]
+pub(crate) struct AuditConfig {
+    /// Minimum severity that fails a `sync`. `None` = report but never fail.
+    #[serde(default, rename = "fail-on", alias = "fail_on")]
+    pub fail_on: Option<RiskLevel>,
 }
 
 impl Config {
+    /// The configured `audit.fail-on` threshold, if any.
+    pub(crate) fn audit_fail_on(&self) -> Option<RiskLevel> {
+        self.audit.as_ref().and_then(|a| a.fail_on)
+    }
+
     pub(crate) fn agents(&self) -> Vec<Agent> {
         match &self.agent {
             Some(AgentField::One(a)) => vec![*a],
@@ -69,6 +90,27 @@ mod tests {
     fn resolve_scope_prefers_cli_override() {
         assert_eq!(resolve_scope(Some(Scope::Project), None), Scope::Project);
         assert_eq!(resolve_scope(Some(Scope::Global), None), Scope::Global);
+    }
+
+    #[test]
+    fn config_parses_audit_fail_on() {
+        let yaml = "skills: []\naudit:\n  fail-on: high\n";
+        let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(cfg.audit_fail_on(), Some(RiskLevel::High));
+
+        // `fail_on` snake_case alias also accepted.
+        let snake: Config =
+            serde_yaml::from_str("skills: []\naudit:\n  fail_on: critical\n").expect("parse");
+        assert_eq!(snake.audit_fail_on(), Some(RiskLevel::Critical));
+    }
+
+    #[test]
+    fn config_without_audit_block_has_no_threshold() {
+        let cfg: Config = serde_yaml::from_str("skills: []\n").expect("parse");
+        assert_eq!(cfg.audit_fail_on(), None);
+        // An empty `audit:` block is also advisory-only.
+        let empty: Config = serde_yaml::from_str("skills: []\naudit: {}\n").expect("parse");
+        assert_eq!(empty.audit_fail_on(), None);
     }
 
     #[test]

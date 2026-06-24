@@ -531,6 +531,7 @@ mod tests {
                 sub_dir: None,
                 instructions,
             }],
+            audit: None,
         }
     }
 

@@ -194,6 +194,7 @@ mod mcps;
 mod model;
 mod profile;
 mod prompts;
+mod skills_sh;
 mod source;
 mod state;
 mod ui;

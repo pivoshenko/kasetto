@@ -43,6 +43,8 @@ pub fn run() -> Result<()> {
                     update,
                     update_only,
                     locked: sync.locked,
+                    audit: sync.audit,
+                    no_audit: sync.no_audit,
                 })
             }
             Commands::Add {
@@ -147,6 +149,22 @@ pub fn run() -> Result<()> {
                 output.is_quiet(),
                 scope.scope_override(),
             ),
+            Commands::Audit {
+                names,
+                json,
+                refresh,
+                verbose,
+                output,
+                scope,
+            } => crate::commands::audit::run(
+                json,
+                output.resolve_plain(),
+                output.is_quiet(),
+                refresh,
+                verbose > 0,
+                scope.scope_override(),
+                &names,
+            ),
             Commands::Doctor {
                 json,
                 output,
@@ -201,6 +219,7 @@ fn should_suppress_notice(command: &Option<Commands>) -> bool {
         Some(Commands::Remove { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Lock { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::List { json, output, .. }) => *json || output.plain || output.is_quiet(),
+        Some(Commands::Audit { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Clean { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Completions { .. }) => true,
