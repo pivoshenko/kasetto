@@ -236,7 +236,7 @@ MCP packs often need a token or password. Reference one with a `${KST_<NAME>}` p
 }
 ```
 
-Values come from environment variables first, then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${KST_VERCEL__TOKEN}` → `vercel.token`). A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry — run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
+Values come from environment variables first, then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${KST_VERCEL__TOKEN}` → `vercel.token`). For external managers, use the tagged form: `${KST:op:<vault>/<item>/<field>}` shells out to the 1Password CLI, `${KST:vault:<kv-path>#<field>}` to the Vault CLI. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry — run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
 
 ## Supported Agents
 
