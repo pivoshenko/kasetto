@@ -27,6 +27,30 @@ pub(crate) struct Config {
     pub commands: Vec<CommandSourceSpec>,
     #[serde(default)]
     pub instructions: Vec<InstructionSourceSpec>,
+    /// Optional secret-injection settings. Carries no secret *values* (it is
+    /// committed) — only policy and extra credential-file paths.
+    #[serde(default)]
+    pub secrets: Option<SecretsConfig>,
+}
+
+/// `secrets:` config block. Values live in `credentials.yaml` / env, never here.
+#[derive(Debug, Deserialize, Default)]
+pub(crate) struct SecretsConfig {
+    /// What to do when a `${KST_…}` placeholder can't be resolved. Default `error`.
+    #[serde(default)]
+    pub on_missing: Option<OnMissing>,
+    /// Extra credential files (relative to the config dir, or absolute), searched
+    /// after the default `$XDG_CONFIG_HOME/kasetto/credentials.yaml`.
+    #[serde(default)]
+    pub files: Vec<String>,
+}
+
+/// Behavior when a referenced secret can't be resolved.
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum OnMissing {
+    Error,
+    Warn,
 }
 
 impl Config {

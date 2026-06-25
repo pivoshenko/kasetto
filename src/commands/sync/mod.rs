@@ -37,6 +37,8 @@ pub(super) struct SyncContext<'a> {
     pub(super) update_only: Vec<String>,
     /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
     pub(super) locked: bool,
+    /// Resolves `${KST_…}` secret placeholders in MCP configs at write time.
+    pub(super) secrets: crate::secrets::SecretContext,
 }
 
 /// Bundle of the mutable bookkeeping state threaded through the skill sync
@@ -103,6 +105,7 @@ pub(crate) struct SyncOptions<'a> {
     pub update: bool,
     pub update_only: Vec<String>,
     pub locked: bool,
+    pub allow_missing_secrets: bool,
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
@@ -130,6 +133,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         }
     }
 
+    let secrets = crate::secrets::SecretContext::from_config(
+        cfg.secrets.as_ref(),
+        &cfg_dir,
+        opts.allow_missing_secrets,
+        opts.plain,
+    )?;
+
     let ctx = SyncContext {
         cfg: &cfg,
         cfg_dir: &cfg_dir,
@@ -144,6 +154,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         update: opts.update,
         update_only: opts.update_only.clone(),
         locked: opts.locked,
+        secrets,
     };
 
     let mut lock = load_lock(scope, &cfg_dir)?;

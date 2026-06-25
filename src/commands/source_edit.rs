@@ -63,6 +63,7 @@ pub(super) fn sync_after(
         update: false,
         update_only: Vec::new(),
         locked,
+        allow_missing_secrets: false,
     })
 }
 

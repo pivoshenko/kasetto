@@ -534,6 +534,7 @@ mod tests {
                 commands: CommandsField::Wildcard("*".to_string()),
             }],
             instructions: Vec::new(),
+            secrets: None,
         };
 
         let mut lock = LockFile::default();
@@ -554,6 +555,7 @@ mod tests {
             update: false,
             update_only: Vec::new(),
             locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
         };
 
         sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
@@ -585,6 +587,7 @@ mod tests {
                 mcps: Vec::new(),
                 commands: Vec::new(),
                 instructions: Vec::new(),
+                secrets: None,
             }
         };
         let mut summary2 = Summary::default();
@@ -603,6 +606,7 @@ mod tests {
             update: false,
             update_only: Vec::new(),
             locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
         };
         // `sync_commands` now invokes `remove_stale` itself when `cfg.commands` is
         // empty — call it directly here to keep this a focused unit test of the
@@ -641,6 +645,7 @@ mod tests {
             update: false,
             update_only: Vec::new(),
             locked,
+            secrets: crate::secrets::SecretContext::empty(),
         }
     }
 
@@ -659,6 +664,7 @@ mod tests {
                 commands,
             }],
             instructions: Vec::new(),
+            secrets: None,
         }
     }
 

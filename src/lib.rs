@@ -194,6 +194,7 @@ mod mcps;
 mod model;
 mod profile;
 mod prompts;
+mod secrets;
 mod source;
 mod state;
 mod ui;

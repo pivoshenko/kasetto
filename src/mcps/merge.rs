@@ -5,17 +5,19 @@ use std::path::Path;
 use crate::error::{err, Result};
 use crate::fsops::SettingsFile;
 
-use super::pack::read_source_mcp_servers;
+type ServerMap = serde_json::Map<String, serde_json::Value>;
 
-/// Shared scaffolding: read source pack, load target settings, ensure the
-/// root object key exists, apply `transform` to each new entry, save.
+/// Shared scaffolding: load target settings, ensure the root object key exists,
+/// apply `transform` to each entry from the (already secret-injected) source
+/// map, save. `overwrite` replaces an existing same-named entry (used by the
+/// `--update` rotation path); otherwise existing entries are preserved.
 fn merge_into_json_key(
-    source_path: &Path,
+    src_map: &ServerMap,
     target_path: &Path,
     root_key: &str,
+    overwrite: bool,
     transform: fn(&str, serde_json::Value) -> Result<serde_json::Value>,
 ) -> Result<()> {
-    let src_map = read_source_mcp_servers(source_path)?;
     let mut sf = SettingsFile::load(target_path)?;
     let target_obj = sf
         .data
@@ -27,8 +29,8 @@ fn merge_into_json_key(
 
     if let Some(dst_map) = section.as_object_mut() {
         for (key, value) in src_map {
-            if !dst_map.contains_key(&key) {
-                dst_map.insert(key.clone(), transform(&key, value)?);
+            if overwrite || !dst_map.contains_key(key) {
+                dst_map.insert(key.clone(), transform(key, value.clone())?);
             }
         }
     }
@@ -36,18 +38,32 @@ fn merge_into_json_key(
     Ok(())
 }
 
-pub(super) fn merge_mcp_servers_object(source_path: &Path, target_path: &Path) -> Result<()> {
-    merge_into_json_key(source_path, target_path, "mcpServers", |_name, v| Ok(v))
+pub(super) fn merge_mcp_servers_object(
+    src_map: &ServerMap,
+    target_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    merge_into_json_key(src_map, target_path, "mcpServers", overwrite, |_name, v| {
+        Ok(v)
+    })
 }
 
-pub(super) fn merge_vscode_servers_object(source_path: &Path, target_path: &Path) -> Result<()> {
-    merge_into_json_key(source_path, target_path, "servers", |_name, v| {
+pub(super) fn merge_vscode_servers_object(
+    src_map: &ServerMap,
+    target_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    merge_into_json_key(src_map, target_path, "servers", overwrite, |_name, v| {
         Ok(normalize_vscode_server(v))
     })
 }
 
-pub(super) fn merge_opencode_mcp_object(source_path: &Path, target_path: &Path) -> Result<()> {
-    merge_into_json_key(source_path, target_path, "mcp", |name, v| {
+pub(super) fn merge_opencode_mcp_object(
+    src_map: &ServerMap,
+    target_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    merge_into_json_key(src_map, target_path, "mcp", overwrite, |name, v| {
         mcp_entry_to_opencode(name, &v)
     })
 }

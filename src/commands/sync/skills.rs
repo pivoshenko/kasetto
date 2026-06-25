@@ -697,6 +697,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            secrets: None,
         };
         let ctx = SyncContext {
             cfg: &cfg,
@@ -712,6 +713,7 @@ mod tests {
             update,
             update_only,
             locked,
+            secrets: crate::secrets::SecretContext::empty(),
         };
         let mut runtime = RuntimeState::default();
         let mut summary = Summary::default();
@@ -921,6 +923,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            secrets: None,
         };
         let dests = vec![dest.clone()];
         let ctx = SyncContext {
@@ -937,6 +940,7 @@ mod tests {
             update: false,
             update_only: vec![],
             locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
         };
         let mut state = State::default();
         let mut runtime = RuntimeState::default();

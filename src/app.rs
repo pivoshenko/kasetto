@@ -43,6 +43,7 @@ pub fn run() -> Result<()> {
                     update,
                     update_only,
                     locked: sync.locked,
+                    allow_missing_secrets: sync.allow_missing_secrets,
                 })
             }
             Commands::Add {

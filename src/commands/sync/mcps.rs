@@ -24,11 +24,15 @@ use super::{
 struct PendingMcp {
     source: String,
     file_name: String,
-    mcp_path: PathBuf,
+    /// The pack's `mcpServers` object, already secret-injected in phase 1.
+    servers: serde_json::Map<String, serde_json::Value>,
     hash: String,
     server_names: Vec<String>,
     asset_id: String,
     is_new: bool,
+    /// Replace an existing same-named server on merge (the `--update` rotation
+    /// path for secret-bearing packs).
+    overwrite: bool,
     source_revision: String,
 }
 
@@ -226,25 +230,32 @@ pub(super) fn sync_mcps(
                 let hash = hash_file(mcp_path)?;
                 let mcp_text = fs::read_to_string(mcp_path)?;
                 let mcp_val: serde_json::Value = serde_json::from_str(&mcp_text)?;
-                let server_names: Vec<String> = mcp_val
+                let mut servers: serde_json::Map<String, serde_json::Value> = mcp_val
                     .get("mcpServers")
                     .and_then(|v| v.as_object())
-                    .map(|m| m.keys().cloned().collect())
+                    .cloned()
                     .unwrap_or_default();
+                let server_names: Vec<String> = servers.keys().cloned().collect();
+                let has_secrets = crate::secrets::has_placeholder(&mcp_text);
 
                 let asset_id = format!("mcp::{}::{}", src.source, file_name);
                 desired_mcp_ids.insert(asset_id.clone());
 
                 let existing = lock.get_tracked_asset("mcp", &asset_id);
-                let is_unchanged = existing
-                    .as_ref()
-                    .map(|(h, _)| {
-                        h == &hash
-                            && mcp_settings_list
-                                .iter()
-                                .all(|target| servers_present_in_settings(&server_names, target))
-                    })
-                    .unwrap_or(false);
+                // A secret-bearing pack under `--update` is re-merged even when
+                // the placeholder source is byte-identical, so a rotated secret
+                // (changed only in env/credentials.yaml) propagates.
+                let force_remerge = update_active && has_secrets;
+                let is_unchanged = !force_remerge
+                    && existing
+                        .as_ref()
+                        .map(|(h, _)| {
+                            h == &hash
+                                && mcp_settings_list.iter().all(|target| {
+                                    servers_present_in_settings(&server_names, target)
+                                })
+                        })
+                        .unwrap_or(false);
 
                 if is_unchanged {
                     let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
@@ -259,14 +270,35 @@ pub(super) fn sync_mcps(
                         Ok(())
                     })?;
                 } else {
+                    // Inject secrets only on the merge path. A missing required
+                    // secret is a hard failure: it marks the entry broken (via the
+                    // `source_error` status → `!` glyph + non-zero exit) and writes
+                    // nothing — never to a destination, the cache, or the lock.
+                    if has_secrets {
+                        let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
+                        if let Err(e) = ctx.secrets.inject_value(&mut wrap) {
+                            summary.failed += 1;
+                            actions.push(Action {
+                                source: Some(src.source.clone()),
+                                skill: Some(format!("mcp:{file_name}")),
+                                status: "source_error".into(),
+                                error: Some(e.to_string()),
+                            });
+                            return Ok(());
+                        }
+                        if let serde_json::Value::Object(m) = wrap {
+                            servers = m;
+                        }
+                    }
                     pending.push(PendingMcp {
                         source: src.source.clone(),
                         file_name,
-                        mcp_path: mcp_path.clone(),
+                        servers,
                         hash,
                         server_names,
                         asset_id,
                         is_new: existing.is_none(),
+                        overwrite: force_remerge,
                         source_revision: materialized.source_revision.clone(),
                     });
                 }
@@ -446,7 +478,7 @@ fn apply_pending(
 
             if !ctx.dry_run {
                 for target in mcp_settings_list {
-                    merge_mcp_config(&p.mcp_path, target)?;
+                    merge_mcp_config(&p.servers, target, p.overwrite)?;
                 }
                 let servers_csv = p.server_names.join(",");
                 lock.save_tracked_asset(
@@ -542,21 +574,23 @@ mod tests {
         let new_entry = PendingMcp {
             source: "https://github.com/org/pack".into(),
             file_name: "mcp.json".into(),
-            mcp_path: PathBuf::from("/tmp/mcp.json"),
+            servers: serde_json::Map::new(),
             hash: "abc123".into(),
             server_names: vec!["server-a".into(), "server-b".into()],
             asset_id: "mcp::source::mcp.json".into(),
             is_new: true,
+            overwrite: false,
             source_revision: "branch:main".into(),
         };
         let update_entry = PendingMcp {
             source: "https://github.com/org/pack".into(),
             file_name: "other.json".into(),
-            mcp_path: PathBuf::from("/tmp/other.json"),
+            servers: serde_json::Map::new(),
             hash: "def456".into(),
             server_names: vec!["server-c".into()],
             asset_id: "mcp::source::other.json".into(),
             is_new: false,
+            overwrite: false,
             source_revision: "branch:main".into(),
         };
 
@@ -578,11 +612,12 @@ mod tests {
         let update_only = [PendingMcp {
             source: "https://github.com/org/pack".into(),
             file_name: "mcp.json".into(),
-            mcp_path: PathBuf::from("/tmp/mcp.json"),
+            servers: serde_json::Map::new(),
             hash: "abc123".into(),
             server_names: vec!["existing-server".into()],
             asset_id: "mcp::source::mcp.json".into(),
             is_new: false,
+            overwrite: false,
             source_revision: "branch:main".into(),
         }];
 
@@ -617,6 +652,7 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            secrets: None,
         };
         let root = PathBuf::from("/tmp");
         let ctx = SyncContext {
@@ -633,6 +669,7 @@ mod tests {
             update: false,
             update_only: Vec::new(),
             locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
         };
         assert!(
             needs_fetch_mcps(&ctx, &src, &desired, &lock, &no_targets),

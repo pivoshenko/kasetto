@@ -6,10 +6,11 @@ use std::path::Path;
 use crate::error::{err, Result};
 use toml::Value as Toml;
 
-use super::pack::read_source_mcp_servers;
-
-pub(super) fn merge_codex_config_toml(source_path: &Path, target_path: &Path) -> Result<()> {
-    let src_map = read_source_mcp_servers(source_path)?;
+pub(super) fn merge_codex_config_toml(
+    src_map: &serde_json::Map<String, serde_json::Value>,
+    target_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
     let mut root = load_or_empty_toml(target_path)?;
     let root_tbl = root
         .as_table_mut()
@@ -22,11 +23,11 @@ pub(super) fn merge_codex_config_toml(source_path: &Path, target_path: &Path) ->
         .ok_or_else(|| err("Codex mcp_servers must be a TOML table"))?;
 
     for (name, cfg) in src_map {
-        if mcp_tbl.contains_key(&name) {
+        if !overwrite && mcp_tbl.contains_key(name) {
             continue;
         }
-        let table = json_mcp_server_to_codex_toml_table(&cfg)?;
-        mcp_tbl.insert(name, Toml::Table(table));
+        let table = json_mcp_server_to_codex_toml_table(cfg)?;
+        mcp_tbl.insert(name.clone(), Toml::Table(table));
     }
 
     write_codex_toml(target_path, &root)

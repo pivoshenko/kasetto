@@ -140,6 +140,12 @@ pub(crate) struct SyncArgs {
     #[arg(long, visible_alias = "frozen")]
     #[arg(help = "fail if the lock cannot satisfy the config; never fetch (CI-friendly)")]
     pub locked: bool,
+    #[arg(long)]
+    #[arg(
+        help = "warn instead of failing when a ${KST_…} secret can't be resolved",
+        long_help = "By default an unresolved `${KST_NAME}` placeholder in an MCP config marks that entry broken and exits non-zero. With this flag, kasetto warns and writes the literal placeholder instead."
+    )]
+    pub allow_missing_secrets: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
 }

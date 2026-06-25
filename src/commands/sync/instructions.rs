@@ -531,6 +531,7 @@ mod tests {
                 sub_dir: None,
                 instructions,
             }],
+            secrets: None,
         }
     }
 
@@ -549,6 +550,7 @@ mod tests {
             update: false,
             update_only: Vec::new(),
             locked,
+            secrets: crate::secrets::SecretContext::empty(),
         }
     }
 

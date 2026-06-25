@@ -2,7 +2,6 @@
 
 mod codex;
 mod merge;
-mod pack;
 
 use std::fs;
 use std::path::Path;
@@ -11,19 +10,28 @@ use crate::error::Result;
 use crate::fsops::SettingsFile;
 use crate::model::McpSettingsFormat;
 
-/// Merge MCP server definitions from a pack JSON into an agent-native config file.
-/// The pack must have a top-level `"mcpServers"` object.
+/// Merge MCP server definitions into an agent-native config file. `src_map` is
+/// the pack's `mcpServers` object, already secret-injected in the sync phase.
+/// `overwrite` replaces an existing same-named server (the `--update` rotation
+/// path); otherwise existing entries are preserved.
 pub(crate) fn merge_mcp_config(
-    source_path: &Path,
+    src_map: &serde_json::Map<String, serde_json::Value>,
     target: &crate::model::McpSettingsTarget,
+    overwrite: bool,
 ) -> Result<()> {
     match target.format {
-        McpSettingsFormat::McpServers => merge::merge_mcp_servers_object(source_path, &target.path),
-        McpSettingsFormat::VsCodeServers => {
-            merge::merge_vscode_servers_object(source_path, &target.path)
+        McpSettingsFormat::McpServers => {
+            merge::merge_mcp_servers_object(src_map, &target.path, overwrite)
         }
-        McpSettingsFormat::OpenCode => merge::merge_opencode_mcp_object(source_path, &target.path),
-        McpSettingsFormat::CodexToml => codex::merge_codex_config_toml(source_path, &target.path),
+        McpSettingsFormat::VsCodeServers => {
+            merge::merge_vscode_servers_object(src_map, &target.path, overwrite)
+        }
+        McpSettingsFormat::OpenCode => {
+            merge::merge_opencode_mcp_object(src_map, &target.path, overwrite)
+        }
+        McpSettingsFormat::CodexToml => {
+            codex::merge_codex_config_toml(src_map, &target.path, overwrite)
+        }
     }
 }
 
@@ -102,20 +110,24 @@ mod tests {
         }
     }
 
+    /// Parse a pack JSON string into its `mcpServers` object (what the sync
+    /// phase hands to `merge_mcp_config` after secret injection).
+    fn servers(json: &str) -> serde_json::Map<String, serde_json::Value> {
+        let v: serde_json::Value = serde_json::from_str(json).unwrap();
+        v.get("mcpServers")
+            .and_then(|m| m.as_object())
+            .cloned()
+            .unwrap_or_default()
+    }
+
     #[test]
     fn merge_mcp_config_creates_target_from_scratch() {
         let dir = temp_dir("kasetto-mcps-create");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("settings.json");
+        let src = servers(r#"{"mcpServers":{"git-tools":{"command":"git-mcp"}}}"#);
 
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"git-tools":{"command":"git-mcp"}}}"#,
-        )
-        .unwrap();
-
-        merge_mcp_config(&source, &mcp_target(target.clone())).expect("merge");
+        merge_mcp_config(&src, &mcp_target(target.clone()), false).expect("merge");
 
         let val: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
@@ -128,7 +140,6 @@ mod tests {
     fn merge_mcp_config_preserves_existing_servers() {
         let dir = temp_dir("kasetto-mcps-merge");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("settings.json");
 
         fs::write(
@@ -136,13 +147,9 @@ mod tests {
             r#"{"mcpServers":{"existing":{"command":"keep-me"}}}"#,
         )
         .unwrap();
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"new-server":{"command":"new-cmd"}}}"#,
-        )
-        .unwrap();
+        let src = servers(r#"{"mcpServers":{"new-server":{"command":"new-cmd"}}}"#);
 
-        merge_mcp_config(&source, &mcp_target(target.clone())).expect("merge");
+        merge_mcp_config(&src, &mcp_target(target.clone()), false).expect("merge");
 
         let val: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
@@ -156,7 +163,6 @@ mod tests {
     fn merge_mcp_config_does_not_overwrite_existing_key() {
         let dir = temp_dir("kasetto-mcps-no-overwrite");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("settings.json");
 
         fs::write(
@@ -164,13 +170,11 @@ mod tests {
             r#"{"mcpServers":{"airflow":{"command":"uvx","env":{"AIRFLOW_PASSWORD":"real-secret"}}}}"#,
         )
         .unwrap();
-        fs::write(
-            &source,
+        let src = servers(
             r#"{"mcpServers":{"airflow":{"command":"uvx","env":{"AIRFLOW_PASSWORD":"__FROM_SOURCE_PACK__"}}}}"#,
-        )
-        .unwrap();
+        );
 
-        merge_mcp_config(&source, &mcp_target(target.clone())).expect("merge");
+        merge_mcp_config(&src, &mcp_target(target.clone()), false).expect("merge");
 
         let val: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
@@ -183,21 +187,46 @@ mod tests {
     }
 
     #[test]
+    fn merge_mcp_config_overwrite_replaces_existing_key() {
+        let dir = temp_dir("kasetto-mcps-overwrite");
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("settings.json");
+
+        fs::write(
+            &target,
+            r#"{"mcpServers":{"vercel":{"url":"https://mcp.vercel.com","headers":{"Authorization":"Bearer old-token"}}}}"#,
+        )
+        .unwrap();
+        // The `--update` rotation path: overwrite=true replaces the managed
+        // entry with the freshly-injected one.
+        let src = servers(
+            r#"{"mcpServers":{"vercel":{"url":"https://mcp.vercel.com","headers":{"Authorization":"Bearer new-token"}}}}"#,
+        );
+
+        merge_mcp_config(&src, &mcp_target(target.clone()), true).expect("merge");
+
+        let val: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
+        assert_eq!(
+            val["mcpServers"]["vercel"]["headers"]["Authorization"],
+            "Bearer new-token"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn merge_codex_writes_config_toml() {
         let dir = temp_dir("kasetto-mcps-codex");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("config.toml");
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"demo":{"command":"uvx","args":["p"],"env":{"K":"v"}}}}"#,
-        )
-        .unwrap();
+        let src =
+            servers(r#"{"mcpServers":{"demo":{"command":"uvx","args":["p"],"env":{"K":"v"}}}}"#);
         let tgt = McpSettingsTarget {
             path: target.clone(),
             format: McpSettingsFormat::CodexToml,
         };
-        merge_mcp_config(&source, &tgt).expect("merge");
+        merge_mcp_config(&src, &tgt, false).expect("merge");
         let parsed: TomlVal = fs::read_to_string(&target).unwrap().parse().unwrap();
         let mcp = parsed.get("mcp_servers").unwrap().as_table().unwrap();
         assert_eq!(mcp["demo"]["command"].as_str().unwrap(), "uvx");
@@ -211,19 +240,14 @@ mod tests {
     fn merge_codex_preserves_unrelated_toml_keys() {
         let dir = temp_dir("kasetto-mcps-codex-merge");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("config.toml");
         fs::write(&target, "model = \"gpt-5.1\"\n").unwrap();
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"new":{"command":"npx","args":["-y","x"]}}}"#,
-        )
-        .unwrap();
+        let src = servers(r#"{"mcpServers":{"new":{"command":"npx","args":["-y","x"]}}}"#);
         let tgt = McpSettingsTarget {
             path: target.clone(),
             format: McpSettingsFormat::CodexToml,
         };
-        merge_mcp_config(&source, &tgt).expect("merge");
+        merge_mcp_config(&src, &tgt, false).expect("merge");
         let parsed: TomlVal = fs::read_to_string(&target).unwrap().parse().unwrap();
         assert_eq!(
             parsed.get("model").and_then(|v| v.as_str()).unwrap(),
@@ -268,18 +292,13 @@ command = "b"
     fn merge_vscode_adds_stdio_type() {
         let dir = temp_dir("kasetto-mcps-vscode");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("mcp.json");
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"mem":{"command":"npx","args":["-y","@x/y"]}}}"#,
-        )
-        .unwrap();
+        let src = servers(r#"{"mcpServers":{"mem":{"command":"npx","args":["-y","@x/y"]}}}"#);
         let tgt = McpSettingsTarget {
             path: target.clone(),
             format: McpSettingsFormat::VsCodeServers,
         };
-        merge_mcp_config(&source, &tgt).expect("merge");
+        merge_mcp_config(&src, &tgt, false).expect("merge");
         let val: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
         assert_eq!(val["servers"]["mem"]["type"], "stdio");
@@ -291,18 +310,14 @@ command = "b"
     fn merge_opencode_local_command() {
         let dir = temp_dir("kasetto-mcps-opencode");
         fs::create_dir_all(&dir).unwrap();
-        let source = dir.join("source.json");
         let target = dir.join("opencode.json");
-        fs::write(
-            &source,
-            r#"{"mcpServers":{"tool":{"command":"uvx","args":["pkg"],"env":{"K":"v"}}}}"#,
-        )
-        .unwrap();
+        let src =
+            servers(r#"{"mcpServers":{"tool":{"command":"uvx","args":["pkg"],"env":{"K":"v"}}}}"#);
         let tgt = McpSettingsTarget {
             path: target.clone(),
             format: McpSettingsFormat::OpenCode,
         };
-        merge_mcp_config(&source, &tgt).expect("merge");
+        merge_mcp_config(&src, &tgt, false).expect("merge");
         let val: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
         assert_eq!(val["mcp"]["tool"]["type"], "local");
