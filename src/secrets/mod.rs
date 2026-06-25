@@ -16,7 +16,7 @@ use crate::fsops::dirs_kasetto_config;
 use crate::model::{OnMissing, SecretsConfig};
 use crate::ui::eprint_warn;
 
-use source::{CredentialsFileSource, EnvSource, SecretSource};
+use source::{CredentialsFileSource, EnvSource, OnePasswordSource, SecretSource, VaultSource};
 pub(crate) use template::has_placeholder;
 use template::{substitute, SecretRef};
 
@@ -85,6 +85,12 @@ impl SecretContext {
             }
         }
 
+        // External managers: only invoked when a `${KST:op:…}` / `${KST:vault:…}`
+        // tagged ref appears (their `handles` gates on the tag), so adding them
+        // unconditionally costs nothing for env/credentials-only configs.
+        sources.push(Box::new(OnePasswordSource));
+        sources.push(Box::new(VaultSource));
+
         let on_missing = if allow_missing {
             OnMissing::Warn
         } else {
@@ -130,7 +136,7 @@ impl SecretContext {
             let msg = format!(
                 "secret {} not found (searched: {})",
                 r.display(),
-                self.source_names()
+                self.searched(r)
             );
             match self.on_missing {
                 OnMissing::Error => Err(err(msg)),
@@ -143,29 +149,41 @@ impl SecretContext {
     }
 
     fn resolve(&self, r: &SecretRef) -> Result<Option<Secret>> {
-        if let Some(tag) = &r.tag {
-            return Err(err(format!(
-                "secret source `{tag}` is not supported yet \
-                 (v1 resolves env and credentials.yaml via `${{KST_NAME}}`)"
-            )));
-        }
+        let mut handled = false;
         for src in &self.sources {
+            if !src.handles(r) {
+                continue;
+            }
+            handled = true;
             if let Some(v) = src.get(r)? {
                 return Ok(Some(v));
+            }
+        }
+        // A tagged ref no source claims is an unknown/unsupported manager.
+        if !handled {
+            if let Some(tag) = &r.tag {
+                return Err(err(format!(
+                    "secret source `{tag}` is not supported (use `op` or `vault`, \
+                     or `${{KST_NAME}}` for env / credentials.yaml)"
+                )));
             }
         }
         Ok(None)
     }
 
-    fn source_names(&self) -> String {
-        if self.sources.is_empty() {
-            return "no sources".into();
-        }
-        self.sources
+    /// The sources that apply to `r`, for the "searched: …" diagnostic.
+    fn searched(&self, r: &SecretRef) -> String {
+        let names: Vec<&str> = self
+            .sources
             .iter()
+            .filter(|s| s.handles(r))
             .map(|s| s.name())
-            .collect::<Vec<_>>()
-            .join(", ")
+            .collect();
+        if names.is_empty() {
+            "no sources".into()
+        } else {
+            names.join(", ")
+        }
     }
 }
 
@@ -278,10 +296,11 @@ mod tests {
     }
 
     #[test]
-    fn tagged_source_is_unsupported() {
+    fn unknown_tagged_source_errors() {
         let ctx = ctx_from_yaml("x: y\n", OnMissing::Error);
-        let mut v: serde_json::Value = serde_json::json!({"k": "${KST:vault:path}"});
+        let mut v: serde_json::Value = serde_json::json!({"k": "${KST:gcp:projects/p/secrets/s}"});
         let e = ctx.inject_value(&mut v).unwrap_err().to_string();
-        assert!(e.contains("vault"), "names the source: {e}");
+        assert!(e.contains("gcp"), "names the unknown source: {e}");
+        assert!(e.contains("not supported"), "explains: {e}");
     }
 }

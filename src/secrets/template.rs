@@ -1,8 +1,11 @@
 //! Scanner for `${KST_…}` secret placeholders in synced asset values.
 //!
-//! Only the `KST_` (and reserved `KST:`) sentinel is recognised — bare `${VAR}`
-//! that an agent or shell must expand at server-launch time is passed through
-//! untouched. Hand-rolled to avoid a `regex` dependency.
+//! Two forms: the chain form `${KST_NAME}` (resolved against env + credential
+//! files) and the tagged form `${KST:<source>:<ref>}` (routed to an external
+//! secret manager — `op` / `vault`). Only the `KST_` / `KST:` sentinel is
+//! recognised — bare `${VAR}` that an agent or shell must expand at
+//! server-launch time is passed through untouched. Hand-rolled to avoid a
+//! `regex` dependency.
 
 use crate::error::{err, Result};
 
@@ -13,15 +16,17 @@ pub(crate) struct SecretRef {
     pub flat_key: String,
     /// Nested lookup path from splitting the post-`KST_` name on `__`.
     pub segments: Vec<String>,
-    /// Explicit source tag for the `${KST:tag:ref}` form (unsupported in v1).
+    /// Explicit source tag for the `${KST:<tag>:<ref>}` form (`op`, `vault`).
     pub tag: Option<String>,
+    /// Source-specific reference for the tagged form (the `<ref>` after the tag).
+    pub payload: String,
 }
 
 impl SecretRef {
-    /// Placeholder label for diagnostics — never contains a resolved value.
+    /// Placeholder label for diagnostics — a locator, never a resolved value.
     pub(crate) fn display(&self) -> String {
         match &self.tag {
-            Some(t) => format!("${{KST:{t}:…}}"),
+            Some(t) => format!("${{KST:{t}:{}}}", self.payload),
             None => format!("${{{}}}", self.flat_key),
         }
     }
@@ -72,14 +77,22 @@ where
 }
 
 /// Parse the inner text after `${KST` (before `}`): `_VERCEL__TOKEN` (chain) or
-/// `:vault:secret/path` (tagged).
+/// `:vault:secret/path#field` / `:op://vault/item/field` (tagged).
 fn parse_ref(inner: &str) -> Result<SecretRef> {
     if let Some(tagged) = inner.strip_prefix(':') {
-        let tag = tagged.split(':').next().unwrap_or("").to_string();
+        let (tag, payload) = tagged.split_once(':').ok_or_else(|| {
+            err(format!(
+                "tagged secret `${{KST:{tagged}}}` must be `${{KST:<source>:<ref>}}`"
+            ))
+        })?;
+        if tag.is_empty() || payload.is_empty() {
+            return Err(err("tagged secret needs a non-empty source and ref"));
+        }
         return Ok(SecretRef {
             flat_key: String::new(),
             segments: Vec::new(),
-            tag: Some(tag),
+            tag: Some(tag.to_string()),
+            payload: payload.to_string(),
         });
     }
     let name = inner.strip_prefix('_').unwrap_or(inner);
@@ -90,6 +103,7 @@ fn parse_ref(inner: &str) -> Result<SecretRef> {
         flat_key: format!("KST_{name}"),
         segments: name.split("__").map(str::to_string).collect(),
         tag: None,
+        payload: String::new(),
     })
 }
 
@@ -154,8 +168,22 @@ mod tests {
     }
 
     #[test]
-    fn tagged_form_parses_to_tag() {
+    fn tagged_vault_form_parses_tag_and_payload() {
         let r = parse_ref(":vault:secret/data/path#field").unwrap();
         assert_eq!(r.tag.as_deref(), Some("vault"));
+        assert_eq!(r.payload, "secret/data/path#field");
+    }
+
+    #[test]
+    fn tagged_op_uri_keeps_full_payload() {
+        let r = parse_ref(":op://Private/GitHub/token").unwrap();
+        assert_eq!(r.tag.as_deref(), Some("op"));
+        assert_eq!(r.payload, "//Private/GitHub/token");
+    }
+
+    #[test]
+    fn tagged_form_without_ref_errors() {
+        assert!(parse_ref(":vault").is_err());
+        assert!(parse_ref(":vault:").is_err());
     }
 }
