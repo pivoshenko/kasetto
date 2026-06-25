@@ -220,6 +220,24 @@ mcps:
 
 Full key reference, merge instructions, and `extends:` inheritance live in the [configuration docs](https://kasetto.dev/docs/configuration).
 
+### Secrets
+
+MCP packs often need a token or password. Reference one with a `${KST_<NAME>}` placeholder instead of committing it — Kasetto resolves it at sync time and writes the value into the agent's settings file only:
+
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "url": "https://mcp.vercel.com",
+      "type": "http",
+      "headers": { "Authorization": "Bearer ${KST_VERCEL_TOKEN}" }
+    }
+  }
+}
+```
+
+Values come from environment variables first, then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${KST_VERCEL__TOKEN}` → `vercel.token`). A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry — run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
+
 ## Supported Agents
 
 Set the `agent` field and Kasetto figures out where to put things.

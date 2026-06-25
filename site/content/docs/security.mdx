@@ -17,7 +17,7 @@ During `kst sync`, Kasetto may:
 
 - **Install/update skills** by copying skill directories into the chosen destination path
 - **Remove skills** that are no longer in your config (for the selected scope)
-- **Merge MCPs** into agent-native settings files (additive merge; never overwrite existing servers)
+- **Merge MCPs** into agent-native settings files (additive merge; existing servers are preserved, except a kasetto-managed server replaced by `--update`)
 - **Write the lock file** for the selected scope
 
 Kasetto is designed around a "tracked-only" principle:
@@ -38,8 +38,12 @@ New MCPs are merged into agent settings files automatically on `kst sync` — no
 ## What Kasetto Does Not Do
 
 - It does not run skill code.
-- It does not overwrite existing MCP server entries.
-- It does not require (or write) a credentials file.
+- It does not overwrite MCP server entries it didn't install (only a kasetto-managed server is replaced, and only under `--update`).
+- It does not write a credentials file. It can optionally *read* one for [secret injection](/docs/secrets).
+
+## Secret Injection
+
+MCP packs can carry `${KST_…}` placeholders that Kasetto resolves at sync time from environment variables or `$XDG_CONFIG_HOME/kasetto/credentials.yaml`. The resolved value is written **only** to the agent's settings file — never to `kasetto.lock` (which hashes the placeholder source), the source cache, or the stage directory. A missing required secret fails the entry and exits non-zero by default. See [Secret Injection](/docs/secrets) for the full model.
 
 ## Credentials And Tokens
 
