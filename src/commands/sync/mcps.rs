@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
 use crate::fsops::{
@@ -236,41 +236,35 @@ pub(super) fn sync_mcps(
         let mut first_in_run = true;
         for mcp_path in &mcps {
             let file_name = file_name_str(mcp_path);
-            let file_name_for_err = file_name.clone();
             let row_first = first_in_run;
             first_in_run = false;
-            let r: std::result::Result<(), crate::error::Error> = (|| {
-                let hash = hash_file(mcp_path)?;
-                let mcp_text = fs::read_to_string(mcp_path)?;
-                let mcp_val: serde_json::Value = serde_json::from_str(&mcp_text)?;
-                let mut servers: serde_json::Map<String, serde_json::Value> = mcp_val
-                    .get("mcpServers")
-                    .and_then(|v| v.as_object())
-                    .cloned()
-                    .unwrap_or_default();
-                let server_names: Vec<String> = servers.keys().cloned().collect();
-                let has_secrets = crate::secrets::has_placeholder(&mcp_text);
-
-                let asset_id = format!("mcp::{}::{}", src.source, file_name);
-                desired_mcp_ids.insert(asset_id.clone());
-
-                let existing = lock.get_tracked_asset("mcp", &asset_id);
-                // A secret-bearing pack under `--update` is re-merged even when
-                // the placeholder source is byte-identical, so a rotated secret
-                // (changed only in env/credentials.yaml) propagates.
-                let force_remerge = update_active && has_secrets;
-                let is_unchanged = !force_remerge
-                    && existing
-                        .as_ref()
-                        .map(|(h, _)| {
-                            h == &hash
-                                && mcp_settings_list.iter().all(|target| {
-                                    servers_present_in_settings(&server_names, target)
-                                })
-                        })
-                        .unwrap_or(false);
-
-                if is_unchanged {
+            let classified = classify_mcp_file(
+                ctx,
+                lock,
+                &mcp_settings_list,
+                &src.source,
+                mcp_path,
+                update_active,
+                &materialized.source_revision,
+            );
+            let (asset_id, outcome) = match classified {
+                Ok(c) => c,
+                Err(e) => {
+                    // A malformed/unreadable file is `broken` (exit 0), distinct
+                    // from an unresolved secret below.
+                    summary.broken += 1;
+                    actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: Some(format!("mcp:{file_name}")),
+                        status: "broken".into(),
+                        error: Some(e.to_string()),
+                    });
+                    continue;
+                }
+            };
+            desired_mcp_ids.insert(asset_id);
+            match outcome {
+                McpFileOutcome::Unchanged { has_secrets } => {
                     if has_secrets {
                         secrets_need_update = true;
                     }
@@ -285,50 +279,19 @@ pub(super) fn sync_mcps(
                         });
                         Ok(())
                     })?;
-                } else {
-                    // Inject secrets only on the merge path. A missing required
-                    // secret is a hard failure: it marks the entry broken (via the
-                    // `source_error` status → `!` glyph + non-zero exit) and writes
-                    // nothing — never to a destination, the cache, or the lock.
-                    if has_secrets {
-                        let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
-                        if let Err(e) = ctx.secrets.inject_value(&mut wrap) {
-                            summary.failed += 1;
-                            actions.push(Action {
-                                source: Some(src.source.clone()),
-                                skill: Some(format!("mcp:{file_name}")),
-                                status: "source_error".into(),
-                                error: Some(e.to_string()),
-                            });
-                            return Ok(());
-                        }
-                        if let serde_json::Value::Object(m) = wrap {
-                            servers = m;
-                        }
-                    }
-                    pending.push(PendingMcp {
-                        source: src.source.clone(),
-                        file_name,
-                        servers,
-                        hash,
-                        server_names,
-                        asset_id,
-                        is_new: existing.is_none(),
-                        overwrite: force_remerge,
-                        has_secrets,
-                        source_revision: materialized.source_revision.clone(),
+                }
+                McpFileOutcome::SecretError(e) => {
+                    // Missing required secret: hard failure (non-zero exit),
+                    // nothing written — never to a destination, cache, or lock.
+                    summary.failed += 1;
+                    actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: Some(format!("mcp:{file_name}")),
+                        status: "source_error".into(),
+                        error: Some(e),
                     });
                 }
-                Ok(())
-            })();
-            if let Err(e) = r {
-                summary.broken += 1;
-                actions.push(Action {
-                    source: Some(src.source.clone()),
-                    skill: Some(format!("mcp:{file_name_for_err}")),
-                    status: "broken".into(),
-                    error: Some(e.to_string()),
-                });
+                McpFileOutcome::Install(pmcp) => pending.push(*pmcp),
             }
         }
         // Defer cleanup so mcp_path references remain valid
@@ -356,6 +319,92 @@ pub(super) fn sync_mcps(
     }
 
     Ok(secrets_need_update)
+}
+
+/// Outcome of classifying one MCP file against the lock and current settings.
+enum McpFileOutcome {
+    /// Already installed and identical — nothing to write.
+    Unchanged { has_secrets: bool },
+    /// A required secret could not be resolved — hard failure, non-zero exit.
+    SecretError(String),
+    /// Needs install/update — carries the prepared, secret-injected entry
+    /// (boxed to keep the enum small).
+    Install(Box<PendingMcp>),
+}
+
+/// Hash, parse, and (on the merge path) secret-inject one MCP file, deciding
+/// whether it is unchanged or a pending install. Returns the asset id plus the
+/// outcome; `Err` means a malformed/unreadable file (the caller marks it
+/// broken). Side effects — summary counts, lock writes, desired-id tracking —
+/// stay with the caller so this stays a pure classification step.
+fn classify_mcp_file(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    mcp_settings_list: &[McpSettingsTarget],
+    source: &str,
+    mcp_path: &Path,
+    update_active: bool,
+    source_revision: &str,
+) -> Result<(String, McpFileOutcome)> {
+    let file_name = file_name_str(mcp_path);
+    let hash = hash_file(mcp_path)?;
+    let mcp_text = fs::read_to_string(mcp_path)?;
+    let mcp_val: serde_json::Value = serde_json::from_str(&mcp_text)?;
+    let mut servers: serde_json::Map<String, serde_json::Value> = mcp_val
+        .get("mcpServers")
+        .and_then(|v| v.as_object())
+        .cloned()
+        .unwrap_or_default();
+    let server_names: Vec<String> = servers.keys().cloned().collect();
+    let has_secrets = crate::secrets::has_placeholder(&mcp_text);
+
+    let asset_id = format!("mcp::{source}::{file_name}");
+    let existing = lock.get_tracked_asset("mcp", &asset_id);
+
+    // A secret-bearing pack under `--update` is re-merged even when the
+    // placeholder source is byte-identical, so a rotated secret (changed only in
+    // env/credentials.yaml) propagates.
+    let force_remerge = update_active && has_secrets;
+    let is_unchanged = !force_remerge
+        && existing
+            .as_ref()
+            .map(|(h, _)| {
+                h == &hash
+                    && mcp_settings_list
+                        .iter()
+                        .all(|target| servers_present_in_settings(&server_names, target))
+            })
+            .unwrap_or(false);
+    if is_unchanged {
+        return Ok((asset_id, McpFileOutcome::Unchanged { has_secrets }));
+    }
+
+    // Inject secrets only on the merge path. A missing required secret is a hard
+    // failure (source_error → non-zero exit), distinct from a malformed file.
+    if has_secrets {
+        let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
+        if let Err(e) = ctx.secrets.inject_value(&mut wrap) {
+            return Ok((asset_id, McpFileOutcome::SecretError(e.to_string())));
+        }
+        if let serde_json::Value::Object(m) = wrap {
+            servers = m;
+        }
+    }
+
+    let is_new = existing.is_none();
+    let pending = PendingMcp {
+        source: source.to_string(),
+        file_name,
+        servers,
+        hash,
+        server_names,
+        asset_id: asset_id.clone(),
+        is_new,
+        overwrite: force_remerge,
+        has_secrets,
+        source_revision: source_revision.to_string(),
+    };
+    Ok((asset_id, McpFileOutcome::Install(Box::new(pending))))
 }
 
 /// Desired MCP file names for a source, derived without any network access.
