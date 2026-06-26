@@ -103,13 +103,11 @@ pub(super) fn sync_mcps(
             }
         }
 
-        // Selective `--update <name>` accepts either the file name (`github.json`)
-        // or the bare stem (`github`), matching how skills/commands use bare names.
+        // Whether any file in this source is targeted by `--update` — drives the
+        // fetch decision (a moving source must be re-downloaded once).
         let update_names: Vec<String> = desired_file_names
             .iter()
-            .flat_map(|f| {
-                std::iter::once(f.clone()).chain(f.strip_suffix(".json").map(str::to_string))
-            })
+            .flat_map(|f| update_aliases(f))
             .collect();
         let update_active = update_active_for_source(ctx, &update_names);
         let fetch = update_active
@@ -238,13 +236,17 @@ pub(super) fn sync_mcps(
             let file_name = file_name_str(mcp_path);
             let row_first = first_in_run;
             first_in_run = false;
+            // Scope `--update <name>` to the file actually named. A source can
+            // hold several MCP files; rotating one (force-remerge with overwrite)
+            // must not clobber hand-edited servers from the source's other files.
+            let file_update = update_active_for_source(ctx, &update_aliases(&file_name));
             let classified = classify_mcp_file(
                 ctx,
                 lock,
                 &mcp_settings_list,
                 &src.source,
                 mcp_path,
-                update_active,
+                file_update,
                 &materialized.source_revision,
             );
             let (asset_id, outcome) = match classified {
@@ -321,6 +323,15 @@ pub(super) fn sync_mcps(
     Ok(secrets_need_update)
 }
 
+/// Names a `--update <name>` accepts for an MCP file: the file name itself
+/// (`github.json`) and its bare stem (`github`), matching how skills/commands
+/// match names.
+fn update_aliases(file_name: &str) -> Vec<String> {
+    std::iter::once(file_name.to_string())
+        .chain(file_name.strip_suffix(".json").map(str::to_string))
+        .collect()
+}
+
 /// Outcome of classifying one MCP file against the lock and current settings.
 enum McpFileOutcome {
     /// Already installed and identical — nothing to write.
@@ -346,6 +357,8 @@ fn classify_mcp_file(
     update_active: bool,
     source_revision: &str,
 ) -> Result<(String, McpFileOutcome)> {
+    // `update_active` here is scoped to *this* file (see the caller): true only
+    // when a plain `--update` ran or `--update <name>` named this file.
     let file_name = file_name_str(mcp_path);
     let hash = hash_file(mcp_path)?;
     let mcp_text = fs::read_to_string(mcp_path)?;
@@ -356,7 +369,13 @@ fn classify_mcp_file(
         .cloned()
         .unwrap_or_default();
     let server_names: Vec<String> = servers.keys().cloned().collect();
-    let has_secrets = crate::secrets::has_placeholder(&mcp_text);
+    // Only the `mcpServers` object is injected, so detect placeholders there —
+    // not anywhere in the file. A `${kst_…}` in some other key would otherwise
+    // raise a spurious world-readable warning and `--update` tip for a file that
+    // gets no secret written.
+    let has_secrets = serde_json::to_string(&servers)
+        .map(|s| crate::secrets::has_placeholder(&s))
+        .unwrap_or(false);
 
     let asset_id = format!("mcp::{source}::{file_name}");
     let existing = lock.get_tracked_asset("mcp", &asset_id);
@@ -769,5 +788,56 @@ mod tests {
             !needs_fetch_mcps(&ctx, &src, &desired, &lock2, &no_targets),
             "present lock asset with no targets needs no fetch"
         );
+    }
+
+    #[test]
+    fn selective_update_is_scoped_per_file_not_per_source() {
+        // `--update vercel` against a source holding both vercel.json and
+        // notion.json must force-remerge only vercel.json — remerging notion.json
+        // (overwrite) would clobber hand-edited servers from a sibling file.
+        let cfg = crate::model::Config {
+            destination: None,
+            scope: Some(crate::model::Scope::Project),
+            agent: None,
+            skills: Vec::new(),
+            mcps: Vec::new(),
+            commands: Vec::new(),
+            instructions: Vec::new(),
+            secrets: None,
+        };
+        let root = PathBuf::from("/tmp");
+        let ctx = SyncContext {
+            cfg: &cfg,
+            cfg_dir: &root,
+            destinations: &[],
+            scope_root: root.clone(),
+            scope: crate::model::Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            as_json: false,
+            quiet: true,
+            update: true,
+            update_only: vec!["vercel".into()],
+            locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
+        };
+
+        // Source-level: the source is targeted (vercel matches), so a fetch happens.
+        let source_names: Vec<String> = ["vercel.json", "notion.json"]
+            .iter()
+            .flat_map(|f| update_aliases(f))
+            .collect();
+        assert!(update_active_for_source(&ctx, &source_names));
+
+        // File-level: only vercel.json is active; notion.json is not.
+        assert!(update_active_for_source(
+            &ctx,
+            &update_aliases("vercel.json")
+        ));
+        assert!(!update_active_for_source(
+            &ctx,
+            &update_aliases("notion.json")
+        ));
     }
 }
