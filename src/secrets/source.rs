@@ -437,8 +437,9 @@ fn op_uri(payload: &str) -> String {
 
 /// Split a Vault payload `"<kv-path>#<field>"` into its path and field parts.
 fn vault_path_field(payload: &str) -> Result<(&str, &str)> {
-    match payload.split_once('#') {
-        Some((path, field)) if !path.is_empty() && !field.is_empty() => Ok((path, field)),
+    // Same `#` split as `split_field`, but the field is mandatory for vault.
+    match split_field(payload) {
+        (path, Some(field)) if !path.is_empty() => Ok((path, field)),
         _ => Err(err(format!(
             "vault secret `{payload}` must be `<kv-path>#<field>` (e.g. secret/myapp#token)"
         ))),
@@ -616,7 +617,10 @@ mod tests {
 
     #[test]
     fn split_field_separates_optional_field() {
-        assert_eq!(split_field("prod/db#password"), ("prod/db", Some("password")));
+        assert_eq!(
+            split_field("prod/db#password"),
+            ("prod/db", Some("password"))
+        );
         assert_eq!(split_field("prod/db"), ("prod/db", None));
         assert_eq!(split_field("prod/db#"), ("prod/db", None));
     }
@@ -625,7 +629,10 @@ mod tests {
     fn extract_json_field_returns_raw_or_key() {
         assert_eq!(extract_json_field("plain".into(), None).unwrap(), "plain");
         let json = r#"{"username":"u","password":"p"}"#.to_string();
-        assert_eq!(extract_json_field(json.clone(), Some("password")).unwrap(), "p");
+        assert_eq!(
+            extract_json_field(json.clone(), Some("password")).unwrap(),
+            "p"
+        );
         assert!(extract_json_field(json, Some("missing")).is_err());
         assert!(extract_json_field("not-json".into(), Some("k")).is_err());
     }
@@ -651,7 +658,10 @@ mod tests {
         for (src, tag) in cases {
             assert!(src.handles(&tagged_ref(tag, "x")), "{tag} claims its tag");
             assert!(!src.handles(&chain), "{tag} ignores the chain form");
-            assert!(!src.handles(&tagged_ref("other", "x")), "{tag} ignores other tags");
+            assert!(
+                !src.handles(&tagged_ref("other", "x")),
+                "{tag} ignores other tags"
+            );
         }
     }
 
