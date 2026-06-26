@@ -1,27 +1,27 @@
 const FEATURES = [
   {
     title: "DECLARATIVE",
-    desc: "One YAML file, your whole setup — skills, commands, MCPs, instructions, and agents. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync.",
+    desc: "One YAML file — skills, commands, MCPs, and instructions. Apply globally or per project; compose with `extends`.",
   },
   {
     title: "ENTERPRISE & PRIVATE REPOSITORIES",
-    desc: "Pull from anywhere — GitHub, GitLab, Bitbucket, self-hosted, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift. Ship MCP packs with `kst_*` secret placeholders — injected at sync time from env, a credentials file, or a manager like 1Password, Vault, AWS, GCP, Azure, KeePass, pass, or the macOS Keychain; never committed and never written to the lock.",
+    desc: "Pull from GitHub, GitLab, Bitbucket, or self-hosted repos, public or private. Secrets resolve from `kst_*` placeholders at sync time, so they're never committed or locked.",
   },
   {
     title: "MULTI-AGENT",
-    desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot, and every other major agent — one sync keeps them all current.",
+    desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot — one sync keeps every agent current.",
   },
   {
     title: "SKILLS, COMMANDS, MCPS & INSTRUCTIONS",
-    desc: "All four asset kinds, one source — skills, commands, MCPs, and instructions. Everything is transformed into each agent's native format, and auto-merged. Distribute instructions, tools, and prompts as easily as sharing a repository link.",
+    desc: "All four asset kinds from one source, transformed into each agent's native format and auto-merged. Share tools and prompts like a repo link.",
   },
   {
     title: "SPEED",
-    desc: "Instant by design. Built in Rust, it hashes content and diffs a lock file so only what changed gets touched — full syncs finish in seconds.",
+    desc: "Built in Rust. Content is hashed and diffed against a lock file, so only what changed is touched — syncs finish in seconds.",
   },
   {
     title: "UNIVERSAL",
-    desc: "One static binary for macOS, Linux, and Windows. CI-friendly with JSON output and real exit codes — same behavior on your laptop or a CI runner.",
+    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes — same behavior on your laptop or in CI.",
   },
 ];
 
