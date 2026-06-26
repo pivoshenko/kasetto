@@ -26,9 +26,6 @@ const SOURCES: { icon: IconType; name: string; usage: string }[] = [
 export function SecretSources() {
   return (
     <div className="grid-box">
-      <div className="agents-header">
-        <span>INJECT FROM ANYWHERE — NEVER COMMITTED, NEVER IN THE LOCK</span>
-      </div>
       <div className="src-grid">
         {SOURCES.map((s) => {
           const Icon = s.icon;
