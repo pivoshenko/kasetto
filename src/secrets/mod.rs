@@ -19,7 +19,8 @@ use crate::model::{OnMissing, SecretsConfig};
 use crate::ui::eprint_warn;
 
 use source::{
-    CredentialsFileSource, EnvSource, KeePassSource, OnePasswordSource, SecretSource, VaultSource,
+    AwsSecretsSource, AzureKeyVaultSource, CredentialsFileSource, EnvSource, GcpSecretsSource,
+    KeePassSource, KeychainSource, OnePasswordSource, PassSource, SecretSource, VaultSource,
 };
 pub(crate) use template::has_placeholder;
 use template::{substitute, SecretRef};
@@ -95,10 +96,16 @@ impl SecretContext {
         }
 
         // External managers: only invoked when a matching `${kst:<tag>:…}` ref
-        // appears (their `handles` gates on the tag), so adding op/vault
-        // unconditionally costs nothing for env/credentials-only configs.
+        // appears (their `handles` gates on the tag), so adding them
+        // unconditionally costs nothing for env/credentials-only configs. Each
+        // shells out to the provider's own CLI, inheriting its session.
         sources.push(Box::new(OnePasswordSource));
         sources.push(Box::new(VaultSource));
+        sources.push(Box::new(AwsSecretsSource));
+        sources.push(Box::new(GcpSecretsSource));
+        sources.push(Box::new(AzureKeyVaultSource));
+        sources.push(Box::new(PassSource));
+        sources.push(Box::new(KeychainSource));
 
         // KeePass needs a configured database, so it is added only when the
         // `secrets.keepass` block is present. The master password (if any) is
@@ -214,8 +221,9 @@ impl SecretContext {
                     )));
                 }
                 return Err(err(format!(
-                    "secret source `{tag}` is not supported (use `env`, `crd`, `op`, \
-                     `vault`, or `kp`, or `${{kst_name}}` for the env -> credentials.yaml chain)"
+                    "secret source `{tag}` is not supported (supported tags: env, crd, op, \
+                     vault, kp, aws, gcp, az, pass, keychain — or `${{kst_name}}` for the \
+                     env -> credentials.yaml chain)"
                 )));
             }
         }

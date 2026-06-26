@@ -251,6 +251,184 @@ fn keepass_args(
     args
 }
 
+/// AWS Secrets Manager, via the `aws` CLI. `${kst:aws:<secret-id>#<json-key>}`
+/// runs `aws secretsmanager get-secret-value`; with `#<json-key>` the secret
+/// string is parsed as JSON and that top-level field is returned.
+pub(super) struct AwsSecretsSource;
+
+impl SecretSource for AwsSecretsSource {
+    fn name(&self) -> &'static str {
+        "aws"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        r.tag.as_deref() == Some("aws")
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let (secret_id, field) = split_field(&r.payload);
+        let raw = run_cli(
+            "aws",
+            &[
+                "secretsmanager",
+                "get-secret-value",
+                "--secret-id",
+                secret_id,
+                "--query",
+                "SecretString",
+                "--output",
+                "text",
+            ],
+        )?;
+        Ok(Some(Secret::new(extract_json_field(raw, field)?)))
+    }
+}
+
+/// Google Cloud Secret Manager, via the `gcloud` CLI. `${kst:gcp:<name>}` runs
+/// `gcloud secrets versions access latest --secret=<name>` against the active
+/// project.
+pub(super) struct GcpSecretsSource;
+
+impl SecretSource for GcpSecretsSource {
+    fn name(&self) -> &'static str {
+        "gcp"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        r.tag.as_deref() == Some("gcp")
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let value = run_cli(
+            "gcloud",
+            &[
+                "secrets",
+                "versions",
+                "access",
+                "latest",
+                "--secret",
+                &r.payload,
+            ],
+        )?;
+        Ok(Some(Secret::new(value)))
+    }
+}
+
+/// Azure Key Vault, via the `az` CLI. `${kst:az:<vault>/<name>}` runs
+/// `az keyvault secret show --vault-name <vault> --name <name>`.
+pub(super) struct AzureKeyVaultSource;
+
+impl SecretSource for AzureKeyVaultSource {
+    fn name(&self) -> &'static str {
+        "az"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        r.tag.as_deref() == Some("az")
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let (vault, name) = az_vault_name(&r.payload)?;
+        let value = run_cli(
+            "az",
+            &[
+                "keyvault",
+                "secret",
+                "show",
+                "--vault-name",
+                vault,
+                "--name",
+                name,
+                "--query",
+                "value",
+                "--output",
+                "tsv",
+            ],
+        )?;
+        Ok(Some(Secret::new(value)))
+    }
+}
+
+/// The `pass`/`gopass` Unix password store, via the `pass` CLI.
+/// `${kst:pass:<path>}` runs `pass show <path>` and returns the first line (the
+/// password, by the store's convention).
+pub(super) struct PassSource;
+
+impl SecretSource for PassSource {
+    fn name(&self) -> &'static str {
+        "pass"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        r.tag.as_deref() == Some("pass")
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let out = run_cli("pass", &["show", &r.payload])?;
+        let first = out.lines().next().unwrap_or("").to_string();
+        Ok(Some(Secret::new(first)))
+    }
+}
+
+/// macOS Keychain, via the `security` CLI. `${kst:keychain:<service>#<account>}`
+/// runs `security find-generic-password -s <service> [-a <account>] -w` (the
+/// `#<account>` is optional).
+pub(super) struct KeychainSource;
+
+impl SecretSource for KeychainSource {
+    fn name(&self) -> &'static str {
+        "keychain"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        r.tag.as_deref() == Some("keychain")
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let (service, account) = split_field(&r.payload);
+        let mut args = vec!["find-generic-password", "-s", service];
+        if let Some(account) = account {
+            args.push("-a");
+            args.push(account);
+        }
+        args.push("-w");
+        Ok(Some(Secret::new(run_cli("security", &args)?)))
+    }
+}
+
+/// Split a tagged payload `"<id>#<field>"` into the id and an optional field
+/// (shared by the AWS `#<json-key>` and Keychain `#<account>` forms).
+fn split_field(payload: &str) -> (&str, Option<&str>) {
+    match payload.split_once('#') {
+        Some((id, field)) if !field.is_empty() => (id, Some(field)),
+        _ => (payload.trim_end_matches('#'), None),
+    }
+}
+
+/// Return `raw` as-is, or — when `field` is set — parse it as JSON and extract
+/// that top-level string field (AWS secrets are often JSON documents).
+fn extract_json_field(raw: String, field: Option<&str>) -> Result<String> {
+    let Some(key) = field else {
+        return Ok(raw);
+    };
+    let val: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| err(format!("secret is not JSON, cannot extract `{key}`: {e}")))?;
+    val.get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| err(format!("JSON secret has no string field `{key}`")))
+}
+
+/// Split an Azure payload `"<vault>/<name>"` into its vault and secret name.
+fn az_vault_name(payload: &str) -> Result<(&str, &str)> {
+    match payload.split_once('/') {
+        Some((vault, name)) if !vault.is_empty() && !name.is_empty() => Ok((vault, name)),
+        _ => Err(err(format!(
+            "azure secret `{payload}` must be `<vault>/<name>` (e.g. my-vault/db-password)"
+        ))),
+    }
+}
+
 /// Build the canonical `op://vault/item/field` URI from a tagged payload, which
 /// may already carry the `//` (from `${kst:op://…}`) or omit it (`${kst:op:…}`).
 fn op_uri(payload: &str) -> String {
@@ -437,6 +615,47 @@ mod tests {
         assert!(VaultSource.handles(&vault) && !VaultSource.handles(&op));
         assert!(kp_src.handles(&kp) && kp_src.handles(&tagged_ref("keepass", "x#y")));
         assert!(!kp_src.handles(&chain) && !kp_src.handles(&vault));
+    }
+
+    #[test]
+    fn split_field_separates_optional_field() {
+        assert_eq!(split_field("prod/db#password"), ("prod/db", Some("password")));
+        assert_eq!(split_field("prod/db"), ("prod/db", None));
+        assert_eq!(split_field("prod/db#"), ("prod/db", None));
+    }
+
+    #[test]
+    fn extract_json_field_returns_raw_or_key() {
+        assert_eq!(extract_json_field("plain".into(), None).unwrap(), "plain");
+        let json = r#"{"username":"u","password":"p"}"#.to_string();
+        assert_eq!(extract_json_field(json.clone(), Some("password")).unwrap(), "p");
+        assert!(extract_json_field(json, Some("missing")).is_err());
+        assert!(extract_json_field("not-json".into(), Some("k")).is_err());
+    }
+
+    #[test]
+    fn az_vault_name_requires_both_parts() {
+        assert_eq!(az_vault_name("my-vault/db").unwrap(), ("my-vault", "db"));
+        assert!(az_vault_name("no-slash").is_err());
+        assert!(az_vault_name("/db").is_err());
+        assert!(az_vault_name("vault/").is_err());
+    }
+
+    #[test]
+    fn new_providers_route_by_tag() {
+        let chain = ref_for("kst_x");
+        let cases: [(&dyn SecretSource, &str); 5] = [
+            (&AwsSecretsSource, "aws"),
+            (&GcpSecretsSource, "gcp"),
+            (&AzureKeyVaultSource, "az"),
+            (&PassSource, "pass"),
+            (&KeychainSource, "keychain"),
+        ];
+        for (src, tag) in cases {
+            assert!(src.handles(&tagged_ref(tag, "x")), "{tag} claims its tag");
+            assert!(!src.handles(&chain), "{tag} ignores the chain form");
+            assert!(!src.handles(&tagged_ref("other", "x")), "{tag} ignores other tags");
+        }
     }
 
     #[test]
