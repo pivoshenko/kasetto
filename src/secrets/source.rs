@@ -284,9 +284,10 @@ impl SecretSource for AwsSecretsSource {
     }
 }
 
-/// Google Cloud Secret Manager, via the `gcloud` CLI. `${kst:gcp:<name>}` runs
-/// `gcloud secrets versions access latest --secret=<name>` against the active
-/// project.
+/// Google Cloud Secret Manager, via the `gcloud` CLI.
+/// `${kst:gcp:<name>#<json-key>}` runs `gcloud secrets versions access latest
+/// --secret=<name>` against the active project; an optional `#<json-key>`
+/// extracts a top-level field when the secret is a JSON document.
 pub(super) struct GcpSecretsSource;
 
 impl SecretSource for GcpSecretsSource {
@@ -299,23 +300,18 @@ impl SecretSource for GcpSecretsSource {
     }
 
     fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
-        let value = run_cli(
+        let (name, field) = split_field(&r.payload);
+        let raw = run_cli(
             "gcloud",
-            &[
-                "secrets",
-                "versions",
-                "access",
-                "latest",
-                "--secret",
-                &r.payload,
-            ],
+            &["secrets", "versions", "access", "latest", "--secret", name],
         )?;
-        Ok(Some(Secret::new(value)))
+        Ok(Some(Secret::new(extract_json_field(raw, field)?)))
     }
 }
 
-/// Azure Key Vault, via the `az` CLI. `${kst:az:<vault>/<name>}` runs
-/// `az keyvault secret show --vault-name <vault> --name <name>`.
+/// Azure Key Vault, via the `az` CLI. `${kst:az:<vault>/<name>#<json-key>}` runs
+/// `az keyvault secret show --vault-name <vault> --name <name>`; an optional
+/// `#<json-key>` extracts a top-level field when the secret is a JSON document.
 pub(super) struct AzureKeyVaultSource;
 
 impl SecretSource for AzureKeyVaultSource {
@@ -328,8 +324,9 @@ impl SecretSource for AzureKeyVaultSource {
     }
 
     fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
-        let (vault, name) = az_vault_name(&r.payload)?;
-        let value = run_cli(
+        let (path, field) = split_field(&r.payload);
+        let (vault, name) = az_vault_name(path)?;
+        let raw = run_cli(
             "az",
             &[
                 "keyvault",
@@ -345,7 +342,7 @@ impl SecretSource for AzureKeyVaultSource {
                 "tsv",
             ],
         )?;
-        Ok(Some(Secret::new(value)))
+        Ok(Some(Secret::new(extract_json_field(raw, field)?)))
     }
 }
 
