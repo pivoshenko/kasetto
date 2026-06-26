@@ -1,22 +1,26 @@
-//! Scanner for `${KST_…}` secret placeholders in synced asset values.
+//! Scanner for `${kst_…}` secret placeholders in synced asset values.
 //!
-//! Two forms: the chain form `${KST_NAME}` (resolved against env + credential
-//! files) and the tagged form `${KST:<source>:<ref>}` (routed to an external
-//! secret manager — `op` / `vault`). Only the `KST_` / `KST:` sentinel is
-//! recognised — bare `${VAR}` that an agent or shell must expand at
-//! server-launch time is passed through untouched. Hand-rolled to avoid a
-//! `regex` dependency.
+//! Two forms: the chain form `${kst_name}` (resolved against env + credential
+//! files) and the tagged form `${kst:<source>:<ref>}` routed to one explicit
+//! source — `env`, `crd` (credentials.yaml), `op`, or `vault`. Only the
+//! lowercase `kst_` / `kst:` sentinel is recognised — bare `${VAR}` that an
+//! agent or shell must expand at server-launch time is passed through
+//! untouched. Hand-rolled to avoid a `regex` dependency.
 
 use crate::error::{err, Result};
 
-/// A parsed `${KST…}` placeholder.
+/// The literal placeholder prefix every secret reference opens with.
+const SENTINEL: &str = "${kst";
+
+/// A parsed `${kst…}` placeholder.
 #[derive(Debug, PartialEq)]
 pub(crate) struct SecretRef {
-    /// Flat, env-style key including the `KST_` prefix (e.g. `KST_VERCEL__TOKEN`).
+    /// Flat, env-style key including the `kst_` prefix (e.g. `kst_vercel__token`).
+    /// Only set for the chain form; empty for tagged refs.
     pub flat_key: String,
-    /// Nested lookup path from splitting the post-`KST_` name on `__`.
+    /// Nested lookup path from splitting the post-`kst_` name on `__` (chain form).
     pub segments: Vec<String>,
-    /// Explicit source tag for the `${KST:<tag>:<ref>}` form (`op`, `vault`).
+    /// Explicit source tag for `${kst:<tag>:<ref>}` (`env`, `crd`, `op`, `vault`).
     pub tag: Option<String>,
     /// Source-specific reference for the tagged form (the `<ref>` after the tag).
     pub payload: String,
@@ -26,19 +30,19 @@ impl SecretRef {
     /// Placeholder label for diagnostics — a locator, never a resolved value.
     pub(crate) fn display(&self) -> String {
         match &self.tag {
-            Some(t) => format!("${{KST:{t}:{}}}", self.payload),
+            Some(t) => format!("${{kst:{t}:{}}}", self.payload),
             None => format!("${{{}}}", self.flat_key),
         }
     }
 }
 
-/// Whether `s` contains at least one `${KST` sentinel (cheap pre-check).
+/// Whether `s` contains at least one `${kst` sentinel (cheap pre-check).
 pub(crate) fn has_placeholder(s: &str) -> bool {
-    s.contains("${KST")
+    s.contains(SENTINEL)
 }
 
-/// Substitute every `${KST_…}` placeholder in `input`. `lookup` returns
-/// `Some(value)` to replace, `None` to leave the placeholder literal. Non-`KST`
+/// Substitute every `${kst…}` placeholder in `input`. `lookup` returns
+/// `Some(value)` to replace, `None` to leave the placeholder literal. Non-`kst`
 /// `${…}` and malformed sentinels are passed through untouched.
 pub(crate) fn substitute<F>(input: &str, mut lookup: F) -> Result<String>
 where
@@ -46,9 +50,9 @@ where
 {
     let mut out = String::with_capacity(input.len());
     let mut rest = input;
-    while let Some(pos) = rest.find("${KST") {
+    while let Some(pos) = rest.find(SENTINEL) {
         out.push_str(&rest[..pos]);
-        let after = &rest[pos + "${KST".len()..]; // text after the sentinel prefix
+        let after = &rest[pos + SENTINEL.len()..]; // text after the sentinel prefix
         let kind = after.chars().next();
         // A valid placeholder continues with `_` (chain) or `:` (tagged) and has
         // a closing brace. Anything else is copied verbatim.
@@ -59,7 +63,7 @@ where
                 match lookup(&r)? {
                     Some(v) => out.push_str(&v),
                     None => {
-                        out.push_str("${KST");
+                        out.push_str(SENTINEL);
                         out.push_str(inner);
                         out.push('}');
                     }
@@ -67,7 +71,7 @@ where
                 rest = &after[close + 1..];
             }
             _ => {
-                out.push_str("${KST");
+                out.push_str(SENTINEL);
                 rest = after;
             }
         }
@@ -76,13 +80,14 @@ where
     Ok(out)
 }
 
-/// Parse the inner text after `${KST` (before `}`): `_VERCEL__TOKEN` (chain) or
-/// `:vault:secret/path#field` / `:op://vault/item/field` (tagged).
+/// Parse the inner text after `${kst` (before `}`): `_vercel__token` (chain) or
+/// `:env:NAME` / `:crd:vercel/token` / `:vault:secret/path#field` /
+/// `:op://vault/item/field` (tagged).
 fn parse_ref(inner: &str) -> Result<SecretRef> {
     if let Some(tagged) = inner.strip_prefix(':') {
         let (tag, payload) = tagged.split_once(':').ok_or_else(|| {
             err(format!(
-                "tagged secret `${{KST:{tagged}}}` must be `${{KST:<source>:<ref>}}`"
+                "tagged secret `${{kst:{tagged}}}` must be `${{kst:<source>:<ref>}}`"
             ))
         })?;
         if tag.is_empty() || payload.is_empty() {
@@ -97,10 +102,10 @@ fn parse_ref(inner: &str) -> Result<SecretRef> {
     }
     let name = inner.strip_prefix('_').unwrap_or(inner);
     if name.is_empty() {
-        return Err(err("empty secret placeholder `${KST_}`"));
+        return Err(err("empty secret placeholder `${kst_}`"));
     }
     Ok(SecretRef {
-        flat_key: format!("KST_{name}"),
+        flat_key: format!("kst_{name}"),
         segments: name.split("__").map(str::to_string).collect(),
         tag: None,
         payload: String::new(),
@@ -111,35 +116,35 @@ fn parse_ref(inner: &str) -> Result<SecretRef> {
 mod tests {
     use super::*;
 
-    /// Lookup that resolves any chain placeholder to its flat key, uppercased
-    /// and wrapped in `<>` so substitutions are visible in assertions.
+    /// Lookup that echoes a chain placeholder's flat key wrapped in `<>` so
+    /// substitutions are visible in assertions.
     fn echo(r: &SecretRef) -> Result<Option<String>> {
         Ok(Some(format!("<{}>", r.flat_key)))
     }
 
     #[test]
     fn substitutes_a_bare_placeholder() {
-        let out = substitute("Bearer ${KST_VERCEL_TOKEN}", echo).unwrap();
-        assert_eq!(out, "Bearer <KST_VERCEL_TOKEN>");
+        let out = substitute("Bearer ${kst_vercel_token}", echo).unwrap();
+        assert_eq!(out, "Bearer <kst_vercel_token>");
     }
 
     #[test]
     fn parses_double_underscore_nesting() {
-        let r = parse_ref("_VERCEL__TOKEN").unwrap();
-        assert_eq!(r.flat_key, "KST_VERCEL__TOKEN");
-        assert_eq!(r.segments, vec!["VERCEL", "TOKEN"]);
+        let r = parse_ref("_vercel__token").unwrap();
+        assert_eq!(r.flat_key, "kst_vercel__token");
+        assert_eq!(r.segments, vec!["vercel", "token"]);
     }
 
     #[test]
     fn single_underscore_is_one_segment() {
-        let r = parse_ref("_VERCEL_TOKEN").unwrap();
-        assert_eq!(r.segments, vec!["VERCEL_TOKEN"]);
+        let r = parse_ref("_vercel_token").unwrap();
+        assert_eq!(r.segments, vec!["vercel_token"]);
     }
 
     #[test]
     fn substitutes_multiple_in_one_string() {
-        let out = substitute("${KST_A}:${KST_B}", echo).unwrap();
-        assert_eq!(out, "<KST_A>:<KST_B>");
+        let out = substitute("${kst_a}:${kst_b}", echo).unwrap();
+        assert_eq!(out, "<kst_a>:<kst_b>");
     }
 
     #[test]
@@ -149,22 +154,43 @@ mod tests {
     }
 
     #[test]
+    fn leaves_uppercase_sentinel_untouched() {
+        // The sentinel is strictly lowercase; `${KST_FOO}` is a foreign var.
+        let out = substitute("${KST_FOO}", echo).unwrap();
+        assert_eq!(out, "${KST_FOO}");
+    }
+
+    #[test]
     fn leaves_lookalike_sentinel_untouched() {
-        // `${KSTUFF}` is not a placeholder (no `_`/`:` after `KST`).
-        let out = substitute("${KSTUFF}", echo).unwrap();
-        assert_eq!(out, "${KSTUFF}");
+        // `${kstuff}` is not a placeholder (no `_`/`:` after `kst`).
+        let out = substitute("${kstuff}", echo).unwrap();
+        assert_eq!(out, "${kstuff}");
     }
 
     #[test]
     fn leaves_unterminated_sentinel_literal() {
-        let out = substitute("trailing ${KST_NOPE", echo).unwrap();
-        assert_eq!(out, "trailing ${KST_NOPE");
+        let out = substitute("trailing ${kst_nope", echo).unwrap();
+        assert_eq!(out, "trailing ${kst_nope");
     }
 
     #[test]
     fn missing_leaves_placeholder_when_lookup_returns_none() {
-        let out = substitute("x ${KST_GONE} y", |_| Ok(None)).unwrap();
-        assert_eq!(out, "x ${KST_GONE} y");
+        let out = substitute("x ${kst_gone} y", |_| Ok(None)).unwrap();
+        assert_eq!(out, "x ${kst_gone} y");
+    }
+
+    #[test]
+    fn tagged_env_form_parses_tag_and_payload() {
+        let r = parse_ref(":env:VERCEL_TOKEN").unwrap();
+        assert_eq!(r.tag.as_deref(), Some("env"));
+        assert_eq!(r.payload, "VERCEL_TOKEN");
+    }
+
+    #[test]
+    fn tagged_crd_form_keeps_slash_path() {
+        let r = parse_ref(":crd:vercel/token").unwrap();
+        assert_eq!(r.tag.as_deref(), Some("crd"));
+        assert_eq!(r.payload, "vercel/token");
     }
 
     #[test]

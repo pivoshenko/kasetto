@@ -37,7 +37,7 @@ pub(super) struct SyncContext<'a> {
     pub(super) update_only: Vec<String>,
     /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
     pub(super) locked: bool,
-    /// Resolves `${KST_…}` secret placeholders in MCP configs at write time.
+    /// Resolves `${kst_…}` secret placeholders in MCP configs at write time.
     pub(super) secrets: crate::secrets::SecretContext,
 }
 

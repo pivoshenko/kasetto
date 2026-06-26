@@ -1,7 +1,7 @@
 //! Secret injection for synced MCP configs.
 //!
-//! Resolves `${KST_…}` placeholders at sync time from environment variables and
-//! a `credentials.yaml` store, so packs can ship `Bearer ${KST_VERCEL_TOKEN}`
+//! Resolves `${kst_…}` placeholders at sync time from environment variables and
+//! a `credentials.yaml` store, so packs can ship `Bearer ${kst_vercel_token}`
 //! without committing the value. Injection happens on the in-memory config and
 //! is written only to the agent destination — never to the source cache, the
 //! stage dir, or `kasetto.lock` (the lock hashes the placeholder source file).
@@ -40,7 +40,7 @@ impl std::fmt::Debug for Secret {
     }
 }
 
-/// Resolves `${KST_…}` placeholders against an ordered set of sources.
+/// Resolves `${kst_…}` placeholders against an ordered set of sources.
 pub(crate) struct SecretContext {
     sources: Vec<Box<dyn SecretSource>>,
     on_missing: OnMissing,
@@ -85,7 +85,7 @@ impl SecretContext {
             }
         }
 
-        // External managers: only invoked when a `${KST:op:…}` / `${KST:vault:…}`
+        // External managers: only invoked when a `${kst:op:…}` / `${kst:vault:…}`
         // tagged ref appears (their `handles` gates on the tag), so adding them
         // unconditionally costs nothing for env/credentials-only configs.
         sources.push(Box::new(OnePasswordSource));
@@ -163,8 +163,8 @@ impl SecretContext {
         if !handled {
             if let Some(tag) = &r.tag {
                 return Err(err(format!(
-                    "secret source `{tag}` is not supported (use `op` or `vault`, \
-                     or `${{KST_NAME}}` for env / credentials.yaml)"
+                    "secret source `{tag}` is not supported (use `env`, `crd`, `op`, \
+                     or `vault`, or `${{kst_name}}` for the env -> credentials.yaml chain)"
                 )));
             }
         }
@@ -233,7 +233,7 @@ mod tests {
     fn injects_into_nested_json() {
         let ctx = ctx_from_yaml("vercel:\n  token: tok_xyz\n", OnMissing::Error);
         let mut v: serde_json::Value =
-            serde_json::json!({"headers": {"Authorization": "Bearer ${KST_VERCEL__TOKEN}"}});
+            serde_json::json!({"headers": {"Authorization": "Bearer ${kst_vercel__token}"}});
         ctx.inject_value(&mut v).unwrap();
         assert_eq!(v["headers"]["Authorization"], "Bearer tok_xyz");
     }
@@ -241,18 +241,18 @@ mod tests {
     #[test]
     fn missing_errors_by_default() {
         let ctx = ctx_from_yaml("other: x\n", OnMissing::Error);
-        let mut v: serde_json::Value = serde_json::json!({"k": "${KST_NOPE}"});
+        let mut v: serde_json::Value = serde_json::json!({"k": "${kst_nope}"});
         let e = ctx.inject_value(&mut v).unwrap_err().to_string();
-        assert!(e.contains("${KST_NOPE}"), "error names placeholder: {e}");
+        assert!(e.contains("${kst_nope}"), "error names placeholder: {e}");
         assert!(!e.contains("tok"), "error must not leak a value: {e}");
     }
 
     #[test]
     fn missing_warn_leaves_placeholder() {
         let ctx = ctx_from_yaml("other: x\n", OnMissing::Warn);
-        let mut v: serde_json::Value = serde_json::json!({"k": "${KST_NOPE}"});
+        let mut v: serde_json::Value = serde_json::json!({"k": "${kst_nope}"});
         ctx.inject_value(&mut v).unwrap();
-        assert_eq!(v["k"], "${KST_NOPE}");
+        assert_eq!(v["k"], "${kst_nope}");
     }
 
     #[test]
@@ -270,7 +270,7 @@ mod tests {
         let mut wrap = serde_json::json!({
             "vercel": {
                 "url": "https://mcp.vercel.com",
-                "headers": {"Authorization": "Bearer ${KST_VERCEL__TOKEN}"}
+                "headers": {"Authorization": "Bearer ${kst_vercel__token}"}
             }
         });
         ctx.inject_value(&mut wrap).unwrap();
@@ -290,7 +290,7 @@ mod tests {
             written.contains("Bearer tok_live"),
             "value injected: {written}"
         );
-        assert!(!written.contains("${KST"), "no placeholder left: {written}");
+        assert!(!written.contains("${kst"), "no placeholder left: {written}");
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -298,7 +298,7 @@ mod tests {
     #[test]
     fn unknown_tagged_source_errors() {
         let ctx = ctx_from_yaml("x: y\n", OnMissing::Error);
-        let mut v: serde_json::Value = serde_json::json!({"k": "${KST:gcp:projects/p/secrets/s}"});
+        let mut v: serde_json::Value = serde_json::json!({"k": "${kst:gcp:projects/p/secrets/s}"});
         let e = ctx.inject_value(&mut v).unwrap_err().to_string();
         assert!(e.contains("gcp"), "names the unknown source: {e}");
         assert!(e.contains("not supported"), "explains: {e}");

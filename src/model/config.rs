@@ -36,7 +36,7 @@ pub(crate) struct Config {
 /// `secrets:` config block. Values live in `credentials.yaml` / env, never here.
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct SecretsConfig {
-    /// What to do when a `${KST_…}` placeholder can't be resolved. Default `error`.
+    /// What to do when a `${kst_…}` placeholder can't be resolved. Default `error`.
     #[serde(default)]
     pub on_missing: Option<OnMissing>,
     /// Extra credential files (relative to the config dir, or absolute), searched
