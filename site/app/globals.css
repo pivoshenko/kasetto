@@ -527,14 +527,6 @@ button {
   letter-spacing: var(--tracking-tight);
 }
 
-.src-cli {
-  margin-left: auto;
-  font-size: var(--fs-xs);
-  color: var(--fg-subtle);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-}
-
 .src-usage {
   font-family: var(--font-mono);
   font-size: var(--fs-sm);

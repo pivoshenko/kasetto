@@ -163,12 +163,12 @@ export default async function Page() {
         <FeatureList />
       </Track>
 
-      <Track num="A3" title="EXAMPLE">
-        <ConfigExample />
+      <Track num="A3" title="SECRET SOURCES">
+        <SecretSources />
       </Track>
 
-      <Track num="A4" title="SECRET SOURCES">
-        <SecretSources />
+      <Track num="A4" title="EXAMPLE">
+        <ConfigExample />
       </Track>
 
       {/* ─────── SIDE B ─────── */}
