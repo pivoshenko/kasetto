@@ -43,7 +43,7 @@ New MCPs are merged into agent settings files automatically on `kst sync` — no
 
 ## Secret Injection
 
-MCP packs can carry `${KST_…}` placeholders that Kasetto resolves at sync time from environment variables, `$XDG_CONFIG_HOME/kasetto/credentials.yaml`, or an external manager via the tagged form (`${KST:op:…}` shells out to the 1Password CLI, `${KST:vault:…}` to the Vault CLI — inheriting your existing CLI session, no tokens stored by kasetto). The resolved value is written **only** to the agent's settings file — never to `kasetto.lock` (which hashes the placeholder source), the source cache, or the stage directory. A missing required secret fails the entry and exits non-zero by default. See [Secret Injection](/docs/secrets) for the full model.
+MCP packs can carry `${kst_…}` placeholders that Kasetto resolves at sync time from environment variables, `$XDG_CONFIG_HOME/kasetto/credentials.yaml`, or an external manager via the tagged form (`${kst:op:…}` shells out to the 1Password CLI, `${kst:vault:…}` to the Vault CLI — inheriting your existing CLI session, no tokens stored by kasetto). The resolved value is written **only** to the agent's settings file — never to `kasetto.lock` (which hashes the placeholder source), the source cache, or the stage directory. A missing required secret fails the entry and exits non-zero by default. See [Secret Injection](/docs/secrets) for the full model.
 
 ## Credentials And Tokens
 

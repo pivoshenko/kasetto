@@ -93,7 +93,7 @@ mcps:
 | `mcps`        | no       | List of MCP server sources                                          |
 | `commands`    | no       | List of slash-command sources                                       |
 | `instructions`       | no       | List of instruction sources (CLAUDE.md / .cursor/rules / AGENTS.md …)      |
-| `secrets`     | no       | Secret-injection policy for `${KST_…}` placeholders (see [Secret Injection](/docs/secrets)) |
+| `secrets`     | no       | Secret-injection policy for `${kst_…}` placeholders (see [Secret Injection](/docs/secrets)) |
 | `extends`     | no       | Path or URL of a parent config to inherit from (string or list)     |
 
 ### Skill Source Fields
@@ -156,7 +156,7 @@ MCP config files must contain a `mcpServers` object with server definitions. Ser
 into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
 for Cursor). See [how sync works](/docs/how-sync-works) for merge behavior details.
 
-A pack can reference secrets with `${KST_<NAME>}` placeholders (tokens, passwords, API keys) instead
+A pack can reference secrets with `${kst_<name>}` placeholders (tokens, passwords, API keys) instead
 of committing them. They're resolved at sync time from the environment or a credentials file — see
 [Secret Injection](/docs/secrets).
 

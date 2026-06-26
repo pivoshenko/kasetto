@@ -222,7 +222,7 @@ Full key reference, merge instructions, and `extends:` inheritance live in the [
 
 ### Secrets
 
-MCP packs often need a token or password. Reference one with a `${KST_<NAME>}` placeholder instead of committing it — Kasetto resolves it at sync time and writes the value into the agent's settings file only:
+MCP packs often need a token or password. Reference one with a `${kst_<name>}` placeholder instead of committing it — Kasetto resolves it at sync time and writes the value into the agent's settings file only:
 
 ```json
 {
@@ -230,13 +230,13 @@ MCP packs often need a token or password. Reference one with a `${KST_<NAME>}` p
     "vercel": {
       "url": "https://mcp.vercel.com",
       "type": "http",
-      "headers": { "Authorization": "Bearer ${KST_VERCEL_TOKEN}" }
+      "headers": { "Authorization": "Bearer ${kst_vercel_token}" }
     }
   }
 }
 ```
 
-Values come from environment variables first, then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${KST_VERCEL__TOKEN}` → `vercel.token`). For external managers, use the tagged form: `${KST:op:<vault>/<item>/<field>}` shells out to the 1Password CLI, `${KST:vault:<kv-path>#<field>}` to the Vault CLI. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry — run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
+Values come from environment variables first (the name as written, then uppercased — `${kst_vercel_token}` reads `KST_VERCEL_TOKEN`), then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${kst_vercel__token}` → `vercel.token`). To pin one source, use the tagged form: `${kst:env:NAME}` a specific env var, `${kst:crd:a/b/c}` a credentials path, `${kst:op:<vault>/<item>/<field>}` shells out to the 1Password CLI, `${kst:vault:<kv-path>#<field>}` to the Vault CLI. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry — run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
 
 ## Supported Agents
 
