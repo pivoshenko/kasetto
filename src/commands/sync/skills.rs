@@ -247,17 +247,14 @@ fn process_fetched_source(
             for (skill_name, skill_path) in targets {
                 let label = sync_label_with(&skill_name, &src.source, ctx.plain, first_in_run);
                 first_in_run = false;
-                if let Err(e) = process_single_skill(
-                    ctx,
-                    sm,
-                    cache,
-                    desired_keys,
-                    &src.source,
-                    &materialized.source_revision,
-                    &skill_name,
-                    &skill_path,
-                    &label,
-                ) {
+                let job = SkillJob {
+                    source: &src.source,
+                    source_revision: &materialized.source_revision,
+                    name: &skill_name,
+                    path: &skill_path,
+                    label: &label,
+                };
+                if let Err(e) = process_single_skill(ctx, sm, cache, desired_keys, &job) {
                     sm.summary.failed += 1;
                     sm.actions.push(Action {
                         source: Some(src.source.clone()),
@@ -335,29 +332,34 @@ fn record_broken_skills(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// The inputs for installing one skill from a fetched source — bundled so the
+/// installer takes a single descriptor instead of five positional strings.
+struct SkillJob<'a> {
+    source: &'a str,
+    source_revision: &'a str,
+    name: &'a str,
+    path: &'a Path,
+    label: &'a str,
+}
+
 fn process_single_skill(
     ctx: &SyncContext,
     sm: &mut SyncMut<'_>,
     cache: &mut HashCache,
     desired_keys: &mut HashSet<String>,
-    source: &str,
-    source_revision: &str,
-    skill_name: &str,
-    skill_path: &Path,
-    label: &str,
+    job: &SkillJob<'_>,
 ) -> Result<()> {
     let destination = &ctx.destinations[0];
-    let (_, profile_description) = read_skill_profile_from_dir(skill_path, skill_name);
-    with_spinner_transient(ctx.animate, ctx.plain, label, || {
-        let key = skill_key(source, skill_name);
+    let (_, profile_description) = read_skill_profile_from_dir(job.path, job.name);
+    with_spinner_transient(ctx.animate, ctx.plain, job.label, || {
+        let key = skill_key(job.source, job.name);
         desired_keys.insert(key.clone());
         let has_prior = sm.state.skills.contains_key(&key);
-        let dest = destination.join(skill_name);
+        let dest = destination.join(job.name);
 
         // Hash the source tree up front so the unchanged case short-circuits
         // without writing.
-        let hash = hash_dir(skill_path)?;
+        let hash = hash_dir(job.path)?;
 
         // Unchanged only if the locked hash matches AND every destination already
         // holds an identical copy (fixes the latent destinations[0]-only bug).
@@ -366,7 +368,7 @@ fn process_single_skill(
             .skills
             .get(&key)
             .map(|prev| {
-                prev.hash == hash && dest_status(ctx, cache, skill_name, &prev.hash).all_match
+                prev.hash == hash && dest_status(ctx, cache, job.name, &prev.hash).all_match
             })
             .unwrap_or(false);
 
@@ -378,8 +380,8 @@ fn process_single_skill(
             }
             sm.summary.unchanged += 1;
             sm.actions.push(Action {
-                source: Some(source.to_string()),
-                skill: Some(skill_name.to_string()),
+                source: Some(job.source.to_string()),
+                skill: Some(job.name.to_string()),
                 status: "unchanged".into(),
                 error: None,
             });
@@ -395,8 +397,8 @@ fn process_single_skill(
                 "would_install"
             };
             sm.actions.push(Action {
-                source: Some(source.to_string()),
-                skill: Some(skill_name.to_string()),
+                source: Some(job.source.to_string()),
+                skill: Some(job.name.to_string()),
                 status: status.into(),
                 error: None,
             });
@@ -405,9 +407,9 @@ fn process_single_skill(
 
         // Copy the skill into every destination.
         for agent_dest in ctx.destinations {
-            let dst = agent_dest.join(skill_name);
+            let dst = agent_dest.join(job.name);
             cache.invalidate(&dst);
-            copy_dir(skill_path, &dst)?;
+            copy_dir(job.path, &dst)?;
             cache.set(dst, hash.clone());
         }
         let status = if has_prior {
@@ -423,16 +425,16 @@ fn process_single_skill(
             SkillEntry {
                 destination: relativize_dest(&dest, &ctx.scope_root),
                 hash,
-                skill: skill_name.to_string(),
+                skill: job.name.to_string(),
                 description: profile_description.clone(),
-                source: source.to_string(),
-                source_revision: source_revision.to_string(),
+                source: job.source.to_string(),
+                source_revision: job.source_revision.to_string(),
                 scope: Some(ctx.scope),
             },
         );
         sm.actions.push(Action {
-            source: Some(source.to_string()),
-            skill: Some(skill_name.to_string()),
+            source: Some(job.source.to_string()),
+            skill: Some(job.name.to_string()),
             status: status.into(),
             error: None,
         });
