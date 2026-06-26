@@ -413,6 +413,7 @@ fn apply_pending(
                         source: p.source.clone(),
                         destination: dest_csv,
                         source_revision: p.source_revision.clone(),
+                        has_secrets: false,
                     },
                 );
             }

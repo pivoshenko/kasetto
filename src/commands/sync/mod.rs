@@ -174,7 +174,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
     }
     commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
     instructions::sync_instructions(&ctx, &mut lock, &mut summary, &mut actions)?;
-    mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
+    let secrets_need_update = mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {
         lock.apply_state(&state);
@@ -203,6 +203,15 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         print_resolution_header(&report, opts.plain);
         print_sync_tree(&report, opts.plain);
         print_sync_summary(&report, opts.plain, opts.verbose, elapsed, opts.locked);
+        // A plain sync never re-resolves secrets for an unchanged server, so a
+        // token rotated in env/credentials/op won't propagate until `--update`.
+        if secrets_need_update {
+            crate::ui::print_tip(
+                "some synced MCP servers carry secrets; a plain sync won't re-resolve a \
+                 rotated secret — run `kst sync --update` to push changes",
+                opts.plain,
+            );
+        }
     }
 
     if report.summary.failed > 0 {

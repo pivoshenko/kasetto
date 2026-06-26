@@ -9,6 +9,8 @@
 mod source;
 mod template;
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
@@ -47,6 +49,10 @@ pub(crate) struct SecretContext {
     sources: Vec<Box<dyn SecretSource>>,
     on_missing: OnMissing,
     plain: bool,
+    /// Per-run memo keyed on the placeholder text, so a secret referenced more
+    /// than once is resolved once — avoids re-spawning `op`/`vault`/`keepassxc`
+    /// (and the repeated biometric prompts that would cause).
+    cache: RefCell<HashMap<String, Option<String>>>,
 }
 
 impl SecretContext {
@@ -58,6 +64,7 @@ impl SecretContext {
             sources: Vec::new(),
             on_missing: OnMissing::Error,
             plain: false,
+            cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -119,6 +126,7 @@ impl SecretContext {
             sources,
             on_missing,
             plain,
+            cache: RefCell::new(HashMap::new()),
         })
     }
 
@@ -159,7 +167,14 @@ impl SecretContext {
             match self.on_missing {
                 OnMissing::Error => Err(err(msg)),
                 OnMissing::Warn => {
-                    eprint_warn(&format!("{msg}; leaving placeholder"), self.plain);
+                    eprint_warn(
+                        &format!(
+                            "{msg}; writing the literal placeholder to the agent settings \
+                             file — the server will not authenticate until you set the secret \
+                             and run `kst sync --update`"
+                        ),
+                        self.plain,
+                    );
                     Ok(None)
                 }
             }
@@ -167,6 +182,18 @@ impl SecretContext {
     }
 
     fn resolve(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let key = r.display();
+        if let Some(cached) = self.cache.borrow().get(&key) {
+            return Ok(cached.clone().map(Secret::new));
+        }
+        let resolved = self.resolve_uncached(r)?;
+        self.cache
+            .borrow_mut()
+            .insert(key, resolved.as_ref().map(|s| s.expose().to_string()));
+        Ok(resolved)
+    }
+
+    fn resolve_uncached(&self, r: &SecretRef) -> Result<Option<Secret>> {
         let mut handled = false;
         for src in &self.sources {
             if !src.handles(r) {
@@ -177,9 +204,15 @@ impl SecretContext {
                 return Ok(Some(v));
             }
         }
-        // A tagged ref no source claims is an unknown/unsupported manager.
+        // A tagged ref no source claims is either unconfigured (keepass needs a
+        // `secrets.keepass` block) or an unknown manager.
         if !handled {
             if let Some(tag) = &r.tag {
+                if matches!(tag.as_str(), "kp" | "keepass") {
+                    return Err(err(format!(
+                        "secret source `{tag}` needs a `secrets.keepass` block with a `database` path"
+                    )));
+                }
                 return Err(err(format!(
                     "secret source `{tag}` is not supported (use `env`, `crd`, `op`, \
                      `vault`, or `kp`, or `${{kst_name}}` for the env -> credentials.yaml chain)"
@@ -214,8 +247,11 @@ fn resolve_rel(cfg_dir: &Path, p: &str) -> PathBuf {
     }
 }
 
+/// Warn when a file that holds (or now holds) plaintext secrets is group- or
+/// world-readable. Used for `credentials.yaml` and for MCP destinations after a
+/// resolved secret is written into them.
 #[cfg(unix)]
-fn warn_if_world_readable(path: &Path, plain: bool) {
+pub(crate) fn warn_if_world_readable(path: &Path, plain: bool) {
     use std::os::unix::fs::PermissionsExt;
     if let Ok(meta) = std::fs::metadata(path) {
         if meta.permissions().mode() & 0o077 != 0 {
@@ -232,7 +268,7 @@ fn warn_if_world_readable(path: &Path, plain: bool) {
 }
 
 #[cfg(not(unix))]
-fn warn_if_world_readable(_path: &Path, _plain: bool) {}
+pub(crate) fn warn_if_world_readable(_path: &Path, _plain: bool) {}
 
 #[cfg(test)]
 mod tests {
@@ -244,6 +280,7 @@ mod tests {
             sources: vec![Box::new(source::CredentialsFileSource::from_yaml(root))],
             on_missing,
             plain: true,
+            cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -320,5 +357,29 @@ mod tests {
         let e = ctx.inject_value(&mut v).unwrap_err().to_string();
         assert!(e.contains("gcp"), "names the unknown source: {e}");
         assert!(e.contains("not supported"), "explains: {e}");
+    }
+
+    #[test]
+    fn unconfigured_keepass_tag_points_at_config() {
+        let ctx = ctx_from_yaml("x: y\n", OnMissing::Error);
+        let mut v: serde_json::Value = serde_json::json!({"k": "${kst:kp:GitHub/PAT#Password}"});
+        let e = ctx.inject_value(&mut v).unwrap_err().to_string();
+        assert!(
+            e.contains("secrets.keepass"),
+            "points at the config block: {e}"
+        );
+    }
+
+    #[test]
+    fn repeated_placeholder_resolves_once() {
+        let ctx = ctx_from_yaml("vercel:\n  token: tok\n", OnMissing::Error);
+        let mut v: serde_json::Value =
+            serde_json::json!({"a": "${kst_vercel__token}", "b": "${kst_vercel__token}"});
+        ctx.inject_value(&mut v).unwrap();
+        assert_eq!(
+            ctx.cache.borrow().len(),
+            1,
+            "one memo entry for one placeholder"
+        );
     }
 }

@@ -33,16 +33,26 @@ struct PendingMcp {
     /// Replace an existing same-named server on merge (the `--update` rotation
     /// path for secret-bearing packs).
     overwrite: bool,
+    /// Pack carries `${kst…}` placeholders — recorded in the lock so the skip
+    /// path can hint that rotation needs `--update`, and used to perms-check the
+    /// destination after a plaintext secret is written.
+    has_secrets: bool,
     source_revision: String,
 }
 
+/// Returns `true` when a secret-bearing pack was left unchanged without
+/// `--update`, so the caller can hint (after the summary) that a rotated secret
+/// won't propagate on a plain sync.
 pub(super) fn sync_mcps(
     ctx: &SyncContext,
     lock: &mut LockFile,
     summary: &mut Summary,
     actions: &mut Vec<Action>,
-) -> Result<()> {
+) -> Result<bool> {
     let mut desired_mcp_ids = HashSet::new();
+    // Set when a secret-bearing pack is left unchanged without `--update`, so we
+    // can hint that a rotated secret won't propagate on a plain sync.
+    let mut secrets_need_update = false;
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
     // No agents configured (e.g. user dropped `agent:`) but lock still has MCP
@@ -67,7 +77,7 @@ pub(super) fn sync_mcps(
                 &fallback_targets,
             );
         }
-        return Ok(());
+        return Ok(false);
     }
 
     // Phase 1: discover and classify all MCP entries
@@ -124,6 +134,9 @@ pub(super) fn sync_mcps(
             let mut first_in_run = true;
             for file_name in &desired_file_names {
                 let asset_id = format!("mcp::{}::{}", src.source, file_name);
+                if lock.assets.get(&asset_id).is_some_and(|a| a.has_secrets) {
+                    secrets_need_update = true;
+                }
                 desired_mcp_ids.insert(asset_id);
                 let label = sync_label_with(file_name, &src.source, ctx.plain, first_in_run);
                 first_in_run = false;
@@ -258,6 +271,9 @@ pub(super) fn sync_mcps(
                         .unwrap_or(false);
 
                 if is_unchanged {
+                    if has_secrets {
+                        secrets_need_update = true;
+                    }
                     let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
                     with_spinner_transient(ctx.animate, ctx.plain, &label, || {
                         summary.unchanged += 1;
@@ -299,6 +315,7 @@ pub(super) fn sync_mcps(
                         asset_id,
                         is_new: existing.is_none(),
                         overwrite: force_remerge,
+                        has_secrets,
                         source_revision: materialized.source_revision.clone(),
                     });
                 }
@@ -338,7 +355,7 @@ pub(super) fn sync_mcps(
         );
     }
 
-    Ok(())
+    Ok(secrets_need_update)
 }
 
 /// Desired MCP file names for a source, derived without any network access.
@@ -479,6 +496,11 @@ fn apply_pending(
             if !ctx.dry_run {
                 for target in mcp_settings_list {
                     merge_mcp_config(&p.servers, target, p.overwrite)?;
+                    // A resolved plaintext secret now lives in this file; warn if
+                    // it is group/world-readable (symmetric to credentials.yaml).
+                    if p.has_secrets {
+                        crate::secrets::warn_if_world_readable(&target.path, ctx.plain);
+                    }
                 }
                 let servers_csv = p.server_names.join(",");
                 lock.save_tracked_asset(
@@ -490,6 +512,7 @@ fn apply_pending(
                         source: p.source.clone(),
                         destination: servers_csv,
                         source_revision: p.source_revision.clone(),
+                        has_secrets: p.has_secrets,
                     },
                 );
             }
@@ -580,6 +603,7 @@ mod tests {
             asset_id: "mcp::source::mcp.json".into(),
             is_new: true,
             overwrite: false,
+            has_secrets: false,
             source_revision: "branch:main".into(),
         };
         let update_entry = PendingMcp {
@@ -591,6 +615,7 @@ mod tests {
             asset_id: "mcp::source::other.json".into(),
             is_new: false,
             overwrite: false,
+            has_secrets: false,
             source_revision: "branch:main".into(),
         };
 
@@ -618,6 +643,7 @@ mod tests {
             asset_id: "mcp::source::mcp.json".into(),
             is_new: false,
             overwrite: false,
+            has_secrets: false,
             source_revision: "branch:main".into(),
         }];
 
@@ -687,6 +713,7 @@ mod tests {
                 source: "https://github.com/org/pack".into(),
                 destination: "server-a".into(),
                 source_revision: "branch:main".into(),
+                has_secrets: false,
             },
         );
         assert!(

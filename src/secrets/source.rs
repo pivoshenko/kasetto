@@ -173,7 +173,11 @@ pub(super) struct KeePassSource {
 }
 
 impl KeePassSource {
-    pub(super) fn new(database: String, key_file: Option<String>, password: Option<Secret>) -> Self {
+    pub(super) fn new(
+        database: String,
+        key_file: Option<String>,
+        password: Option<Secret>,
+    ) -> Self {
         Self {
             database,
             key_file,
@@ -201,7 +205,11 @@ impl SecretSource for KeePassSource {
             attr,
         );
         let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let value = run_cli_stdin("keepassxc-cli", &arg_refs, self.password.as_ref().map(Secret::expose))?;
+        let value = run_cli_stdin(
+            "keepassxc-cli",
+            &arg_refs,
+            self.password.as_ref().map(Secret::expose),
+        )?;
         Ok(Some(Secret::new(value)))
     }
 }
@@ -298,6 +306,9 @@ fn run_cli_stdin(bin: &str, args: &[&str], stdin: Option<&str>) -> Result<String
                 .map_err(|e| err(format!("failed to pass input to `{bin}`: {e}")))?;
         }
     }
+    // Safe to write all input before reading output because secret-manager
+    // responses are tiny. Don't reuse this for a CLI that streams large output
+    // before draining stdin — that could deadlock on a full pipe buffer.
     let output = child
         .wait_with_output()
         .map_err(|e| err(format!("`{bin}` did not complete: {e}")))?;
@@ -354,7 +365,10 @@ mod tests {
     fn credentials_tagged_crd_slash_path() {
         let yaml: Yaml = serde_yaml::from_str("vercel:\n  token: tok_crd\n").unwrap();
         let src = CredentialsFileSource::from_yaml(yaml);
-        let got = src.get(&tagged_ref("crd", "vercel/token")).unwrap().unwrap();
+        let got = src
+            .get(&tagged_ref("crd", "vercel/token"))
+            .unwrap()
+            .unwrap();
         assert_eq!(got.expose(), "tok_crd");
     }
 
@@ -368,7 +382,9 @@ mod tests {
     #[test]
     fn env_tag_reads_verbatim_and_chain_falls_back_to_uppercase() {
         std::env::set_var("PLAIN_ENV_SECRET", "from_env_tag");
-        let got = EnvSource.get(&tagged_ref("env", "PLAIN_ENV_SECRET")).unwrap();
+        let got = EnvSource
+            .get(&tagged_ref("env", "PLAIN_ENV_SECRET"))
+            .unwrap();
         assert_eq!(got.unwrap().expose(), "from_env_tag");
         std::env::remove_var("PLAIN_ENV_SECRET");
 
@@ -425,9 +441,15 @@ mod tests {
 
     #[test]
     fn keepass_entry_attr_defaults_to_password() {
-        assert_eq!(keepass_entry_attr("GitHub/PAT#Token"), ("GitHub/PAT", "Token"));
+        assert_eq!(
+            keepass_entry_attr("GitHub/PAT#Token"),
+            ("GitHub/PAT", "Token")
+        );
         assert_eq!(keepass_entry_attr("GitHub/PAT"), ("GitHub/PAT", "Password"));
-        assert_eq!(keepass_entry_attr("GitHub/PAT#"), ("GitHub/PAT", "Password"));
+        assert_eq!(
+            keepass_entry_attr("GitHub/PAT#"),
+            ("GitHub/PAT", "Password")
+        );
     }
 
     #[test]

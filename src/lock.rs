@@ -25,6 +25,15 @@ pub(crate) struct AssetEntry {
     /// when this is empty.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub source_revision: String,
+    /// `true` for MCP packs that carry `${kst…}` secret placeholders. Lets the
+    /// no-fetch skip path hint that a rotated secret needs `--update` to
+    /// re-resolve. Omitted when false so non-secret locks stay byte-identical.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub has_secrets: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 /// Portable, commit-friendly manifest (`kasetto.lock`) of installed skills and assets.
@@ -222,6 +231,7 @@ mod tests {
                 source: "src".into(),
                 destination: "srv1,srv2".into(),
                 source_revision: "rev1".into(),
+                has_secrets: false,
             },
         );
 
@@ -338,6 +348,7 @@ assets: {}\n";
             source: "s".into(),
             destination: destination.into(),
             source_revision: "rev".into(),
+            has_secrets: false,
         }
     }
 
