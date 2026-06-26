@@ -163,6 +163,86 @@ impl SecretSource for VaultSource {
     }
 }
 
+/// KeePass, via the `keepassxc-cli` CLI. Tagged form `${kst:kp:<entry>#<attr>}`
+/// (`<attr>` defaults to `Password`) → `keepassxc-cli show -s -a <attr> …`,
+/// unlocked with a key-file and/or a master password piped on stdin.
+pub(super) struct KeePassSource {
+    database: String,
+    key_file: Option<String>,
+    password: Option<Secret>,
+}
+
+impl KeePassSource {
+    pub(super) fn new(database: String, key_file: Option<String>, password: Option<Secret>) -> Self {
+        Self {
+            database,
+            key_file,
+            password,
+        }
+    }
+}
+
+impl SecretSource for KeePassSource {
+    fn name(&self) -> &'static str {
+        "keepass"
+    }
+
+    fn handles(&self, r: &SecretRef) -> bool {
+        matches!(r.tag.as_deref(), Some("kp") | Some("keepass"))
+    }
+
+    fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
+        let (entry, attr) = keepass_entry_attr(&r.payload);
+        let args = keepass_args(
+            &self.database,
+            self.key_file.as_deref(),
+            self.password.is_some(),
+            entry,
+            attr,
+        );
+        let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        let value = run_cli_stdin("keepassxc-cli", &arg_refs, self.password.as_ref().map(Secret::expose))?;
+        Ok(Some(Secret::new(value)))
+    }
+}
+
+/// Split a KeePass payload `"<entry>#<attr>"` into entry path and attribute,
+/// defaulting the attribute to `Password` when omitted.
+fn keepass_entry_attr(payload: &str) -> (&str, &str) {
+    match payload.split_once('#') {
+        Some((entry, attr)) if !attr.is_empty() => (entry, attr),
+        _ => (payload.trim_end_matches('#'), "Password"),
+    }
+}
+
+/// Build the `keepassxc-cli show` argument list. With no password to pipe the
+/// DB is assumed key-file-only, so `--no-password` is added to skip the prompt.
+fn keepass_args(
+    db: &str,
+    key_file: Option<&str>,
+    has_password: bool,
+    entry: &str,
+    attr: &str,
+) -> Vec<String> {
+    let mut args = vec![
+        "show".into(),
+        "--quiet".into(),
+        "-s".into(),
+        "-a".into(),
+        attr.into(),
+    ];
+    if let Some(kf) = key_file {
+        args.push("--key-file".into());
+        args.push(kf.into());
+    }
+    if !has_password {
+        args.push("--no-password".into());
+    }
+    args.push(db.into());
+    args.push(entry.into());
+    args
+}
+
 /// Build the canonical `op://vault/item/field` URI from a tagged payload, which
 /// may already carry the `//` (from `${kst:op://…}`) or omit it (`${kst:op:…}`).
 fn op_uri(payload: &str) -> String {
@@ -186,11 +266,41 @@ fn vault_path_field(payload: &str) -> Result<(&str, &str)> {
 /// is captured, never echoed; failures surface the CLI's stderr (a diagnostic,
 /// not the value) so a missing binary or auth error is actionable.
 fn run_cli(bin: &str, args: &[&str]) -> Result<String> {
-    let output = Command::new(bin).args(args).output().map_err(|e| {
+    run_cli_stdin(bin, args, None)
+}
+
+/// Like [`run_cli`] but optionally pipes `stdin` to the process (used to feed a
+/// KeePass master password without exposing it on the command line). The piped
+/// value is never echoed; only the CLI's stderr surfaces on failure.
+fn run_cli_stdin(bin: &str, args: &[&str], stdin: Option<&str>) -> Result<String> {
+    use std::process::Stdio;
+
+    let mut cmd = Command::new(bin);
+    cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+    // Pipe when we have input to feed; otherwise close stdin so a CLI that would
+    // prompt interactively fails fast instead of hanging the sync on a tty read.
+    cmd.stdin(if stdin.is_some() {
+        Stdio::piped()
+    } else {
+        Stdio::null()
+    });
+    let mut child = cmd.spawn().map_err(|e| {
         err(format!(
             "failed to run `{bin}` (is it installed and on PATH?): {e}"
         ))
     })?;
+    if let Some(data) = stdin {
+        use std::io::Write;
+        // Taking and dropping the handle closes the pipe (EOF) after the write.
+        if let Some(mut pipe) = child.stdin.take() {
+            pipe.write_all(data.as_bytes())
+                .and_then(|()| pipe.write_all(b"\n"))
+                .map_err(|e| err(format!("failed to pass input to `{bin}`: {e}")))?;
+        }
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|e| err(format!("`{bin}` did not complete: {e}")))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(err(format!("`{bin}` failed: {}", stderr.trim())));
@@ -296,7 +406,9 @@ mod tests {
         let crd_tag = tagged_ref("crd", "a/b");
         let op = tagged_ref("op", "Private/GitHub/token");
         let vault = tagged_ref("vault", "secret/app#token");
+        let kp = tagged_ref("kp", "GitHub/PAT#Password");
         let crd_src = CredentialsFileSource::from_yaml(serde_yaml::from_str("{}").unwrap());
+        let kp_src = KeePassSource::new("db.kdbx".into(), None, None);
 
         // Env claims the chain and the explicit `env:` tag, nothing else.
         assert!(EnvSource.handles(&chain) && EnvSource.handles(&env_tag));
@@ -307,5 +419,26 @@ mod tests {
         // External managers claim only their own tag.
         assert!(OnePasswordSource.handles(&op) && !OnePasswordSource.handles(&chain));
         assert!(VaultSource.handles(&vault) && !VaultSource.handles(&op));
+        assert!(kp_src.handles(&kp) && kp_src.handles(&tagged_ref("keepass", "x#y")));
+        assert!(!kp_src.handles(&chain) && !kp_src.handles(&vault));
+    }
+
+    #[test]
+    fn keepass_entry_attr_defaults_to_password() {
+        assert_eq!(keepass_entry_attr("GitHub/PAT#Token"), ("GitHub/PAT", "Token"));
+        assert_eq!(keepass_entry_attr("GitHub/PAT"), ("GitHub/PAT", "Password"));
+        assert_eq!(keepass_entry_attr("GitHub/PAT#"), ("GitHub/PAT", "Password"));
+    }
+
+    #[test]
+    fn keepass_args_add_no_password_only_without_a_password() {
+        // Key-file only → `--key-file` and `--no-password` (skip the prompt).
+        let kf = keepass_args("db.kdbx", Some("k.keyx"), false, "GitHub/PAT", "Password");
+        assert!(kf.windows(2).any(|w| w == ["--key-file", "k.keyx"]));
+        assert!(kf.iter().any(|a| a == "--no-password"));
+        // Password piped → no `--no-password`.
+        let pw = keepass_args("db.kdbx", None, true, "GitHub/PAT", "Password");
+        assert!(!pw.iter().any(|a| a == "--no-password"));
+        assert_eq!(pw.last().unwrap(), "GitHub/PAT");
     }
 }

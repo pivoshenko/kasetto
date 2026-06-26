@@ -16,7 +16,9 @@ use crate::fsops::dirs_kasetto_config;
 use crate::model::{OnMissing, SecretsConfig};
 use crate::ui::eprint_warn;
 
-use source::{CredentialsFileSource, EnvSource, OnePasswordSource, SecretSource, VaultSource};
+use source::{
+    CredentialsFileSource, EnvSource, KeePassSource, OnePasswordSource, SecretSource, VaultSource,
+};
 pub(crate) use template::has_placeholder;
 use template::{substitute, SecretRef};
 
@@ -85,11 +87,27 @@ impl SecretContext {
             }
         }
 
-        // External managers: only invoked when a `${kst:op:…}` / `${kst:vault:…}`
-        // tagged ref appears (their `handles` gates on the tag), so adding them
+        // External managers: only invoked when a matching `${kst:<tag>:…}` ref
+        // appears (their `handles` gates on the tag), so adding op/vault
         // unconditionally costs nothing for env/credentials-only configs.
         sources.push(Box::new(OnePasswordSource));
         sources.push(Box::new(VaultSource));
+
+        // KeePass needs a configured database, so it is added only when the
+        // `secrets.keepass` block is present. The master password (if any) is
+        // read from the environment, never from the committed config.
+        if let Some(kp) = cfg.and_then(|c| c.keepass.as_ref()) {
+            let database = crate::fsops::resolve_path(cfg_dir, &kp.database)
+                .to_string_lossy()
+                .into_owned();
+            let key_file = kp.key_file.as_ref().map(|k| {
+                crate::fsops::resolve_path(cfg_dir, k)
+                    .to_string_lossy()
+                    .into_owned()
+            });
+            let password = std::env::var("KST_KEEPASS_PASSWORD").ok().map(Secret::new);
+            sources.push(Box::new(KeePassSource::new(database, key_file, password)));
+        }
 
         let on_missing = if allow_missing {
             OnMissing::Warn
@@ -164,7 +182,7 @@ impl SecretContext {
             if let Some(tag) = &r.tag {
                 return Err(err(format!(
                     "secret source `{tag}` is not supported (use `env`, `crd`, `op`, \
-                     or `vault`, or `${{kst_name}}` for the env -> credentials.yaml chain)"
+                     `vault`, or `kp`, or `${{kst_name}}` for the env -> credentials.yaml chain)"
                 )));
             }
         }

@@ -43,6 +43,21 @@ pub(crate) struct SecretsConfig {
     /// after the default `$XDG_CONFIG_HOME/kasetto/credentials.yaml`.
     #[serde(default)]
     pub files: Vec<String>,
+    /// KeePass database location for `${kst:kp:…}` refs. Carries no password.
+    #[serde(default)]
+    pub keepass: Option<KeePassConfig>,
+}
+
+/// `secrets.keepass:` block — locates the KeePass database for `${kst:kp:…}`
+/// refs. The master password (if any) comes from `$KST_KEEPASS_PASSWORD` at
+/// runtime, never from this committed file.
+#[derive(Debug, Deserialize, Default)]
+pub(crate) struct KeePassConfig {
+    /// Path to the `.kdbx` database (tilde + config-relative paths allowed).
+    pub database: String,
+    /// Optional key-file used to unlock the database.
+    #[serde(default)]
+    pub key_file: Option<String>,
 }
 
 /// Behavior when a referenced secret can't be resolved.
