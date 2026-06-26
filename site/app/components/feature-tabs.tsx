@@ -5,7 +5,7 @@ const FEATURES = [
   },
   {
     title: "ENTERPRISE & PRIVATE REPOSITORIES",
-    desc: "Pull from anywhere — GitHub, GitLab, Bitbucket, self-hosted, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift. Ship MCP packs with `kst_*` secret placeholders — injected at sync time from env or a credentials file, never committed and never written to the lock.",
+    desc: "Pull from anywhere — GitHub, GitLab, Bitbucket, self-hosted, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift. Ship MCP packs with `kst_*` secret placeholders — injected at sync time from env, a credentials file, or a manager like 1Password, Vault, AWS, GCP, Azure, KeePass, pass, or the macOS Keychain; never committed and never written to the lock.",
   },
   {
     title: "MULTI-AGENT",

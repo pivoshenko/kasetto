@@ -3,6 +3,7 @@ import { GoStar } from "react-icons/go";
 import { AgentsGrid } from "./components/agents-grid";
 import { CopyButton } from "./components/copy-button";
 import { ConfigExample, FeatureList } from "./components/feature-tabs";
+import { SecretSources } from "./components/secret-sources";
 import { HeroTerminal } from "./components/hero-terminal";
 import { ScrollCue } from "./components/scroll-cue";
 
@@ -164,6 +165,10 @@ export default async function Page() {
 
       <Track num="A3" title="EXAMPLE">
         <ConfigExample />
+      </Track>
+
+      <Track num="A4" title="SECRET SOURCES">
+        <SecretSources />
       </Track>
 
       {/* ─────── SIDE B ─────── */}
