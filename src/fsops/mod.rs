@@ -279,6 +279,21 @@ pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
 /// first) is what lets teardown clean every agent dir and lets `doctor` verify
 /// each copy. Both the `sync` and `lock` write paths go through here so they
 /// cannot drift apart (issue #42).
+///
+/// Known limitation — commas in a path corrupt the round-trip. The value is
+/// split on a bare `,` at every read site (no escaping), matching the existing
+/// command/MCP `destination` convention. A literal `,` can enter the stored
+/// string two ways: a skill directory named with a comma, or `relativize_dest`
+/// storing an absolute path (global scope / a custom `destination` outside the
+/// scope root) whose ancestor contains a comma (e.g. a home dir `/Users/a,b/`).
+/// When that happens a stored entry splits into the wrong fragments: in
+/// stale-removal a fragment can resolve to an unrelated `root/<fragment>` and be
+/// removed, while the real dir is skipped. Severity is low — triggering needs a
+/// comma in a path component, which is exotic — and it is pre-existing to the
+/// CSV convention, not introduced here. The escaping-free fix would be to store
+/// destinations as a real list (`Vec<String>`), a lock-schema change
+/// deliberately not taken so skill entries stay consistent with command/MCP
+/// entries.
 pub(crate) fn join_dest_csv(destinations: &[PathBuf], skill_name: &str, root: &Path) -> String {
     destinations
         .iter()
