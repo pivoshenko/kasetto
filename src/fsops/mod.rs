@@ -273,6 +273,20 @@ pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
     }
 }
 
+/// The lock's `destination` value for a skill installed across multiple agents:
+/// a comma-joined list of `skill_name`'s install dir under every destination,
+/// each relativized to `root`. Recording *all* destinations (not just the
+/// first) is what lets teardown clean every agent dir and lets `doctor` verify
+/// each copy. Both the `sync` and `lock` write paths go through here so they
+/// cannot drift apart (issue #42).
+pub(crate) fn join_dest_csv(destinations: &[PathBuf], skill_name: &str, root: &Path) -> String {
+    destinations
+        .iter()
+        .map(|d| relativize_dest(&d.join(skill_name), root))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// Inverse of [`relativize_dest`]: resolve a stored `destination` back to an
 /// absolute path. Already-absolute values (legacy locks, out-of-root paths)
 /// are returned unchanged.
@@ -318,6 +332,31 @@ mod tests {
     };
     use std::fs;
     use std::path::Path;
+
+    #[test]
+    fn join_dest_csv_records_every_destination_relative_to_root() {
+        let root = Path::new("/proj");
+        let dests = vec![
+            PathBuf::from("/proj/.claude/skills"),
+            PathBuf::from("/proj/.codex/skills"),
+        ];
+        let csv = join_dest_csv(&dests, "alpha", root);
+        assert_eq!(csv, ".claude/skills/alpha,.codex/skills/alpha");
+        // Each element round-trips back to the absolute install dir.
+        let abs: Vec<PathBuf> = csv.split(',').map(|p| resolve_dest(p, root)).collect();
+        assert_eq!(abs[0], dests[0].join("alpha"));
+        assert_eq!(abs[1], dests[1].join("alpha"));
+    }
+
+    #[test]
+    fn join_dest_csv_keeps_out_of_root_dest_absolute() {
+        let root = Path::new("/proj");
+        let dests = vec![PathBuf::from("/home/user/.claude/skills")];
+        // Outside the scope root → stored verbatim (absolute), still resolvable.
+        let csv = join_dest_csv(&dests, "alpha", root);
+        assert_eq!(csv, "/home/user/.claude/skills/alpha");
+        assert_eq!(resolve_dest(&csv, root), dests[0].join("alpha"));
+    }
 
     #[test]
     fn resolve_path_expands_only_leading_tilde() {

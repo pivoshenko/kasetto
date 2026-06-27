@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{err, Result};
 use crate::fsops::{
-    copy_dir, hash_dir, now_unix, now_unix_str, relativize_dest, select_targets, BrokenSkill,
+    copy_dir, hash_dir, now_unix, now_unix_str, select_targets, BrokenSkill,
 };
 use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State};
 use crate::profile::read_skill_profile_from_dir;
@@ -23,16 +23,12 @@ fn skill_key(source: &str, skill: &str) -> String {
     format!("{source}::{skill}")
 }
 
-/// The lock's `destination` value for a skill: a CSV of *every* agent dir the
-/// skill is written to, relative to the scope root. Recording all destinations
-/// (not just the first) is what lets teardown clean every agent dir and lets
-/// `doctor` verify each copy on disk.
+/// The lock's `destination` value for a skill: a comma-joined list of *every*
+/// agent dir the skill is written to, relative to the scope root. Delegates to
+/// the shared [`crate::fsops::join_dest_csv`] so this and the `lock` command's
+/// write path stay in lockstep.
 fn dest_csv(ctx: &SyncContext, skill_name: &str) -> String {
-    ctx.destinations
-        .iter()
-        .map(|d| relativize_dest(&d.join(skill_name), &ctx.scope_root))
-        .collect::<Vec<_>>()
-        .join(",")
+    crate::fsops::join_dest_csv(ctx.destinations, skill_name, &ctx.scope_root)
 }
 
 /// Per-run memo of destination-directory hashes. `needs_fetch` and the
