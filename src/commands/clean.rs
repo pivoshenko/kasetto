@@ -119,7 +119,9 @@ fn apply_removals(
 ) -> Result<()> {
     let root = scope_root(scope, project_root)?;
     for entry in state.skills.values() {
-        let _ = fs::remove_dir_all(resolve_dest(&entry.destination, &root));
+        for p in entry.destination.split(',').filter(|s| !s.is_empty()) {
+            let _ = fs::remove_dir_all(resolve_dest(p, &root));
+        }
     }
 
     for (_id, dest_csv) in command_assets {

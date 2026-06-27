@@ -18,6 +18,8 @@ struct DoctorOutput {
     lock_file: String,
     scope: String,
     skills: Vec<String>,
+    /// Locked skills whose recorded destination is absent on disk.
+    missing_skills: Vec<String>,
     installation_path: String,
     last_sync: Option<String>,
     failures: Vec<SyncFailure>,
@@ -68,13 +70,32 @@ pub(crate) fn run(
     let mut install_paths: Vec<String> = state
         .skills
         .values()
-        .map(|entry| {
-            let p = resolve_dest(&entry.destination, &root);
+        .flat_map(|entry| entry.destination.split(',').filter(|s| !s.is_empty()))
+        .map(|d| {
+            let p = resolve_dest(d, &root);
             p.parent().unwrap_or(&p).to_string_lossy().to_string()
         })
         .collect();
     install_paths.sort();
     install_paths.dedup();
+
+    // Verify each locked skill destination actually exists on disk. The lock is
+    // authoritative for `sync`, so a destination that was never written (or was
+    // deleted out-of-band) is invisible unless `doctor` stats the filesystem.
+    let mut missing_skills: Vec<String> = state
+        .skills
+        .values()
+        .filter(|entry| {
+            entry
+                .destination
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .any(|d| !resolve_dest(d, &root).exists())
+        })
+        .map(|entry| entry.skill.clone())
+        .collect();
+    missing_skills.sort();
+    missing_skills.dedup();
     let installation_path = if install_paths.is_empty() {
         "none".to_string()
     } else if install_paths.len() == 1 {
@@ -106,6 +127,7 @@ pub(crate) fn run(
         lock_file: lock_file_path.to_string_lossy().to_string(),
         scope: scope_label,
         skills,
+        missing_skills,
         installation_path,
         last_sync,
         failures,
@@ -123,7 +145,8 @@ pub(crate) fn run(
     let color = list_color_enabled() && !plain;
     let update_check_text = format_update_check(&output.update_check);
 
-    print_doctor_head(&output.version, output.failures.is_empty(), !color);
+    let healthy = output.failures.is_empty() && output.missing_skills.is_empty();
+    print_doctor_head(&output.version, healthy, !color);
 
     print_group_header("Environment", color);
     let last_sync_short = match &output.last_sync {
@@ -171,6 +194,16 @@ pub(crate) fn run(
         },
         !color,
     );
+    let missing_label = if output.missing_skills.is_empty() {
+        "All locked skills present on disk".to_string()
+    } else {
+        format!(
+            "{} locked skill(s) missing on disk: {}",
+            output.missing_skills.len(),
+            output.missing_skills.join(", ")
+        )
+    };
+    print_check(output.missing_skills.is_empty(), &missing_label, !color);
     let dirs_writable = output.command_dirs.iter().filter(|d| d.writable).count();
     let dirs_total = output.command_dirs.len();
     let dirs_label = format!("{dirs_writable} of {dirs_total} command directories writable");

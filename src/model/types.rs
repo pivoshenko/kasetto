@@ -10,8 +10,10 @@ pub(crate) const LOCK_VERSION: u8 = 3;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub(crate) struct SkillEntry {
-    /// Install path relative to the scope root (portable across machines);
-    /// legacy locks may store an absolute path here, which is still honored.
+    /// Install path(s) relative to the scope root (portable across machines),
+    /// comma-joined when more than one agent is configured so every agent dir
+    /// the skill was written to is tracked. Legacy locks may store a single
+    /// absolute path here, which is still honored.
     pub destination: String,
     pub hash: String,
     pub skill: String,

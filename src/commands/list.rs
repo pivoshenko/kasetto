@@ -263,7 +263,14 @@ fn installed_skills_from_lock(
     let root = scope_root(lock_scope, project_root).unwrap_or_else(|_| project_root.to_path_buf());
     let mut skills = Vec::new();
     for (id, entry) in &state.skills {
-        let abs_dest = resolve_dest(&entry.destination, &root);
+        // `destination` may list several agent dirs (one per configured agent);
+        // the first is enough to read the skill profile for display.
+        let first_dest = entry
+            .destination
+            .split(',')
+            .find(|s| !s.is_empty())
+            .unwrap_or(&entry.destination);
+        let abs_dest = resolve_dest(first_dest, &root);
         let abs_dest_str = abs_dest.to_string_lossy().to_string();
         let (name, fallback_description) = read_skill_profile(&abs_dest_str, &entry.skill);
         let description = if entry.description.trim().is_empty() {

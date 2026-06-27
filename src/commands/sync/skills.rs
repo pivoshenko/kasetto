@@ -23,6 +23,18 @@ fn skill_key(source: &str, skill: &str) -> String {
     format!("{source}::{skill}")
 }
 
+/// The lock's `destination` value for a skill: a CSV of *every* agent dir the
+/// skill is written to, relative to the scope root. Recording all destinations
+/// (not just the first) is what lets teardown clean every agent dir and lets
+/// `doctor` verify each copy on disk.
+fn dest_csv(ctx: &SyncContext, skill_name: &str) -> String {
+    ctx.destinations
+        .iter()
+        .map(|d| relativize_dest(&d.join(skill_name), &ctx.scope_root))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// Per-run memo of destination-directory hashes. `needs_fetch` and the
 /// process step would otherwise re-walk and re-SHA256 the same skill dir up to
 /// three times per sync; with the memo each dir is hashed once. Entries are
@@ -349,13 +361,11 @@ fn process_single_skill(
     desired_keys: &mut HashSet<String>,
     job: &SkillJob<'_>,
 ) -> Result<()> {
-    let destination = &ctx.destinations[0];
     let (_, profile_description) = read_skill_profile_from_dir(job.path, job.name);
     with_spinner_transient(ctx.animate, ctx.plain, job.label, || {
         let key = skill_key(job.source, job.name);
         desired_keys.insert(key.clone());
         let has_prior = sm.state.skills.contains_key(&key);
-        let dest = destination.join(job.name);
 
         // Hash the source tree up front so the unchanged case short-circuits
         // without writing.
@@ -423,7 +433,7 @@ fn process_single_skill(
         sm.state.skills.insert(
             key,
             SkillEntry {
-                destination: relativize_dest(&dest, &ctx.scope_root),
+                destination: dest_csv(ctx, job.name),
                 hash,
                 skill: job.name.to_string(),
                 description: profile_description.clone(),
@@ -607,6 +617,19 @@ fn needs_fetch(
 /// the closure handles the skill-specific teardown (rm dir, drop state entry,
 /// drop runtime timestamp).
 fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &HashSet<String>) {
+    // On-disk dirs a *kept* skill still occupies. A stale entry must never
+    // delete one of these: two source keys can resolve to the same physical
+    // path (retargeting a source from a URL to a local dir keeps the skill
+    // names), so a freshly-installed copy can live where an old entry once did.
+    // Without this guard, removing the old entry would destroy the new install.
+    let occupied: HashSet<PathBuf> = sm
+        .state
+        .skills
+        .iter()
+        .filter(|(k, _)| desired_keys.contains(*k))
+        .flat_map(|(_, e)| ctx.destinations.iter().map(move |d| d.join(&e.skill)))
+        .collect();
+
     // Snapshot what we need from `state` so the teardown closure doesn't
     // alias the borrow `remove_stale` needs on `summary` / `actions`.
     let snapshot: Vec<(String, String, String, String)> = sm
@@ -622,7 +645,7 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
             )
         })
         .collect();
-    let dest_by_id: std::collections::HashMap<String, String> = snapshot
+    let dest_by_id: HashMap<String, String> = snapshot
         .iter()
         .map(|(k, _, _, d)| (k.clone(), d.clone()))
         .collect();
@@ -649,9 +672,15 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
         desired_keys,
         candidates,
         |id| {
-            if let Some(dest) = dest_by_id.get(id) {
-                let abs = crate::fsops::resolve_dest(dest, &scope_root);
-                let _ = fs::remove_dir_all(&abs);
+            if let Some(dest_csv) = dest_by_id.get(id) {
+                for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
+                    let abs = crate::fsops::resolve_dest(p, &scope_root);
+                    // Don't delete a dir a kept skill still lives in (see `occupied`).
+                    if occupied.contains(&abs) {
+                        continue;
+                    }
+                    let _ = fs::remove_dir_all(&abs);
+                }
             }
             state.skills.remove(id);
             runtime.forget(id);
@@ -715,6 +744,60 @@ mod tests {
             update,
             update_only,
             locked,
+            secrets: crate::secrets::SecretContext::empty(),
+        };
+        let mut runtime = RuntimeState::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        let mut sm = SyncMut {
+            state,
+            runtime: &mut runtime,
+            summary: &mut summary,
+            actions: &mut actions,
+        };
+        sync_skills(&ctx, &mut sm).unwrap();
+        summary
+    }
+
+    /// Like `run_sync` but with an explicit source path, so a test can retarget
+    /// a config entry from one source to another while reusing dests + state.
+    fn run_sync_src(
+        src_root: &Path,
+        dests: &[PathBuf],
+        scope_root: &Path,
+        skills: SkillsField,
+        state: &mut State,
+    ) -> Summary {
+        let cfg = Config {
+            destination: None,
+            scope: Some(Scope::Project),
+            agent: None,
+            skills: vec![SourceSpec {
+                source: src_root.to_string_lossy().to_string(),
+                branch: None,
+                git_ref: None,
+                sub_dir: None,
+                skills,
+            }],
+            mcps: Vec::new(),
+            commands: Vec::new(),
+            instructions: Vec::new(),
+            secrets: None,
+        };
+        let ctx = SyncContext {
+            cfg: &cfg,
+            cfg_dir: scope_root,
+            destinations: dests,
+            scope_root: scope_root.to_path_buf(),
+            scope: Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            as_json: false,
+            quiet: true,
+            update: false,
+            update_only: vec![],
+            locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
         let mut runtime = RuntimeState::default();
@@ -887,6 +970,97 @@ mod tests {
         assert_eq!(s.unchanged, 1);
         assert_eq!(s.failed, 0);
         cleanup(&h);
+    }
+
+    /// Issue #42: with two agents configured, retargeting a source (URL → local
+    /// dir) keeps the skill name, so the new install lands at the same on-disk
+    /// path the now-stale old entry recorded. The stale-removal pass must not
+    /// delete those just-written copies, and the lock must record *every* agent
+    /// dir — not just the first.
+    #[test]
+    fn retarget_source_keeps_both_agent_copies() {
+        let src_a = temp_dir("kasetto-rt-a");
+        write_skill(&src_a, "alpha", "# alpha\n\nbody\n");
+        let src_b = temp_dir("kasetto-rt-b");
+        write_skill(&src_b, "alpha", "# alpha\n\nbody\n");
+
+        let scope_root = temp_dir("kasetto-rt-scope");
+        let claude = scope_root.join(".claude/skills");
+        let codex = scope_root.join(".codex/skills");
+        fs::create_dir_all(&claude).unwrap();
+        fs::create_dir_all(&codex).unwrap();
+        let dests = vec![claude.clone(), codex.clone()];
+
+        let mut state = State::default();
+
+        // First sync from source A: alpha installed into BOTH agent dirs, and the
+        // lock records both destinations.
+        let s1 = run_sync_src(&src_a, &dests, &scope_root, list(&["alpha"]), &mut state);
+        assert_eq!(s1.installed, 1);
+        assert!(claude.join("alpha/SKILL.md").exists());
+        assert!(codex.join("alpha/SKILL.md").exists());
+        let key_a = skill_key(&src_a.to_string_lossy(), "alpha");
+        let dest_a = &state.skills[&key_a].destination;
+        assert!(dest_a.contains(".claude/skills/alpha"), "dest = {dest_a}");
+        assert!(dest_a.contains(".codex/skills/alpha"), "dest = {dest_a}");
+
+        // Retarget the same skill name to source B. The old `src_a::alpha` entry
+        // goes stale; without the collision guard its teardown would delete the
+        // fresh `src_b::alpha` copies that share the same paths.
+        let s2 = run_sync_src(&src_b, &dests, &scope_root, list(&["alpha"]), &mut state);
+        assert_eq!(s2.installed, 1, "new source install");
+        assert_eq!(s2.removed, 1, "old source entry pruned");
+        assert_eq!(s2.failed, 0);
+
+        // The data-loss bug: both copies must survive the retarget.
+        assert!(
+            claude.join("alpha/SKILL.md").exists(),
+            ".claude copy must survive retarget"
+        );
+        assert!(
+            codex.join("alpha/SKILL.md").exists(),
+            ".codex copy must survive retarget"
+        );
+
+        // Lock now keyed by source B, recording both destinations; source A gone.
+        let key_b = skill_key(&src_b.to_string_lossy(), "alpha");
+        assert!(state.skills.contains_key(&key_b));
+        assert!(!state.skills.contains_key(&key_a));
+        let dest_b = &state.skills[&key_b].destination;
+        assert!(dest_b.contains(".claude/skills/alpha"));
+        assert!(dest_b.contains(".codex/skills/alpha"));
+
+        let _ = fs::remove_dir_all(&src_a);
+        let _ = fs::remove_dir_all(&src_b);
+        let _ = fs::remove_dir_all(&scope_root);
+    }
+
+    /// Genuine source removal (no replacement) must tear down *all* agent dirs,
+    /// not just the first the lock used to record.
+    #[test]
+    fn removed_source_cleans_all_agent_dirs() {
+        let src = temp_dir("kasetto-rm-src");
+        write_skill(&src, "alpha", "# alpha\n\nbody\n");
+        let scope_root = temp_dir("kasetto-rm-scope");
+        let claude = scope_root.join(".claude/skills");
+        let codex = scope_root.join(".codex/skills");
+        fs::create_dir_all(&claude).unwrap();
+        fs::create_dir_all(&codex).unwrap();
+        let dests = vec![claude.clone(), codex.clone()];
+
+        let mut state = State::default();
+        run_sync_src(&src, &dests, &scope_root, list(&["alpha"]), &mut state);
+        assert!(claude.join("alpha/SKILL.md").exists());
+        assert!(codex.join("alpha/SKILL.md").exists());
+
+        // Drop the skill from the config entirely → both agent dirs cleaned.
+        let s = run_sync_src(&src, &dests, &scope_root, list(&[]), &mut state);
+        assert_eq!(s.removed, 1);
+        assert!(!claude.join("alpha").exists(), ".claude dir cleaned");
+        assert!(!codex.join("alpha").exists(), ".codex dir cleaned");
+
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&scope_root);
     }
 
     /// Two independent sources are materialized in parallel (Phase 2) but
