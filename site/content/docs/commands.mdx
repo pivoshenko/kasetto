@@ -212,6 +212,14 @@ With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
 
+It also reports **untracked entries** — assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCP servers in an agent's settings file. This is purely advisory and **read-only** — Kasetto never deletes files it does not own, and the check never changes the exit code.
+
+<Callout type="info">
+
+Because Kasetto writes no ownership marker into MCP settings files (and deliberately preserves servers you add yourself), the MCP portion is an **inventory of every server the lock does not track** — it will also list servers you added by hand. Treat it as an FYI, not an orphan report. Command and per-directory instruction dirs are likewise shared with your own files, so anything you hand-authored there shows up too.
+
+</Callout>
+
 ```bash
 kst doctor [OPTIONS]
 ```

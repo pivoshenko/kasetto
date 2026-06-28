@@ -16,7 +16,7 @@ use crate::frontmatter::parse;
 use crate::fsops::resolve_dest;
 use crate::model::InstructionTarget;
 
-pub(crate) use transform::{dest_present, destination_path};
+pub(crate) use transform::{block_id, dest_present, destination_path, scan_managed_block_ids};
 
 /// Read an instruction source file, parse it, and write the transformed output to
 /// `target`. For dir formats this writes a per-instruction file; for aggregate formats

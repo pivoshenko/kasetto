@@ -45,6 +45,21 @@ pub(super) fn remove_server(server_name: &str, target_path: &Path) -> Result<()>
     write_codex_toml(target_path, &root)
 }
 
+/// Every server name under `[mcp_servers]`. Read-only; empty when the file is
+/// absent or unparseable.
+pub(super) fn list_server_names(target_path: &Path) -> Vec<String> {
+    let Ok(text) = fs::read_to_string(target_path) else {
+        return Vec::new();
+    };
+    let Ok(val) = text.parse::<Toml>() else {
+        return Vec::new();
+    };
+    val.get("mcp_servers")
+        .and_then(|v| v.as_table())
+        .map(|t| t.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
 pub(super) fn servers_present(server_names: &[String], target_path: &Path) -> bool {
     let Ok(text) = fs::read_to_string(target_path) else {
         return false;

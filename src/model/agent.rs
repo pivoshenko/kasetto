@@ -147,6 +147,99 @@ pub(crate) fn command_project_targets(project_root: &Path, agents: &[Agent]) -> 
     dedup_command_targets(agents.iter().map(|a| a.commands_project_path(project_root)))
 }
 
+fn dedup_paths(iter: impl Iterator<Item = PathBuf>) -> Vec<PathBuf> {
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out: Vec<PathBuf> = iter.filter(|p| seen.insert(p.clone())).collect();
+    out.sort();
+    out
+}
+
+fn dedup_instruction_targets(
+    iter: impl Iterator<Item = Option<InstructionTarget>>,
+) -> Vec<InstructionTarget> {
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out: Vec<InstructionTarget> = iter
+        .flatten()
+        .filter(|t| seen.insert(t.path.clone()))
+        .collect();
+    out.sort_by(|x, y| x.path.cmp(&y.path));
+    out
+}
+
+/// Deduped skill install directories for a specific set of agents — `doctor`
+/// scans these for untracked skills.
+pub(crate) fn skill_global_targets(home: &Path, agents: &[Agent]) -> Vec<PathBuf> {
+    dedup_paths(agents.iter().map(|a| a.global_path(home)))
+}
+
+/// Deduped project-level skill install directories for a specific set of agents.
+pub(crate) fn skill_project_targets(project_root: &Path, agents: &[Agent]) -> Vec<PathBuf> {
+    dedup_paths(agents.iter().map(|a| a.project_path(project_root)))
+}
+
+/// Deduped global skill directories for every known agent.
+pub(crate) fn all_skill_global_targets(home: &Path) -> Vec<PathBuf> {
+    dedup_paths(AGENT_PRESETS.iter().map(|a| a.global_path(home)))
+}
+
+/// Deduped project-level skill directories for every known agent.
+pub(crate) fn all_skill_project_targets(project_root: &Path) -> Vec<PathBuf> {
+    dedup_paths(AGENT_PRESETS.iter().map(|a| a.project_path(project_root)))
+}
+
+/// Deduped global instruction targets (aggregate files + per-instruction dirs)
+/// for a specific set of agents.
+pub(crate) fn instruction_global_targets(home: &Path, agents: &[Agent]) -> Vec<InstructionTarget> {
+    dedup_instruction_targets(agents.iter().map(|a| a.instructions_global_path(home)))
+}
+
+/// Deduped project-level instruction targets for a specific set of agents.
+pub(crate) fn instruction_project_targets(
+    project_root: &Path,
+    agents: &[Agent],
+) -> Vec<InstructionTarget> {
+    dedup_instruction_targets(
+        agents
+            .iter()
+            .map(|a| a.instructions_project_path(project_root)),
+    )
+}
+
+/// Deduped global instruction targets for every known agent.
+pub(crate) fn all_instruction_global_targets(home: &Path) -> Vec<InstructionTarget> {
+    dedup_instruction_targets(
+        AGENT_PRESETS
+            .iter()
+            .map(|a| a.instructions_global_path(home)),
+    )
+}
+
+/// Deduped project-level instruction targets for every known agent.
+pub(crate) fn all_instruction_project_targets(project_root: &Path) -> Vec<InstructionTarget> {
+    dedup_instruction_targets(
+        AGENT_PRESETS
+            .iter()
+            .map(|a| a.instructions_project_path(project_root)),
+    )
+}
+
+/// Deduped global MCP settings files for a specific set of agents.
+pub(crate) fn mcp_settings_targets(home: &Path, agents: &[Agent]) -> Vec<McpSettingsTarget> {
+    dedup_targets(
+        agents
+            .iter()
+            .map(|a| a.mcp_settings_target(home, Path::new(""))),
+    )
+}
+
+/// Deduped project-level MCP settings files for a specific set of agents.
+pub(crate) fn mcp_settings_project_targets(
+    project_root: &Path,
+    agents: &[Agent],
+) -> Vec<McpSettingsTarget> {
+    dedup_targets(agents.iter().map(|a| a.mcp_project_target(project_root)))
+}
+
 #[inline]
 fn cmd(base: &Path, rel: &str, format: CommandFormat) -> Option<CommandTarget> {
     Some(CommandTarget {
@@ -643,6 +736,31 @@ mod tests {
     fn all_command_global_targets_dedupes_and_sorts() {
         let home = Path::new("/tmp/home");
         let all = all_command_global_targets(home);
+        assert!(!all.is_empty());
+        for w in all.windows(2) {
+            assert!(w[0].path <= w[1].path);
+        }
+    }
+
+    #[test]
+    fn all_skill_project_targets_dedupes_and_sorts() {
+        let pr = Path::new("/work");
+        let all = all_skill_project_targets(pr);
+        assert!(!all.is_empty());
+        // Amp/Cline/Warp/Replit all map to .agents/skills — must collapse to one.
+        assert_eq!(
+            all.iter().filter(|p| p.ends_with(".agents/skills")).count(),
+            1
+        );
+        for w in all.windows(2) {
+            assert!(w[0] <= w[1]);
+        }
+    }
+
+    #[test]
+    fn all_instruction_global_targets_dedupes_and_sorts() {
+        let home = Path::new("/tmp/home");
+        let all = all_instruction_global_targets(home);
         assert!(!all.is_empty());
         for w in all.windows(2) {
             assert!(w[0].path <= w[1].path);

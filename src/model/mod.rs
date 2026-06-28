@@ -6,8 +6,12 @@ mod types;
 use std::path::PathBuf;
 
 pub(crate) use agent::{
-    all_command_global_targets, all_command_project_targets, all_mcp_project_targets,
-    all_mcp_settings_targets, command_global_targets, command_project_targets, Agent, AgentField,
+    all_command_global_targets, all_command_project_targets, all_instruction_global_targets,
+    all_instruction_project_targets, all_mcp_project_targets, all_mcp_settings_targets,
+    all_skill_global_targets, all_skill_project_targets, command_global_targets,
+    command_project_targets, instruction_global_targets, instruction_project_targets,
+    mcp_settings_project_targets, mcp_settings_targets, skill_global_targets,
+    skill_project_targets, Agent, AgentField,
 };
 pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, InstructionEntry,

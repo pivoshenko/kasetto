@@ -109,6 +109,47 @@ pub(crate) fn block_id(source: &str, name: &str) -> String {
     format!("{name}-{}", &digest[..8])
 }
 
+/// Every kasetto-managed instruction block id present in `text` — the `<id>`
+/// inside each `<!-- kasetto:instruction:<id> START -->` marker. Used by
+/// `doctor` to find orphaned blocks (markers kasetto wrote whose id the lock no
+/// longer tracks) without ever inspecting user-authored prose.
+///
+/// Only ids matching the shape [`block_id`] emits (`<name>-<8 lowercase hex>`)
+/// are returned, so a START marker quoted inside an instruction body that
+/// documents the marker syntax is very unlikely to register as a real block.
+pub(crate) fn scan_managed_block_ids(text: &str) -> Vec<String> {
+    const PREFIX: &str = "<!-- kasetto:instruction:";
+    const CLOSE: &str = " -->";
+    let mut out = Vec::new();
+    let mut rest = text;
+    // Both START and END markers share PREFIX; advance past each marker's close
+    // so an END marker (or a marker for another block) can't swallow the START
+    // that follows it. Only START markers contribute an id.
+    while let Some(i) = rest.find(PREFIX) {
+        let after = &rest[i + PREFIX.len()..];
+        let Some(j) = after.find(CLOSE) else { break };
+        if let Some(id) = after[..j].strip_suffix(" START") {
+            if looks_like_block_id(id) {
+                out.push(id.to_string());
+            }
+        }
+        rest = &after[j + CLOSE.len()..];
+    }
+    out
+}
+
+/// Whether `id` has the `<name>-<8 lowercase hex>` shape produced by [`block_id`].
+fn looks_like_block_id(id: &str) -> bool {
+    let Some((name, suffix)) = id.rsplit_once('-') else {
+        return false;
+    };
+    !name.is_empty()
+        && suffix.len() == 8
+        && suffix
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
 fn markers(id: &str) -> (String, String) {
     (
         format!("<!-- kasetto:instruction:{id} START -->"),
@@ -360,6 +401,29 @@ mod tests {
         // No stray blank-line / CR accretion across updates.
         assert!(!v2.contains("\r\n\r\n\r\n"));
         assert_eq!(v2.matches("style-abc START").count(), 1);
+    }
+
+    #[test]
+    fn scan_finds_managed_block_ids() {
+        let one = upsert_block("user.\n", &block_id("https://x/a", "style"), "alpha");
+        let two = upsert_block(&one, &block_id("https://x/b", "house"), "beta");
+        let ids = scan_managed_block_ids(&two);
+        assert_eq!(ids.len(), 2);
+        assert!(ids.contains(&block_id("https://x/a", "style")));
+        assert!(ids.contains(&block_id("https://x/b", "house")));
+    }
+
+    #[test]
+    fn scan_ignores_prose_that_does_not_match_block_id_shape() {
+        // A user paragraph that mentions the marker syntax with a non-conforming
+        // id must not be picked up as a managed block.
+        let text = "Docs: wrap content in <!-- kasetto:instruction:EXAMPLE START --> ... END.\n";
+        assert!(scan_managed_block_ids(text).is_empty());
+    }
+
+    #[test]
+    fn scan_returns_empty_for_user_only_file() {
+        assert!(scan_managed_block_ids("# CLAUDE.md\n\nJust my notes.\n").is_empty());
     }
 
     #[test]

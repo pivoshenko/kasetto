@@ -82,6 +82,32 @@ pub(crate) fn servers_present_in_settings(
     }
 }
 
+/// All MCP server names currently present in an agent-native settings file.
+/// Read-only; returns empty when the file is absent or unparseable. Used by
+/// `doctor` to surface servers in a managed settings file that the lock does
+/// not track.
+pub(crate) fn list_server_names(target: &crate::model::McpSettingsTarget) -> Vec<String> {
+    match target.format {
+        McpSettingsFormat::CodexToml => codex::list_server_names(&target.path),
+        McpSettingsFormat::McpServers => json_server_names(&target.path, "mcpServers"),
+        McpSettingsFormat::VsCodeServers => json_server_names(&target.path, "servers"),
+        McpSettingsFormat::OpenCode => json_server_names(&target.path, "mcp"),
+    }
+}
+
+fn json_server_names(path: &Path, root_key: &str) -> Vec<String> {
+    let Ok(text) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return Vec::new();
+    };
+    val.get(root_key)
+        .and_then(|v| v.as_object())
+        .map(|m| m.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
 fn json_all_keys_present(server_names: &[String], path: &Path, root_key: &str) -> bool {
     let Ok(text) = fs::read_to_string(path) else {
         return false;
