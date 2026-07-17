@@ -7,25 +7,26 @@ use crate::fsops::SettingsFile;
 
 type ServerMap = serde_json::Map<String, serde_json::Value>;
 
-/// Shared scaffolding: load target settings, ensure the root object key exists,
-/// apply `transform` to each entry from the (already secret-injected) source
-/// map, save. `overwrite` replaces an existing same-named entry (used by the
-/// `--update` rotation path); otherwise existing entries are preserved.
+/// Shared scaffolding: load target settings, ensure the object at `keys`
+/// exists (each level created as `{}` when absent), apply `transform` to each
+/// entry from the (already secret-injected) source map, save. `overwrite`
+/// replaces an existing same-named entry (used by the `--update` rotation
+/// path); otherwise existing entries are preserved.
 fn merge_into_json_key(
     src_map: &ServerMap,
     target_path: &Path,
-    root_key: &str,
+    keys: &[&str],
     overwrite: bool,
     transform: fn(&str, serde_json::Value) -> Result<serde_json::Value>,
 ) -> Result<()> {
     let mut sf = SettingsFile::load(target_path)?;
-    let target_obj = sf
-        .data
-        .as_object_mut()
-        .ok_or_else(|| err("settings file is not a JSON object"))?;
-    let section = target_obj
-        .entry(root_key)
-        .or_insert_with(|| serde_json::json!({}));
+    let mut section = &mut sf.data;
+    for key in keys {
+        let obj = section
+            .as_object_mut()
+            .ok_or_else(|| err("settings file is not a JSON object"))?;
+        section = obj.entry(*key).or_insert_with(|| serde_json::json!({}));
+    }
 
     if let Some(dst_map) = section.as_object_mut() {
         for (key, value) in src_map {
@@ -43,9 +44,27 @@ pub(super) fn merge_mcp_servers_object(
     target_path: &Path,
     overwrite: bool,
 ) -> Result<()> {
-    merge_into_json_key(src_map, target_path, "mcpServers", overwrite, |_name, v| {
-        Ok(v)
-    })
+    merge_into_json_key(
+        src_map,
+        target_path,
+        &["mcpServers"],
+        overwrite,
+        |_name, v| Ok(v),
+    )
+}
+
+pub(super) fn merge_zcode_servers_object(
+    src_map: &ServerMap,
+    target_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    merge_into_json_key(
+        src_map,
+        target_path,
+        &["mcp", "servers"],
+        overwrite,
+        |_name, v| Ok(v),
+    )
 }
 
 pub(super) fn merge_vscode_servers_object(
@@ -53,7 +72,7 @@ pub(super) fn merge_vscode_servers_object(
     target_path: &Path,
     overwrite: bool,
 ) -> Result<()> {
-    merge_into_json_key(src_map, target_path, "servers", overwrite, |_name, v| {
+    merge_into_json_key(src_map, target_path, &["servers"], overwrite, |_name, v| {
         Ok(normalize_vscode_server(v))
     })
 }
@@ -63,7 +82,7 @@ pub(super) fn merge_opencode_mcp_object(
     target_path: &Path,
     overwrite: bool,
 ) -> Result<()> {
-    merge_into_json_key(src_map, target_path, "mcp", overwrite, |name, v| {
+    merge_into_json_key(src_map, target_path, &["mcp"], overwrite, |name, v| {
         mcp_entry_to_opencode(name, &v)
     })
 }

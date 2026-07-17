@@ -34,6 +34,8 @@ pub(crate) enum McpSettingsFormat {
     OpenCode,
     /// OpenAI Codex `~/.codex/config.toml` (`[mcp_servers.name]` tables).
     CodexToml,
+    /// ZCode config JSON: `{ "mcp": { "servers": { ... } } }` (nested under `mcp.servers`).
+    ZCode,
 }
 
 /// Destination file and merge format for MCP sync / clean.

@@ -57,6 +57,8 @@ pub(crate) enum Agent {
     Warp,
     #[serde(rename = "windsurf")]
     Windsurf,
+    #[serde(rename = "zcode")]
+    ZCode,
 }
 
 /// Every preset value (for clean / enumerating native MCP paths).
@@ -82,6 +84,7 @@ pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::Trae,
     Agent::Warp,
     Agent::Windsurf,
+    Agent::ZCode,
 ];
 
 /// Deduped native MCP config files for every known agent (for `clean` manifest wipe).
@@ -289,6 +292,7 @@ impl Agent {
             Agent::Roo => home.join(".roo/skills"),
             Agent::Trae => home.join(".trae/skills"),
             Agent::Windsurf => home.join(".codeium/windsurf/skills"),
+            Agent::ZCode => home.join(".zcode/skills"),
         }
     }
 
@@ -330,6 +334,10 @@ impl Agent {
             },
             Agent::OpenHands => mcp_servers_target(home, ".openhands/mcp.json"),
             Agent::Trae => mcp_servers_target(home, ".trae/mcp.json"),
+            Agent::ZCode => McpSettingsTarget {
+                path: home.join(".zcode/cli/config.json"),
+                format: McpSettingsFormat::ZCode,
+            },
         }
     }
 
@@ -355,6 +363,7 @@ impl Agent {
             Agent::Roo => project_root.join(".roo/skills"),
             Agent::Trae => project_root.join(".trae/skills"),
             Agent::Windsurf => project_root.join(".windsurf/skills"),
+            Agent::ZCode => project_root.join(".zcode/skills"),
         }
     }
 
@@ -388,6 +397,10 @@ impl Agent {
             Agent::OpenCode => McpSettingsTarget {
                 path: project_root.join(".opencode/opencode.json"),
                 format: McpSettingsFormat::OpenCode,
+            },
+            Agent::ZCode => McpSettingsTarget {
+                path: project_root.join(".zcode/config.json"),
+                format: McpSettingsFormat::ZCode,
             },
             Agent::Antigravity
             | Agent::Augment
@@ -427,6 +440,7 @@ impl Agent {
             Agent::Roo => cmd(home, ".roo/commands", CommandFormat::MarkdownFrontmatter),
             Agent::Codex => cmd(home, ".codex/prompts", CommandFormat::MarkdownFrontmatter),
             Agent::GeminiCli => cmd(home, ".gemini/commands", CommandFormat::GeminiToml),
+            Agent::ZCode => cmd(home, ".zcode/commands", CommandFormat::MarkdownFrontmatter),
             Agent::Cursor
             | Agent::Cline
             | Agent::GithubCopilot
@@ -498,6 +512,11 @@ impl Agent {
                 CommandFormat::MarkdownFrontmatter,
             ),
             Agent::GeminiCli => cmd(project_root, ".gemini/commands", CommandFormat::GeminiToml),
+            Agent::ZCode => cmd(
+                project_root,
+                ".zcode/commands",
+                CommandFormat::MarkdownFrontmatter,
+            ),
             Agent::Antigravity
             | Agent::Codex
             | Agent::Goose
@@ -541,6 +560,8 @@ impl Agent {
             Agent::Replit => instruction(project_root, "replit.md", Agg),
             // OpenHands' always-on repo instructions live in this single file.
             Agent::OpenHands => instruction(project_root, ".openhands/microagents/repo.md", Agg),
+            // ZCode reads the workspace AGENTS.md after the user-global one.
+            Agent::ZCode => instruction(project_root, "AGENTS.md", Agg),
             // Cursor MDC: per-instruction files with reconstructed frontmatter.
             Agent::Cursor => instruction(project_root, ".cursor/rules", CursorMdc),
             // Per-instruction plain-markdown directories.
@@ -576,6 +597,7 @@ impl Agent {
             Agent::Goose => instruction(home, ".config/goose/.goosehints", Agg),
             Agent::GithubCopilot => instruction(home, ".copilot/copilot-instructions.md", Agg),
             Agent::OpenClaw => instruction(home, ".openclaw/workspace/AGENTS.md", Agg),
+            Agent::ZCode => instruction(home, ".zcode/AGENTS.md", Agg),
             Agent::Windsurf => instruction(home, ".codeium/windsurf/memories/global_rules.md", Agg),
             Agent::KiroCli => instruction(home, ".kiro/steering", Dir),
             Agent::Augment => instruction(home, ".augment/rules", Dir),
@@ -721,6 +743,37 @@ mod tests {
         // Warp / Trae globals are UI-managed → no syncable file.
         assert!(Agent::Warp.instructions_global_path(home).is_none());
         assert!(Agent::Trae.instructions_global_path(home).is_none());
+    }
+
+    #[test]
+    fn zcode_paths() {
+        let home = Path::new("/tmp/home");
+        let pr = Path::new("/work");
+        assert_eq!(Agent::ZCode.global_path(home), home.join(".zcode/skills"));
+        assert_eq!(Agent::ZCode.project_path(pr), pr.join(".zcode/skills"));
+        assert_eq!(
+            Agent::ZCode.commands_global_path(home).unwrap().path,
+            home.join(".zcode/commands")
+        );
+        assert_eq!(
+            Agent::ZCode.commands_project_path(pr).unwrap().format,
+            CommandFormat::MarkdownFrontmatter
+        );
+        let mcp = Agent::ZCode.mcp_settings_target(home, Path::new(""));
+        assert_eq!(mcp.path, home.join(".zcode/cli/config.json"));
+        assert_eq!(mcp.format, McpSettingsFormat::ZCode);
+        assert_eq!(
+            Agent::ZCode.mcp_project_target(pr).path,
+            pr.join(".zcode/config.json")
+        );
+        assert_eq!(
+            Agent::ZCode.instructions_global_path(home).unwrap().path,
+            home.join(".zcode/AGENTS.md")
+        );
+        assert_eq!(
+            Agent::ZCode.instructions_project_path(pr).unwrap().path,
+            pr.join("AGENTS.md")
+        );
     }
 
     #[test]
