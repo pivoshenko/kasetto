@@ -32,6 +32,9 @@ pub(crate) fn merge_mcp_config(
         McpSettingsFormat::CodexToml => {
             codex::merge_codex_config_toml(src_map, &target.path, overwrite)
         }
+        McpSettingsFormat::ZCode => {
+            merge::merge_zcode_servers_object(src_map, &target.path, overwrite)
+        }
     }
 }
 
@@ -45,18 +48,23 @@ pub(crate) fn remove_mcp_server(
     match target.format {
         McpSettingsFormat::CodexToml => codex::remove_server(server_name, &target.path),
         McpSettingsFormat::McpServers => {
-            json_remove_top_level_key(server_name, &target.path, "mcpServers")
+            json_remove_key(server_name, &target.path, &["mcpServers"])
         }
         McpSettingsFormat::VsCodeServers => {
-            json_remove_top_level_key(server_name, &target.path, "servers")
+            json_remove_key(server_name, &target.path, &["servers"])
         }
-        McpSettingsFormat::OpenCode => json_remove_top_level_key(server_name, &target.path, "mcp"),
+        McpSettingsFormat::OpenCode => json_remove_key(server_name, &target.path, &["mcp"]),
+        McpSettingsFormat::ZCode => json_remove_key(server_name, &target.path, &["mcp", "servers"]),
     }
 }
 
-fn json_remove_top_level_key(server_name: &str, path: &Path, object_key: &str) -> Result<()> {
+fn json_remove_key(server_name: &str, path: &Path, keys: &[&str]) -> Result<()> {
     let mut sf = SettingsFile::load(path)?;
-    if let Some(map) = sf.data.get_mut(object_key).and_then(|v| v.as_object_mut()) {
+    let mut section = Some(&mut sf.data);
+    for key in keys {
+        section = section.and_then(|v| v.get_mut(key));
+    }
+    if let Some(map) = section.and_then(|v| v.as_object_mut()) {
         map.remove(server_name);
     }
     sf.save()?;
@@ -73,12 +81,15 @@ pub(crate) fn servers_present_in_settings(
     match target.format {
         McpSettingsFormat::CodexToml => codex::servers_present(server_names, &target.path),
         McpSettingsFormat::McpServers => {
-            json_all_keys_present(server_names, &target.path, "mcpServers")
+            json_all_keys_present(server_names, &target.path, &["mcpServers"])
         }
         McpSettingsFormat::VsCodeServers => {
-            json_all_keys_present(server_names, &target.path, "servers")
+            json_all_keys_present(server_names, &target.path, &["servers"])
         }
-        McpSettingsFormat::OpenCode => json_all_keys_present(server_names, &target.path, "mcp"),
+        McpSettingsFormat::OpenCode => json_all_keys_present(server_names, &target.path, &["mcp"]),
+        McpSettingsFormat::ZCode => {
+            json_all_keys_present(server_names, &target.path, &["mcp", "servers"])
+        }
     }
 }
 
@@ -89,28 +100,33 @@ pub(crate) fn servers_present_in_settings(
 pub(crate) fn list_server_names(target: &crate::model::McpSettingsTarget) -> Vec<String> {
     match target.format {
         McpSettingsFormat::CodexToml => codex::list_server_names(&target.path),
-        McpSettingsFormat::McpServers => json_server_names(&target.path, "mcpServers"),
-        McpSettingsFormat::VsCodeServers => json_server_names(&target.path, "servers"),
-        McpSettingsFormat::OpenCode => json_server_names(&target.path, "mcp"),
+        McpSettingsFormat::McpServers => json_server_names(&target.path, &["mcpServers"]),
+        McpSettingsFormat::VsCodeServers => json_server_names(&target.path, &["servers"]),
+        McpSettingsFormat::OpenCode => json_server_names(&target.path, &["mcp"]),
+        McpSettingsFormat::ZCode => json_server_names(&target.path, &["mcp", "servers"]),
     }
 }
 
-/// Parse `path` as JSON and return the object under `root_key`. `None` when the
-/// file is absent, unparseable, or has no object at `root_key`.
-fn json_object(path: &Path, root_key: &str) -> Option<serde_json::Map<String, serde_json::Value>> {
+/// Parse `path` as JSON and return the object at the nested `keys` path. `None`
+/// when the file is absent, unparseable, or has no object at that path.
+fn json_object(path: &Path, keys: &[&str]) -> Option<serde_json::Map<String, serde_json::Value>> {
     let text = fs::read_to_string(path).ok()?;
     let val: serde_json::Value = serde_json::from_str(&text).ok()?;
-    val.get(root_key).and_then(|v| v.as_object()).cloned()
+    let mut section = &val;
+    for key in keys {
+        section = section.get(key)?;
+    }
+    section.as_object().cloned()
 }
 
-fn json_server_names(path: &Path, root_key: &str) -> Vec<String> {
-    json_object(path, root_key)
+fn json_server_names(path: &Path, keys: &[&str]) -> Vec<String> {
+    json_object(path, keys)
         .map(|m| m.keys().cloned().collect())
         .unwrap_or_default()
 }
 
-fn json_all_keys_present(server_names: &[String], path: &Path, root_key: &str) -> bool {
-    let Some(map) = json_object(path, root_key) else {
+fn json_all_keys_present(server_names: &[String], path: &Path, keys: &[&str]) -> bool {
+    let Some(map) = json_object(path, keys) else {
         return false;
     };
     server_names.iter().all(|name| map.contains_key(name))
@@ -306,6 +322,71 @@ command = "b"
         let mcp = parsed["mcp_servers"].as_table().unwrap();
         assert!(!mcp.contains_key("a"));
         assert!(mcp.contains_key("b"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn merge_zcode_writes_nested_servers() {
+        let dir = temp_dir("kasetto-mcps-zcode");
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("config.json");
+        let src = servers(r#"{"mcpServers":{"git-tools":{"command":"git-mcp"}}}"#);
+        let tgt = McpSettingsTarget {
+            path: target.clone(),
+            format: McpSettingsFormat::ZCode,
+        };
+        merge_mcp_config(&src, &tgt, false).expect("merge");
+        let val: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
+        assert_eq!(val["mcp"]["servers"]["git-tools"]["command"], "git-mcp");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn merge_zcode_preserves_unrelated_config_keys() {
+        let dir = temp_dir("kasetto-mcps-zcode-merge");
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("config.json");
+        fs::write(
+            &target,
+            r#"{"model":"glm-5.2","mcp":{"servers":{"existing":{"command":"keep-me"}}}}"#,
+        )
+        .unwrap();
+        let src = servers(r#"{"mcpServers":{"new-server":{"command":"new-cmd"}}}"#);
+        let tgt = McpSettingsTarget {
+            path: target.clone(),
+            format: McpSettingsFormat::ZCode,
+        };
+        merge_mcp_config(&src, &tgt, false).expect("merge");
+        let val: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
+        assert_eq!(val["model"], "glm-5.2");
+        assert_eq!(val["mcp"]["servers"]["existing"]["command"], "keep-me");
+        assert_eq!(val["mcp"]["servers"]["new-server"]["command"], "new-cmd");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn remove_and_list_zcode_servers() {
+        let dir = temp_dir("kasetto-mcps-zcode-rm");
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("config.json");
+        fs::write(
+            &target,
+            r#"{"mcp":{"servers":{"a":{"command":"a"},"b":{"command":"b"}}}}"#,
+        )
+        .unwrap();
+        let tgt = McpSettingsTarget {
+            path: target.clone(),
+            format: McpSettingsFormat::ZCode,
+        };
+        assert!(servers_present_in_settings(&["a".into(), "b".into()], &tgt));
+        assert_eq!(list_server_names(&tgt), vec!["a", "b"]);
+        remove_mcp_server("a", &tgt).expect("remove");
+        let val: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&target).unwrap()).unwrap();
+        assert!(val["mcp"]["servers"]["a"].is_null());
+        assert_eq!(val["mcp"]["servers"]["b"]["command"], "b");
         let _ = fs::remove_dir_all(&dir);
     }
 

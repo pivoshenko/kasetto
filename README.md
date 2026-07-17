@@ -286,6 +286,7 @@ Set the `agent` field and Kasetto figures out where to put things.
 | Trae           | `trae`           | `~/.trae/skills/`               |
 | Warp           | `warp`           | `~/.agents/skills/`             |
 | Windsurf       | `windsurf`       | `~/.codeium/windsurf/skills/`   |
+| ZCode          | `zcode`          | `~/.zcode/skills/`              |
 
 </details>
 

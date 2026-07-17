@@ -24,6 +24,7 @@ const AGENTS = [
   { name: "Trae", value: "trae" },
   { name: "Warp", value: "warp" },
   { name: "Windsurf", value: "windsurf" },
+  { name: "ZCode", value: "zcode" },
 ];
 
 const INITIAL = 4;
