@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6.0] - 2026-07-17
+
+### Features
+
+- Add zcode agent preset
+
+### Build
+
+- Bump crossbeam-epoch to 0.9.20 for RUSTSEC-2026-0204
+
 ## [3.5.0] - 2026-06-28
 
 ### Bug fixes
@@ -45,6 +55,10 @@ All notable changes to this project will be documented in this file.
 - **site**: Drop redundant CLI label from secret cards, move above example
 - **sync**: Extract classify_mcp_file from sync_mcps
 - **sync**: Bundle per-skill install args into SkillJob
+
+### Release
+
+- V3.5.0
 
 ### Style
 
