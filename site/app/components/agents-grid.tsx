@@ -37,7 +37,7 @@ export function AgentsGrid() {
   return (
     <div className="grid-box">
       <div className="agents-header">
-        <span>21 PRESETS, BUILT IN</span>
+        <span>{AGENTS.length} PRESETS, BUILT IN</span>
       </div>
       <div className="agents-cells">
         {visible.map((agent) => (
