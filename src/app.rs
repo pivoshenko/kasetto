@@ -66,6 +66,7 @@ fn dispatch() -> Result<ExitCode> {
                     scope_override: sync.scope.scope_override(),
                     update,
                     update_only,
+                    update_local: sync.update_local,
                     locked: sync.locked,
                     allow_missing_secrets: sync.allow_missing_secrets,
                 })
