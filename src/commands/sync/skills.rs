@@ -124,7 +124,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
             }
         }
 
-        let update_active = update_active_for_source(ctx, &desired);
+        let update_active = update_active_for_source(ctx, &src.source, &desired);
         let fetch = update_active || needs_fetch(ctx, &mut cache, src, &desired, sm.state);
 
         if fetch && ctx.locked {
@@ -703,6 +703,19 @@ mod tests {
         update_only: Vec<String>,
         locked: bool,
     ) -> Summary {
+        run_sync_full(h, skills, state, update, update_only, false, locked)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn run_sync_full(
+        h: &Harness,
+        skills: SkillsField,
+        state: &mut State,
+        update: bool,
+        update_only: Vec<String>,
+        update_local: bool,
+        locked: bool,
+    ) -> Summary {
         let cfg = Config {
             destination: None,
             scope: Some(Scope::Project),
@@ -730,6 +743,7 @@ mod tests {
             plain: true,
             update,
             update_only,
+            update_local,
             locked,
             secrets: crate::secrets::SecretContext::empty(),
         };
@@ -782,6 +796,7 @@ mod tests {
             plain: true,
             update: false,
             update_only: vec![],
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
@@ -854,6 +869,27 @@ mod tests {
         fs::write(h.dests[0].join("alpha/SKILL.md"), "# alpha\n\nEDITED\n").unwrap();
         let s = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
         assert_eq!(s.updated, 1);
+        cleanup(&h);
+    }
+
+    #[test]
+    fn update_local_ships_edited_local_source() {
+        let h = setup(&["alpha"]);
+        let mut state = State::default();
+        run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
+
+        // Edit the *source*: a plain sync holds to the lock and serves the old copy.
+        write_skill(&h.src_root, "alpha", "# alpha\n\nEDITED\n");
+        let plain = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
+        assert_eq!(plain.unchanged, 1, "plain sync honors the locked hash");
+
+        // `--update-local` re-resolves the local source without naming skills.
+        let s = run_sync_full(&h, list(&["alpha"]), &mut state, false, vec![], true, false);
+        assert_eq!(s.updated, 1, "local edit ships");
+        assert_eq!(
+            fs::read_to_string(h.dests[0].join("alpha/SKILL.md")).unwrap(),
+            "# alpha\n\nEDITED\n"
+        );
         cleanup(&h);
     }
 
@@ -1098,6 +1134,7 @@ mod tests {
             plain: true,
             update: false,
             update_only: vec![],
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
