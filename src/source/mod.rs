@@ -104,12 +104,19 @@ fn resolve_source_root(base_root: &Path, sub_dir: Option<&str>) -> Result<PathBu
     Ok(resolved)
 }
 
+/// `true` when a `source:` value is a local filesystem path rather than a
+/// URL-style remote — the same discriminator [`materialize_source`] branches
+/// on, shared so `sync --update-local` classifies sources identically.
+pub(crate) fn is_local_source(source: &str) -> bool {
+    !source.contains("://")
+}
+
 pub(crate) fn materialize_source(
     src: &SourceSpec,
     cfg_dir: &Path,
     stage: &Path,
 ) -> Result<MaterializedSource> {
-    if src.source.contains("://") {
+    if !is_local_source(&src.source) {
         let parsed = parse::parse_repo_url(&src.source)?;
         let pin = src.git_pin();
 
@@ -480,6 +487,16 @@ mod tests {
     use super::*;
     use crate::fsops::temp_dir;
     use crate::model::{SkillsField, SourceSpec};
+
+    #[test]
+    fn is_local_source_discriminates_paths_from_urls() {
+        assert!(is_local_source("./skills"));
+        assert!(is_local_source("../pack"));
+        assert!(is_local_source("/abs/path"));
+        assert!(is_local_source("skills/local"));
+        assert!(!is_local_source("https://github.com/org/repo"));
+        assert!(!is_local_source("http://example.com/pack"));
+    }
 
     #[test]
     fn local_materialize_does_not_set_cleanup_dir() {

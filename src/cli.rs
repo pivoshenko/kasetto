@@ -137,6 +137,12 @@ pub(crate) struct SyncArgs {
         long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more skill names (--update foo bar) to re-resolve only the sources providing those skills; all other sources are honored from the lock.\n\nUpdating a skill from a multi-skill source re-resolves that whole source."
     )]
     pub update: Option<Vec<String>>,
+    #[arg(long)]
+    #[arg(
+        help = "re-resolve every local-path source without naming skills",
+        long_help = "Re-resolve every local directory source (a `source:` that is a filesystem path rather than a URL) and rewrite its locked hash, without enumerating skill names.\n\nRemote sources stay honored from the lock. Combine with --update <name>... to also re-resolve named remote skills in the same run."
+    )]
+    pub update_local: bool,
     #[arg(long, visible_alias = "frozen")]
     #[arg(help = "fail if the lock cannot satisfy the config; never fetch (CI-friendly)")]
     pub locked: bool,
@@ -218,6 +224,7 @@ pub(crate) enum Commands {
         after_help = crate::cli_examples!(
             "kasetto sync",
             "kasetto sync --update",
+            "kasetto sync --update-local",
             "kasetto sync --locked",
             "kasetto sync --dry-run --verbose",
             "kasetto sync --config https://example.com/kasetto.yaml",
@@ -526,6 +533,22 @@ mod tests {
             sync.update_only(),
             vec!["foo".to_string(), "bar".to_string()]
         );
+    }
+
+    #[test]
+    fn update_local_alone_does_not_activate_update() {
+        let sync = parse_sync(&["kasetto", "sync", "--update-local"]);
+        assert!(sync.update_local);
+        assert!(!sync.update_active());
+        assert!(sync.update_only().is_empty());
+    }
+
+    #[test]
+    fn update_local_combines_with_named_update() {
+        let sync = parse_sync(&["kasetto", "sync", "--update-local", "--update", "foo"]);
+        assert!(sync.update_local);
+        assert!(sync.update_active());
+        assert_eq!(sync.update_only(), vec!["foo".to_string()]);
     }
 
     #[test]

@@ -145,9 +145,12 @@ A custom **absolute** `destination:` stays non-portable by design — an absolut
 | `kst sync`                         | Installs exactly what the lock pins. If the on-disk destinations already match the locked hashes, **no network fetch happens** — moving refs like a branch are not re-resolved. |
 | `kst sync --update` (`-u`)         | Re-resolves branch / default-HEAD sources, downloads the latest, and rewrites the pins (hash + revision) in the lock.                |
 | `kst sync --update <name>`         | Updates only the selected entries; everything else is honored from the lock. (Naming one skill re-resolves its whole source.)        |
+| `kst sync --update-local`          | Re-resolves every **local-path** source (a `source:` that is a directory, not a URL) and rewrites its pins — no names needed. Remote sources are untouched. |
 | `kst sync --locked` / `--frozen`   | Strict mode for CI: installs from the lock and **never fetches**. Errors only if the config needs something the lock can't satisfy.  |
 
-A plain `kst sync` always re-hashes the destination contents locally (cheap, no network) and repairs any tampered or missing copy from the lock — but it will not phone home to check whether an upstream branch moved. That is what `--update` is for. `--update` and `--locked` together are contradictory and rejected.
+A plain `kst sync` always re-hashes the destination contents locally (cheap, no network) and repairs any tampered or missing copy from the lock — but it will not phone home to check whether an upstream branch moved. That is what `--update` is for. `--update` and `--locked` together are contradictory and rejected; so are `--update-local` and `--locked`.
+
+Local directory sources are pinned by the lock exactly like remote ones: edit a skill under `./skills/` and a plain sync still serves the locked copy. `--update-local` is the escape hatch scoped to just those sources — it re-reads every local directory and rewrites its pins while leaving remote branch pins alone, so shipping your own edits never drags in upstream churn. Combine it with `--update <name>` to refresh a named remote in the same run.
 
 ### Wildcards Are Frozen to the Locked Set
 

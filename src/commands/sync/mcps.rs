@@ -109,7 +109,7 @@ pub(super) fn sync_mcps(
             .iter()
             .flat_map(|f| update_aliases(f))
             .collect();
-        let update_active = update_active_for_source(ctx, &update_names);
+        let update_active = update_active_for_source(ctx, &src.source, &update_names);
         let fetch = update_active
             || needs_fetch_mcps(ctx, src, &desired_file_names, lock, &mcp_settings_list);
 
@@ -239,7 +239,8 @@ pub(super) fn sync_mcps(
             // Scope `--update <name>` to the file actually named. A source can
             // hold several MCP files; rotating one (force-remerge with overwrite)
             // must not clobber hand-edited servers from the source's other files.
-            let file_update = update_active_for_source(ctx, &update_aliases(&file_name));
+            let file_update =
+                update_active_for_source(ctx, &src.source, &update_aliases(&file_name));
             let classified = classify_mcp_file(
                 ctx,
                 lock,
@@ -762,6 +763,7 @@ mod tests {
             quiet: true,
             update: false,
             update_only: Vec::new(),
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
@@ -819,25 +821,71 @@ mod tests {
             quiet: true,
             update: true,
             update_only: vec!["vercel".into()],
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
 
         // Source-level: the source is targeted (vercel matches), so a fetch happens.
+        let src = "https://github.com/org/pack";
         let source_names: Vec<String> = ["vercel.json", "notion.json"]
             .iter()
             .flat_map(|f| update_aliases(f))
             .collect();
-        assert!(update_active_for_source(&ctx, &source_names));
+        assert!(update_active_for_source(&ctx, src, &source_names));
 
         // File-level: only vercel.json is active; notion.json is not.
         assert!(update_active_for_source(
             &ctx,
+            src,
             &update_aliases("vercel.json")
         ));
         assert!(!update_active_for_source(
             &ctx,
+            src,
             &update_aliases("notion.json")
+        ));
+    }
+
+    #[test]
+    fn update_local_activates_local_sources_only() {
+        let cfg = crate::model::Config {
+            destination: None,
+            scope: Some(crate::model::Scope::Project),
+            agent: None,
+            skills: Vec::new(),
+            mcps: Vec::new(),
+            commands: Vec::new(),
+            instructions: Vec::new(),
+            secrets: None,
+        };
+        let root = PathBuf::from("/tmp");
+        let ctx = SyncContext {
+            cfg: &cfg,
+            cfg_dir: &root,
+            destinations: &[],
+            scope_root: root.clone(),
+            scope: crate::model::Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            as_json: false,
+            quiet: true,
+            update: false,
+            update_only: Vec::new(),
+            update_local: true,
+            locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
+        };
+
+        // Local paths (relative or absolute) are active, names never needed.
+        assert!(update_active_for_source(&ctx, "./skills", &[]));
+        assert!(update_active_for_source(&ctx, "/abs/pack", &["x".into()]));
+        // Remote sources stay honored from the lock.
+        assert!(!update_active_for_source(
+            &ctx,
+            "https://github.com/org/pack",
+            &["x".into()]
         ));
     }
 }

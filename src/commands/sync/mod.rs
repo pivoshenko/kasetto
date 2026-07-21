@@ -35,6 +35,8 @@ pub(super) struct SyncContext<'a> {
     pub(super) update: bool,
     /// `--update <name>...`: when non-empty, only sources providing these skills are re-resolved.
     pub(super) update_only: Vec<String>,
+    /// `--update-local`: re-resolve every local-path source, no names needed.
+    pub(super) update_local: bool,
     /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
     pub(super) locked: bool,
     /// Resolves `${kst_...}` secret placeholders in MCP configs at write time.
@@ -104,6 +106,7 @@ pub(crate) struct SyncOptions<'a> {
     pub scope_override: Option<Scope>,
     pub update: bool,
     pub update_only: Vec<String>,
+    pub update_local: bool,
     pub locked: bool,
     pub allow_missing_secrets: bool,
 }
@@ -113,6 +116,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         return Err(crate::error::err(
             "`--locked`/`--frozen` and `--update` are contradictory: \
              --update fetches to re-resolve refs, --locked forbids fetching",
+        ));
+    }
+    if opts.locked && opts.update_local {
+        return Err(crate::error::err(
+            "`--locked`/`--frozen` and `--update-local` are contradictory: \
+             --update-local re-resolves local sources and rewrites the lock, \
+             --locked requires the lock to stand as-is",
         ));
     }
     let animate = animations_enabled(opts.quiet, opts.as_json, opts.plain);
@@ -153,6 +163,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         quiet: opts.quiet,
         update: opts.update,
         update_only: opts.update_only.clone(),
+        update_local: opts.update_local,
         locked: opts.locked,
         secrets,
     };
@@ -404,9 +415,17 @@ fn print_sync_tree(report: &Report, plain: bool) {
 }
 
 /// Whether `--update` re-resolves a source. Active when `--update` was passed
-/// with no names, or when `--update <name>...` includes one of this source's
-/// desired asset names. Shared across the skill, command, and MCP sync paths.
-pub(super) fn update_active_for_source(ctx: &SyncContext, desired: &[String]) -> bool {
+/// with no names, when `--update <name>...` includes one of this source's
+/// desired asset names, or when `--update-local` was passed and `source` is a
+/// local path. Shared across the skill, command, and MCP sync paths.
+pub(super) fn update_active_for_source(
+    ctx: &SyncContext,
+    source: &str,
+    desired: &[String],
+) -> bool {
+    if ctx.update_local && crate::source::is_local_source(source) {
+        return true;
+    }
     if !ctx.update {
         return false;
     }
