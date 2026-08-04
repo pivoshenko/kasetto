@@ -24,7 +24,7 @@ Usage: kst <COMMAND>
 ...
 ```
 
-Bare `kst` (no subcommand) prints the banner followed by `--help`, just like bare `cargo` or `uv`. Kasetto is CLI-only — every action has a dedicated subcommand. Pipe stdout or pass `--color never` to strip styling.
+Bare `kst` (no subcommand) prints the banner followed by `--help`, just like bare `cargo` or `uv`. Kasetto is CLI-only: every action has a dedicated subcommand. Pipe stdout or pass `--color never` to strip styling.
 
 ## Creating a Config
 
@@ -36,7 +36,7 @@ kst init
 
 Use `kst init --global` to create `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`).
 
-Or let Kasetto edit the config for you — `kst add <source>` appends a source (preserving your comments) and syncs it in, and `kst remove <source>` reverses it, the cargo/uv way:
+Or let Kasetto edit the config for you. `kst add <source>` appends a source (preserving your comments) and syncs it in, and `kst remove <source>` reverses it, the cargo/uv way:
 
 ```bash
 kst add https://github.com/org/skill-pack                       # add every skill
@@ -68,7 +68,7 @@ Use the `agent` field to target any of the [supported agents](/docs/agents), or 
 </Callout>
 ## Syncing Skills
 
-Run `kst sync` and Kasetto does the rest:
+Run `kst sync`:
 
 ```bash
 kst sync
@@ -84,7 +84,7 @@ If you want the "exact contract" for what gets copied/removed, read [How Sync Wo
 
 ## Syncing from a Remote Config
 
-Got a shared team config? Just pass it as a URL:
+Got a shared team config? Pass it as a URL:
 
 ```bash
 kst sync --config https://example.com/team-skills.yaml
@@ -92,7 +92,7 @@ kst sync --config https://example.com/team-skills.yaml
 
 For private configs hosted on git providers, set the right env var token first (see [Authentication](/docs/authentication#remote-configs)).
 
-You can also inherit from another config with `extends:`. A child config can pull in everything from a team base and override or extend it — see [Extending Another Config](/docs/configuration#extending-another-config).
+You can also inherit from another config with `extends:`. A child config can pull in everything from a team base and override or extend it. See [Extending Another Config](/docs/configuration#extending-another-config).
 
 ## Previewing Changes
 
@@ -122,7 +122,7 @@ mcps:
     mcps: "*"
 ```
 
-Kasetto merges them into each agent's native settings file during sync — nothing extra to do.
+Kasetto merges them into each agent's native settings file during sync. Nothing extra to do.
 
 If you want the exact merge instructions and conflict behavior, see [How Sync Works](/docs/how-sync-works#mcp-servers-discovery-and-additive-merge).
 

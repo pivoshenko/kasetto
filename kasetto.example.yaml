@@ -7,7 +7,7 @@ agent:
 # destination: ./.agents/skills
 
 skills:
-  # "*" syncs every skill in the source — each is a directory with a SKILL.md,
+  # "*" syncs every skill in the source. Each is a directory with a SKILL.md,
   # discovered in the source root or its skills/ subdirectory
   - source: https://github.com/vercel-labs/next-skills
     # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
@@ -27,7 +27,7 @@ skills:
       - grill-me
       - caveman
 
-  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  # path: a skill in a non-standard location, <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
       - name: improve-codebase-architecture

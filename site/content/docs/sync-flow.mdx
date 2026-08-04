@@ -37,7 +37,7 @@ flowchart TD
 
 ## Source Materialization
 
-Shared by all asset kinds — skills, commands, instructions, and MCPs.
+Shared by all asset kinds: skills, commands, instructions, and MCPs.
 
 ```mermaid
 flowchart TD
@@ -46,10 +46,10 @@ flowchart TD
     B -->|URL| C[Resolve auth token from env vars]
     C --> D[Rewrite browser URL to raw endpoint if needed]
     D --> E{Git pin}
-    E -->|ref: set| F[Pin to tag / SHA — no fallback]
-    E -->|branch: set| G[Pin to explicit branch — no fallback]
-    E -->|neither| H[Try main → fall back to master]
-    F --> I[Download tarball → extract to temp dir]
+    E -->|ref: set| F[Pin to tag / SHA, no fallback]
+    E -->|branch: set| G[Pin to explicit branch, no fallback]
+    E -->|neither| H[Try main, fall back to master]
+    F --> I[Download tarball, then extract to temp dir]
     G --> I
     H --> I
     I --> J{sub-dir set?}
@@ -77,7 +77,7 @@ flowchart TD
     C --> E[Scan root/ for subdirs with SKILL.md]
     D --> E
     E --> F[Scan root/skills/ for subdirs with SKILL.md]
-    F --> G[available map: name → path]
+    F --> G[available map: name to path]
 ```
 
 ### Target Selection
@@ -92,13 +92,13 @@ flowchart TD
     D --> E{Entry form?}
     E -->|Name string| F{name in available?}
     F -->|yes| G[Use available path]
-    F -->|no| H[broken — skip, report]
+    F -->|no| H[broken: skip, report]
 
     E -->|Object name + path| I{path/name/SKILL.md exists?}
     I -->|yes| J[Use explicit path]
     I -->|no| K{name in available?}
     K -->|yes| L[Use available path]
-    K -->|no| M[broken — skip, report]
+    K -->|no| M[broken: skip, report]
 
     C --> N[targets list]
     G --> N
@@ -114,7 +114,7 @@ flowchart TD
 
     B -->|no| C[is_new = true]
     B -->|yes| D{hash matches\nAND dest exists?}
-    D -->|yes| E[unchanged — skip]
+    D -->|yes| E[unchanged: skip]
     D -->|no| F[queue as update]
 
     C --> G{dry-run?}
@@ -172,14 +172,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[resolved .json file] --> B{Contains mcpServers object?}
-    B -->|no| C[broken — skip, report]
+    B -->|no| C[broken: skip, report]
     B -->|yes| D[extract server names]
     D --> E{asset_id in lock?}
 
     E -->|no| F[is_new = true]
     E -->|yes| G{hash matches AND\nall servers in settings?}
-    G -->|yes| H[unchanged — skip]
-    G -->|no| I[is_new = false — queue as update]
+    G -->|yes| H[unchanged: skip]
+    G -->|no| I[is_new = false, queue as update]
 
     F --> J[pending list]
     I --> J
@@ -200,7 +200,7 @@ flowchart TD
     D --> G
     E --> G
     F --> G
-    G -->|yes| H[skip — never overwrite]
+    G -->|yes| H[skip: never overwrite]
     G -->|no| I[write server definition]
     I --> J[save settings file]
 ```

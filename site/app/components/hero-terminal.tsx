@@ -12,7 +12,7 @@ const REMOVE_SOURCE = "https://github.com/mattpocock/skills";
 const REMOVE_REPO = "github.com/mattpocock/skills";
 const REMOVE_ITEM = "grill-me";
 
-// status: undefined → unchanged; otherwise updated/added/removed.
+// status: undefined -> unchanged; otherwise updated/added/removed.
 type Status =
   | { s: "updated"; v: [string, string] }
   | { s: "added"; v: [string] }
@@ -85,7 +85,7 @@ function glyphFor(s: Status | undefined): { g: string; cls: string } {
 // scene "sync" runs the original kasetto sync animation; "edit" runs the
 // continuation cargo-style `kst add ...` then `kst remove ...` session; "to-*"
 // are brief clear-screen transitions between scenes so the loop reads as one
-// terminal. Within "edit" the EditStep state machine threads add → remove.
+// terminal. Within "edit" the EditStep state machine threads add -> remove.
 type Scene = "sync" | "to-edit" | "edit" | "to-sync";
 type SyncPhase = "idle" | "typing" | "resolving" | "running" | "done";
 type EditStep =
@@ -107,7 +107,7 @@ export function HeroTerminal() {
   const [typed, setTyped] = useState(0);
   const [groupIdx, setGroupIdx] = useState(-1);
   const [itemIdx, setItemIdx] = useState(0);
-  // edit-scene state (threads add → remove in one terminal session)
+  // edit-scene state (threads add -> remove in one terminal session)
   const [step, setStep] = useState<EditStep>("add-typing");
   const [addTyped, setAddTyped] = useState(0);
   const [addItemShown, setAddItemShown] = useState(false);
@@ -188,7 +188,7 @@ export function HeroTerminal() {
     return () => clearTimeout(t);
   }, [scene, phase, groupIdx, itemIdx]);
 
-  // sync done → wait, then transition to edit scene
+  // sync done -> wait, then transition to edit scene
   useEffect(() => {
     if (scene !== "sync" || phase !== "done" || reduced) return;
     const t = setTimeout(() => setScene("to-edit"), 4200);
@@ -209,7 +209,7 @@ export function HeroTerminal() {
     return () => clearTimeout(t);
   }, [scene]);
 
-  // --- edit scene state machine: add → remove, in one session ---
+  // --- edit scene state machine: add -> remove, in one session ---
   useEffect(() => {
     if (scene !== "edit" || step !== "add-typing") return;
     if (reduced) {
@@ -246,7 +246,7 @@ export function HeroTerminal() {
     };
   }, [scene, step]);
 
-  // add settled → hold briefly → clear screen → start typing remove
+  // add settled -> hold briefly -> clear screen -> start typing remove
   useEffect(() => {
     if (scene !== "edit" || step !== "add-done") return;
     const t = setTimeout(() => setStep("clear-after-add"), 2200);
@@ -285,7 +285,7 @@ export function HeroTerminal() {
     };
   }, [scene, step]);
 
-  // remove settled → loop back to sync
+  // remove settled -> loop back to sync
   useEffect(() => {
     if (scene !== "edit" || step !== "rm-done" || reduced) return;
     const t = setTimeout(() => setScene("to-sync"), 4200);

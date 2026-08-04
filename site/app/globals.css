@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Cassette palette — dark-only · warm "tape stock" + amber "tape gold"
+/* ─── Cassette palette: dark-only · warm "tape stock" + amber "tape gold"
    Source of truth: kasetto-cli design package. All component classes pull
    from the semantic aliases below; the ramps stay as the raw tokens. */
 :root {
@@ -40,7 +40,7 @@
   --a-100: #fdefd6;
   --a-50: #fdf7ec;
 
-  /* ── semantic — CLI hues are canonical; -d twins fall back to the same
+  /* ── semantic: CLI hues are canonical; -d twins fall back to the same
        bright tone because the site is dark-only (no docs-on-light surface). */
   --green: #84c578; /* CLI SUCCESS */
   --green-d: #84c578;
@@ -51,7 +51,7 @@
   --violet: #b6a6ef; /* CLI BRAND */
   --violet-d: #b6a6ef;
 
-  /* ── surface semantic aliases — popil neutral warm-grey ── */
+  /* ── surface semantic aliases: popil neutral warm-grey ── */
   --base: #1f1f1e;
   --mantle: #1a1a19;
   --surface0: #262625;
@@ -63,7 +63,7 @@
   --subtext1: var(--n-300);
   --text: var(--n-100);
 
-  /* ── legacy named tones → CLI hues ── */
+  /* ── legacy named tones -> CLI hues ── */
   --mauve: var(--violet); /* CLI BRAND */
   --lavender: var(--violet);
   --sky: var(--cyan); /* CLI INFO */
@@ -78,10 +78,10 @@
   --border: var(--surface1);
   --border-strong: var(--surface2);
   --fg: var(--text);
-  --fg-muted: var(--subtext0); /* → CLI SECONDARY */
-  --fg-subtle: var(--overlay1); /* → CLI INFRA */
-  --accent: var(--a-500); /* → CLI ATTENTION */
-  --accent-cool: var(--violet); /* → CLI BRAND */
+  --fg-muted: var(--subtext0); /* -> CLI SECONDARY */
+  --fg-subtle: var(--overlay1); /* -> CLI INFRA */
+  --accent: var(--a-500); /* -> CLI ATTENTION */
+  --accent-cool: var(--violet); /* -> CLI BRAND */
   --accent-warm: var(--a-500);
   --accent-rust: var(--a-500);
 
@@ -94,7 +94,7 @@
   --shadow-card: 0 1px 0 rgba(255, 220, 170, 0.02) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   --shadow-terminal: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
 
-  /* Film-grain texture — analog cassette texture cue, ~1.5% opacity */
+  /* Film-grain texture: analog cassette texture cue, ~1.5% opacity */
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.96  0 0 0 0 0.89  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 
   /* ─── Type scale ─── */
@@ -212,7 +212,7 @@ button {
   margin-bottom: 14px;
 }
 
-/* ─── Grid box — bordered container ─── */
+/* ─── Grid box: bordered container ─── */
 .grid-box {
   position: relative;
   border: 1px solid var(--border);
@@ -221,7 +221,7 @@ button {
   box-shadow: var(--shadow-card);
 }
 
-/* Film-grain overlay — analog cassette texture cue */
+/* Film-grain overlay: analog cassette texture cue */
 .grid-box::after,
 .hero-terminal::after {
   content: "";
@@ -322,7 +322,7 @@ button {
   letter-spacing: var(--tracking-tight);
 }
 
-/* Install pill — terminal-style command box */
+/* Install pill: terminal-style command box */
 .install-pill {
   display: inline-flex;
   align-items: center;
@@ -793,7 +793,7 @@ button {
   }
 }
 
-/* ─── Fumadocs theme bridge (HSL — dark cassette, muted accents) ─── */
+/* ─── Fumadocs theme bridge (HSL, dark cassette, muted accents) ─── */
 :root {
   --fd-background: 60 2% 12%; /* popil base #1f1f1e */
   --fd-foreground: 36 12% 88%; /* popil text #e4e2de */
@@ -807,7 +807,7 @@ button {
   --fd-secondary-foreground: 36 12% 88%;
   --fd-muted: 60 2% 10%;
   --fd-muted-foreground: 40 11% 62%; /* CLI SECONDARY #a8a195 */
-  --fd-accent: 250 67% 80%; /* CLI BRAND #b6a6ef — muted hover wash */
+  --fd-accent: 250 67% 80%; /* CLI BRAND #b6a6ef, muted hover wash */
   --fd-accent-foreground: 36 12% 88%;
   --fd-border: 60 3% 18%; /* popil surface1 #2e2e2c */
   --fd-ring: 36 78% 61%;
@@ -1453,7 +1453,7 @@ body:has(#nd-docs-layout) {
   background: transparent;
 }
 
-/* ─── Cassette callouts (MDX) — glyph + tint per skill table ─── */
+/* ─── Cassette callouts (MDX): glyph + tint per skill table ─── */
 .kasetto-callout {
   margin: var(--space-5) 0;
   border-left: 3px solid var(--kc-accent, var(--a-500));

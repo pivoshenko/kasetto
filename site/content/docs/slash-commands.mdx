@@ -25,9 +25,9 @@ Review PR $ARGUMENTS and call out anything risky.
 
 Subdirectories under `commands/` become `:`-separated namespaces:
 
-- `commands/commit.md` → `commit`
-- `commands/git/commit.md` → `git:commit`
-- `commands/git/work/status.md` → `git:work:status`
+- `commands/commit.md` -> `commit`
+- `commands/git/commit.md` -> `git:commit`
+- `commands/git/work/status.md` -> `git:work:status`
 
 ## Config
 
@@ -42,12 +42,12 @@ commands:
     commands:
       - review-pr          # namespaced name from discovery
       - name: deploy
-        path: ops          # → ops/deploy.md in the source
+        path: ops          # -> ops/deploy.md in the source
 ```
 
 The `commands` field accepts the same shapes as `mcps`:
 
-- `"*"` — discover every `.md` file under `commands/`.
+- `"*"`: discover every `.md` file under `commands/`.
 - A list of namespaced names (`git:commit`, `review-pr`).
 - A list of `{ name, path }` objects to load from custom subdirectories.
 
@@ -58,18 +58,18 @@ Kasetto rewrites each command into the format expected by the destination agent:
 | Agent           | Global directory                       | Project directory      | Format                  |
 | --------------- | -------------------------------------- | ---------------------- | ----------------------- |
 | claude-code     | `~/.claude/commands/`                  | `.claude/commands/`    | Markdown + frontmatter  |
-| cursor          | —                                      | `.cursor/commands/`    | Markdown (body only)    |
+| cursor          | -                                      | `.cursor/commands/`    | Markdown (body only)    |
 | windsurf        | `~/.codeium/windsurf/global_workflows/` | `.windsurf/workflows/` | Markdown + frontmatter |
-| cline           | —                                      | `.clinerules/workflows/` | Markdown (body only)  |
+| cline           | -                                      | `.clinerules/workflows/` | Markdown (body only)  |
 | opencode        | `~/.config/opencode/commands/`         | `.opencode/commands/`  | Markdown + frontmatter  |
 | continue        | `~/.continue/prompts/`                 | `.continue/prompts/`   | `.prompt` file          |
-| github-copilot  | —                                      | `.github/prompts/`     | `.prompt.md`            |
+| github-copilot  | -                                      | `.github/prompts/`     | `.prompt.md`            |
 | amp             | `~/.config/amp/commands/`              | `.agents/commands/`    | Markdown + frontmatter  |
 | roo             | `~/.roo/commands/`                     | `.roo/commands/`       | Markdown + frontmatter  |
 | augment         | `~/.augment/commands/`                 | `.augment/commands/`   | Markdown + frontmatter  |
-| junie           | —                                      | `.junie/commands/`     | Markdown + frontmatter  |
-| openhands       | —                                      | `.openhands/microagents/` | Markdown + frontmatter |
-| codex           | `~/.codex/prompts/`                    | —                      | Markdown + frontmatter  |
+| junie           | -                                      | `.junie/commands/`     | Markdown + frontmatter  |
+| openhands       | -                                      | `.openhands/microagents/` | Markdown + frontmatter |
+| codex           | `~/.codex/prompts/`                    | -                      | Markdown + frontmatter  |
 | gemini-cli      | `~/.gemini/commands/`                  | `.gemini/commands/`    | TOML                    |
 | zcode           | `~/.zcode/commands/`                   | `.zcode/commands/`     | Markdown + frontmatter  |
 

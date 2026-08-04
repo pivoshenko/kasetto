@@ -5,7 +5,7 @@ description: Auth tokens for private GitHub, GitLab, Bitbucket, Codeberg, and Gi
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Kasetto can pull skills, commands, instructions, and MCP configs from private repositories. No login command or credentials file needed — just set an environment variable and it works.
+Kasetto can pull skills, commands, instructions, and MCP configs from private repositories. No login command or credentials file needed. Set an environment variable and it works.
 
 ## Supported Git Hosts
 
@@ -108,7 +108,7 @@ Method 1 is tried first; if those variables aren't set, Method 2 is used.
 | `CODEBERG_TOKEN` | Fallback if `GITEA_TOKEN` is not set    |
 | `FORGEJO_TOKEN`  | Fallback if neither of the above is set |
 
-All three are checked in order — the first one found is used for any Gitea-family host.
+All three are checked in order. The first one found is used for any Gitea-family host.
 
 ## Remote Configs
 

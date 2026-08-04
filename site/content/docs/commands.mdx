@@ -7,7 +7,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## `kst init`
 
-Generates a starter config file — local `./kasetto.yaml` by default, or global config with `--global`.
+Generates a starter config file: local `./kasetto.yaml` by default, or global config with `--global`.
 
 ```bash
 kst init [OPTIONS]
@@ -22,13 +22,13 @@ kst init [OPTIONS]
 
 ## `kst add`
 
-Appends a source to your local `kasetto.yaml` and syncs it in — the cargo/uv-style way to grow a config without hand-editing YAML. Comments and formatting in the file are preserved; only the targeted lists gain a new entry.
+Appends a source to your local `kasetto.yaml` and syncs it in, the cargo/uv-style way to grow a config without hand-editing YAML. Comments and formatting in the file are preserved; only the targeted lists gain a new entry.
 
 ```bash
 kst add <SOURCE> [OPTIONS]
 ```
 
-Kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) name the entries to add. Because skills, MCPs, commands, and instructions are separate lists, a single `add` can write to several of them at once — handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
+Kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) name the entries to add. Because skills, MCPs, commands, and instructions are separate lists, a single `add` can write to several of them at once, which is handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
 
 ```bash
 kst add https://github.com/anthropics/skills                 # every skill in the pack
@@ -39,7 +39,7 @@ kst add https://github.com/example/pack --branch develop --no-sync
 kst add https://github.com/example/pack --dry-run             # preview the edit, don't write
 ```
 
-**Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab — `add` decomposes a `blob`/`tree` URL into the repo, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
+**Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab, and `add` decomposes a `blob`/`tree` URL into the repo, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
 
 ```bash
 kst add https://github.com/mattpocock/skills/blob/main/skills/personal/edit-article/SKILL.md
@@ -56,7 +56,7 @@ skills:
       - edit-article
 ```
 
-A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `branch:` so `--update` keeps tracking it. Explicit `--ref`/`--branch`/`--sub-dir` override the derived pieces — e.g. add a `tree/` URL for the sub-dir and name the skills yourself with `--skill`.
+A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `branch:` so `--update` keeps tracking it. Explicit `--ref`/`--branch`/`--sub-dir` override the derived pieces. For example, add a `tree/` URL for the sub-dir and name the skills yourself with `--skill`.
 
 ### Options
 
@@ -80,7 +80,7 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | `--project`           | Sync into the current project                                         |
 | `--global`            | Sync globally (default)                                               |
 
-Before writing, `add` fetches the source once to confirm it resolves (and, for a named skill list, that the names exist) — skip with `--no-verify`. Adding a source whose `(source, ref/branch, sub-dir)` identity already exists in a list is rejected; edit it directly or `kst remove` it first. MCP entries never carry `sub-dir` (the schema has none there). Remote configs (HTTPS) can't be edited in place.
+Before writing, `add` fetches the source once to confirm it resolves (and, for a named skill list, that the names exist). Skip that with `--no-verify`. Adding a source whose `(source, ref/branch, sub-dir)` identity already exists in a list is rejected; edit it directly or `kst remove` it first. MCP entries never carry `sub-dir` (the schema has none there). Remote configs (HTTPS) can't be edited in place.
 
 The `<SOURCE>@<REF>` shorthand (cargo/uv-style) splits the trailing `@<ref>` off the positional and is equivalent to `--ref <REF>`. Passing both the shorthand and `--ref`/`--branch` is rejected. SSH (`git@host:org/repo`) and URLs with userinfo (`https://user@host/repo`) round-trip unchanged.
 
@@ -104,7 +104,7 @@ kst remove https://github.com/example/pack --dry-run          # preview, don't w
 kst rm ./local/pack --no-sync                                 # edit config only
 ```
 
-Deep `blob`/`tree` browse URLs are accepted too — they resolve to the same repo-root source `add` would have written, so you can paste the URL you're looking at.
+Deep `blob`/`tree` browse URLs are accepted too. They resolve to the same repo-root source `add` would have written, so you can paste the URL you're looking at.
 
 ### Options
 
@@ -127,7 +127,7 @@ Deep `blob`/`tree` browse URLs are accepted too — they resolve to the same rep
 | `--project`         | Prune from the current project                                    |
 | `--global`          | Prune globally (default)                                          |
 
-Subtracting a name from a `"*"` wildcard entry is an error (there are no named entries to drop — use `--<kind> "*"` to remove the whole entry); so is naming a skill that isn't in the list. When several entries share a source URL, pass `--ref` or `--branch` to pick one. Entries inherited via `extends:` live in the parent config and must be removed there.
+Subtracting a name from a `"*"` wildcard entry is an error (there are no named entries to drop; use `--<kind> "*"` to remove the whole entry); so is naming a skill that isn't in the list. When several entries share a source URL, pass `--ref` or `--branch` to pick one. Entries inherited via `extends:` live in the parent config and must be removed there.
 
 ## `kst sync`
 
@@ -155,13 +155,13 @@ Missing skills are reported as broken but won't stop the rest of the run. The ex
 <Callout type="tip">
 
 
-`--dry-run` is great in CI — verify your config without touching anything on disk.
+`--dry-run` is great in CI: verify your config without touching anything on disk.
 
 </Callout>
 
 ## `kst lock`
 
-Re-resolves every source and pins it into `kasetto.lock` **without installing** to your agent directories — the equivalent of `cargo generate-lockfile` / `uv lock`. Like `sync --update`, it re-resolves moving refs (branches and the default HEAD).
+Re-resolves every source and pins it into `kasetto.lock` **without installing** to your agent directories, the equivalent of `cargo generate-lockfile` / `uv lock`. Like `sync --update`, it re-resolves moving refs (branches and the default HEAD).
 
 ```bash
 kst lock [OPTIONS]
@@ -180,7 +180,7 @@ kst lock [OPTIONS]
 | `--project`              | Lock the project scope (`./kasetto.lock`)             |
 | `--global`               | Lock the global scope (default)                       |
 
-Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination — so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
+Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination, so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
 
 <Callout type="info">
 
@@ -190,7 +190,7 @@ Skills are hashed from the materialized **source tree**. Because a skill install
 
 ## `kst list`
 
-Prints a uv-style table of installed assets from the lock file — name, scope, and source per row.
+Prints a uv-style table of installed assets from the lock file: name, scope, and source per row.
 
 ```bash
 kst list [OPTIONS]
@@ -212,11 +212,11 @@ With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
 
-It also reports **untracked entries** — assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCP servers in an agent's settings file. This is purely advisory and **read-only** — Kasetto never deletes files it does not own, and the check never changes the exit code.
+It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCP servers in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
 
 <Callout type="info">
 
-Because Kasetto writes no ownership marker into MCP settings files (and deliberately preserves servers you add yourself), the MCP portion is an **inventory of every server the lock does not track** — it will also list servers you added by hand. Treat it as an FYI, not an orphan report. Command and per-directory instruction dirs are likewise shared with your own files, so anything you hand-authored there shows up too.
+Because Kasetto writes no ownership marker into MCP settings files (and deliberately preserves servers you add yourself), the MCP portion is an **inventory of every server the lock does not track**, so it will also list servers you added by hand. Treat it as an FYI, not an orphan report. Command and per-directory instruction dirs are likewise shared with your own files, so anything you hand-authored there shows up too.
 
 </Callout>
 
@@ -236,7 +236,7 @@ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes everything Kasetto installed for the given scope — skills, commands, MCP configs, instructions, and lock file entries.
+Removes everything Kasetto installed for the given scope: skills, commands, MCP configs, instructions, and lock file entries.
 
 ```bash
 kst clean [OPTIONS]
@@ -255,7 +255,7 @@ kst clean [OPTIONS]
 
 ## `kst self`
 
-Manage Kasetto itself — update to a new version or remove it completely.
+Manage Kasetto itself: update to a new version or remove it completely.
 
 ### `kst self update`
 
@@ -281,7 +281,7 @@ For Homebrew or Cargo installs, use their own upgrade commands.
 
 #### Update notifications
 
-Kasetto prints a yellow `New version available: x.y.z → a.b.c` line at the end of any command when a newer release exists on GitHub. The check runs in a background thread at most once every 24 hours and stores the result under `$XDG_CACHE_HOME/kasetto/update-check.json` (default: `~/.cache/kasetto/update-check.json`).
+Kasetto prints a yellow `New version available: x.y.z -> a.b.c` line at the end of any command when a newer release exists on GitHub. The check runs in a background thread at most once every 24 hours and stores the result under `$XDG_CACHE_HOME/kasetto/update-check.json` (default: `~/.cache/kasetto/update-check.json`).
 
 The notice is suppressed when:
 

@@ -6,7 +6,7 @@ import { JetBrains_Mono } from "next/font/google";
 import { TopNav } from "./components/top-nav";
 import "./globals.css";
 
-// Variable axis covers wght 100–800 — see SKILL.md for the brand weight ladder.
+// Variable axis covers wght 100-800; see SKILL.md for the brand weight ladder.
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://kasetto.dev"),
   title: {
-    template: "%s — Kasetto",
+    template: "%s - Kasetto",
     default: "Kasetto",
   },
   description: "Declarative AI Agent Environment Manager written in Rust",

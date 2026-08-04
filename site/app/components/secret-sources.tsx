@@ -9,7 +9,7 @@ import {
 } from "react-icons/si";
 
 // `usage` is the placeholder body (without the `${...}` wrapper, added in JSX so
-// the strings stay plain — not template literals).
+// the strings stay plain, not template literals).
 const SOURCES: { icon: IconType; name: string; usage: string }[] = [
   { icon: FaTerminal, name: "Environment", usage: "kst_VERCEL_TOKEN" },
   { icon: FaFileShield, name: "credentials.yaml", usage: "kst:crd:vercel/token" },

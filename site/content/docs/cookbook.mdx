@@ -22,7 +22,7 @@ git commit -m "chore: pin agent skills"
 ```
 
 ```bash
-# Teammates: clone, then sync. The lock is honored exactly —
+# Teammates: clone, then sync. The lock is honored exactly:
 # no surprise upgrades, and no network fetch when nothing changed.
 kst sync
 ```
@@ -40,20 +40,20 @@ git commit -m "chore: bump agent skills"
 kst sync --locked --project
 ```
 
-`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works → The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
+`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works -> The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
 
 ## Edit Your Config Without Leaving The Shell
 
-`kst add` / `kst remove` rewrite `kasetto.yaml` (comments preserved), then sync — the cargo/uv way. Paste a tag-pinned URL with the `@<ref>` shorthand and you're done:
+`kst add` / `kst remove` rewrite `kasetto.yaml` (comments preserved), then sync (the cargo/uv way). Paste a tag-pinned URL with the `@<ref>` shorthand and you're done:
 
 ```bash
-# Pin a pack to a specific tag — `@<ref>` shorthand equals `--ref <ref>`.
+# Pin a pack to a specific tag. The `@<ref>` shorthand equals `--ref <ref>`.
 kst add https://github.com/anthropics/skills@v1.2.0
 
 # Add named skills from a multi-pack repo (kind-tagged, repeatable).
 kst add https://github.com/example/repo --skill code-reviewer --skill find-skills
 
-# Touch several sections in one edit — skills + MCPs + commands + instructions together.
+# Touch several sections in one edit: skills + MCPs + commands + instructions together.
 kst add https://github.com/example/repo --skill find --mcp github --command review --instruction conventions
 
 # Preview the edit without writing kasetto.yaml or running sync.
@@ -63,7 +63,7 @@ kst add https://github.com/example/repo --dry-run
 kst add https://github.com/example/repo --no-sync
 ```
 
-`kst remove` is the symmetric reverse — same kind-tagged flags, with `*` to drop a whole entry:
+`kst remove` is the symmetric reverse: same kind-tagged flags, with `*` to drop a whole entry:
 
 ```bash
 # Drop the source from every list it appears in, prune installed assets.
@@ -79,11 +79,11 @@ kst remove https://github.com/example/repo --mcp "*"
 kst remove https://github.com/example/repo@v1.2.0
 ```
 
-Both honor `--locked`/`--frozen` (the follow-up sync refuses to fetch), `--json` (structured output for scripts), and `--no-sync` (edit the YAML only). Deep `blob`/`tree` browse URLs work too — paste the URL you're already looking at and Kasetto decomposes it into `source` + `ref`/`branch` + `sub-dir`.
+Both honor `--locked`/`--frozen` (the follow-up sync refuses to fetch), `--json` (structured output for scripts), and `--no-sync` (edit the YAML only). Deep `blob`/`tree` browse URLs work too. Paste the URL you're already looking at and Kasetto decomposes it into `source` + `ref`/`branch` + `sub-dir`.
 
 ## Verify The Lock In CI Without Installing
 
-`kst lock --check` (aliases `--locked`/`--frozen`) re-resolves the config and compares against `kasetto.lock` — exits non-zero on drift, never writes. Cheaper than a full `sync --locked` when you only need to know "is the committed lock still accurate?":
+`kst lock --check` (aliases `--locked`/`--frozen`) re-resolves the config and compares against `kasetto.lock`. It exits non-zero on drift and never writes. Cheaper than a full `sync --locked` when you only need to know "is the committed lock still accurate?":
 
 ```bash
 kst lock --check
@@ -120,17 +120,17 @@ extends:
 scope: project
 
 skills:
-  # Same source as the base → narrows the parent's skills list to one entry.
+  # Same source as the base -> narrows the parent's skills list to one entry.
   - source: https://github.com/anthropics/skills
     skills:
       - skill-creator
 
-  # New source → appended on top of the inherited list.
+  # New source -> appended on top of the inherited list.
   - source: https://github.com/acme/internal-pack
     skills: "*"
 ```
 
-Top-level scalars (`scope`, `agent`, `destination`) replace. `skills` and `mcps` merge by `(source, ref-or-branch, sub-dir)` identity. See [Configuration → Extending Another Config](/docs/configuration#extending-another-config) for the full merge-instructions table.
+Top-level scalars (`scope`, `agent`, `destination`) replace. `skills` and `mcps` merge by `(source, ref-or-branch, sub-dir)` identity. See [Configuration -> Extending Another Config](/docs/configuration#extending-another-config) for the full merge-instructions table.
 
 ## Monorepo: Project Scope Per Workspace
 
@@ -208,12 +208,12 @@ mcps:
   - source: https://github.com/acme/monorepo
     ref: v1.4.0
     mcps:
-      - github        # → mcps/github.json
-      - linear        # → mcps/linear.json
+      - github        # -> mcps/github.json
+      - linear        # -> mcps/linear.json
 
   # Custom directory via { name, path }
   - source: https://github.com/acme/other
     mcps:
       - name: my-server
-        path: tools   # → tools/my-server.json
+        path: tools   # -> tools/my-server.json
 ```

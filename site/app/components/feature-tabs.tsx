@@ -1,7 +1,7 @@
 const FEATURES = [
   {
     title: "DECLARATIVE",
-    desc: "One YAML file — skills, commands, MCPs, and instructions. Apply globally or per project; compose with `extends`.",
+    desc: "One YAML file: skills, commands, MCPs, and instructions. Apply globally or per project; compose with `extends`.",
   },
   {
     title: "ENTERPRISE & PRIVATE REPOSITORIES",
@@ -9,7 +9,7 @@ const FEATURES = [
   },
   {
     title: "MULTI-AGENT",
-    desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot — one sync keeps every agent current.",
+    desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot: one sync keeps every agent current.",
   },
   {
     title: "SKILLS, COMMANDS, MCPS & INSTRUCTIONS",
@@ -17,17 +17,17 @@ const FEATURES = [
   },
   {
     title: "SPEED",
-    desc: "Built in Rust. Content is hashed and diffed against a lock file, so only what changed is touched — syncs finish in seconds.",
+    desc: "Built in Rust. Content is hashed and diffed against a lock file, so only what changed is touched. Syncs finish in seconds.",
   },
   {
     title: "UNIVERSAL",
-    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes — same behavior on your laptop or in CI.",
+    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes. Same behavior on your laptop or in CI.",
   },
 ];
 
 type Token = { t: string; v?: string };
 
-// kasetto-config:start — generated from kasetto.example.yaml; run `just sync-config`
+// kasetto-config:start - generated from kasetto.example.yaml; run `just sync-config`
 const CONFIG_LINES: Token[] = [
   {
     t: "cmt",
@@ -55,7 +55,7 @@ const CONFIG_LINES: Token[] = [
   { t: "punct", v: ":" },
   { t: "nl" },
   { t: "dash", v: "  " },
-  { t: "cmt", v: '# "*" syncs every skill in the source — each is a directory with a SKILL.md,' },
+  { t: "cmt", v: '# "*" syncs every skill in the source. Each is a directory with a SKILL.md,' },
   { t: "nl" },
   { t: "dash", v: "  " },
   { t: "cmt", v: "# discovered in the source root or its skills/ subdirectory" },
@@ -134,7 +134,7 @@ const CONFIG_LINES: Token[] = [
   { t: "dash", v: "  " },
   {
     t: "cmt",
-    v: "# path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/",
+    v: "# path: a skill in a non-standard location, <path>/<name>/, here skills/engineering/improve-codebase-architecture/",
   },
   { t: "nl" },
   { t: "dash", v: "  " },

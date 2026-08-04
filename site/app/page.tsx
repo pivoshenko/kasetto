@@ -97,7 +97,7 @@ export default async function Page() {
           environment manager.
         </h1>
         <p className="hero-etymology">
-          <span className="hero-etymology-jp">カセット</span> — cassette. plug in, swap out, share.
+          <span className="hero-etymology-jp">カセット</span>: cassette. plug in, swap out, share.
         </p>
         <div className="hero-cta">
           <a href="/docs" className="btn btn-primary">

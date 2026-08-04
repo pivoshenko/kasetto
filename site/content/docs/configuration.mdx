@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Configure your kasetto.yaml — sources, agents, scope, and extends.
+description: Configure your kasetto.yaml (sources, agents, scope, and extends).
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -28,7 +28,7 @@ agent:
 # destination: ./.agents/skills
 
 skills:
-  # "*" syncs every skill in the source — each is a directory with a SKILL.md,
+  # "*" syncs every skill in the source. Each is a directory with a SKILL.md,
   # discovered in the source root or its skills/ subdirectory
   - source: https://github.com/vercel-labs/next-skills
     # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
@@ -48,7 +48,7 @@ skills:
       - grill-me
       - caveman
 
-  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  # path: a skill in a non-standard location, <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
       - name: improve-codebase-architecture
@@ -139,7 +139,7 @@ When `mcps: "*"`, Kasetto auto-discovers MCP config files in this order:
 
 ### MCP Entry Fields
 
-Each entry in the `mcps` list can be a plain string (name) or an object — mirrors skill entries:
+Each entry in the `mcps` list can be a plain string (name) or an object, the same as skill entries:
 
 | Form                              | Resolves to             |
 | --------------------------------- | ----------------------- |
@@ -157,13 +157,13 @@ into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.
 for Cursor). See [how sync works](/docs/how-sync-works) for merge behavior details.
 
 A pack can reference secrets with `${kst_<name>}` placeholders (tokens, passwords, API keys) instead
-of committing them. They're resolved at sync time from the environment or a credentials file — see
+of committing them. They're resolved at sync time from the environment or a credentials file. See
 [Secret Injection](/docs/secrets).
 
 ### Instruction Source Fields
 
-Instructions wire each agent's instruction file — `CLAUDE.md`, `.cursor/rules/*.mdc`, `AGENTS.md`,
-`.github/copilot-instructions.md`, and so on — from a single source. An instruction is Markdown with
+Instructions wire each agent's instruction file (`CLAUDE.md`, `.cursor/rules/*.mdc`, `AGENTS.md`,
+`.github/copilot-instructions.md`, and so on) from a single source. An instruction is Markdown with
 optional YAML frontmatter, discovered in the source's `instructions/` directory.
 
 | Key       | Required | Description                                                                                    |
@@ -179,7 +179,7 @@ e.g. `house:security`).
 
 ### Instruction Entry Fields
 
-Each entry in the `instructions` list can be a plain string (name) or an object — mirrors command entries:
+Each entry in the `instructions` list can be a plain string (name) or an object, the same as command entries:
 
 | Form                              | Resolves to                       |
 | --------------------------------- | --------------------------------- |
@@ -191,12 +191,12 @@ Each entry in the `instructions` list can be a plain string (name) or an object 
 
 Each instruction is transformed into the target agent's native format. Two destination shapes exist:
 
-- **Aggregate file** — many instructions merge into one shared file (`CLAUDE.md`, `AGENTS.md`,
+- **Aggregate file**: many instructions merge into one shared file (`CLAUDE.md`, `AGENTS.md`,
   `GEMINI.md`, `.github/copilot-instructions.md`, ...). Each instruction is wrapped in a managed
   `<!-- kasetto:instruction:ID ... -->` comment block, so your own hand-written content and other instructions in
-  the same file are preserved. `remove`/`clean` strip only kasetto's blocks — they never delete the
+  the same file are preserved. `remove`/`clean` strip only kasetto's blocks and never delete the
   file.
-- **Per-instruction directory** — one file per instruction. Cursor (`.cursor/rules/<name>.mdc`) gets reconstructed
+- **Per-instruction directory**: one file per instruction. Cursor (`.cursor/rules/<name>.mdc`) gets reconstructed
   MDC frontmatter (`description`, `globs`, `alwaysApply`); other directory agents
   (`.windsurf/rules`, `.clinerules`, `.continue/rules`, ...) get the Markdown body only.
 
