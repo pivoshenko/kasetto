@@ -37,11 +37,11 @@ impl SecretSource for EnvSource {
     }
 
     fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
-        // Explicit `${kst:env:NAME}` -> look up NAME exactly as written
+        // Explicit `${kst:env:NAME}` → look up NAME exactly as written
         if r.tag.as_deref() == Some("env") {
             return Ok(std::env::var(&r.payload).ok().map(Secret::new));
         }
-        // Chain `${kst_name}` -> the lowercase key as written, then uppercased so
+        // Chain `${kst_name}` → the lowercase key as written, then uppercased so
         // a lowercase placeholder still resolves a conventional UPPER_CASE var.
         if let Ok(v) = std::env::var(&r.flat_key) {
             return Ok(Some(Secret::new(v)));
@@ -87,7 +87,7 @@ impl SecretSource for CredentialsFileSource {
     }
 
     fn get(&self, r: &SecretRef) -> Result<Option<Secret>> {
-        // Explicit `${kst:crd:a/b/c}` -> descend the `/`-separated path
+        // Explicit `${kst:crd:a/b/c}` → descend the `/`-separated path
         if r.tag.as_deref() == Some("crd") {
             let segs: Vec<&str> = r.payload.split('/').filter(|s| !s.is_empty()).collect();
             return Ok(descend(&self.root, &segs).map(Secret::new));
@@ -124,7 +124,7 @@ fn descend(root: &Yaml, segments: &[&str]) -> Option<String> {
 }
 
 /// 1Password, via the `op` CLI. Tagged form `${kst:op:<vault>/<item>/<field>}`
-/// (or a full `${kst:op://<vault>/<item>/<field>}` URI) -> `op read op://...`.
+/// (or a full `${kst:op://<vault>/<item>/<field>}` URI) → `op read op://...`.
 pub(super) struct OnePasswordSource;
 
 impl SecretSource for OnePasswordSource {
@@ -144,7 +144,7 @@ impl SecretSource for OnePasswordSource {
 }
 
 /// HashiCorp Vault, via the `vault` CLI. Tagged form
-/// `${kst:vault:<kv-path>#<field>}` -> `vault kv get -field=<field> <kv-path>`.
+/// `${kst:vault:<kv-path>#<field>}` → `vault kv get -field=<field> <kv-path>`.
 pub(super) struct VaultSource;
 
 impl SecretSource for VaultSource {
@@ -164,7 +164,7 @@ impl SecretSource for VaultSource {
 }
 
 /// KeePass, via the `keepassxc-cli` CLI. Tagged form `${kst:kp:<entry>#<attr>}`
-/// (`<attr>` defaults to `Password`) -> `keepassxc-cli show -s -a <attr> ...`,
+/// (`<attr>` defaults to `Password`) → `keepassxc-cli show -s -a <attr> ...`,
 /// unlocked with a key-file and/or a master password piped on stdin.
 pub(super) struct KeePassSource {
     database: String,
@@ -680,11 +680,11 @@ mod tests {
 
     #[test]
     fn keepass_args_add_no_password_only_without_a_password() {
-        // Key-file only -> `--key-file` and `--no-password` (skip the prompt)
+        // Key-file only → `--key-file` and `--no-password` (skip the prompt)
         let kf = keepass_args("db.kdbx", Some("k.keyx"), false, "GitHub/PAT", "Password");
         assert!(kf.windows(2).any(|w| w == ["--key-file", "k.keyx"]));
         assert!(kf.iter().any(|a| a == "--no-password"));
-        // Password piped -> no `--no-password`
+        // Password piped → no `--no-password`
         let pw = keepass_args("db.kdbx", None, true, "GitHub/PAT", "Password");
         assert!(!pw.iter().any(|a| a == "--no-password"));
         assert_eq!(pw.last().unwrap(), "GitHub/PAT");

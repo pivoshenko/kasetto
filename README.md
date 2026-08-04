@@ -187,7 +187,7 @@ skills:
       - grill-me
       - caveman
 
-  # path: a skill in a non-standard location, <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
       - name: improve-codebase-architecture
@@ -237,7 +237,7 @@ MCP packs often need a token or password. Reference one with a `${kst_<name>}` p
 }
 ```
 
-Values come from environment variables first (the name as written, then uppercased, so `${kst_vercel_token}` reads `KST_VERCEL_TOKEN`), then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${kst_vercel__token}` -> `vercel.token`).
+Values come from environment variables first (the name as written, then uppercased, so `${kst_vercel_token}` reads `KST_VERCEL_TOKEN`), then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${kst_vercel__token}` → `vercel.token`).
 
 To pin exactly one source, use the tagged form `${kst:<source>:<ref>}`:
 

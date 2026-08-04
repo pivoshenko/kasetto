@@ -40,7 +40,7 @@ git commit -m "chore: bump agent skills"
 kst sync --locked --project
 ```
 
-`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works -> The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
+`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale lock fails the build instead of silently drifting. See [CI & automation](/docs/ci) and [How Sync Works → The Lockfile Contract](/docs/how-sync-works#the-lockfile-contract).
 
 ## Edit Your Config Without Leaving The Shell
 
@@ -120,17 +120,17 @@ extends:
 scope: project
 
 skills:
-  # Same source as the base -> narrows the parent's skills list to one entry.
+  # Same source as the base → narrows the parent's skills list to one entry.
   - source: https://github.com/anthropics/skills
     skills:
       - skill-creator
 
-  # New source -> appended on top of the inherited list.
+  # New source → appended on top of the inherited list.
   - source: https://github.com/acme/internal-pack
     skills: "*"
 ```
 
-Top-level scalars (`scope`, `agent`, `destination`) replace. `skills` and `mcps` merge by `(source, ref-or-branch, sub-dir)` identity. See [Configuration -> Extending Another Config](/docs/configuration#extending-another-config) for the full merge-instructions table.
+Top-level scalars (`scope`, `agent`, `destination`) replace. `skills` and `mcps` merge by `(source, ref-or-branch, sub-dir)` identity. See [Configuration → Extending Another Config](/docs/configuration#extending-another-config) for the full merge-instructions table.
 
 ## Monorepo: Project Scope Per Workspace
 
@@ -208,12 +208,12 @@ mcps:
   - source: https://github.com/acme/monorepo
     ref: v1.4.0
     mcps:
-      - github        # -> mcps/github.json
-      - linear        # -> mcps/linear.json
+      - github        # → mcps/github.json
+      - linear        # → mcps/linear.json
 
   # Custom directory via { name, path }
   - source: https://github.com/acme/other
     mcps:
       - name: my-server
-        path: tools   # -> tools/my-server.json
+        path: tools   # → tools/my-server.json
 ```

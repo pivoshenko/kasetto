@@ -153,7 +153,7 @@ fn render_notice(current: &str, latest: &str, color: bool) -> String {
     let cmd = upgrade_command();
     if color {
         format!(
-            "\n{ACCENT}{ATTENTION}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}->{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
+            "\n{ACCENT}{ATTENTION}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}→{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
         )
     } else {
         format!("\nNew version available: {current} -> {latest}  run `{cmd}`")

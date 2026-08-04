@@ -399,7 +399,7 @@ fn classify_mcp_file(
     }
 
     // Inject secrets only on the merge path. A missing required secret is a hard
-    // failure (source_error -> non-zero exit), distinct from a malformed file
+    // failure (source_error → non-zero exit), distinct from a malformed file
     if has_secrets {
         let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
         if let Err(e) = ctx.secrets.inject_value(&mut wrap) {

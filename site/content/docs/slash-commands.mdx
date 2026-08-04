@@ -25,9 +25,9 @@ Review PR $ARGUMENTS and call out anything risky.
 
 Subdirectories under `commands/` become `:`-separated namespaces:
 
-- `commands/commit.md` -> `commit`
-- `commands/git/commit.md` -> `git:commit`
-- `commands/git/work/status.md` -> `git:work:status`
+- `commands/commit.md` → `commit`
+- `commands/git/commit.md` → `git:commit`
+- `commands/git/work/status.md` → `git:work:status`
 
 ## Config
 
@@ -42,7 +42,7 @@ commands:
     commands:
       - review-pr          # namespaced name from discovery
       - name: deploy
-        path: ops          # -> ops/deploy.md in the source
+        path: ops          # → ops/deploy.md in the source
 ```
 
 The `commands` field accepts the same shapes as `mcps`:

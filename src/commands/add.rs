@@ -153,10 +153,10 @@ fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>)
 }
 
 /// Build the per-section edits from the kind flags, with these defaults:
-/// - named `--skill`/`--mcp`/`--command` -> that section as a list (a lone `*`
+/// - named `--skill`/`--mcp`/`--command` → that section as a list (a lone `*`
 ///   value becomes a wildcard);
-/// - a `SKILL.md` browse URL with no `--skill` flags -> a one-skill list;
-/// - nothing specified at all -> `skills: "*"` (the common "add this pack" case).
+/// - a `SKILL.md` browse URL with no `--skill` flags → a one-skill list;
+/// - nothing specified at all → `skills: "*"` (the common "add this pack" case).
 ///
 /// MCP entries never carry `sub-dir` (the schema has no such field there).
 fn plan_edits(

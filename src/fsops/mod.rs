@@ -256,7 +256,7 @@ pub(crate) fn resolve_instruction_targets(
 
 /// Root that lock-file `destination` paths are stored relative to, so the
 /// committed lock stays portable across machines and users.
-/// Project scope -> the project root; Global scope -> the user's home directory.
+/// Project scope → the project root; Global scope → the user's home directory.
 pub(crate) fn scope_root(scope: Scope, project_root: &Path) -> Result<PathBuf> {
     match scope {
         Scope::Project => Ok(project_root.to_path_buf()),
@@ -367,7 +367,7 @@ mod tests {
     fn join_dest_csv_keeps_out_of_root_dest_absolute() {
         let root = Path::new("/proj");
         let dests = vec![PathBuf::from("/home/user/.claude/skills")];
-        // Outside the scope root -> stored verbatim (absolute), still resolvable
+        // Outside the scope root → stored verbatim (absolute), still resolvable
         let csv = join_dest_csv(&dests, "alpha", root);
         assert_eq!(csv, "/home/user/.claude/skills/alpha");
         assert_eq!(resolve_dest(&csv, root), dests[0].join("alpha"));

@@ -212,7 +212,7 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
 
 /// Past-tense status verb + dim metadata tail per design. Pairs with
 /// [`action_glyph`] in source-grouped trees. Returns the colored tail (e.g.
-/// `updated  2.1.0 -> 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
+/// `updated  2.1.0 → 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
 pub(crate) fn status_tail(
     status: &str,
     version_from: Option<&str>,
@@ -226,7 +226,7 @@ pub(crate) fn status_tail(
                 version_to.map(|v| format!("  v{v}")).unwrap_or_default()
             ),
             "updated" | "would_update" => match (version_from, version_to) {
-                (Some(f), Some(t)) => format!("updated  {f} -> {t}"),
+                (Some(f), Some(t)) => format!("updated  {f} → {t}"),
                 _ => "updated".to_string(),
             },
             "removed" | "would_remove" => "removed".to_string(),
@@ -244,7 +244,7 @@ pub(crate) fn status_tail(
         }
         "updated" | "would_update" => match (version_from, version_to) {
             (Some(f), Some(t)) => {
-                format!("{ATTENTION}updated{RESET}{SECONDARY}  {f} -> {t}{RESET}")
+                format!("{ATTENTION}updated{RESET}{SECONDARY}  {f} → {t}{RESET}")
             }
             _ => format!("{ATTENTION}updated{RESET}"),
         },
@@ -279,7 +279,7 @@ pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)
 
 /// Per-source header: status glyph + cyan `org/repo`. Optional right-aligned
 /// faint item count padded to `right_col_at` characters. `done = Some(true)`
-/// -> ✓ green, `Some(false)` -> • faint idle, `None` -> no leading glyph.
+/// → ✓ green, `Some(false)` → • faint idle, `None` → no leading glyph.
 pub(crate) fn print_source_header(
     repo: &str,
     count: Option<usize>,

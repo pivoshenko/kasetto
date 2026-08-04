@@ -740,7 +740,7 @@ mod tests {
         let cursor = Agent::Cursor.instructions_global_path(home).unwrap();
         assert_eq!(cursor.path, home.join(".cursor/rules"));
         assert_eq!(cursor.format, InstructionFormat::CursorMdc);
-        // Warp / Trae globals are UI-managed -> no syncable file
+        // Warp / Trae globals are UI-managed → no syncable file
         assert!(Agent::Warp.instructions_global_path(home).is_none());
         assert!(Agent::Trae.instructions_global_path(home).is_none());
     }

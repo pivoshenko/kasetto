@@ -60,15 +60,15 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         return Ok(());
     }
 
-    // `✓ Update available  X -> Y` per design
+    // `✓ Update available  X → Y` per design
     if !as_json {
         if color {
             println!(
-                "{SUCCESS}✓{RESET} Update available  {ATTENTION}{current_version} -> {latest_version}{RESET}"
+                "{SUCCESS}✓{RESET} Update available  {ATTENTION}{current_version} → {latest_version}{RESET}"
             );
             println!();
         } else {
-            println!("Update available  {current_version} -> {latest_version}");
+            println!("Update available  {current_version} → {latest_version}");
             println!();
         }
     }

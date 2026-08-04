@@ -68,12 +68,12 @@ pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (Strin
     }
 }
 
-/// GitLab API path encoding: `/` -> `%2F`.
+/// GitLab API path encoding: `/` → `%2F`.
 fn encode_gitlab_path(path: &str) -> String {
     path.replace('/', "%2F")
 }
 
-/// GitHub API ref encoding: `/` -> `%2F` so that refs like `feature/foo`
+/// GitHub API ref encoding: `/` → `%2F` so that refs like `feature/foo`
 /// are treated as a single path segment in the tarball URL.
 fn encode_github_ref(git_ref: &str) -> String {
     git_ref.replace('/', "%2F")
@@ -398,7 +398,7 @@ mod tests {
             owner: "o".into(),
             repo: "r".into(),
         };
-        // No token set -> falls back to web archive URL
+        // No token set → falls back to web archive URL
         let (url, _) = remote_repo_archive_branch(&parsed, "main");
         assert_eq!(url, "https://github.com/o/r/archive/refs/heads/main.tar.gz");
     }

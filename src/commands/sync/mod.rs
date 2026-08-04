@@ -251,7 +251,7 @@ fn pluralize_item(n: usize) -> &'static str {
     }
 }
 
-/// uv-style duration: sub-second -> `Nms`, otherwise `N.Ns`.
+/// uv-style duration: sub-second → `Nms`, otherwise `N.Ns`.
 fn format_elapsed(d: Duration) -> String {
     let ms = d.as_millis();
     if ms < 1000 {

@@ -48,8 +48,8 @@ flowchart TD
     D --> E{Git pin}
     E -->|ref: set| F[Pin to tag / SHA, no fallback]
     E -->|branch: set| G[Pin to explicit branch, no fallback]
-    E -->|neither| H[Try main, fall back to master]
-    F --> I[Download tarball, then extract to temp dir]
+    E -->|neither| H[Try main → fall back to master]
+    F --> I[Download tarball → extract to temp dir]
     G --> I
     H --> I
     I --> J{sub-dir set?}
@@ -77,7 +77,7 @@ flowchart TD
     C --> E[Scan root/ for subdirs with SKILL.md]
     D --> E
     E --> F[Scan root/skills/ for subdirs with SKILL.md]
-    F --> G[available map: name to path]
+    F --> G[available map: name → path]
 ```
 
 ### Target Selection

@@ -35,12 +35,12 @@ const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
 #   - source: https://github.com/example/monorepo
 #     ref: v1.0
 #     mcps:
-#       - github         # -> mcps/github.json
-#       - linear         # -> mcps/linear.json
+#       - github         # → mcps/github.json
+#       - linear         # → mcps/linear.json
 #   - source: https://github.com/example/other
 #     mcps:
 #       - name: my-server
-#         path: tools    # -> tools/my-server.json
+#         path: tools    # → tools/my-server.json
 
 # commands:
 #   - source: https://github.com/example/commands

@@ -596,8 +596,8 @@ fn needs_fetch(
             return true;
         }
         // Hash every destination once (memoized for the process step). All
-        // matching -> satisfied; some mismatched but one good copy -> local
-        // repair is possible; no good copy -> must fetch
+        // matching → satisfied; some mismatched but one good copy → local
+        // repair is possible; no good copy → must fetch
         let status = dest_status(ctx, cache, skill_name, &entry.hash);
         if !status.all_match && status.good.is_none() {
             return true;
@@ -966,7 +966,7 @@ mod tests {
         cleanup(&h);
     }
 
-    /// Issue #42: with two agents configured, retargeting a source (URL -> local
+    /// Issue #42: with two agents configured, retargeting a source (URL → local
     /// dir) keeps the skill name, so the new install lands at the same on-disk
     /// path the now-stale old entry recorded. The stale-removal pass must not
     /// delete those just-written copies, and the lock must record *every* agent
@@ -1047,7 +1047,7 @@ mod tests {
         assert!(claude.join("alpha/SKILL.md").exists());
         assert!(codex.join("alpha/SKILL.md").exists());
 
-        // Drop the skill from the config entirely -> both agent dirs cleaned
+        // Drop the skill from the config entirely → both agent dirs cleaned
         let s = run_sync_src(&src, &dests, &scope_root, list(&[]), &mut state);
         assert_eq!(s.removed, 1);
         assert!(!claude.join("alpha").exists(), ".claude dir cleaned");

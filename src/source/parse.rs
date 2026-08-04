@@ -129,9 +129,9 @@ pub(crate) struct BrowseDerived {
 /// Decompose a GitHub/Gitea/GitLab `blob`/`tree` browse URL. Returns `None` for
 /// plain repo URLs and local paths (the caller uses the source verbatim).
 ///
-/// - `.../{owner}/{repo}/blob/{ref}/{path}/SKILL.md` -> sub-dir = parent of the
+/// - `.../{owner}/{repo}/blob/{ref}/{path}/SKILL.md` → sub-dir = parent of the
 ///   skill dir, skill_name = the skill dir's name.
-/// - `.../{owner}/{repo}/tree/{ref}/{path}` -> sub-dir = `{path}`, no name.
+/// - `.../{owner}/{repo}/tree/{ref}/{path}` → sub-dir = `{path}`, no name.
 /// - GitLab uses a `/-/` separator before `blob`/`tree`.
 /// - A 40-hex `{ref}` is stored as `git_ref` (pinned); anything else as `branch`
 ///   (so `--update` keeps tracking it). Explicit flags override either.

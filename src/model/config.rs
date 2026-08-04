@@ -297,8 +297,8 @@ pub(crate) enum McpsField {
 
 /// One entry in `mcps[].mcps`. Mirrors `SkillTarget`.
 ///
-/// - Plain string `"github"` -> `mcps/github.json`
-/// - Object `{ name: github, path: tools }` -> `tools/github.json`
+/// - Plain string `"github"` → `mcps/github.json`
+/// - Object `{ name: github, path: tools }` → `tools/github.json`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum McpEntry {
@@ -340,8 +340,8 @@ pub(crate) enum CommandsField {
 
 /// One entry in `commands[].commands`. Mirrors `McpEntry`.
 ///
-/// - Plain string `"review-pr"` -> resolves through `discover_commands` (namespaced names)
-/// - Object `{ name: deploy, path: ops }` -> `<path>/<name>.md`
+/// - Plain string `"review-pr"` → resolves through `discover_commands` (namespaced names)
+/// - Object `{ name: deploy, path: ops }` → `<path>/<name>.md`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum CommandEntry {
@@ -383,8 +383,8 @@ pub(crate) enum InstructionsField {
 
 /// One entry in `instructions[].instructions`. Mirrors `CommandEntry`.
 ///
-/// - Plain string `"style"` -> resolves through `discover_instructions` (namespaced names)
-/// - Object `{ name: style, path: house }` -> `<path>/style.{md,mdc}`
+/// - Plain string `"style"` → resolves through `discover_instructions` (namespaced names)
+/// - Object `{ name: style, path: house }` → `<path>/style.{md,mdc}`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum InstructionEntry {

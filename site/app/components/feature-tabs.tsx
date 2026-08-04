@@ -134,7 +134,7 @@ const CONFIG_LINES: Token[] = [
   { t: "dash", v: "  " },
   {
     t: "cmt",
-    v: "# path: a skill in a non-standard location, <path>/<name>/, here skills/engineering/improve-codebase-architecture/",
+    v: "# path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/",
   },
   { t: "nl" },
   { t: "dash", v: "  " },

@@ -342,7 +342,7 @@ fn short_kind(kind: &str) -> &str {
 /// returning assets present on disk that the lock does not track. Purely
 /// read-only: kasetto never deletes files it does not own, so this only
 /// surfaces. Mirrors `collect_command_dirs`' active-vs-all-agents fallback; for
-/// both scopes `root` is the right base (`scope_root` -> project root or `$HOME`,
+/// both scopes `root` is the right base (`scope_root` → project root or `$HOME`,
 /// the same bases the `*_project_*`/`*_global_*` target fns take).
 ///
 /// A config-level custom `destination` overrides only the *skill* install

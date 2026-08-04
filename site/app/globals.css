@@ -63,7 +63,7 @@
   --subtext1: var(--n-300);
   --text: var(--n-100);
 
-  /* ── legacy named tones -> CLI hues ── */
+  /* ── legacy named tones → CLI hues ── */
   --mauve: var(--violet); /* CLI BRAND */
   --lavender: var(--violet);
   --sky: var(--cyan); /* CLI INFO */
@@ -78,10 +78,10 @@
   --border: var(--surface1);
   --border-strong: var(--surface2);
   --fg: var(--text);
-  --fg-muted: var(--subtext0); /* -> CLI SECONDARY */
-  --fg-subtle: var(--overlay1); /* -> CLI INFRA */
-  --accent: var(--a-500); /* -> CLI ATTENTION */
-  --accent-cool: var(--violet); /* -> CLI BRAND */
+  --fg-muted: var(--subtext0); /* → CLI SECONDARY */
+  --fg-subtle: var(--overlay1); /* → CLI INFRA */
+  --accent: var(--a-500); /* → CLI ATTENTION */
+  --accent-cool: var(--violet); /* → CLI BRAND */
   --accent-warm: var(--a-500);
   --accent-rust: var(--a-500);
 

@@ -10,25 +10,25 @@ A look at what `kst sync` actually does: how skills are installed, how MCP confi
 ## Sync Flow
 
 ```
-1. Load config (`$KASETTO_CONFIG` -> `./kasetto.yaml` -> saved preference -> `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`, or explicit `--config` path/URL)
+1. Load config (`$KASETTO_CONFIG` → `./kasetto.yaml` → saved preference → `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`, or explicit `--config` path/URL)
 2. Load lock file (kasetto.lock)
 3. Sync skills
-   a. For each skill source: decide whether a fetch is needed (the lock pins it and the destinations already match -> no network)
+   a. For each skill source: decide whether a fetch is needed (the lock pins it and the destinations already match → no network)
    b. Materialize (download if remote) only when a fetch is needed
    c. Discover skills in source directory
-   d. For each skill: hash -> compare to lock -> copy if changed
+   d. For each skill: hash → compare to lock → copy if changed
    e. Remove skills no longer in config
 4. Sync commands
-   a. For each command source: decide whether a fetch is needed (the lock pins it and the destination files already exist -> no network)
+   a. For each command source: decide whether a fetch is needed (the lock pins it and the destination files already exist → no network)
    b. Materialize (download if remote) only when a fetch is needed
    c. Discover commands in source, transform into each agent's native format
-   d. For each command: hash -> compare to lock -> write if changed
+   d. For each command: hash → compare to lock → write if changed
    e. Remove commands no longer in config
 5. Sync MCPs
-   a. For each MCP source: decide whether a fetch is needed (the lock pins it and its servers are already present in the agent settings -> no network)
+   a. For each MCP source: decide whether a fetch is needed (the lock pins it and its servers are already present in the agent settings → no network)
    b. Materialize (download if remote) only when a fetch is needed
    c. Discover MCP pack files in source
-   d. For each pack: hash -> compare to lock -> merge into agent settings if changed
+   d. For each pack: hash → compare to lock → merge into agent settings if changed
    e. Remove MCP entries no longer in config
 6. Save lock file and report (unless --dry-run)
 ```
