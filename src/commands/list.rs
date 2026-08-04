@@ -67,7 +67,7 @@ pub(crate) fn run(
     if !has_anything {
         println!("Nothing installed.");
         print_tip(
-            "run `kasetto init` to scaffold a config, then `kasetto sync` to install skills",
+            "run `kasetto init` to scaffold a config, then `kasetto sync` to install your assets",
             plain,
         );
         return Ok(());

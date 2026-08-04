@@ -205,9 +205,9 @@ pub(crate) fn run(
     print_check(
         output.failures.is_empty(),
         if output.failures.is_empty() {
-            "No failed skills"
+            "No failed assets"
         } else {
-            "Failed skills present"
+            "Failed assets present"
         },
         !color,
     );

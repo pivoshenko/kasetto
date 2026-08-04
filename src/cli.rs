@@ -134,7 +134,7 @@ pub(crate) struct SyncArgs {
     #[arg(long, short = 'u', num_args = 0.., value_name = "NAME")]
     #[arg(
         help = "re-resolve branch/default sources and rewrite locked hashes",
-        long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more skill names (--update foo bar) to re-resolve only the sources providing those skills; all other sources are honored from the lock.\n\nUpdating a skill from a multi-skill source re-resolves that whole source."
+        long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more asset names (--update foo bar) to re-resolve only the sources providing them; a name can be a skill, MCP, command, or instruction. All other sources are honored from the lock.\n\nUpdating one asset from a multi-asset source re-resolves that whole source."
     )]
     pub update: Option<Vec<String>>,
     #[arg(long, visible_alias = "frozen")]
@@ -213,8 +213,8 @@ pub(crate) enum Commands {
         global: bool,
     },
     #[command(
-        about = "Sync skills from configured sources",
-        long_about = "Read configuration, discover requested skills and MCPs, then install/update/remove local copies so destination matches config.\n\nUse --dry-run to preview changes without modifying files.",
+        about = "Sync configured assets into your agents",
+        long_about = "Read configuration, discover the requested skills, MCPs, commands, and instructions, then install/update/remove local copies so destinations match config.\n\nUse --dry-run to preview changes without modifying files.",
         after_help = crate::cli_examples!(
             "kasetto sync",
             "kasetto sync --update",
@@ -349,7 +349,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Resolve the config and pin it into kasetto.lock",
-        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. MCP/command entries get refreshed revision pins; their content hash fills in on the next sync.",
+        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. MCP, command, and instruction entries get refreshed revision pins; their content hash fills in on the next sync.",
         after_help = crate::cli_examples!(
             "kasetto lock",
             "kasetto lock --check",
@@ -376,7 +376,7 @@ pub(crate) enum Commands {
         )]
         #[arg(
             help = "only re-resolve sources providing these skills",
-            long_help = "Restrict the re-resolve to sources whose skill list (per the existing lock) overlaps NAME. Every other source's lock entries are carried over unchanged. Mirrors `sync --update <name>...`."
+            long_help = "Restrict the re-resolve to sources whose skill list (per the existing lock) overlaps NAME. Every other source's lock entries are carried over unchanged.\n\nOnly skill names are matched here, unlike `sync --update <name>...`, which also accepts MCP, command, and instruction names."
         )]
         upgrade_package: Vec<String>,
         #[command(flatten)]
@@ -407,7 +407,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Run local diagnostics",
-        long_about = "Inspect local kasetto setup, including version, manifest path, active installation paths, MCP servers, and failed skill installs from the latest sync report.",
+        long_about = "Inspect local kasetto setup, including version, manifest path, active installation paths, an inventory of installed skills, MCP servers, commands, and instructions, and any failed installs from the latest sync report.",
         after_help = crate::cli_examples!("kasetto doctor", "kasetto doctor --json",)
     )]
     Doctor {
@@ -421,8 +421,8 @@ pub(crate) enum Commands {
     },
 
     #[command(
-        about = "Remove installed skills and MCPs",
-        long_about = "Remove all installed skills and MCP server configurations, resetting the lock file.",
+        about = "Remove every installed asset for the scope",
+        long_about = "Remove all installed skills, MCP server configurations, commands, and instructions, resetting the lock file.",
         after_help = crate::cli_examples!("kasetto clean", "kasetto clean --dry-run",)
     )]
     Clean {
