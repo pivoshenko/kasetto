@@ -65,6 +65,9 @@ pub(crate) fn run(yes: bool) -> Result<()> {
             counts.command_dirs
         ));
     }
+    if counts.instructions > 0 {
+        print_check(&format!("{} instructions removed", counts.instructions));
+    }
     if config_removed || data_removed {
         print_check("Lock file removed");
     }
@@ -83,6 +86,7 @@ struct UninstallCounts {
     skills: usize,
     mcps: usize,
     command_dirs: usize,
+    instructions: usize,
 }
 
 fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
@@ -96,10 +100,18 @@ fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
         .filter(|s| !s.is_empty())
         .filter_map(|p| Path::new(p).parent().map(Path::to_path_buf))
         .collect();
+    // `clean::run` tears down instructions too, so they belong in the summary;
+    // omitting them meant they were deleted without ever being reported.
+    let instructions = lock
+        .assets
+        .values()
+        .filter(|a| a.kind == "instructions")
+        .count();
     UninstallCounts {
         skills,
         mcps,
         command_dirs: command_dirs.len(),
+        instructions,
     }
 }
 
@@ -130,4 +142,51 @@ fn remove_file_if_exists(path: &Path) -> Result<bool> {
         return Ok(true);
     }
     Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lock::{AssetEntry, LockFile};
+
+    fn asset(kind: &str, name: &str, destination: &str) -> AssetEntry {
+        AssetEntry {
+            kind: kind.into(),
+            name: name.into(),
+            destination: destination.into(),
+            ..AssetEntry::default()
+        }
+    }
+
+    fn lock_with(assets: Vec<AssetEntry>) -> LockFile {
+        let mut lock = LockFile::default();
+        for (i, a) in assets.into_iter().enumerate() {
+            lock.assets.insert(format!("{i}"), a);
+        }
+        lock
+    }
+
+    /// `clean::run` removes instructions during uninstall, so they must appear
+    /// in the summary. They were previously deleted without being reported.
+    #[test]
+    fn counts_instructions_separately_from_commands_and_mcps() {
+        let lock = lock_with(vec![
+            asset("instructions", "house-style", "CLAUDE.md"),
+            asset("instructions", "commit-rules", "AGENTS.md"),
+            asset("command", "review", ".claude/commands/review.md"),
+            asset("mcp", "github.json", "github"),
+        ]);
+        let counts = count_assets(&lock);
+        assert_eq!(counts.instructions, 2);
+        // One distinct parent directory across the command destinations.
+        assert_eq!(counts.command_dirs, 1);
+    }
+
+    #[test]
+    fn counts_are_zero_for_an_empty_lock() {
+        let counts = count_assets(&lock_with(vec![]));
+        assert_eq!(counts.instructions, 0);
+        assert_eq!(counts.command_dirs, 0);
+        assert_eq!(counts.skills, 0);
+    }
 }

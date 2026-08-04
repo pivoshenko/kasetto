@@ -122,18 +122,24 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
     refresh_asset_revisions(&mut lock, &cfg);
 
     let skills_count = lock.skills.len();
-    let source_count = cfg.skills.len();
+    let asset_count = lock.assets.len();
+    // Everything the lock now pins, not just skills: a config with MCP,
+    // command, or instruction entries used to report only its skill count.
+    let item_count = skills_count + asset_count;
+    let source_count = configured_source_count(&cfg);
     let plain = !crate::ui::color_stdout_enabled();
 
     if opts.check {
         let drift = diff_summary(&prev_skills, &prev_assets, &lock);
         if drift.is_empty() {
             if !opts.as_json && opts.quiet == 0 {
-                print_audited(skills_count, source_count, started.elapsed().as_millis());
+                print_audited(item_count, source_count, started.elapsed().as_millis());
             } else if opts.as_json {
                 print_json(&serde_json::json!({
                     "check": "ok",
                     "skills": skills_count,
+                    "assets": asset_count,
+                    "items": item_count,
                     "sources": source_count,
                 }))?;
             }
@@ -172,14 +178,29 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
         if opts.as_json {
             print_json(&serde_json::json!({
                 "skills": skills_count,
+                "assets": asset_count,
+                "items": item_count,
                 "sources": source_count,
                 "lock": lock_path.display().to_string(),
             }))?;
         } else {
-            print_locked(skills_count, source_count, started.elapsed().as_millis());
+            print_locked(item_count, source_count, started.elapsed().as_millis());
         }
     }
     Ok(())
+}
+
+/// Distinct source URLs across every asset kind the lock resolves. Counting
+/// only `cfg.skills` under-reported any config that also declares MCP, command,
+/// or instruction sources, and a single repo shipping several kinds is one
+/// source, not one per list.
+fn configured_source_count(cfg: &Config) -> usize {
+    let mut seen: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+    seen.extend(cfg.skills.iter().map(|s| s.source.as_str()));
+    seen.extend(cfg.mcps.iter().map(|s| s.source.as_str()));
+    seen.extend(cfg.commands.iter().map(|s| s.source.as_str()));
+    seen.extend(cfg.instructions.iter().map(|s| s.source.as_str()));
+    seen.len()
 }
 
 /// Refresh the resolved revision pin on already-tracked MCP, command, and
@@ -293,26 +314,67 @@ fn diff_summary(
 
 /// Past-tense summary verb in sync rhythm: green `Locked`, default-fg count,
 /// dim source tail + timing. No chip strip (nothing was installed).
-fn print_locked(skills: usize, sources: usize, elapsed_ms: u128) {
-    let plural = if skills == 1 { "item" } else { "items" };
+fn print_locked(items: usize, sources: usize, elapsed_ms: u128) {
+    let plural = if items == 1 { "item" } else { "items" };
+    let src_plural = if sources == 1 { "source" } else { "sources" };
     if crate::ui::color_stdout_enabled() {
         println!(
-            "{SUCCESS}{ACCENT}Locked{RESET} {skills} {plural}{SECONDARY} from {sources} sources in {elapsed_ms}ms{RESET}"
+            "{SUCCESS}{ACCENT}Locked{RESET} {items} {plural}{SECONDARY} from {sources} {src_plural} in {elapsed_ms}ms{RESET}"
         );
     } else {
-        println!("Locked {skills} {plural} from {sources} sources in {elapsed_ms}ms");
+        println!("Locked {items} {plural} from {sources} {src_plural} in {elapsed_ms}ms");
     }
 }
 
 /// `--check` no-drift summary: uv-style `Audited` verb so users know the lock
 /// was inspected against the config without being written.
-fn print_audited(skills: usize, sources: usize, elapsed_ms: u128) {
-    let plural = if skills == 1 { "item" } else { "items" };
+fn print_audited(items: usize, sources: usize, elapsed_ms: u128) {
+    let plural = if items == 1 { "item" } else { "items" };
+    let src_plural = if sources == 1 { "source" } else { "sources" };
     if crate::ui::color_stdout_enabled() {
         println!(
-            "{SUCCESS}{ACCENT}Audited{RESET} {skills} {plural}{SECONDARY} from {sources} sources in {elapsed_ms}ms{RESET}"
+            "{SUCCESS}{ACCENT}Audited{RESET} {items} {plural}{SECONDARY} from {sources} {src_plural} in {elapsed_ms}ms{RESET}"
         );
     } else {
-        println!("Audited {skills} {plural} from {sources} sources in {elapsed_ms}ms");
+        println!("Audited {items} {plural} from {sources} {src_plural} in {elapsed_ms}ms");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A repo shipping several asset kinds is one source, and sources declared
+    /// only under `mcps`/`commands`/`instructions` still count. Previously the
+    /// tally was `cfg.skills.len()`, which missed both.
+    #[test]
+    fn source_count_dedupes_and_spans_every_kind() {
+        let cfg: Config = serde_yaml::from_str(
+            r#"
+skills:
+  - source: https://example.com/one
+    skills: "*"
+mcps:
+  - source: https://example.com/one
+    mcps: "*"
+  - source: https://example.com/two
+    mcps: "*"
+commands:
+  - source: https://example.com/three
+    commands: "*"
+instructions:
+  - source: https://example.com/four
+    instructions: "*"
+"#,
+        )
+        .expect("config parses");
+        // one, two, three, four: the repeated `one` counts once.
+        assert_eq!(configured_source_count(&cfg), 4);
+    }
+
+    #[test]
+    fn source_count_is_zero_for_empty_config() {
+        let cfg: Config = serde_yaml::from_str("{}").expect("config parses");
+        assert_eq!(configured_source_count(&cfg), 0);
     }
 }
