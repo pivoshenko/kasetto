@@ -9,7 +9,7 @@ use crate::model::Scope;
     version,
     color = clap::ColorChoice::Always,
     styles = crate::colors::clap_styles(),
-    about = "sync and maintain local AI skill packs",
+    about = "Declarative AI agent environment manager, written in Rust",
     long_about = "A declarative AI agent environment manager, written in Rust.",
     after_help = crate::cli_examples!(
         "kasetto",
