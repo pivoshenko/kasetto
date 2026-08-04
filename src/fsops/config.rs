@@ -13,7 +13,7 @@ use super::http::http_client;
 
 const MAX_EXTENDS_DEPTH: u8 = 8;
 
-/// Where a config came from — used to resolve relative `extends` paths and
+/// Where a config came from. Used to resolve relative `extends` paths and
 /// to detect cycles.
 struct ConfigOrigin {
     /// Canonical identifier (absolute path or full URL) for cycle detection.

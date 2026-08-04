@@ -68,12 +68,12 @@ pub(super) fn remote_repo_archive_ref(parsed: &RepoUrl, git_ref: &str) -> (Strin
     }
 }
 
-/// GitLab API path encoding: `/` → `%2F`.
+/// GitLab API path encoding: `/` -> `%2F`.
 fn encode_gitlab_path(path: &str) -> String {
     path.replace('/', "%2F")
 }
 
-/// GitHub API ref encoding: `/` → `%2F` so that refs like `feature/foo`
+/// GitHub API ref encoding: `/` -> `%2F` so that refs like `feature/foo`
 /// are treated as a single path segment in the tarball URL.
 fn encode_github_ref(git_ref: &str) -> String {
     git_ref.replace('/', "%2F")
@@ -260,7 +260,7 @@ pub(super) fn download_extract(
 /// directory (the `repo-<ref>/` wrapper GitHub/GitLab/... add).
 ///
 /// When `sub_dir` is `Some`, only entries under that repo-relative path are
-/// written — **sparse extraction**. The gzip stream is still read in full (it is
+/// written: **sparse extraction**. The gzip stream is still read in full (it is
 /// a single stream and cannot be range-fetched), but the bulk of a monorepo's
 /// files are never created on disk, which is where most of the extraction cost
 /// lives (one create/write/chmod syscall per file).
@@ -398,7 +398,7 @@ mod tests {
             owner: "o".into(),
             repo: "r".into(),
         };
-        // No token set → falls back to web archive URL.
+        // No token set -> falls back to web archive URL
         let (url, _) = remote_repo_archive_branch(&parsed, "main");
         assert_eq!(url, "https://github.com/o/r/archive/refs/heads/main.tar.gz");
     }

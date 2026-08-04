@@ -1,7 +1,7 @@
 //! YAML-level merge for `extends` config inheritance.
 //!
 //! Top-level scalar fields (`destination`, `scope`, `agent`) replace.
-//! `skills` and `mcps` lists merge by identity tuple — same identity
+//! `skills` and `mcps` lists merge by identity tuple: same identity
 //! replaces, otherwise appends.
 
 use serde_yaml::{Mapping, Value};

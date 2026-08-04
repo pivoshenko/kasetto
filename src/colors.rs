@@ -1,25 +1,25 @@
-//! Cassette CLI palette — semantic SGR aliases.
+//! Cassette CLI palette: semantic SGR aliases.
 //!
 //! Seven semantic roles cover every colored surface. Call sites use the
 //! semantic names (`SUCCESS`, `ERROR`, `ATTENTION`, `INFO`, `SECONDARY`,
 //! `INFRA`, `BRAND`); only this file holds hex values. Body text inherits
-//! from the user's terminal — there's deliberately no "foreground" constant.
+//! from the user's terminal; there's deliberately no "foreground" constant.
 //!
-//! Color is gated on `color_stdout_enabled()` — set `NO_COLOR=1` or pipe
+//! Color is gated on `color_stdout_enabled()`. Set `NO_COLOR=1` or pipe
 //! stdout to drop it entirely.
 //!
 //! # When each role is used
 //!
 //! | Token       | Hex       | Use                                                                                    |
 //! |-------------|-----------|----------------------------------------------------------------------------------------|
-//! | `ACCENT`    | bold      | emphasis (no color) — prompts, labels, lead verbs. Compose with a hue for bold-colored. |
+//! | `ACCENT`    | bold      | emphasis (no color): prompts, labels, lead verbs. Compose with a hue for bold-colored.  |
 //! | `ATTENTION` | `#e8a94d` | help headers/literals, section headers, `Updated`/`Would ...` verbs, `warning:`, banner subtitle, spinner glyph |
 //! | `SUCCESS`   | `#84c578` | `Installed` / `Created` / `Audited` verbs, `+` and `✓` glyphs, `✓ healthy` badge        |
 //! | `ERROR`     | `#e87e6c` | `error:` prefix, `−` and `✗` glyphs, `✗ issues` badge, failure rows                     |
 //! | `INFO`      | `#6cbfd3` | `tip:` / `note:` prefixes, source repo labels                                          |
-//! | `BRAND`     | `#b6a6ef` | **brand mark only** — banner frame + wordmark, `◆` farewell on `self uninstall`        |
-//! | `SECONDARY` | `#a8a195` | muted content — paths, timing tails, hints, `[y/N]`, clap placeholders, example lines  |
-//! | `INFRA`     | `#6e6759` | structure only — tree branches, bullet glyphs, strikethrough overlay (never content)   |
+//! | `BRAND`     | `#b6a6ef` | **brand mark only**: banner frame + wordmark, `◆` farewell on `self uninstall`         |
+//! | `SECONDARY` | `#a8a195` | muted content: paths, timing tails, hints, `[y/N]`, clap placeholders, example lines   |
+//! | `INFRA`     | `#6e6759` | structure only: tree branches, bullet glyphs, strikethrough overlay (never content)    |
 //!
 //! Non-color SGR helpers: `RESET`, `STRIKE` / `STRIKE_RESET`, `CLEAR_LINE`.
 
@@ -45,7 +45,7 @@ pub(crate) const ERROR: &str = "\x1b[38;2;232;126;108m";
 /// Cyan `#6cbfd3`. `tip:` / `note:` prefixes, source repo labels.
 pub(crate) const INFO: &str = "\x1b[38;2;108;191;211m";
 
-/// Brand violet `#b6a6ef`. **Brand mark only** — banner frame + wordmark,
+/// Brand violet `#b6a6ef`. **Brand mark only**: banner frame + wordmark,
 /// `◆` farewell on `self uninstall`. Reserved for ceremonial brand surfaces;
 /// not for operational status.
 pub(crate) const BRAND: &str = "\x1b[38;2;182;166;239m";
@@ -61,7 +61,7 @@ pub(crate) const INFRA: &str = "\x1b[38;2;110;103;89m";
 /// Reset all attributes (`SGR 0`).
 pub(crate) const RESET: &str = "\x1b[0m";
 
-/// Strikethrough on (`SGR 9`) — removed entries in trees.
+/// Strikethrough on (`SGR 9`): removed entries in trees.
 pub(crate) const STRIKE: &str = "\x1b[9m";
 /// Strikethrough off (`SGR 29`).
 pub(crate) const STRIKE_RESET: &str = "\x1b[29m";

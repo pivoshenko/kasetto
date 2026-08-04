@@ -77,7 +77,7 @@ pub(crate) fn dest_token(target: &InstructionTarget, rel: &str) -> String {
 /// shared aggregate file (never deleting the user-owned file), or delete a
 /// standalone per-instruction file. `source_url` + `name` recompute the block id.
 pub(crate) fn teardown_dest(token: &str, source_url: &str, name: &str, root: &Path) {
-    // Only the known `agg:`/`file:` prefixes are stripped — splitting on the
+    // Only the known `agg:`/`file:` prefixes are stripped; splitting on the
     // first `:` would mangle an absolute Windows destination (`C:\...`), which
     // `relativize_dest` stores verbatim when the dest is outside the scope root.
     if let Some(rel) = token.strip_prefix("agg:") {
@@ -90,7 +90,7 @@ pub(crate) fn teardown_dest(token: &str, source_url: &str, name: &str, root: &Pa
             }
         }
     } else {
-        // `file:<rel>` (or a bare path, for forward-compat) — delete the file.
+        // `file:<rel>` (or a bare path, for forward-compat) means delete the file
         let rel = token.strip_prefix("file:").unwrap_or(token);
         let path = resolve_dest(rel, root);
         if path.is_file() {

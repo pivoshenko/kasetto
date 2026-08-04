@@ -139,7 +139,7 @@ pub(crate) fn all_command_project_targets(project_root: &Path) -> Vec<CommandTar
     )
 }
 
-/// Deduped global command directories for a specific set of agents — used by
+/// Deduped global command directories for a specific set of agents. Used by
 /// `doctor` to scope the COMMAND DIRECTORIES panel to what the config wires.
 pub(crate) fn command_global_targets(home: &Path, agents: &[Agent]) -> Vec<CommandTarget> {
     dedup_command_targets(agents.iter().map(|a| a.commands_global_path(home)))
@@ -160,7 +160,7 @@ fn dedup_instruction_targets(
     dedup_by_path(iter.flatten(), |t| t.path.as_path())
 }
 
-/// Deduped skill install directories for a specific set of agents — `doctor`
+/// Deduped skill install directories for a specific set of agents. `doctor`
 /// scans these for untracked skills.
 pub(crate) fn skill_global_targets(home: &Path, agents: &[Agent]) -> Vec<PathBuf> {
     dedup_paths(agents.iter().map(|a| a.global_path(home)))
@@ -533,7 +533,7 @@ impl Agent {
     /// Project paths are verified against each agent's official docs (early
     /// 2026). Aggregate formats are single shared instruction files; dir formats
     /// hold one file per instruction. `OpenClaw` has no project-scoped instructions concept
-    /// (its `AGENTS.md` lives in the machine-level workspace — see
+    /// (its `AGENTS.md` lives in the machine-level workspace; see
     /// `instructions_global_path`).
     pub(crate) fn instructions_project_path(
         self,
@@ -581,7 +581,7 @@ impl Agent {
     ///
     /// Most are documented official paths; a few are community-reported and not
     /// yet in official docs (notably Cursor `~/.cursor/rules`, Cline
-    /// `~/Documents/Cline/Rules`) — harmless where a given build ignores them.
+    /// `~/Documents/Cline/Rules`), harmless where a given build ignores them.
     /// Returns `None` for agents whose global instructions are UI-managed (Warp, Trae)
     /// or have no documented on-disk location (Continue, OpenHands, Replit).
     pub(crate) fn instructions_global_path(self, home: &Path) -> Option<InstructionTarget> {
@@ -740,7 +740,7 @@ mod tests {
         let cursor = Agent::Cursor.instructions_global_path(home).unwrap();
         assert_eq!(cursor.path, home.join(".cursor/rules"));
         assert_eq!(cursor.format, InstructionFormat::CursorMdc);
-        // Warp / Trae globals are UI-managed → no syncable file.
+        // Warp / Trae globals are UI-managed -> no syncable file
         assert!(Agent::Warp.instructions_global_path(home).is_none());
         assert!(Agent::Trae.instructions_global_path(home).is_none());
     }
@@ -791,7 +791,7 @@ mod tests {
         let pr = Path::new("/work");
         let all = all_skill_project_targets(pr);
         assert!(!all.is_empty());
-        // Amp/Cline/Warp/Replit all map to .agents/skills — must collapse to one.
+        // Amp/Cline/Warp/Replit all map to .agents/skills, must collapse to one
         assert_eq!(
             all.iter().filter(|p| p.ends_with(".agents/skills")).count(),
             1

@@ -106,7 +106,7 @@ pub(crate) fn spawn_background_check() -> Option<UpdateCheckHandle> {
 ///
 /// Detached threads are killed when `main` returns, so fast commands need this
 /// to give the HTTP request a chance to complete and persist its result. On
-/// timeout we silently move on — the cache will be refreshed on a later run.
+/// timeout we silently move on; the cache will be refreshed on a later run.
 pub(crate) fn wait_for_check(handle: Option<UpdateCheckHandle>, timeout: Duration) {
     if let Some(h) = handle {
         let _ = h.rx.recv_timeout(timeout);
@@ -153,7 +153,7 @@ fn render_notice(current: &str, latest: &str, color: bool) -> String {
     let cmd = upgrade_command();
     if color {
         format!(
-            "\n{ACCENT}{ATTENTION}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}→{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
+            "\n{ACCENT}{ATTENTION}New version available:{RESET} {ACCENT}{current}{RESET} {SECONDARY}->{RESET} {ACCENT}{latest}{RESET}  {SECONDARY}run `{cmd}`{RESET}"
         )
     } else {
         format!("\nNew version available: {current} -> {latest}  run `{cmd}`")

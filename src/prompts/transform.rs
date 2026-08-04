@@ -92,7 +92,7 @@ fn render_gemini_toml(parsed: &Parsed) -> String {
 }
 
 fn toml_string(s: &str) -> String {
-    // Basic TOML string escape — sufficient for description one-liners.
+    // Basic TOML string escape, sufficient for description one-liners
     let escaped = s
         .replace('\\', "\\\\")
         .replace('"', "\\\"")

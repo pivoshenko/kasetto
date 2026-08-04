@@ -3,7 +3,7 @@
 //! Resolves `${kst_...}` placeholders at sync time from environment variables and
 //! a `credentials.yaml` store, so packs can ship `Bearer ${kst_vercel_token}`
 //! without committing the value. Injection happens on the in-memory config and
-//! is written only to the agent destination — never to the source cache, the
+//! is written only to the agent destination, never to the source cache, the
 //! stage dir, or `kasetto.lock` (the lock hashes the placeholder source file).
 
 mod source;
@@ -51,13 +51,13 @@ pub(crate) struct SecretContext {
     on_missing: OnMissing,
     plain: bool,
     /// Per-run memo keyed on the placeholder text, so a secret referenced more
-    /// than once is resolved once — avoids re-spawning `op`/`vault`/`keepassxc`
+    /// than once is resolved once. Avoids re-spawning `op`/`vault`/`keepassxc`
     /// (and the repeated biometric prompts that would cause).
     cache: RefCell<HashMap<String, Option<String>>>,
 }
 
 impl SecretContext {
-    /// A context with no sources — any placeholder is "missing". Used by the
+    /// A context with no sources; any placeholder is "missing". Used by the
     /// sync-path unit tests that don't exercise injection.
     #[cfg(test)]
     pub(crate) fn empty() -> Self {
@@ -177,7 +177,7 @@ impl SecretContext {
                     eprint_warn(
                         &format!(
                             "{msg}; writing the literal placeholder to the agent settings \
-                             file — the server will not authenticate until you set the secret \
+                             file. The server will not authenticate until you set the secret \
                              and run `kst sync --update`"
                         ),
                         self.plain,
@@ -222,7 +222,7 @@ impl SecretContext {
                 }
                 return Err(err(format!(
                     "secret source `{tag}` is not supported (supported tags: env, crd, op, \
-                     vault, kp, aws, gcp, az, pass, keychain — or `${{kst_name}}` for the \
+                     vault, kp, aws, gcp, az, pass, keychain; or `${{kst_name}}` for the \
                      env -> credentials.yaml chain)"
                 )));
             }

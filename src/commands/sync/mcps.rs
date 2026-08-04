@@ -33,7 +33,7 @@ struct PendingMcp {
     /// Replace an existing same-named server on merge (the `--update` rotation
     /// path for secret-bearing packs).
     overwrite: bool,
-    /// Pack carries `${kst...}` placeholders — recorded in the lock so the skip
+    /// Pack carries `${kst...}` placeholders, recorded in the lock so the skip
     /// path can hint that rotation needs `--update`, and used to perms-check the
     /// destination after a plaintext secret is written.
     has_secrets: bool,
@@ -56,7 +56,7 @@ pub(super) fn sync_mcps(
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
     // No agents configured (e.g. user dropped `agent:`) but lock still has MCP
-    // entries — config is source of truth, so scrub the orphans from every
+    // entries. Config is source of truth, so scrub the orphans from every
     // known agent's settings file as best-effort, prune the lock, and return.
     if mcp_settings_list.is_empty() {
         let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
@@ -103,7 +103,7 @@ pub(super) fn sync_mcps(
             }
         }
 
-        // Whether any file in this source is targeted by `--update` — drives the
+        // Whether any file in this source is targeted by `--update`. Drives the
         // fetch decision (a moving source must be re-downloaded once).
         let update_names: Vec<String> = desired_file_names
             .iter()
@@ -167,7 +167,7 @@ pub(super) fn sync_mcps(
             }
         };
         // Resolve MCP files against the materialized source root. `source_root`
-        // is correct for every case — a local path, a freshly-staged remote, and
+        // is correct for every case: a local path, a freshly-staged remote, and
         // a cache-served `ref:` source (which has no stage dir, so `cleanup_dir`
         // is `None`). `cleanup_dir` is only a teardown handle, never the root.
         let root = materialized.source_root.as_path();
@@ -284,7 +284,7 @@ pub(super) fn sync_mcps(
                 }
                 McpFileOutcome::SecretError(e) => {
                     // Missing required secret: hard failure (non-zero exit),
-                    // nothing written — never to a destination, cache, or lock.
+                    // nothing written, never to a destination, cache, or lock
                     summary.failed += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
@@ -307,7 +307,7 @@ pub(super) fn sync_mcps(
     cleanup_staged(&cleanup_dirs);
 
     // Remove MCP servers no longer in config. Skipped when any source failed
-    // (locked_error et al.) — `desired_mcp_ids` would be missing the failed
+    // (locked_error et al.): `desired_mcp_ids` would be missing the failed
     // source's existing entries and they'd be treated as orphans.
     if summary.failed == 0 {
         remove_stale(
@@ -334,11 +334,11 @@ fn update_aliases(file_name: &str) -> Vec<String> {
 
 /// Outcome of classifying one MCP file against the lock and current settings.
 enum McpFileOutcome {
-    /// Already installed and identical — nothing to write.
+    /// Already installed and identical, so nothing to write.
     Unchanged { has_secrets: bool },
-    /// A required secret could not be resolved — hard failure, non-zero exit.
+    /// A required secret could not be resolved: hard failure, non-zero exit.
     SecretError(String),
-    /// Needs install/update — carries the prepared, secret-injected entry
+    /// Needs install/update, carrying the prepared, secret-injected entry
     /// (boxed to keep the enum small).
     Install(Box<PendingMcp>),
 }
@@ -346,7 +346,7 @@ enum McpFileOutcome {
 /// Hash, parse, and (on the merge path) secret-inject one MCP file, deciding
 /// whether it is unchanged or a pending install. Returns the asset id plus the
 /// outcome; `Err` means a malformed/unreadable file (the caller marks it
-/// broken). Side effects — summary counts, lock writes, desired-id tracking —
+/// broken). Side effects (summary counts, lock writes, desired-id tracking)
 /// stay with the caller so this stays a pure classification step.
 fn classify_mcp_file(
     ctx: &SyncContext,
@@ -369,7 +369,7 @@ fn classify_mcp_file(
         .cloned()
         .unwrap_or_default();
     let server_names: Vec<String> = servers.keys().cloned().collect();
-    // Only the `mcpServers` object is injected, so detect placeholders there —
+    // Only the `mcpServers` object is injected, so detect placeholders there,
     // not anywhere in the file. A `${kst_...}` in some other key would otherwise
     // raise a spurious world-readable warning and `--update` tip for a file that
     // gets no secret written.
@@ -399,7 +399,7 @@ fn classify_mcp_file(
     }
 
     // Inject secrets only on the merge path. A missing required secret is a hard
-    // failure (source_error → non-zero exit), distinct from a malformed file.
+    // failure (source_error -> non-zero exit), distinct from a malformed file
     if has_secrets {
         let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
         if let Err(e) = ctx.secrets.inject_value(&mut wrap) {
@@ -793,8 +793,8 @@ mod tests {
     #[test]
     fn selective_update_is_scoped_per_file_not_per_source() {
         // `--update vercel` against a source holding both vercel.json and
-        // notion.json must force-remerge only vercel.json — remerging notion.json
-        // (overwrite) would clobber hand-edited servers from a sibling file.
+        // notion.json must force-remerge only vercel.json; remerging notion.json
+        // (overwrite) would clobber hand-edited servers from a sibling file
         let cfg = crate::model::Config {
             destination: None,
             scope: Some(crate::model::Scope::Project),

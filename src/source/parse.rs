@@ -129,9 +129,9 @@ pub(crate) struct BrowseDerived {
 /// Decompose a GitHub/Gitea/GitLab `blob`/`tree` browse URL. Returns `None` for
 /// plain repo URLs and local paths (the caller uses the source verbatim).
 ///
-/// - `.../{owner}/{repo}/blob/{ref}/{path}/SKILL.md` → sub-dir = parent of the
+/// - `.../{owner}/{repo}/blob/{ref}/{path}/SKILL.md` -> sub-dir = parent of the
 ///   skill dir, skill_name = the skill dir's name.
-/// - `.../{owner}/{repo}/tree/{ref}/{path}` → sub-dir = `{path}`, no name.
+/// - `.../{owner}/{repo}/tree/{ref}/{path}` -> sub-dir = `{path}`, no name.
 /// - GitLab uses a `/-/` separator before `blob`/`tree`.
 /// - A 40-hex `{ref}` is stored as `git_ref` (pinned); anything else as `branch`
 ///   (so `--update` keeps tracking it). Explicit flags override either.
@@ -164,14 +164,14 @@ pub(crate) fn derive_browse_url(url: &str) -> Option<BrowseDerived> {
     let source = format!("{scheme}{host_and_repo}");
 
     // TODO: branches that contain `/` (`feature/foo`, `release/2026-Q1`) are
-    // genuinely ambiguous from URL syntax alone — `.../tree/feature/foo/skills/a`
+    // genuinely ambiguous from URL syntax alone: `.../tree/feature/foo/skills/a`
     // could be ref `feature` + subdir `foo/skills/a` *or* ref `feature/foo` +
     // subdir `skills/a`. We take the first segment as the ref, which matches
     // the most common case (single-segment branches, tags, SHAs). For a proper
     // fix, probe the host's branches API for the longest existing prefix.
     // Today's failure modes: with verify on (the default), `add` errors at
-    // fetch time; with `--no-verify`, a wrong entry can be written — override
-    // with explicit `--branch` + `--sub-dir` in that case.
+    // fetch time; with `--no-verify`, a wrong entry can be written, so override
+    // with explicit `--branch` + `--sub-dir` in that case
     let git_ref_seg = segs[marker + 1];
     let rest: Vec<&str> = segs[marker + 2..].to_vec();
 

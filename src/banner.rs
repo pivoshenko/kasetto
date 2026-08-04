@@ -3,9 +3,9 @@ use unicode_width::UnicodeWidthStr;
 use crate::colors::{ATTENTION, BRAND, RESET};
 use crate::ui::color_stdout_enabled;
 
-/// Frame + logo: brand violet (`BRAND`) — the ceremonial brand mark surface.
+/// Frame + logo: brand violet (`BRAND`), the ceremonial brand mark surface.
 const BANNER_FG: &str = BRAND;
-/// Japanese subtitle: amber (`ATTENTION`) — the brand-adjacent lead hue.
+/// Japanese subtitle: amber (`ATTENTION`), the brand-adjacent lead hue.
 const SUBTITLE_FG: &str = ATTENTION;
 
 const LOGO_LINES: [&str; 6] = [

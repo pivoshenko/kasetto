@@ -105,7 +105,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
     let mut desired_keys = HashSet::new();
     let mut cache = HashCache::default();
 
-    // Phase 1 — plan each source (sequential, local-only). `needs_fetch` here
+    // Phase 1: plan each source (sequential, local-only). `needs_fetch` here
     // also memoizes destination hashes into `cache` for the process phase.
     let mut plans: Vec<Plan> = Vec::with_capacity(ctx.cfg.skills.len());
     for src in &ctx.cfg.skills {
@@ -141,12 +141,12 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
         });
     }
 
-    // Phase 2 — download + extract every Fetch source in parallel. Each source
+    // Phase 2: download + extract every Fetch source in parallel. Each source
     // is independent (distinct stage dir / cache key), so this overlaps the
     // network latency that dominates a cold sync.
     let mut materialized = materialize_fetch_sources(ctx, &plans);
 
-    // Phase 3 — process in source order so output, lock writes, and
+    // Phase 3: process in source order so output, lock writes, and
     // last-writer-wins destination semantics stay deterministic.
     for (i, src) in ctx.cfg.skills.iter().enumerate() {
         match &plans[i] {
@@ -203,7 +203,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
 /// Phase 2: materialize every `Plan::Fetch` source in parallel, keyed by its
 /// index in `ctx.cfg.skills`. Downloads + extraction are independent across
 /// sources (distinct stage dirs; the source cache serializes same-key races),
-/// and `materialize_source` touches no shared mutable state — so this is the
+/// and `materialize_source` touches no shared mutable state, so this is the
 /// network-latency overlap that makes a multi-source cold sync fast. Errors are
 /// carried as strings (the error type need not cross threads) and surfaced in
 /// the deterministic Phase 3 walk.
@@ -338,7 +338,7 @@ fn record_broken_skills(
     }
 }
 
-/// The inputs for installing one skill from a fetched source — bundled so the
+/// The inputs for installing one skill from a fetched source, bundled so the
 /// installer takes a single descriptor instead of five positional strings.
 struct SkillJob<'a> {
     source: &'a str,
@@ -575,7 +575,7 @@ fn needs_fetch(
     desired: &[String],
     state: &State,
 ) -> bool {
-    // A wildcard source with no lock entries has never been resolved — bootstrap
+    // A wildcard source with no lock entries has never been resolved, so bootstrap
     // it by fetching (the locked set is empty only because nothing is pinned yet).
     if matches!(src.skills, SkillsField::Wildcard(_))
         && !state.skills.values().any(|e| e.source == src.source)
@@ -590,14 +590,14 @@ fn needs_fetch(
             return true;
         };
         // The user retargeted this source (changed ref/branch) since the lock
-        // was written — the on-disk content might still hash correctly, but it
+        // was written. The on-disk content might still hash correctly, but it
         // no longer matches what the config asks for. Refetch.
         if !entry.source_revision.is_empty() && entry.source_revision != expected_revision {
             return true;
         }
         // Hash every destination once (memoized for the process step). All
-        // matching → satisfied; some mismatched but one good copy → local
-        // repair is possible; no good copy → must fetch.
+        // matching -> satisfied; some mismatched but one good copy -> local
+        // repair is possible; no good copy -> must fetch
         let status = dest_status(ctx, cache, skill_name, &entry.hash);
         if !status.all_match && status.good.is_none() {
             return true;
@@ -966,11 +966,11 @@ mod tests {
         cleanup(&h);
     }
 
-    /// Issue #42: with two agents configured, retargeting a source (URL → local
+    /// Issue #42: with two agents configured, retargeting a source (URL -> local
     /// dir) keeps the skill name, so the new install lands at the same on-disk
     /// path the now-stale old entry recorded. The stale-removal pass must not
     /// delete those just-written copies, and the lock must record *every* agent
-    /// dir — not just the first.
+    /// dir, not just the first.
     #[test]
     fn retarget_source_keeps_both_agent_copies() {
         let src_a = temp_dir("kasetto-rt-a");
@@ -1047,7 +1047,7 @@ mod tests {
         assert!(claude.join("alpha/SKILL.md").exists());
         assert!(codex.join("alpha/SKILL.md").exists());
 
-        // Drop the skill from the config entirely → both agent dirs cleaned.
+        // Drop the skill from the config entirely -> both agent dirs cleaned
         let s = run_sync_src(&src, &dests, &scope_root, list(&[]), &mut state);
         assert_eq!(s.removed, 1);
         assert!(!claude.join("alpha").exists(), ".claude dir cleaned");

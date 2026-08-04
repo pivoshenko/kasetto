@@ -5,15 +5,15 @@
 //! Only **immutable** refs (explicit tag/SHA `ref:`) are cached: a moving ref
 //! (branch/default) can change upstream without the URL changing, so caching it
 //! would serve stale content. An immutable ref's URL fully determines its bytes,
-//! so a hit is always correct — no TTL, no revalidation, zero network.
+//! so a hit is always correct: no TTL, no revalidation, zero network.
 //!
 //! Layout (`$XDG_CACHE_HOME/kasetto/sources/<sha256(key)>/`):
-//! - `tree/`       — the extracted repository root (what `materialize` reads)
-//! - `.complete`   — written last; its presence marks a fully-populated entry
+//! - `tree/`       - the extracted repository root (what `materialize` reads)
+//! - `.complete`   - written last; its presence marks a fully-populated entry
 //!
 //! The marker lives *beside* `tree/`, never inside it, so it can never leak into
 //! a skill's hashed/copied content. Population is atomic: extract into a private
-//! `.tmp-*` sibling, then rename into place — a crash mid-extract leaves an
+//! `.tmp-*` sibling, then rename into place. A crash mid-extract leaves an
 //! orphan tmp dir, never a half-populated (yet `.complete`) entry. Concurrent
 //! population of the same key (parallel fetch) is a benign race: the loser reuses
 //! the winner's entry.
@@ -62,7 +62,7 @@ pub(crate) fn lookup(key: &str) -> Option<PathBuf> {
 /// `extract(tree_dir)` must materialize the source root at `tree_dir`. On any
 /// promotion race the existing complete entry wins and is returned instead.
 ///
-/// Returns `None` — so the caller falls back to direct extraction — when caching
+/// Returns `None` (so the caller falls back to direct extraction) when caching
 /// is disabled **or** the cache scratch dir cannot be prepared (no `HOME`,
 /// read-only `XDG_CACHE_HOME`, ...). The cache is an optimization, so an
 /// unwritable cache must never break an otherwise-valid sync.
@@ -114,7 +114,7 @@ where
     std::fs::write(tmp.join(COMPLETE_MARKER), b"")?;
 
     // Atomic promote. If another worker already populated this key, our rename
-    // fails (target non-empty) — discard our tmp and reuse the winner's entry.
+    // fails (target non-empty), so discard our tmp and reuse the winner's entry
     match std::fs::rename(&tmp, &final_dir) {
         Ok(()) => Ok(final_dir.join(TREE_SUBDIR)),
         Err(_) if final_dir.join(COMPLETE_MARKER).is_file() => {
@@ -221,8 +221,8 @@ mod tests {
         std::env::set_var("XDG_CACHE_HOME", &file);
         std::env::remove_var("KASETTO_NO_CACHE");
 
-        // store() must return None (a miss) — not an Err — so the caller can fall
-        // back to direct extraction instead of failing the sync.
+        // store() must return None (a miss), not an Err, so the caller can fall
+        // back to direct extraction instead of failing the sync
         let mut extracted = false;
         let out = store("https://example.com/o/r/archive/v4.0.tar.gz", |_| {
             extracted = true;

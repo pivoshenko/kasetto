@@ -229,7 +229,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Add a source to the config and sync it",
-        long_about = "Append a skill/MCP/command/instruction source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL — the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
+        long_about = "Append a skill/MCP/command/instruction source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL; the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
         after_help = crate::cli_examples!(
             "kasetto add https://github.com/example/skill-pack",
             "kasetto add https://github.com/example/pack@v2.0",
@@ -349,7 +349,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Resolve the config and pin it into kasetto.lock",
-        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree — identical to the hash a later sync computes at the destination — so the lock is immediately usable with `sync --locked`. MCP/command entries get refreshed revision pins; their content hash fills in on the next sync.",
+        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. MCP/command entries get refreshed revision pins; their content hash fills in on the next sync.",
         after_help = crate::cli_examples!(
             "kasetto lock",
             "kasetto lock --check",

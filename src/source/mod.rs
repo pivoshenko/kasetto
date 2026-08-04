@@ -21,9 +21,9 @@ use auth::UrlRequestAuth;
 
 /// Materialize an immutable-ref archive, preferring the on-disk source cache.
 ///
-/// - Cache hit → return the cached tree; no cleanup (the cache owns it).
-/// - Miss with caching on → populate the cache, return its tree; no cleanup.
-/// - Caching off → extract into the throwaway `stage`; caller cleans it up.
+/// - Cache hit -> return the cached tree; no cleanup (the cache owns it).
+/// - Miss with caching on -> populate the cache, return its tree; no cleanup.
+/// - Caching off -> extract into the throwaway `stage`; caller cleans it up.
 fn fetch_ref_cached(
     url: &str,
     auth: &UrlRequestAuth,
@@ -32,7 +32,7 @@ fn fetch_ref_cached(
     sub_dir: Option<&str>,
 ) -> Result<(PathBuf, Option<PathBuf>)> {
     // Sparse extraction stores only the requested sub-tree, so the cache key must
-    // fold in the sub-dir — otherwise two sub-dirs of the same immutable ref would
+    // fold in the sub-dir, otherwise two sub-dirs of the same immutable ref would
     // collide on one entry that holds only the first one's files.
     let cache_key = match sub_dir {
         Some(s) => format!("{url}\n{s}"),
@@ -249,7 +249,7 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
     // Warn if the old mcp/ layout is present but mcps/ is not.
     if root.join("mcp").exists() && !root.join("mcps").exists() {
         eprintln!(
-            "warning: found a `mcp/` directory but Kasetto now scans `mcps/` — \
+            "warning: found a `mcp/` directory but Kasetto now scans `mcps/`; \
              rename it to suppress this warning"
         );
     }
@@ -269,11 +269,11 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
     Ok(out)
 }
 
-/// Resolve one `McpEntry` to a file path — mirrors skill discovery convention.
+/// Resolve one `McpEntry` to a file path, mirroring skill discovery convention.
 ///
-/// - `Name("github")` → `<root>/mcps/github.json`
-/// - `Obj { name: "github", path: Some("tools") }` → `<root>/tools/github.json`
-/// - `Obj { name: "github", path: None }` → `<root>/mcps/github.json`
+/// - `Name("github")` -> `<root>/mcps/github.json`
+/// - `Obj { name: "github", path: Some("tools") }` -> `<root>/tools/github.json`
+/// - `Obj { name: "github", path: None }` -> `<root>/mcps/github.json`
 ///
 /// `.json` is appended automatically when the name has no extension.
 pub(crate) fn resolve_mcp_entry(root: &Path, entry: &crate::model::McpEntry) -> Result<PathBuf> {
@@ -299,12 +299,12 @@ pub(crate) fn resolve_mcp_entry(root: &Path, entry: &crate::model::McpEntry) -> 
     }
 }
 
-/// Walk `<root>/commands/**/*.md` and return a map of namespaced name → file path.
+/// Walk `<root>/commands/**/*.md` and return a map of namespaced name -> file path.
 ///
 /// Subdirectory nesting becomes `:` separated namespaces:
-/// - `commands/commit.md` → `commit`
-/// - `commands/git/commit.md` → `git:commit`
-/// - `commands/git/work/status.md` → `git:work:status`
+/// - `commands/commit.md` -> `commit`
+/// - `commands/git/commit.md` -> `git:commit`
+/// - `commands/git/work/status.md` -> `git:work:status`
 pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>> {
     let mut out = HashMap::new();
     let base = root.join("commands");
@@ -316,8 +316,8 @@ pub(crate) fn discover_commands(root: &Path) -> Result<HashMap<String, PathBuf>>
 }
 
 /// Recursively walk `cur`, collecting files whose extension is in `exts` into a
-/// map of `:`-namespaced name (relative path with separators → `:`, stem only)
-/// → path. Shared by command (`md`) and instruction (`md`/`mdc`) discovery.
+/// map of `:`-namespaced name (relative path with separators -> `:`, stem only)
+/// -> path. Shared by command (`md`) and instruction (`md`/`mdc`) discovery.
 fn walk_md(
     base: &Path,
     cur: &Path,
@@ -367,9 +367,9 @@ fn walk_md(
 
 /// Resolve one `CommandEntry` to a file path.
 ///
-/// - `Name("review-pr")` → look up by namespaced name in `discover_commands`.
-/// - `Obj { name: "deploy", path: Some("ops") }` → `<root>/ops/deploy.md`.
-/// - `Obj { name: "deploy", path: None }` → look up by namespaced name.
+/// - `Name("review-pr")` -> look up by namespaced name in `discover_commands`.
+/// - `Obj { name: "deploy", path: Some("ops") }` -> `<root>/ops/deploy.md`.
+/// - `Obj { name: "deploy", path: None }` -> look up by namespaced name.
 pub(crate) fn resolve_command_entry(
     root: &Path,
     entry: &crate::model::CommandEntry,
@@ -410,7 +410,7 @@ fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
     )))
 }
 
-/// Walk `<root>/instructions/**/*.{md,mdc}` and return a map of namespaced name → file path.
+/// Walk `<root>/instructions/**/*.{md,mdc}` and return a map of namespaced name -> file path.
 ///
 /// Mirrors [`discover_commands`]: subdirectory nesting becomes `:`-separated
 /// namespaces. Both `.md` and `.mdc` (Cursor) sources are picked up.
@@ -426,9 +426,9 @@ pub(crate) fn discover_instructions(root: &Path) -> Result<HashMap<String, PathB
 
 /// Resolve one `InstructionEntry` to a file path.
 ///
-/// - `Name("style")` → look up by namespaced name in `discover_instructions`.
-/// - `Obj { name: "style", path: Some("house") }` → `<root>/house/style.{md,mdc}`.
-/// - `Obj { name: "style", path: None }` → look up by namespaced name.
+/// - `Name("style")` -> look up by namespaced name in `discover_instructions`.
+/// - `Obj { name: "style", path: Some("house") }` -> `<root>/house/style.{md,mdc}`.
+/// - `Obj { name: "style", path: None }` -> look up by namespaced name.
 pub(crate) fn resolve_instruction_entry(
     root: &Path,
     entry: &crate::model::InstructionEntry,

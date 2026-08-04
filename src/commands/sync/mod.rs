@@ -208,7 +208,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         if secrets_need_update {
             crate::ui::print_tip(
                 "some synced MCP servers carry secrets; a plain sync won't re-resolve a \
-                 rotated secret — run `kst sync --update` to push changes",
+                 rotated secret; run `kst sync --update` to push changes",
                 opts.plain,
             );
         }
@@ -251,7 +251,7 @@ fn pluralize_item(n: usize) -> &'static str {
     }
 }
 
-/// uv-style duration: sub-second → `Nms`, otherwise `N.Ns`.
+/// uv-style duration: sub-second -> `Nms`, otherwise `N.Ns`.
 fn format_elapsed(d: Duration) -> String {
     let ms = d.as_millis();
     if ms < 1000 {
@@ -342,7 +342,7 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
             let src = a.source.as_deref().unwrap_or("-");
             let skill = a.skill.as_deref().unwrap_or("-");
             if let Some(err) = &a.error {
-                println!(" {} {} ({}) — {}", glyph, skill, src, err);
+                println!(" {} {} ({}): {}", glyph, skill, src, err);
             } else {
                 println!(" {} {} ({})", glyph, skill, src);
             }
@@ -350,7 +350,7 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
     }
 }
 
-/// `✓ Resolved N sources · M items` lead line — printed before the tree.
+/// `✓ Resolved N sources · M items` lead line, printed before the tree.
 fn print_resolution_header(report: &Report, plain: bool) {
     let sources: std::collections::BTreeSet<&str> = report
         .actions

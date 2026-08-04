@@ -33,8 +33,8 @@ pub(super) fn sync_instructions(
 ) -> Result<()> {
     let targets = resolve_instruction_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
-    // Dropping the `instructions:` block orphans every installed instruction — skip the
-    // install loop but still run remove_stale with an empty desired-set so the
+    // Dropping the `instructions:` block orphans every installed instruction, so skip
+    // the install loop but still run remove_stale with an empty desired-set so the
     // lock and on-disk blocks/files both get cleaned up.
     if ctx.cfg.instructions.is_empty() {
         remove_stale(ctx, lock, summary, actions, &HashSet::new());
@@ -44,7 +44,7 @@ pub(super) fn sync_instructions(
     // No agent in the resolved scope has an instruction target (e.g. only `warp`
     // globally or `openclaw` per-project), yet `instructions:` is still set. Nothing
     // can be installed, so treat previously-installed instructions as orphaned and
-    // prune them — same as the empty-config branch above.
+    // prune them, same as the empty-config branch above
     if targets.is_empty() {
         remove_stale(ctx, lock, summary, actions, &HashSet::new());
         return Ok(());
@@ -714,8 +714,8 @@ mod tests {
         fs::create_dir_all(&project).unwrap();
 
         // Object entry carries an explicit `.mdc` extension; the resolver stores the
-        // asset under the stripped name, so desired-name derivation must strip too —
-        // otherwise the second sync re-fetches/re-installs instead of being unchanged.
+        // asset under the stripped name, so desired-name derivation must strip too;
+        // otherwise the second sync re-fetches/re-installs instead of being unchanged
         let cfg = {
             let mut c = base_cfg(
                 &src_root,

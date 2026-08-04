@@ -13,11 +13,11 @@ use crate::error::Result;
 /// Braille spinner frames shared across all TUI surfaces.
 pub(crate) const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/// Cassette brand mark — diamond. Used in the doctor header, the `self update`
+/// Cassette brand mark: diamond. Used in the doctor header, the `self update`
 /// finalizer (amber), and the `self uninstall` farewell (violet).
 pub(crate) const BRAND_GLYPH: &str = "◆";
 
-/// Brand flourish star — accompanies the wordmark tagline and the farewell.
+/// Brand flourish star, accompanies the wordmark tagline and the farewell.
 pub(crate) const STAR_GLYPH: &str = "✦";
 
 pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
@@ -40,7 +40,7 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
 }
 
 /// Print an amber-uppercase, letter-spaced section header preceded by a blank
-/// line — the cassette section grammar. Used by `kst doctor`.
+/// line (the cassette section grammar). Used by `kst doctor`.
 pub(crate) fn print_group_header(title: &str, color: bool) {
     println!();
     if color {
@@ -190,7 +190,7 @@ pub(crate) fn short_source(source: &str) -> String {
     s.strip_prefix("www.").unwrap_or(s).to_string()
 }
 
-/// Single-glyph prefix for a per-asset sync action — the cassette design
+/// Single-glyph prefix for a per-asset sync action. The cassette design
 /// dialect: `+` install (green), `↑` update (amber), `−` remove (red),
 /// `✓` unchanged (faint), `!` broken/failed (red). Plain colored (no bold)
 /// per terminal.jsx Row glyph styling.
@@ -210,9 +210,9 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
     }
 }
 
-/// Past-tense status verb + dim metadata tail per design — pairs with
+/// Past-tense status verb + dim metadata tail per design. Pairs with
 /// [`action_glyph`] in source-grouped trees. Returns the colored tail (e.g.
-/// `updated  2.1.0 → 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
+/// `updated  2.1.0 -> 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
 pub(crate) fn status_tail(
     status: &str,
     version_from: Option<&str>,
@@ -226,7 +226,7 @@ pub(crate) fn status_tail(
                 version_to.map(|v| format!("  v{v}")).unwrap_or_default()
             ),
             "updated" | "would_update" => match (version_from, version_to) {
-                (Some(f), Some(t)) => format!("updated  {f} → {t}"),
+                (Some(f), Some(t)) => format!("updated  {f} -> {t}"),
                 _ => "updated".to_string(),
             },
             "removed" | "would_remove" => "removed".to_string(),
@@ -243,7 +243,9 @@ pub(crate) fn status_tail(
             format!("{SUCCESS}added{RESET}{tail}")
         }
         "updated" | "would_update" => match (version_from, version_to) {
-            (Some(f), Some(t)) => format!("{ATTENTION}updated{RESET}{SECONDARY}  {f} → {t}{RESET}"),
+            (Some(f), Some(t)) => {
+                format!("{ATTENTION}updated{RESET}{SECONDARY}  {f} -> {t}{RESET}")
+            }
             _ => format!("{ATTENTION}updated{RESET}"),
         },
         "removed" | "would_remove" => format!("{ERROR}removed{RESET}"),
@@ -253,9 +255,9 @@ pub(crate) fn status_tail(
     }
 }
 
-/// Amber, uppercase, letter-spaced section header per design — `SKILLS   23 installed`.
+/// Amber, uppercase, letter-spaced section header per design: `SKILLS   23 installed`.
 /// `count_unit` is `(count, "installed")` for inline metadata. Emits a leading
-/// blank line to match [`print_group_header`] — body content follows
+/// blank line to match [`print_group_header`]; body content follows
 /// immediately, no trailing blank.
 pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)>, plain: bool) {
     println!();
@@ -277,7 +279,7 @@ pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)
 
 /// Per-source header: status glyph + cyan `org/repo`. Optional right-aligned
 /// faint item count padded to `right_col_at` characters. `done = Some(true)`
-/// → ✓ green, `Some(false)` → • faint idle, `None` → no leading glyph.
+/// -> ✓ green, `Some(false)` -> • faint idle, `None` -> no leading glyph.
 pub(crate) fn print_source_header(
     repo: &str,
     count: Option<usize>,
@@ -395,7 +397,7 @@ pub(crate) fn print_sync_chips(
     );
 }
 
-/// `◆ kasetto vX.Y.Z                          ✓ healthy` — doctor head per
+/// `◆ kasetto vX.Y.Z                          ✓ healthy`. Doctor head per
 /// design. Amber diamond + bold `kasetto`, dim version, right-aligned green
 /// `✓ healthy` badge at column ~62.
 pub(crate) fn print_doctor_head(version: &str, healthy: bool, plain: bool) {
@@ -451,7 +453,7 @@ pub(crate) fn print_doctor_kv(
     }
 }
 
-/// `✓ Sentence` — a single check row in the CHECKS section.
+/// `✓ Sentence`. A single check row in the CHECKS section.
 pub(crate) fn print_check(passed: bool, label: &str, plain: bool) {
     let glyph = if passed { "✓" } else { "✗" };
     if plain {
@@ -462,7 +464,7 @@ pub(crate) fn print_check(passed: bool, label: &str, plain: bool) {
     println!("{color}{glyph}{RESET} {label}");
 }
 
-/// `✓ ~/.foo/bar               writable` — command-directory row with
+/// `✓ ~/.foo/bar               writable`. Command-directory row with
 /// right-aligned faint trailing tag.
 pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
     const COL: usize = 62;
@@ -487,7 +489,7 @@ pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
     );
 }
 
-/// `◆ Updated to vNEW  was vOLD` — self update finalizer (amber diamond).
+/// `◆ Updated to vNEW  was vOLD`. Self update finalizer (amber diamond).
 pub(crate) fn print_update_closer(new: &str, old: &str, plain: bool) {
     if plain {
         println!("Updated to v{new}  was v{old}");
@@ -498,7 +500,7 @@ pub(crate) fn print_update_closer(new: &str, old: &str, plain: bool) {
     );
 }
 
-/// Violet `◆ kasetto vX uninstalled` + amber `またね` farewell — self uninstall closer.
+/// Violet `◆ kasetto vX uninstalled` + amber `またね` farewell. Self uninstall closer.
 pub(crate) fn print_uninstall_closer(version: &str, plain: bool) {
     if plain {
         println!("kasetto v{version} uninstalled");

@@ -34,7 +34,7 @@ pub(super) fn sync_commands(
     let targets = resolve_command_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
     // When the user removes the `commands:` block from config, all previously
-    // installed commands are orphans — skip the install loop but still run
+    // installed commands are orphans, so skip the install loop but still run
     // remove_stale with an empty desired-set so the lock and on-disk files
     // both get cleaned up.
     if ctx.cfg.commands.is_empty() {
@@ -124,7 +124,7 @@ pub(super) fn sync_commands(
         };
         // Resolve commands against `source_root`, which honors `sub-dir` for
         // local, staged-remote, and cache-served sources alike. `cleanup_dir` is
-        // the archive root (no sub-dir applied) and a teardown-only handle — using
+        // the archive root (no sub-dir applied) and a teardown-only handle; using
         // it as the root would miss commands under a `sub-dir`.
         let root = materialized.source_root.as_path();
 
@@ -294,7 +294,7 @@ fn desired_command_names(src: &crate::model::CommandSourceSpec, lock: &LockFile)
 /// Per-source fetch decision (computed before any download). Fetch when a
 /// wildcard source has never been resolved, when any desired command lacks a
 /// lock entry, or when any expected destination file is missing (no local
-/// repair exists for commands — the installed file is a transform of the source).
+/// repair exists for commands: the installed file is a transform of the source).
 fn needs_fetch_commands(
     src: &crate::model::CommandSourceSpec,
     desired: &[String],
@@ -522,7 +522,7 @@ mod tests {
                 Agent::ClaudeCode,
                 Agent::GeminiCli,
                 Agent::Cursor,
-                // No matching enum for "aider" — using Codex which maps to None for project commands.
+                // No matching enum for "aider", so use Codex which maps to None for project commands
                 Agent::Codex,
             ])),
             skills: Vec::new(),
@@ -567,7 +567,7 @@ mod tests {
         assert!(project.join(".gemini/commands/git-commit.toml").is_file());
         // Cursor (plain Markdown).
         assert!(project.join(".cursor/commands/git-commit.md").is_file());
-        // Codex has no project commands path — directory should not exist.
+        // Codex has no project commands path, so the directory should not exist
         assert!(!project.join(".codex/prompts").exists());
 
         // User-authored file untouched.
@@ -610,8 +610,8 @@ mod tests {
             secrets: crate::secrets::SecretContext::empty(),
         };
         // `sync_commands` now invokes `remove_stale` itself when `cfg.commands` is
-        // empty — call it directly here to keep this a focused unit test of the
-        // cleanup pass.
+        // empty, so call it directly here to keep this a focused unit test of the
+        // cleanup pass
         let desired = HashSet::new();
         remove_stale(&ctx2, &mut lock, &mut summary2, &mut actions2, &desired);
 

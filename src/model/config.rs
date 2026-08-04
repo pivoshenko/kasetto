@@ -28,7 +28,7 @@ pub(crate) struct Config {
     #[serde(default)]
     pub instructions: Vec<InstructionSourceSpec>,
     /// Optional secret-injection settings. Carries no secret *values* (it is
-    /// committed) — only policy and extra credential-file paths.
+    /// committed), only policy and extra credential-file paths.
     #[serde(default)]
     pub secrets: Option<SecretsConfig>,
 }
@@ -48,7 +48,7 @@ pub(crate) struct SecretsConfig {
     pub keepass: Option<KeePassConfig>,
 }
 
-/// `secrets.keepass:` block — locates the KeePass database for `${kst:kp:...}`
+/// `secrets.keepass:` block. Locates the KeePass database for `${kst:kp:...}`
 /// refs. The master password (if any) comes from `$KST_KEEPASS_PASSWORD` at
 /// runtime, never from this committed file.
 #[derive(Debug, Deserialize, Default)]
@@ -285,20 +285,20 @@ impl McpSourceSpec {
     }
 }
 
-/// The `mcps` field on an `McpSourceSpec` — mirrors `SkillsField` exactly.
+/// The `mcps` field on an `McpSourceSpec`. Mirrors `SkillsField` exactly.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum McpsField {
-    /// `mcps: "*"` — discover all MCP files in the source.
+    /// `mcps: "*"` discovers all MCP files in the source.
     Wildcard(String),
-    /// `mcps: [...]` — explicit list of names or `{ name, path }` objects.
+    /// `mcps: [...]` is an explicit list of names or `{ name, path }` objects.
     List(Vec<McpEntry>),
 }
 
-/// One entry in `mcps[].mcps` — mirrors `SkillTarget`.
+/// One entry in `mcps[].mcps`. Mirrors `SkillTarget`.
 ///
-/// - Plain string `"github"` → `mcps/github.json`
-/// - Object `{ name: github, path: tools }` → `tools/github.json`
+/// - Plain string `"github"` -> `mcps/github.json`
+/// - Object `{ name: github, path: tools }` -> `tools/github.json`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum McpEntry {
@@ -330,7 +330,7 @@ impl CommandSourceSpec {
     }
 }
 
-/// The `commands` field on a `CommandSourceSpec` — mirrors `McpsField` / `SkillsField`.
+/// The `commands` field on a `CommandSourceSpec`. Mirrors `McpsField` / `SkillsField`.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum CommandsField {
@@ -338,10 +338,10 @@ pub(crate) enum CommandsField {
     List(Vec<CommandEntry>),
 }
 
-/// One entry in `commands[].commands` — mirrors `McpEntry`.
+/// One entry in `commands[].commands`. Mirrors `McpEntry`.
 ///
-/// - Plain string `"review-pr"` → resolves through `discover_commands` (namespaced names)
-/// - Object `{ name: deploy, path: ops }` → `<path>/<name>.md`
+/// - Plain string `"review-pr"` -> resolves through `discover_commands` (namespaced names)
+/// - Object `{ name: deploy, path: ops }` -> `<path>/<name>.md`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum CommandEntry {
@@ -373,7 +373,7 @@ impl InstructionSourceSpec {
     }
 }
 
-/// The `instructions` field on a `InstructionSourceSpec` — mirrors `CommandsField`.
+/// The `instructions` field on a `InstructionSourceSpec`. Mirrors `CommandsField`.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum InstructionsField {
@@ -381,10 +381,10 @@ pub(crate) enum InstructionsField {
     List(Vec<InstructionEntry>),
 }
 
-/// One entry in `instructions[].instructions` — mirrors `CommandEntry`.
+/// One entry in `instructions[].instructions`. Mirrors `CommandEntry`.
 ///
-/// - Plain string `"style"` → resolves through `discover_instructions` (namespaced names)
-/// - Object `{ name: style, path: house }` → `<path>/style.{md,mdc}`
+/// - Plain string `"style"` -> resolves through `discover_instructions` (namespaced names)
+/// - Object `{ name: style, path: house }` -> `<path>/style.{md,mdc}`
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum InstructionEntry {

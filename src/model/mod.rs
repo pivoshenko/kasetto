@@ -50,11 +50,11 @@ pub(crate) struct McpSettingsTarget {
 pub(crate) enum CommandFormat {
     /// Verbatim Markdown with YAML frontmatter (Claude Code style).
     MarkdownFrontmatter,
-    /// Markdown body only — frontmatter stripped.
+    /// Markdown body only, frontmatter stripped.
     MarkdownPlain,
-    /// `<name>.prompt.md` — frontmatter preserved (GitHub Copilot).
+    /// `<name>.prompt.md`, frontmatter preserved (GitHub Copilot).
     PromptMd,
-    /// `<name>.prompt` (Continue Dev) — frontmatter preserved, `invokable: true` injected.
+    /// `<name>.prompt` (Continue Dev), frontmatter preserved, `invokable: true` injected.
     PromptFile,
     /// `<name>.toml` (Gemini CLI custom commands).
     GeminiToml,
@@ -74,10 +74,10 @@ pub(crate) enum InstructionFormat {
     /// `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, ...) via
     /// managed comment-block markers so multiple instructions and hand edits coexist.
     AggregateMarkdown,
-    /// `<name>.mdc` per instruction — Cursor MDC frontmatter (`description`, `globs`,
+    /// `<name>.mdc` per instruction: Cursor MDC frontmatter (`description`, `globs`,
     /// `alwaysApply`) reconstructed from the source, then the body.
     CursorMdc,
-    /// `<name>.md` per instruction — Markdown body only, frontmatter stripped.
+    /// `<name>.md` per instruction: Markdown body only, frontmatter stripped.
     PlainMarkdownDir,
 }
 

@@ -256,7 +256,7 @@ pub(crate) fn resolve_instruction_targets(
 
 /// Root that lock-file `destination` paths are stored relative to, so the
 /// committed lock stays portable across machines and users.
-/// Project scope → the project root; Global scope → the user's home directory.
+/// Project scope -> the project root; Global scope -> the user's home directory.
 pub(crate) fn scope_root(scope: Scope, project_root: &Path) -> Result<PathBuf> {
     match scope {
         Scope::Project => Ok(project_root.to_path_buf()),
@@ -280,7 +280,7 @@ pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
 /// each copy. Both the `sync` and `lock` write paths go through here so they
 /// cannot drift apart (issue #42).
 ///
-/// Known limitation — commas in a path corrupt the round-trip. The value is
+/// Known limitation: commas in a path corrupt the round-trip. The value is
 /// split on a bare `,` at every read site (no escaping), matching the existing
 /// command/MCP `destination` convention. A literal `,` can enter the stored
 /// string two ways: a skill directory named with a comma, or `relativize_dest`
@@ -288,8 +288,8 @@ pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
 /// scope root) whose ancestor contains a comma (e.g. a home dir `/Users/a,b/`).
 /// When that happens a stored entry splits into the wrong fragments: in
 /// stale-removal a fragment can resolve to an unrelated `root/<fragment>` and be
-/// removed, while the real dir is skipped. Severity is low — triggering needs a
-/// comma in a path component, which is exotic — and it is pre-existing to the
+/// removed, while the real dir is skipped. Severity is low (triggering needs a
+/// comma in a path component, which is exotic) and it is pre-existing to the
 /// CSV convention, not introduced here. The escaping-free fix would be to store
 /// destinations as a real list (`Vec<String>`), a lock-schema change
 /// deliberately not taken so skill entries stay consistent with command/MCP
@@ -367,7 +367,7 @@ mod tests {
     fn join_dest_csv_keeps_out_of_root_dest_absolute() {
         let root = Path::new("/proj");
         let dests = vec![PathBuf::from("/home/user/.claude/skills")];
-        // Outside the scope root → stored verbatim (absolute), still resolvable.
+        // Outside the scope root -> stored verbatim (absolute), still resolvable
         let csv = join_dest_csv(&dests, "alpha", root);
         assert_eq!(csv, "/home/user/.claude/skills/alpha");
         assert_eq!(resolve_dest(&csv, root), dests[0].join("alpha"));

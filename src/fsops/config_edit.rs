@@ -212,7 +212,7 @@ pub(crate) fn remove_item(
 
 /// Remove specific `names` from the source entry's selector list in `section`.
 /// When the last name goes, the whole entry is dropped (`WholeItem`). Errors if
-/// the entry is a wildcard (`skills: "*"` — nothing to subtract), if it uses
+/// the entry is a wildcard (`skills: "*"` has nothing to subtract), if it uses
 /// object-form (`{name, path}`) entries (edit those by hand), or if any
 /// requested name is absent.
 pub(crate) fn remove_names(
@@ -304,7 +304,7 @@ pub(crate) fn remove_names(
         .filter(|(_, n)| !names.contains(n))
         .count();
     if remaining == 0 {
-        // Removing every name empties the list — drop the whole entry.
+        // Removing every name empties the list, so drop the whole entry
         lines.drain(istart..iend);
         return Ok((join_lines(&lines, text), RemoveOutcome::WholeItem));
     }

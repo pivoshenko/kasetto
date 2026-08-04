@@ -60,15 +60,15 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         return Ok(());
     }
 
-    // `✓ Update available  X → Y` per design.
+    // `✓ Update available  X -> Y` per design
     if !as_json {
         if color {
             println!(
-                "{SUCCESS}✓{RESET} Update available  {ATTENTION}{current_version} → {latest_version}{RESET}"
+                "{SUCCESS}✓{RESET} Update available  {ATTENTION}{current_version} -> {latest_version}{RESET}"
             );
             println!();
         } else {
-            println!("Update available  {current_version} → {latest_version}");
+            println!("Update available  {current_version} -> {latest_version}");
             println!();
         }
     }
@@ -142,7 +142,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
     Ok(())
 }
 
-/// `✓ message` — emit a single completed-step line per the design's update
+/// `✓ message`. Emits a single completed-step line per the design's update
 /// flow. Skipped under `--json` (the JSON summary is the only output then).
 fn print_step_done(message: &str, color: bool, as_json: bool) {
     if as_json {

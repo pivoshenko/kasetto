@@ -51,7 +51,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
     let kst_removed = remove_file_if_exists(&install_dir.join("kst"))?;
     let binary_removed = remove_file_if_exists(&exe)?;
 
-    // Summary checklist — only show categories that actually had something.
+    // Summary checklist, only showing categories that actually had something
     println!();
     if counts.skills > 0 {
         print_check(&format!("{} skills removed", counts.skills));
@@ -100,7 +100,7 @@ fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
     }
 }
 
-/// Green `✓` + dim label — the cassette confirmation-row pattern. Used for
+/// Green `✓` + dim label, the cassette confirmation-row pattern. Used for
 /// the uninstall summary checklist where every row is housekeeping.
 fn print_check(msg: &str) {
     let color = crate::profile::list_color_enabled();

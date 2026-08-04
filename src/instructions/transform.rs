@@ -23,7 +23,7 @@ fn derive_relpath(name: &str, format: InstructionFormat) -> PathBuf {
 pub(crate) fn render(parsed: &Parsed, format: InstructionFormat) -> String {
     match format {
         InstructionFormat::CursorMdc => render_cursor_mdc(parsed),
-        // Body only — frontmatter stripped. globs/alwaysApply have no meaning
+        // Body only, frontmatter stripped. globs/alwaysApply have no meaning
         // for agents that don't scope instructions, so they are dropped here.
         InstructionFormat::PlainMarkdownDir | InstructionFormat::AggregateMarkdown => {
             parsed.body.clone()
@@ -109,7 +109,7 @@ pub(crate) fn block_id(source: &str, name: &str) -> String {
     format!("{name}-{}", &digest[..8])
 }
 
-/// Every kasetto-managed instruction block id present in `text` — the `<id>`
+/// Every kasetto-managed instruction block id present in `text`: the `<id>`
 /// inside each `<!-- kasetto:instruction:<id> START -->` marker. Used by
 /// `doctor` to find orphaned blocks (markers kasetto wrote whose id the lock no
 /// longer tracks) without ever inspecting user-authored prose.
@@ -160,7 +160,7 @@ fn markers(id: &str) -> (String, String) {
 /// Locate the managed block: the first `start` marker, then the first `end`
 /// marker that follows it. Returns `(block_start, block_end_exclusive)`.
 ///
-/// Scoping the END search to *after* START is what keeps this correct — a naive
+/// Scoping the END search to *after* START is what keeps this correct. A naive
 /// independent `find(end)` would match an earlier block's END (or a stray END in
 /// someone's prose) and slice the wrong region. Combined with the content-hashed
 /// block id, a collision with a marker embedded in an instruction body is implausible.

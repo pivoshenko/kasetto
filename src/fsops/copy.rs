@@ -16,7 +16,7 @@ pub(crate) fn copy_dir(src: &Path, dst: &Path) -> Result<()> {
 fn copy_dir_contents(src: &Path, dst: &Path, depth: u32) -> Result<()> {
     if depth > MAX_COPY_DEPTH {
         return Err(err(format!(
-            "copy depth limit ({MAX_COPY_DEPTH}) exceeded — possible symlink cycle at {}",
+            "copy depth limit ({MAX_COPY_DEPTH}) exceeded, possible symlink cycle at {}",
             src.display()
         )));
     }

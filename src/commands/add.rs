@@ -1,10 +1,10 @@
-//! `kasetto add` — append one or more sources to the config, then sync them in.
+//! `kasetto add` appends one or more sources to the config, then syncs them in.
 //!
 //! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command`) select both
 //! the asset kind and the named entries, so a single `add` can touch several
 //! sections of `kasetto.yaml` at once (a repo that ships skills + MCPs +
 //! commands). The source may be a plain repo URL, a `<source>@<ref>` shorthand,
-//! or a deep `blob`/`tree` browse URL — the latter is decomposed into `source` +
+//! or a deep `blob`/`tree` browse URL; the latter is decomposed into `source` +
 //! `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); explicit
 //! flags override the derived pieces.
 
@@ -50,13 +50,13 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     if opts.git_ref.is_some() && opts.branch.is_some() {
         return Err(err("--ref and --branch are mutually exclusive"));
     }
-    // `--locked` forbids fetching, but a brand-new source has no lock entry yet
-    // — the follow-up sync would fail mid-flight after the manifest edit. Reject
+    // `--locked` forbids fetching, but a brand-new source has no lock entry yet,
+    // so the follow-up sync would fail mid-flight after the manifest edit. Reject
     // the combination up front and point at the two valid workflows. cargo
     // follows the same "lock would need updating but --locked was passed" model.
     if opts.locked && !opts.no_sync {
         return Err(err(
-            "`--locked` on `add` requires `--no-sync` — a newly added source \
+            "`--locked` on `add` requires `--no-sync`: a newly added source \
              cannot be installed without fetching. Either pass `--no-sync --locked` \
              (edit the manifest only, then run `kasetto lock` + `kasetto sync --locked` \
              to install offline), or drop `--locked` to fetch the new source now.",
@@ -153,10 +153,10 @@ fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>)
 }
 
 /// Build the per-section edits from the kind flags, with these defaults:
-/// - named `--skill`/`--mcp`/`--command` → that section as a list (a lone `*`
+/// - named `--skill`/`--mcp`/`--command` -> that section as a list (a lone `*`
 ///   value becomes a wildcard);
-/// - a `SKILL.md` browse URL with no `--skill` flags → a one-skill list;
-/// - nothing specified at all → `skills: "*"` (the common "add this pack" case).
+/// - a `SKILL.md` browse URL with no `--skill` flags -> a one-skill list;
+/// - nothing specified at all -> `skills: "*"` (the common "add this pack" case).
 ///
 /// MCP entries never carry `sub-dir` (the schema has no such field there).
 fn plan_edits(
@@ -304,7 +304,7 @@ fn emit_result(opts: &AddOptions, source: &str, edits: &[SectionEdit], dry: bool
     if opts.quiet > 0 {
         return Ok(());
     }
-    // Present continuous for the in-progress edit line — cargo says
+    // Present continuous for the in-progress edit line. cargo says
     // `Adding serde v1.0... to dependencies`; the sync summary that follows
     // (`Installed N items in 84ms`) carries the past-tense closer.
     let verb = if dry { "Would add" } else { "Adding" };

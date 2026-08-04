@@ -2,8 +2,8 @@
 //!
 //! Two forms: the chain form `${kst_name}` (resolved against env + credential
 //! files) and the tagged form `${kst:<source>:<ref>}` routed to one explicit
-//! source — `env`, `crd` (credentials.yaml), `op`, or `vault`. Only the
-//! lowercase `kst_` / `kst:` sentinel is recognised — bare `${VAR}` that an
+//! source: `env`, `crd` (credentials.yaml), `op`, or `vault`. Only the
+//! lowercase `kst_` / `kst:` sentinel is recognised; bare `${VAR}` that an
 //! agent or shell must expand at server-launch time is passed through
 //! untouched. Hand-rolled to avoid a `regex` dependency.
 
@@ -27,7 +27,7 @@ pub(crate) struct SecretRef {
 }
 
 impl SecretRef {
-    /// Placeholder label for diagnostics — a locator, never a resolved value.
+    /// Placeholder label for diagnostics: a locator, never a resolved value.
     pub(crate) fn display(&self) -> String {
         match &self.tag {
             Some(t) => format!("${{kst:{t}:{}}}", self.payload),

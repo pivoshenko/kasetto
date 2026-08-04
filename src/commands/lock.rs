@@ -1,9 +1,9 @@
-//! `kasetto lock` — resolve and pin the config into `kasetto.lock` without
+//! `kasetto lock` resolves and pins the config into `kasetto.lock` without
 //! installing to destinations.
 //!
 //! Skills are materialized and hashed from the source tree. Because a skill is
 //! installed as a verbatim recursive copy, that source-tree hash equals the
-//! hash a later `sync` computes at the destination — so the lock is immediately
+//! hash a later `sync` computes at the destination, so the lock is immediately
 //! offline-ready (`sync --locked` works with zero fetches afterward).
 //!
 //! MCP and command assets cannot be hashed without applying their merge /

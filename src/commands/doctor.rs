@@ -29,7 +29,7 @@ struct DoctorOutput {
     instructions: Vec<String>,
     command_dirs: Vec<CommandDirCheck>,
     /// Assets found in managed install paths that the lock does not track.
-    /// Read-only/advisory — kasetto never deletes files it does not own.
+    /// Read-only/advisory: kasetto never deletes files it does not own.
     unmanaged: Vec<UnmanagedEntry>,
     update_check: UpdateCheckOutput,
 }
@@ -243,7 +243,7 @@ pub(crate) fn run(
         }
     }
 
-    // Untracked detail (only when present) — advisory; never deleted.
+    // Untracked detail (only when present); advisory, never deleted
     if !output.unmanaged.is_empty() {
         use crate::colors::ATTENTION;
         print_group_header_with_count("Untracked", output.unmanaged.len(), color);
@@ -279,7 +279,7 @@ pub(crate) fn run(
     Ok(())
 }
 
-/// `LABEL  N` header — amber uppercase + dim count, blank line above.
+/// `LABEL  N` header: amber uppercase + dim count, blank line above.
 fn print_group_header_with_count(title: &str, count: usize, color: bool) {
     println!();
     if color {
@@ -296,7 +296,7 @@ fn print_group_header_with_count(title: &str, count: usize, color: bool) {
 fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {
     // Scope COMMAND DIRECTORIES to the agents the config actually wires.
     // If no config or no agents configured, fall back to every supported agent
-    // (debugging view — "what does kasetto know how to write to?").
+    // (debugging view: "what does kasetto know how to write to?")
     let agents: Vec<crate::model::Agent> =
         match crate::fsops::load_config_any(&crate::default_config_path()) {
             Ok((cfg, _, _)) => cfg.agents(),
@@ -340,14 +340,14 @@ fn short_kind(kind: &str) -> &str {
 
 /// Diff every kasetto-managed install path for the active scope against the lock,
 /// returning assets present on disk that the lock does not track. Purely
-/// read-only — kasetto never deletes files it does not own, so this only
+/// read-only: kasetto never deletes files it does not own, so this only
 /// surfaces. Mirrors `collect_command_dirs`' active-vs-all-agents fallback; for
-/// both scopes `root` is the right base (`scope_root` → project root or `$HOME`,
+/// both scopes `root` is the right base (`scope_root` -> project root or `$HOME`,
 /// the same bases the `*_project_*`/`*_global_*` target fns take).
 ///
 /// A config-level custom `destination` overrides only the *skill* install
 /// location (it short-circuits `resolve_destinations`), so the skill scan
-/// follows that single dir instead of the agent dirs — resolved with the same
+/// follows that single dir instead of the agent dirs, resolved with the same
 /// `root` the locked skill destinations resolve under, so tracked vs untracked
 /// stays a clean diff. Commands/MCPs/instructions ignore `destination` and stay
 /// agent-based.
@@ -431,7 +431,7 @@ fn collect_unmanaged(
         .collect();
 
     // Locked destination sets, built under the same `root` as the scan so plain
-    // PathBuf equality holds (no canonicalize — it would fail on missing paths
+    // PathBuf equality holds (no canonicalize; it would fail on missing paths
     // and resolve symlinks the scan side does not).
     let mut locked_skill_dirs: HashSet<PathBuf> = HashSet::new();
     for e in lock.skills.values() {
@@ -564,7 +564,7 @@ fn find_unmanaged_files(
 
 /// Managed `<!-- kasetto:instruction:ID ... -->` blocks in shared aggregate files
 /// whose id the lock no longer tracks (a stale block kasetto left behind). User
-/// prose is never inspected — only kasetto's own markers.
+/// prose is never inspected, only kasetto's own markers.
 fn find_orphan_blocks(
     agg_files: &[PathBuf],
     owned: &HashMap<PathBuf, HashSet<String>>,
@@ -597,7 +597,7 @@ fn find_orphan_blocks(
 /// MCP servers present in a managed settings file that the lock does not track.
 /// kasetto writes no ownership marker into settings files and deliberately
 /// preserves user servers, so this necessarily also lists the user's own
-/// hand-added servers — it is an inventory, not an orphan report.
+/// hand-added servers; it is an inventory, not an orphan report.
 fn find_unmanaged_mcp_servers(
     targets: &[crate::model::McpSettingsTarget],
     locked: &HashSet<String>,
@@ -772,8 +772,8 @@ mod tests {
 
     #[test]
     fn orphan_blocks_dedupes_shared_aggregate_file() {
-        // Two agents (e.g. Codex + OpenCode) point at the same AGENTS.md — the
-        // file appears twice in the target list but each orphan is reported once.
+        // Two agents (e.g. Codex + OpenCode) point at the same AGENTS.md, so the
+        // file appears twice in the target list but each orphan is reported once
         let proj = temp_dir("kasetto-doctor-agg-dup");
         fs::create_dir_all(&proj).unwrap();
         let agents = proj.join("AGENTS.md");

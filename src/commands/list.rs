@@ -103,7 +103,7 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
         for (i, s) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
             let tail = if s.name == s.skill {
-                "—".to_string()
+                "-".to_string()
             } else {
                 s.skill.clone()
             };
@@ -131,7 +131,7 @@ fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) 
         print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
-            print_tree_leaf(is_last, None, &a.name, false, "—", 30, plain);
+            print_tree_leaf(is_last, None, &a.name, false, "-", 30, plain);
         }
     }
 }
