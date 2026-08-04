@@ -413,10 +413,21 @@ fn collect_unmanaged(
 
     // A custom `destination` redirects only skills (see `resolve_destinations`),
     // resolved against the same `root` the locked skill paths use.
-    let skill_dirs = match &custom_dest {
+    let mut skill_dirs = match &custom_dest {
         Some(dest) => vec![crate::fsops::resolve_path(root, dest)],
         None => skill_dirs,
     };
+
+    // Migration aid for issue #48: the `codex` preset used to install into
+    // `.codex/skills`, which Codex CLI never reads. Now that it points at
+    // `.agents/skills`, the old directory is no longer a managed path, so its
+    // contents would go unreported. Scan it so anything left there surfaces as
+    // untracked and the user can delete it. Nothing here is ever removed
+    // automatically. Drop this once the bad path is far enough behind us.
+    let legacy_codex = root.join(".codex/skills");
+    if legacy_codex.is_dir() && !skill_dirs.contains(&legacy_codex) {
+        skill_dirs.push(legacy_codex);
+    }
 
     let command_dirs: Vec<PathBuf> = command_targets.into_iter().map(|t| t.path).collect();
     let dir_instr: Vec<PathBuf> = instr_targets

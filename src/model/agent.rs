@@ -277,8 +277,9 @@ impl Agent {
             Agent::Antigravity => home.join(".gemini/antigravity/skills"),
             Agent::Augment => home.join(".augment/skills"),
             Agent::ClaudeCode => home.join(".claude/skills"),
-            Agent::Cline | Agent::Warp => home.join(".agents/skills"),
-            Agent::Codex => home.join(".codex/skills"),
+            // Codex scans `$HOME/.agents/skills`, never `.codex/skills`; the
+            // latter holds only its config.toml and prompts (issue #48).
+            Agent::Cline | Agent::Codex | Agent::Warp => home.join(".agents/skills"),
             Agent::Continue => home.join(".continue/skills"),
             Agent::Cursor => home.join(".cursor/skills"),
             Agent::GeminiCli => home.join(".gemini/skills"),
@@ -348,8 +349,7 @@ impl Agent {
             Agent::Antigravity => project_root.join(".gemini/antigravity/skills"),
             Agent::Augment => project_root.join(".augment/skills"),
             Agent::ClaudeCode => project_root.join(".claude/skills"),
-            Agent::Cline | Agent::Warp => project_root.join(".agents/skills"),
-            Agent::Codex => project_root.join(".codex/skills"),
+            Agent::Cline | Agent::Codex | Agent::Warp => project_root.join(".agents/skills"),
             Agent::Continue => project_root.join(".continue/skills"),
             Agent::Cursor => project_root.join(".cursor/skills"),
             Agent::GeminiCli => project_root.join(".gemini/skills"),

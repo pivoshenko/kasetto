@@ -270,7 +270,7 @@ Set the `agent` field and Kasetto figures out where to put things.
 | Augment        | `augment`        | `~/.augment/skills/`            |
 | Claude Code    | `claude-code`    | `~/.claude/skills/`             |
 | Cline          | `cline`          | `~/.agents/skills/`             |
-| Codex          | `codex`          | `~/.codex/skills/`              |
+| Codex          | `codex`          | `~/.agents/skills/`             |
 | Continue       | `continue`       | `~/.continue/skills/`           |
 | Cursor         | `cursor`         | `~/.cursor/skills/`             |
 | Gemini CLI     | `gemini-cli`     | `~/.gemini/skills/`             |

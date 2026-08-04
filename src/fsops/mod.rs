@@ -469,7 +469,8 @@ mod tests {
     fn agent_paths_cover_supported_presets() {
         let home = Path::new("/tmp/kasetto-home");
 
-        assert_eq!(Agent::Codex.global_path(home), home.join(".codex/skills"));
+        // Codex scans `$HOME/.agents/skills`, not `.codex/skills` (issue #48).
+        assert_eq!(Agent::Codex.global_path(home), home.join(".agents/skills"));
         assert_eq!(
             Agent::Amp.global_path(home),
             home.join(".config/agents/skills")
