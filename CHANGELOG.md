@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6.1] - 2026-08-04
+
+### Bug fixes
+
+- **cli**: Align short about line with the actual scope
+- **site**: Add titles to svg assets for accessibility
+- **site**: Derive agents-grid preset count from list length
+
+### Miscellaneous
+
+- Add editorconfig
+
+### Build
+
+- **deps**: Override sharp to >=0.35.0 for libvips advisory
+- **deps**: Update dependencies
+- **deps**: Update dependencies
+
 ## [3.6.0] - 2026-07-17
 
 ### Features
@@ -11,6 +29,10 @@ All notable changes to this project will be documented in this file.
 ### Build
 
 - Bump crossbeam-epoch to 0.9.20 for RUSTSEC-2026-0204
+
+### Release
+
+- V3.6.0
 
 ## [3.5.0] - 2026-06-28
 
