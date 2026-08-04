@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6.2] - 2026-08-04
+
+### Bug fixes
+
+- **agents**: Point the codex preset at .agents/skills
+- **cli**: Count every asset kind in lock and uninstall summaries
+- **sync**: Name every failed asset, not just skills
+- **cli**: Correct stale claims in output and module docs
+- **cli**: Describe all four asset kinds in help and diagnostics
+- **cli**: Keep the arrow glyph in output, docs, and comments
+- **cli**: Normalize terminal output and help text to plain ASCII
+
+### Documentation
+
+- Use plain ASCII punctuation in README, docs, and site copy
+
 ## [3.6.1] - 2026-08-04
 
 ### Bug fixes
@@ -19,6 +35,10 @@ All notable changes to this project will be documented in this file.
 - **deps**: Override sharp to >=0.35.0 for libvips advisory
 - **deps**: Update dependencies
 - **deps**: Update dependencies
+
+### Release
+
+- V3.6.1
 
 ## [3.6.0] - 2026-07-17
 
