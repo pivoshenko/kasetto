@@ -29,8 +29,6 @@ pub(super) struct SyncContext<'a> {
     pub(super) dry_run: bool,
     pub(super) animate: bool,
     pub(super) plain: bool,
-    pub(super) as_json: bool,
-    pub(super) quiet: bool,
     /// `--update`: re-resolve moving refs and rewrite locked hashes.
     pub(super) update: bool,
     /// `--update <name>...`: when non-empty, only sources providing these
@@ -150,8 +148,6 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         dry_run: opts.dry_run,
         animate,
         plain: opts.plain,
-        as_json: opts.as_json,
-        quiet: opts.quiet,
         update: opts.update,
         update_only: opts.update_only.clone(),
         locked: opts.locked,
@@ -323,6 +319,8 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
         println!("{lead} (in {timing})");
     }
 
+    print_failure_details(report, plain);
+
     if s.broken > 0 {
         crate::ui::eprint_warn(
             &format!("{} {} broken", s.broken, pluralize_item(s.broken)),
@@ -349,6 +347,33 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
             }
         }
     }
+}
+
+/// Name every asset that failed, one `error:` line each, above the aggregate
+/// broken/failed counts. Emitted from here rather than at each push site so all
+/// four asset kinds are covered by one path: previously only skills named the
+/// asset, leaving a broken MCP or command visible only as a bare count.
+fn print_failure_details(report: &Report, plain: bool) {
+    for a in failed_actions(report) {
+        crate::ui::eprint_fail(
+            a.skill.as_deref(),
+            a.source.as_deref().unwrap_or("-"),
+            a.error.as_deref(),
+            plain,
+        );
+    }
+}
+
+/// The action statuses that count as a failure worth naming. Split out from
+/// [`print_failure_details`] so the set stays testable: a new failure status
+/// added elsewhere must be listed here or it reaches the user as a bare count.
+fn failed_actions(report: &Report) -> impl Iterator<Item = &Action> {
+    report.actions.iter().filter(|a| {
+        matches!(
+            a.status.as_str(),
+            "broken" | "source_error" | "locked_error"
+        )
+    })
 }
 
 /// `✓ Resolved N sources · M items` lead line, printed before the tree.
@@ -438,4 +463,56 @@ pub(super) fn file_name_str(path: &std::path::Path) -> String {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn action(status: &str, skill: Option<&str>) -> Action {
+        Action {
+            source: Some("src".into()),
+            skill: skill.map(Into::into),
+            status: status.into(),
+            error: Some("why".into()),
+        }
+    }
+
+    fn report_with(actions: Vec<Action>) -> Report {
+        Report {
+            run_id: "0".into(),
+            config: "cfg".into(),
+            destination: "dest".into(),
+            dry_run: false,
+            summary: Summary::default(),
+            actions,
+        }
+    }
+
+    /// Every failing asset gets named, whatever its kind. Regression guard for
+    /// the bug where only skills printed a named line and a broken MCP or
+    /// command surfaced as a bare "N items broken" count.
+    #[test]
+    fn failure_details_cover_every_failure_status() {
+        let report = report_with(vec![
+            action("broken", Some("a-skill")),
+            action("source_error", None),
+            action("locked_error", None),
+            action("installed", Some("fine")),
+            action("unchanged", Some("fine2")),
+            action("removed", Some("fine3")),
+        ]);
+        let statuses: Vec<&str> = failed_actions(&report).map(|a| a.status.as_str()).collect();
+        assert_eq!(statuses, ["broken", "source_error", "locked_error"]);
+    }
+
+    /// A successful sync must not emit any failure line.
+    #[test]
+    fn failure_details_empty_when_nothing_failed() {
+        let report = report_with(vec![
+            action("installed", Some("a")),
+            action("unchanged", Some("b")),
+        ]);
+        assert_eq!(failed_actions(&report).count(), 0);
+    }
 }

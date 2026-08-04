@@ -7,7 +7,7 @@ use crate::fsops::{copy_dir, hash_dir, now_unix, now_unix_str, select_targets, B
 use crate::model::{Action, SkillEntry, SkillsField, SourceSpec, State};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
-use crate::ui::{eprint_fail, with_spinner_transient};
+use crate::ui::with_spinner_transient;
 #[cfg(test)]
 use crate::{model::Summary, state::RuntimeState};
 
@@ -247,7 +247,7 @@ fn process_fetched_source(
         &materialized.source_root,
     ) {
         Ok((targets, broken_skills)) => {
-            record_broken_skills(ctx, &src.source, broken_skills, sm);
+            record_broken_skills(&src.source, broken_skills, sm);
 
             let mut first_in_run = true;
             for (skill_name, skill_path) in targets {
@@ -318,17 +318,9 @@ fn sync_source_from_lock(
     }
 }
 
-fn record_broken_skills(
-    ctx: &SyncContext,
-    source: &str,
-    broken_skills: Vec<BrokenSkill>,
-    sm: &mut SyncMut<'_>,
-) {
+fn record_broken_skills(source: &str, broken_skills: Vec<BrokenSkill>, sm: &mut SyncMut<'_>) {
     for broken in broken_skills {
         sm.summary.broken += 1;
-        if !ctx.as_json && !ctx.quiet {
-            eprint_fail(&broken.name, source, ctx.plain);
-        }
         sm.actions.push(Action {
             source: Some(source.to_string()),
             skill: Some(broken.name),
@@ -733,8 +725,6 @@ mod tests {
             dry_run: false,
             animate: false,
             plain: true,
-            as_json: false,
-            quiet: true,
             update,
             update_only,
             locked,
@@ -787,8 +777,6 @@ mod tests {
             dry_run: false,
             animate: false,
             plain: true,
-            as_json: false,
-            quiet: true,
             update: false,
             update_only: vec![],
             locked: false,
@@ -1105,8 +1093,6 @@ mod tests {
             dry_run: false,
             animate: false,
             plain: true,
-            as_json: false,
-            quiet: true,
             update: false,
             update_only: vec![],
             locked: false,

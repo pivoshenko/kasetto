@@ -60,12 +60,20 @@ pub(crate) fn print_tip(msg: &str, plain: bool) {
     }
 }
 
-/// Print a uv-style `error:`-prefixed failure line to stderr.
-pub(crate) fn eprint_fail(name: &str, source: &str, plain: bool) {
+/// Print a uv-style `error:`-prefixed failure line to stderr, naming the asset
+/// that failed. `name` is `None` for a source-level failure, where no single
+/// asset is at fault. Used for every asset kind, so a broken MCP or command is
+/// named just like a broken skill.
+pub(crate) fn eprint_fail(name: Option<&str>, source: &str, reason: Option<&str>, plain: bool) {
+    let what = match name {
+        Some(n) => format!("failed to install {n} from {source}"),
+        None => format!("failed to resolve {source}"),
+    };
+    let tail = reason.map_or_else(String::new, |r| format!(": {r}"));
     if plain {
-        eprintln!("error: failed to install {name} from {source}");
+        eprintln!("error: {what}{tail}");
     } else {
-        eprintln!("{ERROR}{ACCENT}error:{RESET} failed to install {name} from {source}");
+        eprintln!("{ERROR}{ACCENT}error:{RESET} {what}{SECONDARY}{tail}{RESET}");
     }
 }
 

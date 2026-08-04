@@ -548,8 +548,6 @@ mod tests {
             dry_run: false,
             animate: false,
             plain: true,
-            as_json: false,
-            quiet: true,
             update: false,
             update_only: Vec::new(),
             locked,
