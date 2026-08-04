@@ -72,32 +72,30 @@ fn resolve_source_root(base_root: &Path, sub_dir: Option<&str>) -> Result<PathBu
 
     let trimmed = sub_dir.trim();
     if trimmed.is_empty() {
-        return Err(err("skills source `sub-dir` cannot be empty"));
+        return Err(err("source `sub-dir` cannot be empty"));
     }
 
     let rel = Path::new(trimmed);
     if rel.is_absolute() {
-        return Err(err("skills source `sub-dir` must be relative"));
+        return Err(err("source `sub-dir` must be relative"));
     }
     if rel
         .components()
         .any(|c| matches!(c, Component::ParentDir | Component::RootDir))
     {
-        return Err(err(
-            "skills source `sub-dir` must not escape the source root",
-        ));
+        return Err(err("source `sub-dir` must not escape the source root"));
     }
 
     let resolved = base_root.join(rel);
     if !resolved.exists() {
         return Err(err(format!(
-            "skills source sub-dir not found: {}",
+            "source sub-dir not found: {}",
             resolved.display()
         )));
     }
     if !resolved.is_dir() {
         return Err(err(format!(
-            "skills source sub-dir is not a directory: {}",
+            "source sub-dir is not a directory: {}",
             resolved.display()
         )));
     }

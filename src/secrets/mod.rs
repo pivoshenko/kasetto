@@ -1,10 +1,11 @@
 //! Secret injection for synced MCP configs.
 //!
-//! Resolves `${kst_...}` placeholders at sync time from environment variables and
-//! a `credentials.yaml` store, so packs can ship `Bearer ${kst_vercel_token}`
-//! without committing the value. Injection happens on the in-memory config and
-//! is written only to the agent destination, never to the source cache, the
-//! stage dir, or `kasetto.lock` (the lock hashes the placeholder source file).
+//! Resolves `${kst_...}` placeholders at sync time from environment variables, a
+//! `credentials.yaml` store, and tag-routed external secret managers, so packs
+//! can ship `Bearer ${kst_vercel_token}` without committing the value. Injection
+//! happens on the in-memory config and is written only to the agent
+//! destination, never to the source cache, the stage dir, or `kasetto.lock`
+//! (the lock hashes the placeholder source file).
 
 mod source;
 mod template;
@@ -69,8 +70,9 @@ impl SecretContext {
         }
     }
 
-    /// Build the resolver from config + CLI flags. Precedence (first hit wins):
-    /// environment variables, then each credential file in order.
+    /// Build the resolver from config + CLI flags. Chain-form precedence (first
+    /// hit wins): environment variables, then each credential file in order. A
+    /// tagged ref skips the chain and goes to the one source claiming its tag.
     pub(crate) fn from_config(
         cfg: Option<&SecretsConfig>,
         cfg_dir: &Path,

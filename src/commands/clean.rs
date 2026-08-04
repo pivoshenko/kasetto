@@ -206,8 +206,8 @@ fn print_report(
     }
 }
 
-/// Print a source-grouped red teardown tree for skills, MCP packs, and
-/// commands captured in the lock state. Used by both `--dry-run` (with
+/// Print a source-grouped red teardown tree for skills, MCP packs, commands,
+/// and instructions captured in the lock state. Used by both `--dry-run` (with
 /// `would_remove` glyphs) and the real run (with `removed` glyphs).
 fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool) {
     let status = if dry_run { "would_remove" } else { "removed" };
@@ -247,7 +247,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             .iter()
             .map(|(_, a)| a.destination.split(',').filter(|s| !s.is_empty()).count())
             .sum();
-        print_section_header("Mcp Servers", Some((total_servers, "to remove")), plain);
+        print_section_header("MCP Servers", Some((total_servers, "to remove")), plain);
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &mcp_packs {
             for server in a.destination.split(',').filter(|s| !s.is_empty()) {

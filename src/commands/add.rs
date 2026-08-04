@@ -1,10 +1,11 @@
 //! `kasetto add` appends one or more sources to the config, then syncs them in.
 //!
-//! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command`) select both
-//! the asset kind and the named entries, so a single `add` can touch several
-//! sections of `kasetto.yaml` at once (a repo that ships skills + MCPs +
-//! commands). The source may be a plain repo URL, a `<source>@<ref>` shorthand,
-//! or a deep `blob`/`tree` browse URL; the latter is decomposed into `source` +
+//! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command` /
+//! `--instruction`) select both the asset kind and the named entries, so a
+//! single `add` can touch several sections of `kasetto.yaml` at once (a repo
+//! that ships skills + MCPs + commands + instructions). The source may be a
+//! plain repo URL, a `<source>@<ref>` shorthand, or a deep `blob`/`tree`
+//! browse URL; the latter is decomposed into `source` +
 //! `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); explicit
 //! flags override the derived pieces.
 
@@ -153,8 +154,8 @@ fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>)
 }
 
 /// Build the per-section edits from the kind flags, with these defaults:
-/// - named `--skill`/`--mcp`/`--command` → that section as a list (a lone `*`
-///   value becomes a wildcard);
+/// - named `--skill`/`--mcp`/`--command`/`--instruction` → that section as a
+///   list (a lone `*` value becomes a wildcard);
 /// - a `SKILL.md` browse URL with no `--skill` flags → a one-skill list;
 /// - nothing specified at all → `skills: "*"` (the common "add this pack" case).
 ///
@@ -223,8 +224,8 @@ fn selector_from(names: &[String]) -> Selector {
 }
 
 /// Fetch the source once to confirm it resolves before touching the config; for
-/// named skill entries also assert each skill exists. MCP/command names are
-/// validated later at sync time.
+/// named skill entries also assert each skill exists. MCP, command, and
+/// instruction names are validated later at sync time.
 fn verify_source(
     source: &str,
     pin: &Pin,

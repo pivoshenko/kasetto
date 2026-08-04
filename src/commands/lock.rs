@@ -6,9 +6,9 @@
 //! hash a later `sync` computes at the destination, so the lock is immediately
 //! offline-ready (`sync --locked` works with zero fetches afterward).
 //!
-//! MCP and command assets cannot be hashed without applying their merge /
-//! transform, so `lock` only refreshes their resolved revision pins; their
-//! content hash fills in on the next real `sync`.
+//! MCP, command, and instruction assets cannot be hashed without applying their
+//! merge / transform, so `lock` only refreshes their resolved revision pins;
+//! their content hash fills in on the next real `sync`.
 //!
 //! With `--upgrade-package <name>...` the re-resolve is restricted to sources
 //! providing those skills (mirrors `sync --update <name>...`). With `--check`
@@ -182,8 +182,9 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
     Ok(())
 }
 
-/// Refresh the resolved revision pin on already-tracked MCP/command assets to
-/// match the current config. No content hash is recomputed (see module docs).
+/// Refresh the resolved revision pin on already-tracked MCP, command, and
+/// instruction assets to match the current config. No content hash is
+/// recomputed (see module docs).
 fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     let mut rev_by_source: HashMap<String, String> = HashMap::new();
     for m in &cfg.mcps {

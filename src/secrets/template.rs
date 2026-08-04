@@ -2,10 +2,11 @@
 //!
 //! Two forms: the chain form `${kst_name}` (resolved against env + credential
 //! files) and the tagged form `${kst:<source>:<ref>}` routed to one explicit
-//! source: `env`, `crd` (credentials.yaml), `op`, or `vault`. Only the
-//! lowercase `kst_` / `kst:` sentinel is recognised; bare `${VAR}` that an
-//! agent or shell must expand at server-launch time is passed through
-//! untouched. Hand-rolled to avoid a `regex` dependency.
+//! source: `env`, `crd` (credentials.yaml), `op`, `vault`, `kp`/`keepass`,
+//! `aws`, `gcp`, `az`, `pass`, or `keychain`. Only the lowercase `kst_` /
+//! `kst:` sentinel is recognised; bare `${VAR}` that an agent or shell must
+//! expand at server-launch time is passed through untouched. Hand-rolled to
+//! avoid a `regex` dependency.
 
 use crate::error::{err, Result};
 
@@ -20,7 +21,8 @@ pub(crate) struct SecretRef {
     pub flat_key: String,
     /// Nested lookup path from splitting the post-`kst_` name on `__` (chain form).
     pub segments: Vec<String>,
-    /// Explicit source tag for `${kst:<tag>:<ref>}` (`env`, `crd`, `op`, `vault`).
+    /// Explicit source tag for `${kst:<tag>:<ref>}` (`env`, `crd`, `op`, `vault`,
+    /// `kp`/`keepass`, `aws`, `gcp`, `az`, `pass`, `keychain`).
     pub tag: Option<String>,
     /// Source-specific reference for the tagged form (the `<ref>` after the tag).
     pub payload: String,

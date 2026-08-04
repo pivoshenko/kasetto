@@ -557,7 +557,7 @@ fn ensure_locked_satisfiable(src: &SourceSpec, desired: &[String], state: &State
                 Ok(())
             } else {
                 Err(err(format!(
-                    "--locked: source `{}` has no entries in the lock",
+                    "--locked: source `{}` has no skill entries in the lock",
                     src.source
                 )))
             }

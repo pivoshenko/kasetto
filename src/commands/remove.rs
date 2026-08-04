@@ -1,8 +1,8 @@
 //! `kasetto remove` drops sources (or named entries) from the config, then
 //! prune them via sync. Mirrors `add`: kind-tagged, value-taking, repeatable
-//! `--skill` / `--mcp` / `--command` flags subtract named entries; a lone `*`
-//! value drops that kind's whole entry; no kind flags at all removes the source
-//! from every list it appears in.
+//! `--skill` / `--mcp` / `--command` / `--instruction` flags subtract named
+//! entries; a lone `*` value drops that kind's whole entry; no kind flags at
+//! all removes the source from every list it appears in.
 
 use std::fs;
 

@@ -1,8 +1,8 @@
 //! YAML-level merge for `extends` config inheritance.
 //!
 //! Top-level scalar fields (`destination`, `scope`, `agent`) replace.
-//! `skills` and `mcps` lists merge by identity tuple: same identity
-//! replaces, otherwise appends.
+//! The `skills`, `mcps`, `commands`, and `instructions` lists merge by
+//! identity tuple: same identity replaces, otherwise appends.
 
 use serde_yaml::{Mapping, Value};
 
@@ -53,7 +53,7 @@ pub(crate) fn merge_yaml(base: Value, overlay: Value) -> Value {
     Value::Mapping(out)
 }
 
-/// Identity-aware merge for skills/mcps lists.
+/// Identity-aware merge for skills/mcps/commands/instructions lists.
 /// Identity = `(source, ref|branch|"", sub_dir|"")`.
 /// Same-identity entries are replaced wholesale by overlay; new entries appended.
 fn merge_source_list(base: Vec<Value>, overlay: Vec<Value>) -> Vec<Value> {

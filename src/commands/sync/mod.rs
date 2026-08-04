@@ -33,7 +33,8 @@ pub(super) struct SyncContext<'a> {
     pub(super) quiet: bool,
     /// `--update`: re-resolve moving refs and rewrite locked hashes.
     pub(super) update: bool,
-    /// `--update <name>...`: when non-empty, only sources providing these skills are re-resolved.
+    /// `--update <name>...`: when non-empty, only sources providing these
+    /// assets (skill, MCP, command, or instruction names) are re-resolved.
     pub(super) update_only: Vec<String>,
     /// `--locked`/`--frozen`: never fetch; error if the lock cannot satisfy the config.
     pub(super) locked: bool,
@@ -405,7 +406,8 @@ fn print_sync_tree(report: &Report, plain: bool) {
 
 /// Whether `--update` re-resolves a source. Active when `--update` was passed
 /// with no names, or when `--update <name>...` includes one of this source's
-/// desired asset names. Shared across the skill, command, and MCP sync paths.
+/// desired asset names. Shared across the skill, command, instruction, and MCP
+/// sync paths.
 pub(super) fn update_active_for_source(ctx: &SyncContext, desired: &[String]) -> bool {
     if !ctx.update {
         return false;

@@ -60,7 +60,10 @@ pub(crate) fn run(yes: bool) -> Result<()> {
         print_check(&format!("{} MCP servers removed", counts.mcps));
     }
     if counts.command_dirs > 0 {
-        print_check(&format!("{} directories unlinked", counts.command_dirs));
+        print_check(&format!(
+            "commands removed from {} directories",
+            counts.command_dirs
+        ));
     }
     if config_removed || data_removed {
         print_check("Lock file removed");

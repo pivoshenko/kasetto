@@ -2,7 +2,8 @@
 //! sources, skipping any that don't `handle` the ref, and the first hit wins.
 //! Chain refs (`${kst_name}`) go to env + credential files (env first); tagged
 //! refs route to one explicit source: `${kst:env:...}`/`${kst:crd:...}` reuse the
-//! env/credentials sources, `${kst:op:...}`/`${kst:vault:...}` the external CLIs.
+//! env/credentials sources, while `op`, `vault`, `kp`/`keepass`, `aws`, `gcp`,
+//! `az`, `pass`, and `keychain` each shell out to that provider's own CLI.
 
 use std::path::Path;
 use std::process::Command;

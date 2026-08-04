@@ -17,7 +17,7 @@ pub(crate) const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼"
 /// finalizer (amber), and the `self uninstall` farewell (violet).
 pub(crate) const BRAND_GLYPH: &str = "◆";
 
-/// Brand flourish star, accompanies the wordmark tagline and the farewell.
+/// Brand flourish star, trails the `self uninstall` farewell.
 pub(crate) const STAR_GLYPH: &str = "✦";
 
 pub(crate) fn animations_enabled(quiet: bool, as_json: bool, plain: bool) -> bool {
@@ -40,7 +40,7 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
 }
 
 /// Print an amber-uppercase, letter-spaced section header preceded by a blank
-/// line (the cassette section grammar). Used by `kst doctor`.
+/// line (the cassette section grammar). Used by `kst doctor` and `kst init`.
 pub(crate) fn print_group_header(title: &str, color: bool) {
     println!();
     if color {

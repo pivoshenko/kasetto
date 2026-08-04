@@ -191,7 +191,9 @@ pub(super) fn sync_instructions(
                 source: Some(src.source.clone()),
                 skill: Some("instruction".into()),
                 status: "broken".into(),
-                error: Some("no instructions found in source (expected instructions/*.md)".into()),
+                error: Some(
+                    "no instructions found in source (expected instructions/*.md or *.mdc)".into(),
+                ),
             });
         }
 

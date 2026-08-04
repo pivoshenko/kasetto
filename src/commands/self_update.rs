@@ -100,7 +100,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
 
     // Phase 2: verify checksum.
     if let Some(checksums_asset) = checksums_asset {
-        with_spinner_transient(animate, !color, "Verifying signature", || {
+        with_spinner_transient(animate, !color, "Verifying checksum", || {
             let checksums_text = http_client()?
                 .get(&checksums_asset.browser_download_url)
                 .send()
@@ -109,7 +109,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
                 .map_err(|e| err(format!("failed to download checksums.txt: {e}")))?;
             verify_checksum(&body, &asset.name, &checksums_text)
         })?;
-        print_step_done("Signature verified", color, as_json);
+        print_step_done("Checksum verified", color, as_json);
     }
 
     // Phase 3: install.
