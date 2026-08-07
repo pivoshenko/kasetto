@@ -1,0 +1,30 @@
+<svg width="1240" height="360" viewBox="0 0 1240 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="24" y="20" width="1192" height="320" fill="none" stroke="#b89cdc" stroke-width="4"/>
+
+  <text
+    x="90"
+    y="74"
+    fill="#b89cdc"
+    font-size="30"
+    font-weight="700"
+    xml:space="preserve"
+    font-family="'SFMono-Regular', Menlo, Consolas, 'Noto Sans Mono', monospace"
+  >
+    <tspan x="90" dy="0">██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗</tspan>
+    <tspan x="90" dy="34">██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗</tspan>
+    <tspan x="90" dy="34">█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="90" dy="34">██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="90" dy="34">██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝</tspan>
+    <tspan x="90" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
+  </text>
+
+  <text
+    x="620"
+    y="317"
+    text-anchor="middle"
+    fill="#d4b070"
+    font-size="30"
+    font-weight="700"
+    font-family="'Noto Sans Mono CJK JP', 'Noto Sans JP', 'Yu Gothic', sans-serif"
+  >スキル・パッケージ・マネージャー</text>
+</svg>

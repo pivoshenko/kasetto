@@ -1,0 +1,162 @@
+---
+title: Installing Kasetto
+description: Install Kasetto on macOS, Linux, and Windows.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation Methods
+
+Pick whichever method works for you: standalone installer, package manager, or straight from source.
+
+### Standalone Installer
+
+The quickest way to get started. Downloads and installs the binary in one command:
+
+<Tabs items={['macOS and Linux', 'Windows']}>
+  <Tab value="macOS and Linux">
+    Use `curl` to download the script and execute it with `sh`:
+
+    ```bash
+    curl -fsSL kasetto.dev/install | sh
+    ```
+  </Tab>
+  <Tab value="Windows">
+    Use `irm` to download the script and execute it with `iex`:
+
+    ```pwsh-session
+    PS> powershell -ExecutionPolicy Bypass -c "irm kasetto.dev/install.ps1 | iex"
+    ```
+
+    Changing the [execution policy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies) allows running a script from the internet.
+  </Tab>
+</Tabs>
+
+<Callout type="tip">
+
+
+The installation script may be inspected before use:
+
+<Tabs items={['macOS and Linux', 'Windows']}>
+  <Tab value="macOS and Linux">
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/pivoshenko/kasetto/main/scripts/install.sh | less
+    ```
+  </Tab>
+  <Tab value="Windows">
+    ```pwsh-session
+    PS> powershell -c "irm kasetto.dev/install.ps1 | more"
+    ```
+  </Tab>
+</Tabs>
+
+Alternatively, binaries can be downloaded directly from [GitHub Releases](#github-releases).
+
+</Callout>
+The binary lands in `~/.local/bin` by default. Override it with environment variables:
+
+| Variable              | Description            | Default                                                      |
+| --------------------- | ---------------------- | ------------------------------------------------------------ |
+| `KASETTO_VERSION`     | Version tag to install | Latest release                                               |
+| `KASETTO_INSTALL_DIR` | Installation directory | `~/.local/bin` (Unix) / `%USERPROFILE%\.local\bin` (Windows) |
+
+### Homebrew
+
+Available via a Homebrew tap:
+
+```bash
+brew install pivoshenko/tap/kasetto
+```
+
+### Scoop
+
+Available via a Scoop bucket on Windows:
+
+```bash
+scoop bucket add kasetto https://github.com/pivoshenko/scoop-bucket
+scoop install kasetto
+```
+
+### Cargo
+
+Available on [crates.io](https://crates.io):
+
+```bash
+cargo install kasetto
+```
+
+<Callout type="info">
+
+
+This builds from source, so you'll need a compatible Rust toolchain.
+
+</Callout>
+### GitHub Releases
+
+Prefer to grab a binary directly? Head to [GitHub Releases](https://github.com/pivoshenko/kasetto/releases). Every release includes binaries for all supported platforms.
+
+### From Source
+
+Clone and install with Cargo:
+
+```bash
+git clone https://github.com/pivoshenko/kasetto && cd kasetto
+cargo install --path .
+```
+
+## Upgrading
+
+If you used the standalone installer, updating is a one-liner:
+
+```bash
+kst self update
+```
+
+For Homebrew or Cargo installs, use the package manager's own upgrade command. For example, with Cargo:
+
+```bash
+cargo install kasetto
+```
+
+## Shell Autocompletion
+
+<Callout type="tip">
+
+
+You can run `echo $SHELL` to help determine your shell.
+
+</Callout>
+To get tab completions for `kst`, add one of these to your shell config:
+
+<Tabs items={['Bash', 'Zsh', 'fish', 'PowerShell']}>
+  <Tab value="Bash">
+    ```bash
+    echo 'eval "$(kst completions bash)"' >> ~/.bashrc
+    ```
+  </Tab>
+  <Tab value="Zsh">
+    ```bash
+    echo 'eval "$(kst completions zsh)"' >> ~/.zshrc
+    ```
+  </Tab>
+  <Tab value="fish">
+    ```bash
+    echo 'kst completions fish | source' > ~/.config/fish/completions/kst.fish
+    ```
+  </Tab>
+  <Tab value="PowerShell">
+    ```powershell
+    if (!(Test-Path -Path $PROFILE)) {
+      New-Item -ItemType File -Path $PROFILE -Force
+    }
+    Add-Content -Path $PROFILE -Value '(& kst completions powershell) | Out-String | Invoke-Expression'
+    ```
+  </Tab>
+</Tabs>
+
+Then restart your shell or source the config file.
+
+## Next Steps
+
+Check out the [quick start](/docs/index), or jump straight to the [configuration reference](/docs/configuration) if you already know what you want.

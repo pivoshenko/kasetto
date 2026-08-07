@@ -1,0 +1,342 @@
+# Requires GitHub secrets
+# - CARGO_REGISTRY_TOKEN
+# - HOMEBREW_TAP_TOKEN
+# - SCOOP_BUCKET_TOKEN
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version override (leave empty to auto-detect from commits)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --version
+
+      - name: Add git-cliff to PATH
+        run: echo "$RUNNER_TEMP/git-cliff/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(git-cliff --bumped-version)
+            VERSION="${VERSION#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "resolved version: ${VERSION}"
+
+      - name: Update version
+        run: sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" Cargo.toml
+
+      - name: Update lockfile
+        run: |
+          rustup default stable
+          cargo update --workspace
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --tag v${{ steps.version.outputs.version }} --output CHANGELOG.md
+
+      - name: Commit and tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml Cargo.lock CHANGELOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "release: v${VERSION}"
+          fi
+          git tag "v${VERSION}"
+          git push origin main --tags
+
+  build:
+    needs: tag
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: kasetto-x86_64-unknown-linux-gnu.tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: kasetto-aarch64-unknown-linux-gnu.tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: kasetto-x86_64-apple-darwin.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: kasetto-aarch64-apple-darwin.tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: kasetto-x86_64-pc-windows-msvc.zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: kasetto-aarch64-pc-windows-msvc.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compiler
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p staging
+          cp target/${{ matrix.target }}/release/kasetto staging/
+          cp target/${{ matrix.target }}/release/kst staging/ 2>/dev/null || cp staging/kasetto staging/kst
+          cd staging
+          tar czf ../${{ matrix.archive }} kasetto kst
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path staging -Force | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/kasetto.exe" staging/
+          Copy-Item "target/${{ matrix.target }}/release/kst.exe" staging/
+          Compress-Archive -Path staging/kasetto.exe, staging/kst.exe -DestinationPath "${{ matrix.archive }}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  release:
+    needs: [tag, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > checksums.txt
+
+      - name: Generate Changelog
+        uses: orhun/git-cliff-action@v4
+        id: changelog
+        with:
+          args: --latest --strip header
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          body: ${{ steps.changelog.outputs.content }}
+          files: |
+            dist/*
+
+  publish-crate:
+    needs: [tag, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to Crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  update-homebrew:
+    needs: [tag, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Update Homebrew formula
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ needs.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          SHA256=$(sha256sum dist/kasetto-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)
+          SHA256_INTEL=$(sha256sum dist/kasetto-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)
+          SHA256_LINUX=$(sha256sum dist/kasetto-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)
+          SHA256_LINUX_ARM=$(sha256sum dist/kasetto-aarch64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)
+
+          REPO="https://github.com/pivoshenko/kasetto/releases/download/v${VERSION}"
+
+          cat > formula.rb << FORMULA
+          class Kasetto < Formula
+            desc "A declarative AI agent environment manager, written in Rust."
+            homepage "https://github.com/pivoshenko/kasetto"
+            version "${VERSION}"
+            license any_of: ["MIT", "Apache-2.0"]
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${REPO}/kasetto-aarch64-apple-darwin.tar.gz"
+                sha256 "${SHA256}"
+              else
+                url "${REPO}/kasetto-x86_64-apple-darwin.tar.gz"
+                sha256 "${SHA256_INTEL}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${REPO}/kasetto-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA256_LINUX_ARM}"
+              else
+                url "${REPO}/kasetto-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA256_LINUX}"
+              end
+            end
+
+            def install
+              bin.install "kasetto"
+              bin.install "kst"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/kasetto --version")
+            end
+          end
+          FORMULA
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/pivoshenko/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp formula.rb tap/Formula/kasetto.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/kasetto.rb
+          git commit -m "kasetto ${VERSION}"
+          git push
+
+  update-scoop:
+    needs: [tag, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Update Scoop manifest
+        env:
+          SCOOP_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          VERSION="${{ needs.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          SHA256_AMD64=$(sha256sum dist/kasetto-x86_64-pc-windows-msvc.zip | cut -d' ' -f1)
+          SHA256_ARM64=$(sha256sum dist/kasetto-aarch64-pc-windows-msvc.zip | cut -d' ' -f1)
+
+          REPO="https://github.com/pivoshenko/kasetto/releases/download/v${VERSION}"
+
+          cat > kasetto.json << MANIFEST
+          {
+            "version": "${VERSION}",
+            "description": "A declarative AI agent environment manager, written in Rust.",
+            "homepage": "https://github.com/pivoshenko/kasetto",
+            "license": "MIT|Apache-2.0",
+            "architecture": {
+              "64bit": {
+                "url": "${REPO}/kasetto-x86_64-pc-windows-msvc.zip",
+                "hash": "${SHA256_AMD64}"
+              },
+              "arm64": {
+                "url": "${REPO}/kasetto-aarch64-pc-windows-msvc.zip",
+                "hash": "${SHA256_ARM64}"
+              }
+            },
+            "bin": ["kasetto.exe", "kst.exe"],
+            "checkver": {
+              "github": "https://github.com/pivoshenko/kasetto"
+            },
+            "autoupdate": {
+              "architecture": {
+                "64bit": {
+                  "url": "https://github.com/pivoshenko/kasetto/releases/download/v\$version/kasetto-x86_64-pc-windows-msvc.zip"
+                },
+                "arm64": {
+                  "url": "https://github.com/pivoshenko/kasetto/releases/download/v\$version/kasetto-aarch64-pc-windows-msvc.zip"
+                }
+              },
+              "hash": {
+                "url": "\$baseurl/checksums.txt"
+              }
+            }
+          }
+          MANIFEST
+
+          git clone "https://x-access-token:${SCOOP_TOKEN}@github.com/pivoshenko/scoop-bucket.git" bucket
+          cp kasetto.json bucket/kasetto.json
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add kasetto.json
+          git commit -m "kasetto ${VERSION}"
+          git push

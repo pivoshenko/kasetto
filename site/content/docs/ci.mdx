@@ -1,0 +1,86 @@
+---
+title: "CI & Automation"
+description: Run Kasetto in CI pipelines.
+---
+
+**When you need this:** You want to validate `kasetto.yaml` in CI, keep team environments reproducible, or integrate Kasetto into scripts.
+
+**What you'll learn:**
+
+- Recommended flags (`--dry-run`, `--json`, `--color never`, `--quiet`)
+- Exit-code expectations
+- A GitHub Actions example
+
+## Recommended Commands
+
+### Enforce The Locked Versions
+
+If you commit `kasetto.lock` (recommended for teams, see [Cookbook](/docs/cookbook#reproducible-team-setup-commit-the-lock)), use `--locked` to install exactly what the lock pins and **never fetch new versions**:
+
+```bash
+kst sync --locked
+```
+
+`--locked` (alias `--frozen`) errors if the config needs something the lock can't satisfy, so a stale or out-of-sync lock fails the build instead of drifting. It still repairs tampered destinations locally, but never resolves moving refs or downloads new content.
+
+### Validate Without Writing
+
+Use `--dry-run` to check that sources resolve and that the plan matches expectations without touching disk:
+
+```bash
+kst sync --dry-run
+```
+
+### JSON Output for CI Logs
+
+Use `--json` for structured logs:
+
+```bash
+kst sync --dry-run --json
+```
+
+### Strip Colors and Animations
+
+Kasetto auto-detects non-TTY output and emits plain text, but you can force it:
+
+- `--color never` (preferred)
+- `-q` / `--quiet` to suppress non-error output entirely
+- The `NO_COLOR` env var is honored
+
+```bash
+kst sync --dry-run --color never
+```
+
+## Exit Codes
+
+Kasetto is designed to keep going when individual skills are missing/broken in a source, but failures that prevent reading sources/configs are treated as errors.
+
+If you're depending on strict enforcement in CI, pair `--dry-run` with `--json` and enforce policy in the CI step based on the report.
+
+## GitHub Actions Example
+
+This validates a repository's `kasetto.yaml` (project scope) without writing changes:
+
+```yaml
+name: kasetto
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kasetto
+        run: curl -fsSL kasetto.dev/install | sh
+
+      - name: Validate kasetto.yaml
+        env:
+          # Add tokens if you pull from private sources:
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: kst sync --project --dry-run --json
+```

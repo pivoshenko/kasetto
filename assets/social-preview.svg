@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GitHub social preview (Open Graph card) for kasetto.
+  Canvas: 1280×640 — GitHub's recommended OG dimensions.
+  Palette mirrors the popil flavor (lavender #b89cdc, yellow #d4b070)
+  and the terminal frame from `assets/demo.svg`.
+
+  Render via:
+    rsvg-convert -w 1280 -h 640 assets/social-preview.svg -o assets/social-preview.png
+  Upload the PNG under Settings → Social preview on GitHub.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" font-family="'JetBrainsMono Nerd Font Mono','JetBrainsMono NFM','Iosevka Nerd Font Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">
+  <!-- background -->
+  <rect x="0" y="0" width="1280" height="640" fill="#1f1f1e"/>
+
+  <!-- outline border -->
+  <rect x="40" y="40" width="1200" height="560" rx="16" ry="16" fill="none" stroke="#b89cdc" stroke-width="2" opacity="0.4"/>
+
+  <!-- ASCII wordmark — left-anchored. Block width at font-size 30 in JetBrains Mono ≈ 1050px; x=122 leaves ~80px on each side of the frame. -->
+  <text x="122" y="200" fill="#b89cdc" font-size="30" font-weight="700" xml:space="preserve">
+    <tspan x="122" dy="0">██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗</tspan>
+    <tspan x="122" dy="34">██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗</tspan>
+    <tspan x="122" dy="34">█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="122" dy="34">██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="122" dy="34">██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝</tspan>
+    <tspan x="122" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text x="640" y="438" text-anchor="middle" fill="#e4e2de" font-size="26" letter-spacing="0.01em" xml:space="preserve">
+    <tspan fill="#a8a195">A declarative </tspan><tspan fill="#e4e2de">AI agent environment manager</tspan><tspan fill="#a8a195">, written in </tspan><tspan fill="#e8a94d">Rust</tspan><tspan fill="#a8a195">.</tspan>
+  </text>
+
+  <!-- prompt + command -->
+  <text x="640" y="484" text-anchor="middle" font-size="24" xml:space="preserve">
+    <tspan fill="#e8a94d">❯</tspan><tspan fill="#e4e2de"> kasetto </tspan><tspan fill="#e8a94d">sync</tspan>
+  </text>
+
+  <!-- chip strip totals -->
+  <text x="640" y="524" text-anchor="middle" font-size="20" xml:space="preserve">
+    <tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#e8a94d">updated</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#84c578">added</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#e87e6c">removed</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 11 </tspan><tspan fill="#a8a195">unchanged</tspan>
+  </text>
+
+  <!-- Japanese subtitle, popil yellow -->
+  <text x="640" y="562" text-anchor="middle" fill="#d4b070" font-size="14" letter-spacing="0.4em" font-family="'Noto Sans Mono CJK JP','Noto Sans JP','Yu Gothic',sans-serif">スキル・パッケージ・マネージャー</text>
+</svg>

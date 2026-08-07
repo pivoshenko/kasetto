@@ -1,0 +1,58 @@
+# Option A: preset destination by agent (see README for supported agent values)
+agent:
+  - codex
+  - claude-code
+
+# Option B: manual destination (takes precedence if both are set)
+# destination: ./.agents/skills
+
+skills:
+  # "*" syncs every skill in the source. Each is a directory with a SKILL.md,
+  # discovered in the source root or its skills/ subdirectory
+  - source: https://github.com/vercel-labs/next-skills
+    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
+    skills: "*"
+
+  # or list skills by name
+  - source: https://github.com/anthropics/skills
+    skills:
+      - doc-coauthoring
+      - frontend-design
+      - pptx
+
+  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
+  - source: https://github.com/mattpocock/skills
+    sub-dir: skills/productivity
+    skills:
+      - grill-me
+      - caveman
+
+  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
+  - source: https://github.com/mattpocock/skills
+    skills:
+      - name: improve-codebase-architecture
+        path: skills/engineering
+
+commands:
+  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
+  - source: https://github.com/gsd-build/get-shit-done
+    commands:
+      - gsd:explore
+      - gsd:fast
+
+instructions:
+  # instructions wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from instructions/<name>.{md,mdc}
+  # "*" syncs every instruction; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    instructions:
+      - docs-autoupdate
+      - multi-agent-dispatch
+
+mcps:
+  # names resolve to mcps/<name>.json in the source
+  - source: https://github.com/pivoshenko/pivoshenko.ai
+    branch: main   # track a specific branch (use ref: to pin a tag or commit)
+    mcps:
+      - github
+      - vercel
+      - kaggle

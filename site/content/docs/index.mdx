@@ -1,0 +1,163 @@
+---
+title: Introduction
+description: Get started with Kasetto.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+**When you need this:** You want a quick, predictable path to "working sync" and you're not sure what Kasetto will modify.
+
+**What you'll learn:**
+
+- How to create a config and run your first sync
+- How to preview changes and script CI runs
+- Where to go next for the exact sync/merge guarantees
+
+Once you've [installed Kasetto](/docs/installation), run `kst` to make sure it's available:
+
+```bash
+kst
+A declarative AI agent environment manager
+
+Usage: kst <COMMAND>
+
+...
+```
+
+Bare `kst` (no subcommand) prints the banner followed by `--help`, just like bare `cargo` or `uv`. Kasetto is CLI-only: every action has a dedicated subcommand. Pipe stdout or pass `--color never` to strip styling.
+
+## Creating a Config
+
+Run `kst init` to generate a starter config:
+
+```bash
+kst init
+```
+
+Use `kst init --global` to create `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`).
+
+Or let Kasetto edit the config for you. `kst add <source>` appends a source (preserving your comments) and syncs it in, and `kst remove <source>` reverses it, the cargo/uv way:
+
+```bash
+kst add https://github.com/org/skill-pack                       # add every skill
+kst add https://github.com/org/skill-pack@v1.2.0                # `@<ref>` shorthand (cargo/uv-style)
+kst add https://github.com/org/skill-pack --skill code-reviewer # or just named ones
+kst add https://github.com/org/skill-pack --dry-run             # preview the edit, don't write
+kst remove https://github.com/org/skill-pack --skill code-reviewer  # reverses the add
+```
+
+Or create a `kasetto.yaml` by hand:
+
+```yaml
+agent: claude-code
+
+skills:
+  - source: https://github.com/org/skill-pack
+    branch: main
+    skills:
+      - code-reviewer
+      - name: design-system
+```
+
+<Callout type="tip">
+
+
+Use the `agent` field to target any of the [supported agents](/docs/agents), or use the
+`destination` field for a custom install path.
+
+</Callout>
+## Syncing Skills
+
+Run `kst sync`:
+
+```bash
+kst sync
+Syncing skills from 1 source...
+  ✓ code-reviewer (installed)
+  ✓ design-system (installed)
+Synced 2 skills in 1.2s
+```
+
+Kasetto pulls the skills and installs them into the right agent directory. Next time you run `sync`, only what changed gets updated.
+
+If you want the "exact contract" for what gets copied/removed, read [How Sync Works](/docs/how-sync-works).
+
+## Syncing from a Remote Config
+
+Got a shared team config? Pass it as a URL:
+
+```bash
+kst sync --config https://example.com/team-skills.yaml
+```
+
+For private configs hosted on git providers, set the right env var token first (see [Authentication](/docs/authentication#remote-configs)).
+
+You can also inherit from another config with `extends:`. A child config can pull in everything from a team base and override or extend it. See [Extending Another Config](/docs/configuration#extending-another-config).
+
+## Previewing Changes
+
+Not ready to commit? Use `--dry-run` to see what would happen first:
+
+```bash
+kst sync --dry-run
+Would install: code-reviewer, design-system
+Would remove: old-skill
+```
+
+See [CI & automation](/docs/ci) for recommended CI patterns.
+
+## MCP Servers
+
+Kasetto can also manage MCP server configs. Add an `mcps` section to your config:
+
+```yaml
+agent: claude-code
+
+skills:
+  - source: https://github.com/org/skill-pack
+    skills: "*"
+
+mcps:
+  - source: https://github.com/org/mcp-pack
+    mcps: "*"
+```
+
+Kasetto merges them into each agent's native settings file during sync. Nothing extra to do.
+
+If you want the exact merge instructions and conflict behavior, see [How Sync Works](/docs/how-sync-works#mcp-servers-discovery-and-additive-merge).
+
+## Exploring What's Installed
+
+Print a table of installed assets:
+
+```bash
+kst list                    # all kinds together
+kst list --type skills      # filter to one kind
+kst list --json             # for scripting
+```
+
+With no `--project` or `--global`, **global and project** installs are shown together (each row labeled by scope).
+
+Want to check your local setup:
+
+```bash
+kst doctor
+```
+
+Doctor shows your version, lock file location, install paths, last sync time, and any skills that failed.
+
+## Using JSON Output
+
+`sync`, `list`, `doctor`, `clean`, and `self update` support `--json` for scripting or CI:
+
+```bash
+kst sync --json
+kst list --json
+kst doctor --json
+kst clean --json
+```
+
+## Next Steps
+
+See the [configuration reference](/docs/configuration) for the full config schema, browse the
+[commands reference](/docs/commands), or grab a ready-to-use pattern from the [cookbook](/docs/cookbook).
