@@ -13,7 +13,18 @@ When `--config` is omitted, Kasetto looks for config in this order:
 4. `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` (or `~/.config/kasetto/kasetto.yaml`)
 
 Point it at a specific file or URL with `--config`, or run `kst init` for local `./kasetto.yaml` (`kst init --global` writes the global config file).
-To persist a remote URL as your default, add a `source:` key to `~/.config/kasetto/config.yaml`.
+To persist a remote URL as your default, add a `source:` key to `~/.config/kasetto/config.yaml` (see [Persisting a Default Remote Config](#persisting-a-default-remote-config)).
+
+<Callout type="info">
+
+Two similarly named files live in `~/.config/kasetto/`, and they do different jobs:
+
+- **`kasetto.yaml`** is a config. It holds your agents, skills, MCPs, commands, and instructions. `kst init --global` writes this one.
+- **`config.yaml`** is a preferences file. Its only job is a `source:` key naming the config to use, and it never contains skills itself.
+
+Because `./kasetto.yaml` is checked first, a project that has its own config always wins over a persisted `source:`.
+
+</Callout>
 
 ## Example
 
@@ -267,6 +278,21 @@ Kasetto recognises browser URLs from GitHub, GitLab, and Gitea / Codeberg / Forg
 Kasetto prints a short `note: rewrote browser URL to raw content: ...` line so you can see what was fetched. Authentication is resolved against the rewritten host, so the same tokens that work for raw URLs apply here too.
 
 If the URL points to a private repository, Kasetto uses the same token-based authentication as skill sources. See [authentication](/docs/authentication) for the full list of supported environment variables.
+
+### Persisting a Default Remote Config
+
+To stop passing `--config` on every run, put the URL in the `source:` key of `~/.config/kasetto/config.yaml`:
+
+```yaml
+# ~/.config/kasetto/config.yaml
+source: https://github.com/pivoshenko/pivoshenko.ai/blob/main/kasetto.yaml
+```
+
+Bare `kst sync` now resolves that URL on its own, on every machine where you drop the same two-line file. Browser URLs are rewritten here exactly as they are for `--config`, and private repositories authenticate the same way.
+
+Three things still take precedence, in this order: `$KASETTO_CONFIG`, an explicit `--config`, and a `./kasetto.yaml` in the current directory. That last one matters most in practice. Inside a repository that ships its own config, the persisted `source:` is ignored, so a global default and a project config coexist without either fighting the other.
+
+The value does not have to be a URL. An absolute local path works too, which is useful for keeping a config outside the repositories that consume it.
 
 ## Multiple Agents
 

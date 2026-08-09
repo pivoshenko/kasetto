@@ -3,7 +3,7 @@ pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "kasetto.yaml";
 /// Default config file under the Kasetto XDG config directory (`init --global` writes here).
 pub(crate) const DEFAULT_GLOBAL_CONFIG_FILENAME: &str = "kasetto.yaml";
 /// Kasetto preferences file under the XDG config directory.
-/// May contain a `config:` key pointing to a remote or absolute config path.
+/// May contain a `source:` key pointing to a remote or absolute config path.
 pub(crate) const PREFERENCES_FILENAME: &str = "config.yaml";
 
 #[derive(serde::Deserialize)]
