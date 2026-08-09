@@ -1,6 +1,11 @@
 allowBuilds:
   esbuild: true
   sharp: true
+# image-size (via fumadocs-core): no patched release exists yet, drop once image-size >=2.0.3 ships
+auditConfig:
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq
 onlyBuiltDependencies:
   - "@biomejs/biome"
   - esbuild
