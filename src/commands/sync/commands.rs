@@ -617,7 +617,6 @@ mod tests {
         assert!(!project.join(".gemini/commands/git-commit.toml").exists());
         assert!(!project.join(".cursor/commands/git-commit.md").exists());
 
-        // Cleanup
         let _ = fs::remove_dir_all(&src_root);
         let _ = fs::remove_dir_all(&project);
     }
