@@ -60,12 +60,12 @@ Kasetto auto-discovers MCP pack files in the source:
 
 Each file must contain a `mcpServers` JSON object. Use a `mcps:` list to pick specific files instead of discovering all.
 
-Server entries are merged into each agent's native settings file (e.g., `.claude.json`, `.cursor/mcp.json`). The merge follows two simple instructions:
+Server entries are merged into each agent's native settings file (e.g., `.claude.json`, `.cursor/mcp.json`). The merge follows two simple rules:
 
 1. **New entries are added.** If the settings file doesn't have a server with that name, it's
    inserted.
-2. **Existing entries are never overwritten.** If a server name already exists - whether added by
-   Kasetto or by hand - Kasetto leaves it untouched.
+2. **Existing entries are never overwritten.** If a server name already exists, whether added by
+   Kasetto or by hand, Kasetto leaves it untouched.
 
 In practice, this means:
 
@@ -87,7 +87,7 @@ Kasetto auto-detects the right format for each agent:
 | Codex TOML           | Codex                                            | `.codex/config.toml`               |
 | ZCode JSON           | ZCode (nested `mcp.servers`)                     | `.zcode/cli/config.json`           |
 
-All formats follow the same additive-merge instructions. The underlying behavior is identical.
+All formats follow the same additive-merge rules. The underlying behavior is identical.
 
 ## Change Detection
 

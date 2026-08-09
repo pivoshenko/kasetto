@@ -12,7 +12,7 @@ export function GET() {
 
   const body = `# Kasetto
 
-> A declarative AI agent environment manager — syncs skills, MCP servers, slash-commands, and instructions from GitHub repos or local directories into 22 agent environments.
+> A declarative AI agent environment manager. Syncs skills, MCP servers, slash-commands, and instructions from GitHub repos or local directories into 22 agent environments.
 
 ## Docs
 

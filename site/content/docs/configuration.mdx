@@ -224,9 +224,9 @@ extends:
   - https://example.com/team-overlay.yaml
 ```
 
-### Merge instructions
+### Merge Rules
 
-| Field         | Instruction                                                                                                                          |
+| Field         | Rule                                                                                                                          |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `destination` | Replace - child wins                                                                                                          |
 | `scope`       | Replace - child wins                                                                                                          |
@@ -250,7 +250,7 @@ kst sync --config https://example.com/team-skills.yaml
 
 Great for sharing a single config across a team without checking it into every repository.
 
-### Real-world example
+### Real-World Example
 
 [pivoshenko/pivoshenko.ai](https://github.com/pivoshenko/pivoshenko.ai) is a public config that pulls skills from several community packs for Claude Code and OpenCode:
 

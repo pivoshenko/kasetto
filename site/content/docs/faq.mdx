@@ -18,7 +18,7 @@ No. MCP merges are **additive** and existing server entries are **never overwrit
 - **Global scope**: `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`)
 - **Project scope**: `./kasetto.lock`
 
-See [How Sync Works](/docs/how-sync-works#lock-file).
+See [How Sync Works](/docs/how-sync-works#the-lockfile-contract).
 
 ## Should I Commit `kasetto.lock`?
 
@@ -62,4 +62,4 @@ See [How Sync Works](/docs/how-sync-works#edge-cases) (corrupted settings file b
 
 ## How Do Remote Configs (`--config https://...`) Authenticate?
 
-Kasetto selects tokens by the URL hostname using the same instructions as skill/MCP sources. See [Authentication](/docs/authentication#remote-configs).
+Kasetto selects tokens by the URL hostname using the same rules as skill/MCP sources. See [Authentication](/docs/authentication#remote-configs).

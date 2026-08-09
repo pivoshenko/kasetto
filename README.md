@@ -26,7 +26,7 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 
 ## Why Kasetto
 
-There are good tools in this space already - [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config.
+There are good tools in this space already. [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config.
 
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible AI environment management across projects, machines, and agents.**
 
@@ -219,7 +219,7 @@ mcps:
 ```
 <!-- kasetto-config:end -->
 
-Full key reference, merge instructions, and `extends:` inheritance live in the [configuration docs](https://kasetto.dev/docs/configuration).
+Full key reference, merge rules, and `extends:` inheritance live in the [configuration docs](https://kasetto.dev/docs/configuration).
 
 ### Secrets
 
@@ -296,7 +296,7 @@ Don't see your agent? Use the `destination` field to point at any path.
 
 Private GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances work via env-var tokens (`GITHUB_TOKEN`, `GITLAB_TOKEN`, `BITBUCKET_TOKEN`, `GITEA_TOKEN`, etc.). No login command, no credentials file. The same tokens apply to remote `--config` URLs.
 
-Full host table and auth resolution instructions in the [authentication docs](https://kasetto.dev/docs/authentication).
+Full host table and auth resolution rules in the [authentication docs](https://kasetto.dev/docs/authentication).
 
 ## Contributing
 
