@@ -38,6 +38,13 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // /docs/<slug>.md → raw Markdown source, served by app/docs-md
+      { source: "/docs/:path*.md", destination: "/docs-md/:path*" },
+      { source: "/docs.md", destination: "/docs-md" },
+    ];
+  },
   async redirects() {
     return [
       // docs.kasetto.dev/ → kasetto.dev/docs

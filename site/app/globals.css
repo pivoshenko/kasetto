@@ -376,6 +376,9 @@ button {
 
 /* ─── Copy button ─── */
 .copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--fs-md);
   font-family: inherit;
   letter-spacing: 0.08em;
@@ -395,6 +398,14 @@ button {
 .copy-btn.copied {
   color: var(--green);
   border-color: var(--green);
+}
+
+/* ─── Docs page actions ─── */
+.docs-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 /* ─── Agents ─── */
