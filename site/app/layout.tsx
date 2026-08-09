@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kasetto.dev"),
+  metadataBase: new URL("https://www.kasetto.dev"),
   title: {
     template: "%s - Kasetto",
     default: "Kasetto",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: "Declarative AI Agent Environment Manager written in Rust",
   openGraph: {
     type: "website",
-    url: "https://kasetto.dev",
+    url: "https://www.kasetto.dev",
     siteName: "Kasetto",
     title: "Kasetto",
     description: "Declarative AI Agent Environment Manager written in Rust",
