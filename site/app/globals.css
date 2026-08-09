@@ -255,17 +255,6 @@ button {
   line-height: 1.4;
 }
 
-.hero-etymology {
-  margin-top: 6px;
-  font-size: var(--fs-sm);
-  color: var(--fg-subtle);
-  letter-spacing: var(--tracking-tight);
-}
-
-.hero-etymology-jp {
-  color: var(--fg);
-}
-
 .hero-sub {
   font-size: var(--fs-base);
   letter-spacing: var(--tracking-wider);
@@ -982,11 +971,6 @@ button {
 }
 .hero-accent {
   color: var(--accent-rust);
-}
-.cassette-label .hero-etymology {
-  margin-top: var(--space-4);
-  font-size: var(--fs-md);
-  color: var(--fg-subtle);
 }
 
 /* ─── Hero terminal demo ─── */
