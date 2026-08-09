@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { IoCheckmarkOutline, IoCopyOutline } from "react-icons/io5";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -18,9 +18,10 @@ export function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={handleCopy}
       className={`copy-btn${copied ? " copied" : ""}`}
-      aria-label="Copy to clipboard"
+      aria-label={label ?? "Copy to clipboard"}
     >
       {copied ? <IoCheckmarkOutline size={15} /> : <IoCopyOutline size={15} />}
+      {label ? <span>{copied ? "Copied" : label}</span> : null}
     </button>
   );
 }
