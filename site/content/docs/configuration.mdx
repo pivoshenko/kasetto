@@ -187,7 +187,7 @@ Each entry in the `instructions` list can be a plain string (name) or an object,
 | `- house:security`                | `instructions/house/security.{md,mdc}`   |
 | `- { name: x, path: dir }`        | `dir/x.{md,mdc}`                  |
 
-### How Instructions Land Per Agent
+### How Instructions Land per Agent
 
 Each instruction is transformed into the target agent's native format. Two destination shapes exist:
 
@@ -295,7 +295,7 @@ If you set both, `destination` wins. Use `agent` for convenience with [supported
 Use `destination` when targeting an agent that isn't in the supported list.
 
 </Callout>
-## Scope: Global Vs Project
+## Scope: Global vs Project
 
 By default, skills are installed globally into the agent's home-directory path. Add `scope: project` to your config, or pass `--project` on the command line, to install into the current project directory instead.
 

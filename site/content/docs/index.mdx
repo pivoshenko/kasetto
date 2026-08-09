@@ -80,11 +80,11 @@ Synced 2 skills in 1.2s
 
 Kasetto pulls the skills and installs them into the right agent directory. Next time you run `sync`, only what changed gets updated.
 
-If you want the "exact contract" for what gets copied/removed, read [How Sync Works](/docs/how-sync-works).
+[How Sync Works](/docs/how-sync-works) has the exact contract for what gets copied and what gets removed.
 
 ## Syncing from a Remote Config
 
-Got a shared team config? Pass it as a URL:
+Pass a shared team config as a URL:
 
 ```bash
 kst sync --config https://example.com/team-skills.yaml
@@ -96,7 +96,7 @@ You can also inherit from another config with `extends:`. A child config can pul
 
 ## Previewing Changes
 
-Not ready to commit? Use `--dry-run` to see what would happen first:
+Use `--dry-run` to see what a sync would do before it writes anything:
 
 ```bash
 kst sync --dry-run
@@ -138,7 +138,7 @@ kst list --json             # for scripting
 
 With no `--project` or `--global`, **global and project** installs are shown together (each row labeled by scope).
 
-Want to check your local setup:
+To check your local setup:
 
 ```bash
 kst doctor

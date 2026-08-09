@@ -1,10 +1,10 @@
 # Security Policy
 
-## Supported versions
+## Supported Versions
 
 Only the latest release series is supported for security fixes.
 
-## Reporting a vulnerability
+## Reporting a Vulnerability
 
 Please do not open public issues for suspected vulnerabilities.
 

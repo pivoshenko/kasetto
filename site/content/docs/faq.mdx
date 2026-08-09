@@ -9,11 +9,11 @@ description: Frequently asked questions.
 
 No. MCP merges are **additive** and existing server entries are **never overwritten**. See [How Sync Works](/docs/how-sync-works#mcp-servers-discovery-and-additive-merge).
 
-## What Happens When Two Sources Define The Same MCP Server Name?
+## What Happens When Two Sources Define the Same MCP Server Name?
 
 **First write wins** based on config order. Later sources with the same server name are skipped. See [How Sync Works](/docs/how-sync-works#edge-cases).
 
-## Where Is The Lock File?
+## Where Is the Lock File?
 
 - **Global scope**: `$XDG_DATA_HOME/kasetto/kasetto.lock` (default: `~/.local/share/kasetto/kasetto.lock`)
 - **Project scope**: `./kasetto.lock`
@@ -39,11 +39,11 @@ See `kst clean` and `kst self uninstall` in [Commands](/docs/commands).
 
 Yes. Set `agent` to a list. See [Configuration](/docs/configuration#multiple-agents).
 
-## Does Kasetto Run Code From Skills?
+## Does Kasetto Run Code from Skills?
 
 No. Skills are copied as directories. Execution is up to the agent you load them into.
 
-## Can I Pin Sources To A Known-Good Version?
+## Can I Pin Sources to a Known-Good Version?
 
 Yes. Use `ref:` with a tag or commit SHA. See [Cookbook](/docs/cookbook#mcp-packs-pinning-and-rollouts).
 
