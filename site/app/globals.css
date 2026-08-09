@@ -1033,6 +1033,20 @@ button {
   grid-template-columns: auto 1fr auto;
   column-gap: var(--space-3);
   row-gap: var(--space-1);
+  align-content: start;
+}
+/* The ghost is a hidden copy of the finished sync output: it reserves the
+   terminal's tallest frame so appending live output never reflows the page,
+   while the live layer floats over it */
+.t-stage {
+  position: relative;
+}
+.t-ghost {
+  visibility: hidden;
+}
+.t-live {
+  position: absolute;
+  inset: 0;
 }
 .t-line {
   grid-column: 1 / -1;

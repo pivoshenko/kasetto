@@ -99,6 +99,124 @@ type EditStep =
   | "rm-running"
   | "rm-done";
 
+// The sync scene is rendered twice: once live, and once as a hidden "ghost" in
+// its final state, which reserves the terminal's full height so appending
+// output never reflows the page below it.
+function SyncScene({
+  typed,
+  phase,
+  groupIdx,
+  itemIdx,
+}: {
+  typed: number;
+  phase: SyncPhase;
+  groupIdx: number;
+  itemIdx: number;
+}) {
+  const typingCursor = phase === "typing";
+  const summaryVisible = phase === "done";
+  const resolvedVisible = phase === "resolving" || phase === "running" || phase === "done";
+
+  return (
+    <>
+      <div className="t-line">
+        <span className="t-prompt">❯</span>
+        <span>
+          <span className="t-fg">kasetto </span>
+          <span className="t-amber">{typed > 8 ? SYNC_COMMAND.slice(8, typed) : ""}</span>
+        </span>
+        {typingCursor && <span className="t-cursor" aria-hidden />}
+      </div>
+
+      {resolvedVisible && (
+        <div className="t-line">
+          {phase === "resolving" ? (
+            <span className="t-spin" aria-hidden />
+          ) : (
+            <span className="t-green">✓</span>
+          )}
+          <span>
+            {phase === "resolving" ? (
+              <span>Resolving sources</span>
+            ) : (
+              <span>
+                <span className="t-fg">Resolved </span>
+                <span className="t-amber">{GROUPS.length} sources</span>
+                <span className="t-dim"> · {TOTAL} items</span>
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+
+      {resolvedVisible &&
+        (phase === "running" || phase === "done") &&
+        GROUPS.map((g, gi) => {
+          const inflight = gi === groupIdx;
+          const past = gi < groupIdx || phase === "done";
+          const visible = inflight || past;
+          if (!visible) return null;
+          return (
+            <div key={g.repo} className="t-group">
+              <div className="t-srch">
+                {past ? (
+                  <span className="t-green">✓</span>
+                ) : (
+                  <span className="t-spin" aria-hidden />
+                )}
+                <span className="t-cyan">{g.repo}</span>
+              </div>
+              {g.items.map((slug, i) => {
+                const isLast = i === g.items.length - 1;
+                const itemShown = past || (inflight && i < itemIdx);
+                if (!itemShown) return null;
+                const st = STATUS[slug];
+                const { g: gl, cls } = glyphFor(st);
+                return (
+                  <div key={slug} className="t-row">
+                    <span className="t-faint">{isLast ? "└─" : "├─"}</span>
+                    <span className={cls}>{gl}</span>
+                    <strong className={st?.s === "removed" ? "t-strike" : "t-fg"}>{slug}</strong>
+                    <span className="t-tail">
+                      {!st && <span className="t-faint">unchanged</span>}
+                      {st?.s === "updated" && <span className="t-amber">updated</span>}
+                      {st?.s === "added" && <span className="t-green">added</span>}
+                      {st?.s === "removed" && <span className="t-red">removed</span>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+
+      {summaryVisible && (
+        <div className="t-line t-summary-chips">
+          <span />
+          <span>
+            {"  "}
+            <span className="t-amber">●</span>
+            <span className="t-fg"> {COUNTS.updated} </span>
+            <span className="t-dim">updated</span>
+            {"  "}
+            <span className="t-green">●</span>
+            <span className="t-fg"> {COUNTS.added} </span>
+            <span className="t-dim">added</span>
+            {"  "}
+            <span className="t-red">●</span>
+            <span className="t-fg"> {COUNTS.removed} </span>
+            <span className="t-dim">removed</span>
+            {"  "}
+            <span className="t-faint">●</span>
+            <span className="t-fg"> {COUNTS.unchanged} </span>
+            <span className="t-dim">unchanged</span>
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function HeroTerminal() {
   const ref = useRef<HTMLElement>(null);
   const [scene, setScene] = useState<Scene>("sync");
@@ -304,11 +422,6 @@ export function HeroTerminal() {
     return () => clearTimeout(t);
   }, [scene]);
 
-  const syncTypingCursor = scene === "sync" && phase === "typing";
-  const syncSummaryVisible = scene === "sync" && phase === "done";
-  const syncResolvedVisible =
-    scene === "sync" && (phase === "resolving" || phase === "running" || phase === "done");
-
   // True once we've moved past the corresponding sub-phase (current step's
   // ordinal compared against each anchor). Drives "remember everything I've
   // already shown" semantics so the session stays on screen as we type the
@@ -364,271 +477,184 @@ export function HeroTerminal() {
         <span className="hero-terminal-title">~/dev/kasetto</span>
       </div>
       <div className="hero-terminal-body">
-        <div className="t-rows">
-          {scene === "sync" && (
-            <>
-              <div className="t-line">
-                <span className="t-prompt">❯</span>
-                <span>
-                  <span className="t-fg">kasetto </span>
-                  <span className="t-amber">{typed > 8 ? SYNC_COMMAND.slice(8, typed) : ""}</span>
-                </span>
-                {syncTypingCursor && <span className="t-cursor" aria-hidden />}
-              </div>
+        <div className="t-stage">
+          <div className="t-rows t-ghost" aria-hidden>
+            <SyncScene
+              typed={SYNC_COMMAND.length}
+              phase="done"
+              groupIdx={GROUPS.length}
+              itemIdx={0}
+            />
+          </div>
+          <div className="t-rows t-live">
+            {scene === "sync" && (
+              <SyncScene typed={typed} phase={phase} groupIdx={groupIdx} itemIdx={itemIdx} />
+            )}
 
-              {syncResolvedVisible && (
-                <div className="t-line">
-                  {phase === "resolving" ? (
-                    <span className="t-spin" aria-hidden />
-                  ) : (
-                    <span className="t-green">✓</span>
-                  )}
-                  <span>
-                    {phase === "resolving" ? (
-                      <span>Resolving sources</span>
-                    ) : (
-                      <span>
-                        <span className="t-fg">Resolved </span>
-                        <span className="t-amber">{GROUPS.length} sources</span>
-                        <span className="t-dim"> · {TOTAL} items</span>
+            {scene === "edit" && (
+              <>
+                {addPromptVisible && (
+                  <div className="t-line">
+                    <span className="t-prompt">❯</span>
+                    <span>
+                      <span className="t-fg">kst </span>
+                      <span className="t-amber">
+                        {addTyped > 4 ? ADD_COMMAND.slice(4, addTyped) : ""}
                       </span>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {syncResolvedVisible &&
-                (phase === "running" || phase === "done") &&
-                GROUPS.map((g, gi) => {
-                  const inflight = gi === groupIdx;
-                  const past = gi < groupIdx || phase === "done";
-                  const visible = inflight || past;
-                  if (!visible) return null;
-                  return (
-                    <div key={g.repo} className="t-group">
-                      <div className="t-srch">
-                        {past ? (
-                          <span className="t-green">✓</span>
-                        ) : (
-                          <span className="t-spin" aria-hidden />
-                        )}
-                        <span className="t-cyan">{g.repo}</span>
-                      </div>
-                      {g.items.map((slug, i) => {
-                        const isLast = i === g.items.length - 1;
-                        const itemShown = past || (inflight && i < itemIdx);
-                        if (!itemShown) return null;
-                        const st = STATUS[slug];
-                        const { g: gl, cls } = glyphFor(st);
-                        return (
-                          <div key={slug} className="t-row">
-                            <span className="t-faint">{isLast ? "└─" : "├─"}</span>
-                            <span className={cls}>{gl}</span>
-                            <strong className={st?.s === "removed" ? "t-strike" : "t-fg"}>
-                              {slug}
-                            </strong>
-                            <span className="t-tail">
-                              {!st && <span className="t-faint">unchanged</span>}
-                              {st?.s === "updated" && <span className="t-amber">updated</span>}
-                              {st?.s === "added" && <span className="t-green">added</span>}
-                              {st?.s === "removed" && <span className="t-red">removed</span>}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-
-              {syncSummaryVisible && (
-                <div className="t-line t-summary-chips">
-                  <span />
-                  <span>
-                    {"  "}
-                    <span className="t-amber">●</span>
-                    <span className="t-fg"> {COUNTS.updated} </span>
-                    <span className="t-dim">updated</span>
-                    {"  "}
-                    <span className="t-green">●</span>
-                    <span className="t-fg"> {COUNTS.added} </span>
-                    <span className="t-dim">added</span>
-                    {"  "}
-                    <span className="t-red">●</span>
-                    <span className="t-fg"> {COUNTS.removed} </span>
-                    <span className="t-dim">removed</span>
-                    {"  "}
-                    <span className="t-faint">●</span>
-                    <span className="t-fg"> {COUNTS.unchanged} </span>
-                    <span className="t-dim">unchanged</span>
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-
-          {scene === "edit" && (
-            <>
-              {addPromptVisible && (
-                <div className="t-line">
-                  <span className="t-prompt">❯</span>
-                  <span>
-                    <span className="t-fg">kst </span>
-                    <span className="t-amber">
-                      {addTyped > 4 ? ADD_COMMAND.slice(4, addTyped) : ""}
                     </span>
-                  </span>
-                  {addTypingCursor && <span className="t-cursor" aria-hidden />}
-                </div>
-              )}
+                    {addTypingCursor && <span className="t-cursor" aria-hidden />}
+                  </div>
+                )}
 
-              {addLineVisible && (
-                <div className="t-line">
-                  <span />
-                  <span>
-                    <span className="t-fg">Adding </span>
-                    <span className="t-cyan">{ADD_SOURCE}</span>
-                    <span className="t-fg"> to skills</span>
-                  </span>
-                </div>
-              )}
+                {addLineVisible && (
+                  <div className="t-line">
+                    <span />
+                    <span>
+                      <span className="t-fg">Adding </span>
+                      <span className="t-cyan">{ADD_SOURCE}</span>
+                      <span className="t-fg"> to skills</span>
+                    </span>
+                  </div>
+                )}
 
-              {addResolvedVisible && (
-                <div className="t-line">
-                  {step === "add-resolving" ? (
-                    <span className="t-spin" aria-hidden />
-                  ) : (
-                    <span className="t-green">✓</span>
-                  )}
-                  <span>
+                {addResolvedVisible && (
+                  <div className="t-line">
                     {step === "add-resolving" ? (
-                      <span>Resolving sources</span>
-                    ) : (
-                      <span>
-                        <span className="t-fg">Resolved </span>
-                        <span className="t-amber">1 source</span>
-                        <span className="t-dim"> · 1 item</span>
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {addGroupVisible && (
-                <div className="t-group">
-                  <div className="t-srch">
-                    {past("add-running") ? (
-                      <span className="t-green">✓</span>
-                    ) : (
                       <span className="t-spin" aria-hidden />
+                    ) : (
+                      <span className="t-green">✓</span>
                     )}
-                    <span className="t-cyan">{ADD_REPO}</span>
-                  </div>
-                  {addItemShown && (
-                    <div className="t-row">
-                      <span className="t-faint">└─</span>
-                      <span className="t-green">+</span>
-                      <strong className="t-fg">{ADD_ITEM}</strong>
-                      <span className="t-tail">
-                        <span className="t-green">added</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {addSummaryVisible && (
-                <div className="t-line t-summary-chips">
-                  <span />
-                  <span>
-                    {"  "}
-                    <span className="t-green">●</span>
-                    <span className="t-fg"> 1 </span>
-                    <span className="t-dim">added</span>
-                  </span>
-                </div>
-              )}
-
-              {rmPromptVisible && (
-                <div className="t-line">
-                  <span className="t-prompt">❯</span>
-                  <span>
-                    <span className="t-fg">kst </span>
-                    <span className="t-amber">
-                      {rmTyped > 4 ? REMOVE_COMMAND.slice(4, rmTyped) : ""}
+                    <span>
+                      {step === "add-resolving" ? (
+                        <span>Resolving sources</span>
+                      ) : (
+                        <span>
+                          <span className="t-fg">Resolved </span>
+                          <span className="t-amber">1 source</span>
+                          <span className="t-dim"> · 1 item</span>
+                        </span>
+                      )}
                     </span>
-                  </span>
-                  {rmTypingCursor && <span className="t-cursor" aria-hidden />}
-                </div>
-              )}
-
-              {rmLineVisible && (
-                <div className="t-line">
-                  <span />
-                  <span>
-                    <span className="t-fg">Removing </span>
-                    <span className="t-cyan">{REMOVE_SOURCE}</span>
-                    <span className="t-fg"> from skills</span>
-                  </span>
-                </div>
-              )}
-
-              {rmResolvedVisible && (
-                <div className="t-line">
-                  {step === "rm-resolving" ? (
-                    <span className="t-spin" aria-hidden />
-                  ) : (
-                    <span className="t-green">✓</span>
-                  )}
-                  <span>
-                    {step === "rm-resolving" ? (
-                      <span>Resolving sources</span>
-                    ) : (
-                      <span>
-                        <span className="t-fg">Resolved </span>
-                        <span className="t-amber">1 source</span>
-                        <span className="t-dim"> · 1 item</span>
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {rmGroupVisible && (
-                <div className="t-group">
-                  <div className="t-srch">
-                    {past("rm-running") ? (
-                      <span className="t-green">✓</span>
-                    ) : (
-                      <span className="t-spin" aria-hidden />
-                    )}
-                    <span className="t-cyan">{REMOVE_REPO}</span>
                   </div>
-                  {rmItemShown && (
-                    <div className="t-row">
-                      <span className="t-faint">└─</span>
-                      <span className="t-red">−</span>
-                      <strong className="t-fg t-strike">{REMOVE_ITEM}</strong>
-                      <span className="t-tail">
-                        <span className="t-red">removed</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
-              {rmSummaryVisible && (
-                <div className="t-line t-summary-chips">
-                  <span />
-                  <span>
-                    {"  "}
-                    <span className="t-red">●</span>
-                    <span className="t-fg"> 1 </span>
-                    <span className="t-dim">removed</span>
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+                {addGroupVisible && (
+                  <div className="t-group">
+                    <div className="t-srch">
+                      {past("add-running") ? (
+                        <span className="t-green">✓</span>
+                      ) : (
+                        <span className="t-spin" aria-hidden />
+                      )}
+                      <span className="t-cyan">{ADD_REPO}</span>
+                    </div>
+                    {addItemShown && (
+                      <div className="t-row">
+                        <span className="t-faint">└─</span>
+                        <span className="t-green">+</span>
+                        <strong className="t-fg">{ADD_ITEM}</strong>
+                        <span className="t-tail">
+                          <span className="t-green">added</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {addSummaryVisible && (
+                  <div className="t-line t-summary-chips">
+                    <span />
+                    <span>
+                      {"  "}
+                      <span className="t-green">●</span>
+                      <span className="t-fg"> 1 </span>
+                      <span className="t-dim">added</span>
+                    </span>
+                  </div>
+                )}
+
+                {rmPromptVisible && (
+                  <div className="t-line">
+                    <span className="t-prompt">❯</span>
+                    <span>
+                      <span className="t-fg">kst </span>
+                      <span className="t-amber">
+                        {rmTyped > 4 ? REMOVE_COMMAND.slice(4, rmTyped) : ""}
+                      </span>
+                    </span>
+                    {rmTypingCursor && <span className="t-cursor" aria-hidden />}
+                  </div>
+                )}
+
+                {rmLineVisible && (
+                  <div className="t-line">
+                    <span />
+                    <span>
+                      <span className="t-fg">Removing </span>
+                      <span className="t-cyan">{REMOVE_SOURCE}</span>
+                      <span className="t-fg"> from skills</span>
+                    </span>
+                  </div>
+                )}
+
+                {rmResolvedVisible && (
+                  <div className="t-line">
+                    {step === "rm-resolving" ? (
+                      <span className="t-spin" aria-hidden />
+                    ) : (
+                      <span className="t-green">✓</span>
+                    )}
+                    <span>
+                      {step === "rm-resolving" ? (
+                        <span>Resolving sources</span>
+                      ) : (
+                        <span>
+                          <span className="t-fg">Resolved </span>
+                          <span className="t-amber">1 source</span>
+                          <span className="t-dim"> · 1 item</span>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {rmGroupVisible && (
+                  <div className="t-group">
+                    <div className="t-srch">
+                      {past("rm-running") ? (
+                        <span className="t-green">✓</span>
+                      ) : (
+                        <span className="t-spin" aria-hidden />
+                      )}
+                      <span className="t-cyan">{REMOVE_REPO}</span>
+                    </div>
+                    {rmItemShown && (
+                      <div className="t-row">
+                        <span className="t-faint">└─</span>
+                        <span className="t-red">−</span>
+                        <strong className="t-fg t-strike">{REMOVE_ITEM}</strong>
+                        <span className="t-tail">
+                          <span className="t-red">removed</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rmSummaryVisible && (
+                  <div className="t-line t-summary-chips">
+                    <span />
+                    <span>
+                      {"  "}
+                      <span className="t-red">●</span>
+                      <span className="t-fg"> 1 </span>
+                      <span className="t-dim">removed</span>
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </figure>
