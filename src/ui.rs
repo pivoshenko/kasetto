@@ -1,3 +1,6 @@
+//! Module that contains the shared terminal rendering primitives: headers, tree
+//! rows, spinners, badges, and JSON output.
+
 use std::io::{IsTerminal, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

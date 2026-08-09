@@ -1,3 +1,5 @@
+//! Module that contains the deserialized `kasetto.yaml` schema: scope, sources, secrets.
+
 use serde::{Deserialize, Serialize};
 
 use super::{Agent, AgentField};

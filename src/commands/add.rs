@@ -1,4 +1,4 @@
-//! `kasetto add` appends one or more sources to the config, then syncs them in.
+//! Module that contains `kasetto add`, which appends one or more sources to the config, then syncs them in.
 //!
 //! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command` /
 //! `--instruction`) select both the asset kind and the named entries, so a

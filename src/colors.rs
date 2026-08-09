@@ -1,4 +1,4 @@
-//! Cassette CLI palette: semantic SGR aliases.
+//! Module that contains the Cassette CLI palette: semantic SGR aliases.
 //!
 //! Seven semantic roles cover every colored surface. Call sites use the
 //! semantic names (`SUCCESS`, `ERROR`, `ATTENTION`, `INFO`, `SECONDARY`,

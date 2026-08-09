@@ -1,3 +1,5 @@
+//! Module that contains XDG base directory resolution for kasetto config, data, and cache dirs.
+
 use std::path::PathBuf;
 
 use crate::error::{err, Result};

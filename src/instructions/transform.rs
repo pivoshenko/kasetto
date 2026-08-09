@@ -1,3 +1,5 @@
+//! Module that contains per-format instruction rendering and managed-block aggregate edits.
+
 use std::path::{Path, PathBuf};
 
 use crate::frontmatter::Parsed;

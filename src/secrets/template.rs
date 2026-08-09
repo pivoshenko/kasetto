@@ -1,4 +1,4 @@
-//! Scanner for `${kst_...}` secret placeholders in synced asset values.
+//! Module that contains the scanner for `${kst_...}` secret placeholders in synced asset values.
 //!
 //! Two forms: the chain form `${kst_name}` (resolved against env + credential
 //! files) and the tagged form `${kst:<source>:<ref>}` routed to one explicit

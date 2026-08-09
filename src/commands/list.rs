@@ -1,3 +1,6 @@
+//! Module that contains `kasetto list`, which prints the installed skills, MCPs,
+//! commands, and instructions read from the lock.
+
 use serde::Serialize;
 
 use crate::cli::ListKind;

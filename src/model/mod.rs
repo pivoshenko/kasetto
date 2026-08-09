@@ -1,3 +1,5 @@
+//! Package that contains the data model: config schema, agent registry, and lock-file types.
+
 mod agent;
 mod config;
 pub(crate) mod extend;

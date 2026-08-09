@@ -1,4 +1,4 @@
-//! Surgical, comment-preserving edits to a local kasetto YAML config.
+//! Module that contains surgical, comment-preserving edits to a local kasetto YAML config.
 //!
 //! `add` / `remove` rewrite the user's `kasetto.yaml`. A serde round-trip would
 //! drop every comment and reorder keys, so instead we edit the raw lines:

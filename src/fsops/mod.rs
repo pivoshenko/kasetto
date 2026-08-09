@@ -1,3 +1,5 @@
+//! Package that contains filesystem operations: config I/O, caching, copying, hashing, paths.
+
 mod cache;
 mod config;
 mod config_edit;

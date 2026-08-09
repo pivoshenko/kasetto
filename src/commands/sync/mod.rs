@@ -1,3 +1,6 @@
+//! Package that contains `kasetto sync`, which installs, updates, and prunes
+//! assets so destinations match the config.
+
 mod commands;
 mod instructions;
 mod mcps;

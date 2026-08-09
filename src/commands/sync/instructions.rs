@@ -1,3 +1,6 @@
+//! Module that contains the `sync` leg that installs, updates, and prunes agent
+//! instruction files.
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;

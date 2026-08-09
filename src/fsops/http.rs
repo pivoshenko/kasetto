@@ -1,3 +1,5 @@
+//! Module that contains the shared blocking HTTP client used for all network fetches.
+
 use reqwest::blocking::Client;
 use std::sync::OnceLock;
 use std::time::Duration;

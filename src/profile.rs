@@ -1,3 +1,5 @@
+//! Module that contains `SKILL.md` profile reading and the display helpers `list` renders it with.
+
 use std::fs;
 use std::path::Path;
 

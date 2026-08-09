@@ -1,3 +1,6 @@
+//! Module that contains the `sync` leg that merges, updates, and prunes MCP packs
+//! in agent-native settings files.
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

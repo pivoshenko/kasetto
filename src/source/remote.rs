@@ -1,4 +1,4 @@
-//! Remote archive and tarball download (GitHub, GitLab, Bitbucket, Gitea).
+//! Module that contains remote archive and tarball download (GitHub, GitLab, Bitbucket, Gitea).
 
 use std::fs;
 use std::io::{BufRead, BufReader, Read};

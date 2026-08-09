@@ -1,4 +1,4 @@
-//! Environment-based credentials and HTTP auth hints for remote sources.
+//! Module that contains environment-based credentials and HTTP auth hints for remote sources.
 
 use reqwest::blocking::RequestBuilder;
 

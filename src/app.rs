@@ -1,3 +1,5 @@
+//! Module that contains CLI parsing and subcommand dispatch.
+
 use clap::{CommandFactory, Parser};
 use std::path::Path;
 use std::time::Duration;

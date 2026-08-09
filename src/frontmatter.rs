@@ -1,4 +1,4 @@
-//! Shared Markdown-with-YAML-frontmatter parsing.
+//! Module that contains shared Markdown-with-YAML-frontmatter parsing.
 //!
 //! Used by both the slash-command pipeline (`prompts`) and the instructions pipeline
 //! (`instructions`): a source file may open with a `---`-fenced YAML block, which is

@@ -1,3 +1,5 @@
+//! Module that contains `kasetto completions`, which writes shell completion scripts to stdout.
+
 use clap::CommandFactory;
 use clap_complete::{generate, Shell};
 

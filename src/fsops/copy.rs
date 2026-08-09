@@ -1,3 +1,5 @@
+//! Module that contains recursive directory copying with symlink resolution and a depth limit.
+
 use std::fs;
 use std::path::Path;
 

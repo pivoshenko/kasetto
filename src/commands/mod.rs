@@ -1,3 +1,5 @@
+//! Package that contains one module per `kasetto` subcommand.
+
 pub(crate) mod add;
 pub(crate) mod clean;
 pub(crate) mod completions;

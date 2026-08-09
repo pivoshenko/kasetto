@@ -1,3 +1,6 @@
+//! Module that contains the `sync` leg that installs, updates, and prunes
+//! slash-command prompts.
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;

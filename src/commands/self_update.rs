@@ -1,3 +1,6 @@
+//! Module that contains `kasetto self update`, which replaces the running binary
+//! from GitHub releases.
+
 use sha2::{Digest, Sha256};
 use std::fs;
 

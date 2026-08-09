@@ -1,3 +1,5 @@
+//! Module that contains the supported agent registry and its per-asset destinations and formats.
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

@@ -1,3 +1,5 @@
+//! Module that contains the crate-wide boxed `Error` and `Result` aliases.
+
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 

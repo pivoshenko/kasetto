@@ -1,3 +1,5 @@
+//! Module that contains the machine-local runtime state kept out of `kasetto.lock`.
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;

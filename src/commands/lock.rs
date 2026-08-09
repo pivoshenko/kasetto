@@ -1,4 +1,4 @@
-//! `kasetto lock` resolves and pins the config into `kasetto.lock` without
+//! Module that contains `kasetto lock`, which resolves and pins the config into `kasetto.lock` without
 //! installing to destinations.
 //!
 //! Skills are materialized and hashed from the source tree. Because a skill is

@@ -1,4 +1,4 @@
-//! OpenAI Codex `~/.codex/config.toml` - `mcp_servers` map.
+//! Module that contains the OpenAI Codex `~/.codex/config.toml` - `mcp_servers` map merge.
 
 use std::fs;
 use std::path::Path;

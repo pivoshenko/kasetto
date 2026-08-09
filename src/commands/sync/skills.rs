@@ -1,3 +1,6 @@
+//! Module that contains the `sync` leg that installs, updates, and prunes skill
+//! trees.
+
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};

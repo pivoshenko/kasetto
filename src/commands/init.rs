@@ -1,3 +1,5 @@
+//! Module that contains `kasetto init`, which writes a commented starter config.
+
 use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;

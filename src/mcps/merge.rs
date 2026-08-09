@@ -1,4 +1,4 @@
-//! Merge pack `mcpServers` into JSON-based agent settings.
+//! Module that contains the merge of pack `mcpServers` into JSON-based agent settings.
 
 use std::path::Path;
 

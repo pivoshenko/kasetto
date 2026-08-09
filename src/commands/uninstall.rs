@@ -1,3 +1,6 @@
+//! Module that contains `kasetto self uninstall`, which removes the binaries
+//! along with local config, data, and installed assets.
+
 use std::collections::HashSet;
 use std::fs;
 use std::io::{self, IsTerminal, Write};

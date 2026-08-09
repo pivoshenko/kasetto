@@ -1,3 +1,5 @@
+//! Module that contains the `kasetto.lock` file model and its load / save helpers.
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;

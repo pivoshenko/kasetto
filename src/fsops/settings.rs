@@ -1,3 +1,5 @@
+//! Module that contains the load/mutate/save wrapper for agent settings JSON files.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 

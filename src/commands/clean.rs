@@ -1,3 +1,6 @@
+//! Module that contains `kasetto clean`, which removes every installed asset for
+//! the scope and resets the lock.
+
 use std::fs;
 use std::time::{Duration, Instant};
 

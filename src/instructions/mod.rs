@@ -1,4 +1,5 @@
-//! Instruction (CLAUDE.md / .cursor/rules / AGENTS.md ...) parsing and per-agent transforms.
+//! Package that contains instruction (CLAUDE.md / .cursor/rules / AGENTS.md ...)
+//! parsing and per-agent transforms.
 //!
 //! An instruction source is Markdown with optional YAML frontmatter, the same shape as a
 //! slash command. The divergence from commands is the destination: some agents

@@ -1,4 +1,4 @@
-//! YAML-level merge for `extends` config inheritance.
+//! Module that contains the YAML-level merge for `extends` config inheritance.
 //!
 //! Top-level scalar fields (`destination`, `scope`, `agent`) replace.
 //! The `skills`, `mcps`, `commands`, and `instructions` lists merge by

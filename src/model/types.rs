@@ -1,3 +1,5 @@
+//! Module that contains the `kasetto.lock` state schema and run report/summary types.
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

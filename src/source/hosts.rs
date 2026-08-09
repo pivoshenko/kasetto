@@ -1,4 +1,4 @@
-//! HTTP(S) URL host classification for skill sources and remote config.
+//! Module that contains HTTP(S) URL host classification for skill sources and remote config.
 
 pub(crate) fn extract_host(url: &str) -> Option<String> {
     let without_scheme = url

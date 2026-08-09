@@ -1,3 +1,6 @@
+//! Package that contains the Kasetto crate root: default config resolution, the
+//! module tree, and the public entrypoint.
+
 /// Default config file in the current directory when `--config` is omitted.
 pub(crate) const DEFAULT_CONFIG_FILENAME: &str = "kasetto.yaml";
 /// Default config file under the Kasetto XDG config directory (`init --global` writes here).

@@ -1,4 +1,4 @@
-//! MCP pack merge / removal across agent-native config formats.
+//! Package that contains MCP pack merge / removal across agent-native config formats.
 
 mod codex;
 mod merge;

@@ -1,3 +1,5 @@
+//! Module that contains the framed ASCII wordmark banner printed when no subcommand is given.
+
 use unicode_width::UnicodeWidthStr;
 
 use crate::colors::{ATTENTION, BRAND, RESET};

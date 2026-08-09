@@ -1,3 +1,5 @@
+//! Module that contains SHA-256 hashing of strings, files, and directory trees.
+
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{BufReader, Read};

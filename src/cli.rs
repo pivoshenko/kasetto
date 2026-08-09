@@ -1,3 +1,5 @@
+//! Module that contains the clap command-line interface definition.
+
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 

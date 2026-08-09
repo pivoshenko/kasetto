@@ -1,3 +1,5 @@
+//! Module that contains config loading from a local path or URL, resolving `extends` inheritance.
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

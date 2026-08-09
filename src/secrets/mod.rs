@@ -1,4 +1,4 @@
-//! Secret injection for synced MCP configs.
+//! Package that contains secret injection for synced MCP configs.
 //!
 //! Resolves `${kst_...}` placeholders at sync time from environment variables, a
 //! `credentials.yaml` store, and tag-routed external secret managers, so packs

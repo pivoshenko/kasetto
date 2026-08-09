@@ -1,4 +1,4 @@
-//! Background "new version available" notice.
+//! Module that contains the background "new version available" notice.
 //!
 //! On startup, spawn a detached thread that fetches the latest GitHub release
 //! and writes it to a cache file. On the next run, if the cache says a newer

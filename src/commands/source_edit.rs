@@ -1,4 +1,4 @@
-//! Shared plumbing for the config-editing commands (`add` / `remove`).
+//! Module that contains shared plumbing for the config-editing commands (`add` / `remove`).
 
 use std::path::{Path, PathBuf};
 

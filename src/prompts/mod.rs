@@ -1,4 +1,5 @@
-//! Command (slash-command / prompt template) parsing and per-agent transforms.
+//! Package that contains command (slash-command / prompt template) parsing and
+//! per-agent transforms.
 
 mod transform;
 

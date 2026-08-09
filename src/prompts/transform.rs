@@ -1,3 +1,5 @@
+//! Module that contains per-format command rendering and destination path derivation.
+
 use std::path::{Path, PathBuf};
 
 use crate::error::Result;

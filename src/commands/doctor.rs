@@ -1,3 +1,6 @@
+//! Module that contains `kasetto doctor`, which runs local diagnostics over the
+//! install: paths, installed inventory, and failures from the latest sync.
+
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 

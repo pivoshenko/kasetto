@@ -1,4 +1,4 @@
-//! Repository URL parsing into a structured [`RepoUrl`].
+//! Module that contains repository URL parsing into a structured [`RepoUrl`].
 
 use crate::error::{err, Result};
 

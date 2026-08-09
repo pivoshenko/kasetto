@@ -1,6 +1,7 @@
-//! On-disk cache of extracted source trees, keyed by a caller-supplied string
-//! (the resolved archive URL, plus the sub-dir when sparse extraction stores
-//! only a sub-tree).
+//! Module that contains the on-disk cache of extracted source trees.
+//!
+//! Entries are keyed by a caller-supplied string (the resolved archive URL, plus
+//! the sub-dir when sparse extraction stores only a sub-tree).
 //!
 //! Only **immutable** refs (explicit tag/SHA `ref:`) are cached: a moving ref
 //! (branch/default) can change upstream without the URL changing, so caching it

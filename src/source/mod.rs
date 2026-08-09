@@ -1,4 +1,4 @@
-//! Skill pack sources: local paths, remote archives, discovery.
+//! Package that contains skill pack sources: local paths, remote archives, discovery.
 
 mod auth;
 mod hosts;
