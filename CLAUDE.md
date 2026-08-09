@@ -81,6 +81,7 @@ Next.js 15 App Router project that hosts both the marketing landing (`/`) and th
 - **Scope as first-class concept**: Global (`~/.agent/skills/`) vs Project (`./.agent/skills/`), with scope-scoped lock files. Resolution: CLI flag → config field → default Global. See `model::resolve_scope()`.
 - **Agent as exhaustive enum**: `model::Agent` with serde aliases, maps to install paths and MCP settings targets. Adding an agent = add enum variant + path mappings.
 - **Skill discovery by convention**: Skills found in `root/` or `root/skills/` by directory listing (no manifest needed). Each skill dir must contain a `SKILL.md`.
+- **Module docs**: Every `.rs` file opens with a `//!` doc comment. Non-root files start `Module that contains ...`; `lib.rs` and each `mod.rs` start `Package that contains ...`. Keep it to one summary sentence, with any extra detail in following `//!` lines.
 - **Output modes**: Most commands support `--color <auto|always|never>` (default `auto`), `--json` (structured), `-q`/`--quiet` (count action, repeat for stricter silence), and `-v`/`--verbose` (count action: `-v`/`-vv`/`-vvv`). `--plain` is preserved as a hidden deprecated alias for `--color never` and emits a stderr warning when used. Check `animations_enabled()` and the `as_json`/`plain`/`quiet` flags inside commands; resolve flags at the `app.rs` boundary via `OutputArgs::resolve_plain()` / `SyncArgs::resolve_plain()`.
 
 ## GitHub Workflows (`.github/workflows/`)
