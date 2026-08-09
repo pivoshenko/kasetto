@@ -2,93 +2,190 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build & Test Commands
+## What this repo is
 
-`just check` runs format + lint + test + build for both the Rust crate and the Next.js site under `site/`. Per-target recipes are split:
+Kasetto is a declarative AI agent environment manager: a Rust CLI that syncs four asset kinds -
+**skills**, **slash-commands**, **MCP servers**, and **instructions** (`CLAUDE.md` / `AGENTS.md` /
+`.cursor/rules` / ...) - from git repos or local dirs into 22 agent environments, driven by a
+`kasetto.yaml` config and pinned by a `kasetto.lock`. Modeled on cargo/uv ergonomics.
+
+Two things live here:
+
+- **`/` (Rust crate `kasetto`)** - the CLI. Two binaries from one lib: `kasetto` (default-run) and
+  `kst` (`src/bin/kst.rs`); both call `kasetto::run`.
+- **`site/`** - Next.js 15 App Router app serving both the marketing landing and the Fumadocs docs
+  (`kasetto.dev` + `docs.kasetto.dev`). Independent pnpm project, not a cargo workspace member.
+
+## Commands
+
+Everything goes through `just` (CI drives the same recipes). Recipes are split `-rs` / `-next`.
 
 ```bash
-just check          # full validation: format + lint + test + build (rs + site)
-just format         # format-rs + format-next
-just lint           # lint-rs + lint-next
-just audit          # audit-rs + audit-next
-just test           # test-rs + test-next
-just test-rs        # cargo test (skipped when .no-tests sentinel exists)
-just test-next      # @echo "no Next.js tests" (pure no-op placeholder)
-just build          # build-rs + build-next
-cargo test <name>   # run a single Rust test
-just dev-next       # local Next.js dev server
+just check           # format + lint + test + build, both targets - the pre-PR gate
+just lint-rs         # cargo clippy --all-targets -- -D warnings
+just test-rs         # cargo test (skipped if a .no-tests sentinel file exists)
+just build-rs        # cargo build --release
+just lint-next       # cd site && pnpm lint (biome, --write)
+just build-next      # cd site && pnpm build
+just dev-next        # local Next.js dev server
+just audit           # cargo-audit + pnpm audit (installs cargo-audit if missing)
+just sync-config     # regenerate README/docs/hero from kasetto.example.yaml
+just bench           # cold-sync benchmark (needs hyperfine + network)
+
+cargo test <name>                     # single test by substring
+cargo test --lib model::agent::tests  # one module's tests
+cargo run -- sync --dry-run           # exercise the CLI locally
 ```
 
-The Rust project forbids `unsafe` code and warns on `dbg!` and `todo!` (see `[lints]` in `Cargo.toml`).
+`just test-next` is a deliberate no-op (`echo "no Next.js tests"`); the site has no test suite.
 
-## Architecture
+**`kasetto.example.yaml` is the single source of truth for the example config.** It is copied into
+`README.md` (between `<!-- kasetto-config:start/end -->`), the docs, and the homepage hero by
+`scripts/sync-config-example.mjs`. After editing it run `just sync-config`; `node
+scripts/sync-config-example.mjs --check` exits non-zero on drift.
 
-Kasetto is a single-binary CLI tool that syncs AI agent assets (skills, slash-commands, MCP servers, and instructions such as `CLAUDE.md` / `.cursor/rules` / `AGENTS.md`) from GitHub repos or local directories into 22 agent environments. Two binaries (`kasetto` and `kst`) share the same code.
+## Rust architecture
 
-### Startup Routing (`app.rs`)
+`src/lib.rs` owns default-config resolution and re-exports `run` + `Result`. `src/app.rs` parses
+clap args and dispatches; with no subcommand it prints the banner + `--help` and exits 0 (cargo/uv
+style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error enum.
 
-```
-CLI args → match cli.command
-  ├─ Explicit subcommand → run that command
-  └─ None → banner + `--help` (exit 0), cargo/uv style
-```
+### Module map
 
-### Module Layout
+| Module | Responsibility |
+| --- | --- |
+| `cli.rs` | clap `Cli`/`Commands` plus the flattened `OutputArgs` / `ScopeArgs` / `SyncArgs` groups |
+| `commands/` | one module per subcommand; `sync/` splits into `skills` / `mcps` / `commands` / `instructions` |
+| `model/` | `Agent` enum + install-path registry (`agent.rs`), config schema (`config.rs`), lock/report types (`types.rs`), `extends` merge (`extend.rs`) |
+| `source/` | URL parsing (`parse.rs`), archive download + sparse extraction (`remote.rs`), env-token auth (`auth.rs`), git-host rewriting (`hosts.rs`) |
+| `fsops/` | config load incl. HTTP + `extends` (`config.rs`), comment-preserving YAML edits (`config_edit.rs`), extracted-tree cache (`cache.rs`), XDG dirs, SHA256, copy, settings I/O |
+| `secrets/` | `${kst...}` placeholder scanning (`template.rs`) and resolution backends (`source.rs`) |
+| `mcps/` | format-aware merge into agent settings (`merge.rs`), Codex TOML (`codex.rs`) |
+| `prompts/` / `instructions/` | per-agent transforms for commands and instruction files; both parse via the shared `frontmatter.rs` |
+| `lock.rs` / `state.rs` | committed `kasetto.lock` vs machine-local runtime state |
+| `ui.rs` / `colors.rs` / `banner.rs` | all terminal rendering |
+| `update_notifier.rs` | background "new version available" check |
 
-- **`commands/`** - Each subcommand: `sync/` (split into `skills.rs` + `mcps.rs` + `commands.rs` + `instructions.rs`), `add`, `remove`, `lock`, `list`, `doctor`, `init`, `clean`, `self_update`, `uninstall`, `completions`. `add`/`remove` rewrite the local config via `fsops::config_edit` (comment-preserving surgical YAML edits) then delegate to `sync` (shared plumbing in `source_edit.rs`); `lock` re-resolves + pins `kasetto.lock` without installing (skill source-tree hash equals install hash, so `sync --locked` works offline afterwards; MCP/command entries get revision pins only). `doctor` additionally diffs every managed install path for the active scope against the lock and reports **untracked entries** (`collect_unmanaged` in `doctor.rs`): stray skills, command files, per-dir instruction rules, orphaned `kasetto:instruction:` blocks in shared aggregate files (`instructions::scan_managed_block_ids` vs the lock's owned block ids), and MCP servers in settings files (`mcps::list_server_names`). Read-only and advisory: never deletes, never changes the exit code, and not folded into the `healthy` flag. MCP/command/per-dir-instruction dirs are shared with the user's own files (kasetto writes no MCP ownership marker), so those are an inventory, not an orphan report; only the aggregate-block diff is precise
-- **`model/`** - Core types: `Agent` enum (22 presets with install paths), `Config` (YAML deserialization), `Scope` (Global/Project), `SkillEntry`, `CommandEntry`, `CommandFormat`, `InstructionEntry`, `InstructionsField`, `InstructionSourceSpec`, `InstructionFormat` (`AggregateMarkdown`/`CursorMdc`/`PlainMarkdownDir`), `InstructionTarget`, `SecretsConfig`/`OnMissing`/`KeePassConfig` (the `secrets:` config block: policy, extra credential-file paths, and KeePass database location, never values), `Report`, `Summary`. `extend.rs` holds the YAML-level `extends` merge: scalars replace; `skills`/`mcps`/`commands`/`instructions` merge by `(source, ref|branch, sub-dir)` identity (the `secrets:` mapping replaces wholesale)
-- **`source/`** - Remote handling: URL parsing (`parse.rs`), archive download/extraction (`remote.rs`), auth token resolution (`auth.rs`), git host URL rewriting (`hosts.rs`). `materialize_source` resolves each source to an archive: an immutable `ref:` source is served from the on-disk source cache via `fetch_ref_cached` (extracting once on a miss), while a moving branch/default ref is downloaded fresh through `remote::download_extract`. `remote.rs` streams the response straight into the gzip decoder (no full-archive buffering), and `extract_tar` **sparse-extracts** only entries under `sub-dir` (skipping the create/write/chmod syscalls for the rest of a monorepo)
-- **`fsops/`** - File operations: config loading from file/HTTP (`config.rs`, `load_config_any` recursing through `extends`), comment-preserving config edits (`config_edit.rs`: line-surgical insert/remove of source list items for `add`/`remove`, never a serde round-trip), path resolution, SHA256 hashing (`hash.rs`), recursive copy (`copy.rs`), the extracted-source-tree cache (`cache.rs`), XDG dirs (`dirs.rs`), HTTP client (`http.rs`), settings file I/O (`settings.rs`). **`cache.rs`** stores extracted trees under `$XDG_CACHE_HOME/kasetto/sources/<sha256(url[+sub-dir])>/tree/` with a sibling `.complete` marker (atomic extract-to-tmp → rename); immutable refs reuse the cached tree with zero revalidation. Opt out with `KASETTO_NO_CACHE`
-- **`mcps/`** - MCP server management: format-aware merging (`merge.rs`), Codex TOML handling (`codex.rs`). `merge_mcp_config(src_map, target, overwrite)` consumes the pack's `mcpServers` object **after** secret injection (no longer reads the file itself); `overwrite` replaces an existing same-named server (the `--update` secret-rotation path) instead of preserving it. Supports 5 formats: McpServers JSON, VsCode servers JSON, OpenCode JSON, Codex TOML, ZCode JSON (nested `mcp.servers`)
-- **`secrets/`** - Secret injection for MCP configs (`template.rs` + `source.rs` + `mod.rs`). Lowercase sentinel only (`${kst...}`; an uppercase `${KST...}` is treated as a foreign var and passes through). Two placeholder forms: the **chain form** `${kst_<name>}` (with `__` double-underscore nesting), resolved against env vars (key as written, then uppercased: `${kst_vercel_token}` → `KST_VERCEL_TOKEN`) then `$XDG_CONFIG_HOME/kasetto/credentials.yaml` (+ any `secrets.files`); and the **tagged form** `${kst:<source>:<ref>}` that pins exactly one source: `env` (`${kst:env:NAME}`, verbatim env var), `crd` (`${kst:crd:a/b/c}`, `/`-separated credentials path, no env fallback), `op` (`${kst:op:<vault>/<item>/<field>}` or full `op://...` URI → `op read`), `vault` (`${kst:vault:<kv-path>#<field>}` → `vault kv get -field`), `kp`/`keepass` (`${kst:kp:<entry>#<attr>}`, attr defaults to `Password` → `keepassxc-cli show -s -a <attr>`), `aws` (`${kst:aws:<id>#<json-key>}` → `aws secretsmanager get-secret-value`; `#<json-key>` extracts a top-level JSON field via `extract_json_field`), `gcp` (`${kst:gcp:<name>#<json-key>}` → `gcloud secrets versions access latest`; optional `#<json-key>` extracts a JSON field), `az` (`${kst:az:<vault>/<name>#<json-key>}` → `az keyvault secret show`; optional `#<json-key>`), `pass` (`${kst:pass:<path>}` → `pass show`, first line), `keychain` (`${kst:keychain:<service>#<account>}` → `security find-generic-password -w`). The `#field` split is shared via `split_field`. Each `SecretSource` implements `handles(&SecretRef)`: `EnvSource`/`CredentialsFileSource` claim the chain (`tag.is_none()`) plus their own `env`/`crd` tag; op/vault claim only their tag (added to the chain unconditionally but cost nothing until a matching tag appears); `KeePassSource` is added only when `secrets.keepass` is configured (it needs a `database` path; unlock via `secrets.keepass.key_file` and/or the `KST_KEEPASS_PASSWORD` env var, piped to `keepassxc-cli` via the stdin-capable `run_cli_stdin`; stdin is closed when no password is piped so a prompting CLI fails fast). Credentials lookups are case-insensitive (`lookup_key`/`descend` helpers). `inject_value` walks a `serde_json::Value` and substitutes every `${kst...}` string. Injection is **in-memory only**: the lock hashes the placeholder source file, so secrets never reach `kasetto.lock`, the source cache, or the stage dir. Resolution is memoized per run (`SecretContext.cache`, keyed on the placeholder text) so a repeated secret spawns `op`/`vault`/`keepassxc` only once (avoids duplicate biometric prompts). Missing chain secret → hard failure (`source_error` status, `!` glyph, non-zero exit), or warn+leave-placeholder under `--allow-missing-secrets` (config `secrets.on_missing: error|warn`; the warn message states the literal is written to a live settings file and needs `--update`); a failing `op`/`vault`/`keepassxc` CLI always hard-errors. An unknown tag errors as "not supported"; a `kp` ref with no `secrets.keepass` block errors as "needs a `secrets.keepass` block". After writing a resolved secret, the destination settings file gets a group/world-readable perms warning (`warn_if_world_readable`, reused from the credentials check). A plain sync leaves a secret-bearing server `unchanged`, so a rotated secret does not propagate until `--update`; `sync_mcps` returns a flag and `run()` prints a `print_tip` after the summary. `Secret` is a redacting newtype (`Debug` = `Secret(***)`); CLI values are captured via `run_cli`/`run_cli_stdin` (stdin-piped for the KeePass password), never echoed
-- **`frontmatter.rs`** - Shared Markdown-with-YAML-frontmatter parser (`Parsed` + `parse`), consumed by both `prompts` and `instructions` (extracted from the old `prompts/parse.rs`)
-- **`prompts/`** - Slash-command (user-defined prompt template) handling: per-agent transforms (`transform.rs`), entry point `apply_command`; parses via `crate::frontmatter`. Supports 5 output formats: MarkdownFrontmatter, MarkdownPlain, PromptMd, PromptFile (Continue), GeminiToml
-- **`instructions/`** - Instruction (agent instruction file) handling: per-agent transforms (`transform.rs`), entry point `apply_instruction`; parses via `crate::frontmatter`. Two destination shapes: **aggregate** (`AggregateMarkdown`: many instructions merge into one shared `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.github/copilot-instructions.md` via managed `<!-- kasetto:instruction:ID ... -->` comment blocks so user hand-edits and other instructions survive) and **per-instruction directory** (`CursorMdc` reconstructs `description`/`globs`/`alwaysApply` MDC frontmatter; `PlainMarkdownDir` emits body only for `.windsurf/rules`, `.clinerules`, `.continue/rules`, etc.). The block id is `hash(source::name)`-keyed so same-named instructions from different sources don't collide; the lock `destination` token is `agg:<rel>` (teardown strips the block, never deletes the file) or `file:<rel>` (teardown deletes the file). Per-agent destinations live in `model::agent::instructions_project_path`/`instructions_global_path`, verified against each agent's official docs (e.g. Claude `CLAUDE.md`, Codex/OpenCode/Amp `AGENTS.md`, Cursor `.cursor/rules/*.mdc`, Copilot `.github/copilot-instructions.md`, Gemini/Antigravity `GEMINI.md`, Replit `replit.md`, OpenHands `.openhands/microagents/repo.md`, Junie `.junie/AGENTS.md`; OpenClaw has no project instructions; Warp/Trae have UI-managed globals → `None`; Cursor global `~/.cursor/rules` is community-supported `.mdc`). Targeting follows the config-level `agent:` list, identical to skills/commands, with no per-instruction agent filter
-- **`lock.rs`** - Portable manifest persistence (`kasetto.lock`, schema `version: 3`, bumped from 2 when the `instructions` asset kind joined): tracks installed skills + command/MCP/instruction assets. Instruction assets use `kind: "instructions"`; the `destination` CSV stores `agg:`/`file:`-prefixed tokens (see the `instructions/` module). MCP assets carry an optional `has_secrets` flag (additive, `skip_serializing_if` false so non-secret locks stay byte-identical) so the no-fetch skip path can hint that rotation needs `--update`. Deterministic and commit-friendly: `destination` paths are stored relative to the scope root (project root for Project, home for Global) and resolved back to absolute at read time via `fsops::resolve_dest`/`relativize_dest`. No timestamps or run-specific data. **The lock is authoritative** (issue #33): a plain `kasetto sync` installs exactly what the lock pins and performs zero network fetches when on-disk destinations already match. The per-source `needs_fetch` gate in `commands/sync/skills.rs` re-hashes every destination *before* downloading and skips `materialize_source` entirely when all destinations match the locked hash; a missing/tampered secondary destination is repaired by copying from a verified-good local destination rather than fetching. `--update`/`-u` (optionally `--update <name>...`) is the only path that re-resolves moving refs and rewrites locked hashes; for a `skills: "*"` wildcard source, plain sync holds to the locked set (derived from lock entries where `entry.source == src.source`) and only `--update` re-resolves the wildcard via download + `select_targets`. `--locked`/`--frozen` never fetches and errors when the lock cannot satisfy the config (config-named skill absent, or source entirely absent); `--locked --update` is rejected as contradictory. Skill content hashing (`fsops::hash_dir`) normalizes path separators to `/` so digests are OS-invariant. Existing locks therefore show one round of `updated` on the next plain sync after upgrading.
-- **`state.rs`** - Machine-local runtime state kept *out* of the committed lock (mirrors how `uv` keeps state in its cache dir, separate from `uv.lock`). Holds `last_run`, the latest sync `Report` JSON (for `doctor` failures), and per-skill install timestamps (for `list`'s "updated N ago"). Stored as JSON under `$XDG_CACHE_HOME/kasetto/runtime/<hash-of-lock-path>.json`; safe to delete, regenerated on next sync
-- **`banner.rs`** - ASCII brand banner with static color overlay. Only rendered on bare `kst` (welcome) and `kst init`. All other subcommands are banner-less. Operational output should not repeat the signature
-- **`update_notifier.rs`** - Background "new version available" notice. Fires a detached thread from `app::run` to refresh `$XDG_CACHE_HOME/kasetto/update-check.json` (24h TTL), then prints one yellow line at end of run. Reuses `is_newer`/`fetch_latest_release` from `commands::self_update`. Suppressed for `--json`/`--color never`/`--quiet`, `completions`, `self update`, and non-TTY stdout
+### Core concepts
 
-### Site (`site/`)
+- **Scope** (`model::resolve_scope`): `Project` or `Global`, resolved CLI flag -> config field ->
+  default `Global`. It picks install paths *and* the lock location: `<project root>/kasetto.lock`
+  for Project, `$XDG_DATA_HOME/kasetto/kasetto.lock` for Global.
+- **Agent as exhaustive enum** (`model/agent.rs`, 22 variants + `AGENT_PRESETS`): each variant maps
+  to skill dirs, command dirs, instruction destinations, and MCP settings targets, per scope.
+  Adding an agent = new variant + entries in every path table + the `AGENT_PRESETS` array + the
+  README agent table.
+- **Per-agent output formats**: `McpSettingsFormat` (5: McpServers, VsCodeServers, OpenCode,
+  CodexToml, ZCode), `CommandFormat` (5: MarkdownFrontmatter, MarkdownPlain, PromptMd, PromptFile,
+  GeminiToml), `InstructionFormat` (3: AggregateMarkdown, CursorMdc, PlainMarkdownDir). All three
+  enums live in `model/mod.rs` alongside their `*Target` structs.
+- **Aggregate vs per-file instructions**: `AggregateMarkdown` merges many instructions into one
+  shared file (`CLAUDE.md`, `AGENTS.md`, ...) using managed `<!-- kasetto:instruction:ID -->`
+  comment blocks so hand edits and other instructions survive; the other two formats write one file
+  per instruction into a rules directory. The lock's `destination` token encodes which
+  (`agg:<rel>` = strip the block on teardown, `file:<rel>` = delete the file).
+- **The lock is authoritative.** A plain `sync` installs exactly what `kasetto.lock` pins and does
+  zero network I/O when on-disk hashes already match (`needs_fetch` in `commands/sync/skills.rs`
+  re-hashes destinations *before* deciding to download). `--update`/`-u` is the only path that
+  re-resolves moving refs and rewrites hashes; `--locked`/`--frozen` never fetches and errors if
+  the lock cannot satisfy the config. `LOCK_VERSION` is 3. Lock paths are stored relative to the
+  scope root and contain no timestamps, so it is portable and commit-friendly.
+- **`state.rs` holds everything machine-local** (last run, latest report JSON, per-skill install
+  timestamps) under `$XDG_CACHE_HOME/kasetto/runtime/<hash>.json`, deliberately out of the lock -
+  same split as `uv.lock` vs uv's cache. Safe to delete.
+- **Source cache** (`fsops/cache.rs`): only immutable `ref:` sources are cached, under
+  `$XDG_CACHE_HOME/kasetto/sources/<sha256(key)>/tree/` with a sibling `.complete` marker written
+  last (extract to `.tmp-*`, then rename). Moving branches are never cached. `KASETTO_NO_CACHE`
+  opts out.
+- **Secrets are in-memory only.** `${kst_<name>}` (chain form: env var as written, then uppercased,
+  then `credentials.yaml`) or `${kst:<tag>:<ref>}` (tagged: `env`, `crd`, `op`, `vault`,
+  `kp`/`keepass`, `aws`, `gcp`, `az`, `pass`, `keychain`). Only the lowercase `kst` sentinel is
+  claimed - `${VAR}` and `${KST_...}` pass through untouched. Injection happens on the MCP merge
+  path after parsing, so the lock hashes the *placeholder* file and resolved values never reach
+  `kasetto.lock`, the source cache, or a stage dir. `Secret` is a redacting newtype.
+- **Comment-preserving config edits**: `add`/`remove` rewrite `kasetto.yaml` line-surgically via
+  `fsops/config_edit.rs`, never a serde round-trip, so user comments and key order survive
+  byte-for-byte. Then they delegate to `sync`.
+- **Config resolution** when `--config` is omitted (`lib.rs::resolve_config_path`): `$KASETTO_CONFIG`
+  -> `./kasetto.yaml` -> `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml` ->
+  `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` -> `./kasetto.yaml` fallback. `extends:` in a config is
+  merged before deserialization (scalars replace; asset lists merge by source identity).
+- **Perf shape**: sources that need fetching are materialized in parallel with `rayon`, then results
+  are processed sequentially in config order so output, lock writes, and last-writer-wins
+  destination semantics stay deterministic. `remote.rs` streams into the gzip decoder and
+  sparse-extracts only entries under `sub-dir`.
 
-Next.js 15 App Router project that hosts both the marketing landing (`/`) and the Fumadocs-powered documentation (`/docs/*`). Single Vercel project serves `kasetto.dev` and `docs.kasetto.dev` (legacy subdomain: host-gated 308 redirects in `next.config.mjs` rewrite `docs.kasetto.dev/<slug>` to `kasetto.dev/docs/<slug>`).
+### Output conventions
 
-- **`app/`** - App Router pages, shared `TopNav`, theme-less dark layout. `app/page.tsx` is the marketing homepage (tape-deck layout); `app/docs/[[...slug]]/page.tsx` renders MDX via Fumadocs and shows a "Copy page" / "View as Markdown" actions row (`lib/markdown.ts#getPageMarkdown`, reused by the `.md` route below). `app/docs-md/[[...slug]]/route.ts` serves each doc's raw content as plain Markdown; `next.config.mjs` rewrites `/docs/:path*.md` (and bare `/docs.md`) to it so `/docs/agents.md` etc. work without colliding with the `page.tsx` catch-all. `app/llms.txt/route.ts` (index, per llmstxt.org) and `app/llms-full.txt/route.ts` (every page concatenated) list pages in `content/docs/meta.json` sidebar order via `lib/markdown.ts#getOrderedDocsPages`.
-- **`content/docs/*.mdx`** - Documentation source. Order in `meta.json`. Mermaid blocks become live `<Mermaid>` JSX via the `remarkMermaid` plugin in `source.config.ts` (bypasses Shiki).
-- **`app/globals.css`** - Single source of design tokens in `:root`: palette (`--bg`/`--mauve`/`--rust`/...), type scale (`--fs-xs`..`--fs-2xl`), spacing (`--space-1`..`--space-18`), tracking, radius. Component styles reference tokens. No hardcoded color/font values outside the `:root` block. Fumadocs `--fd-*` tokens are bridged to the same palette in HSL.
-- Dark-only: there is no theme toggle; `RootProvider theme={{ enabled: false }}` and `<html className="dark" data-theme="dark">`.
+`colors.rs` defines 8 semantic 24-bit roles - `ACCENT` (bold, no color), `ATTENTION` (amber),
+`SUCCESS` (green), `ERROR` (red), `INFO` (cyan), `BRAND` (violet), `SECONDARY` (grey), `INFRA`
+(dim) - and hex values live *only* there. There is deliberately no foreground constant; body text
+inherits the terminal. Commands must render through `ui.rs` helpers (`action_glyph`,
+`print_section_header`, `print_source_header`, `print_tree_leaf`, `print_sync_chips`,
+`with_spinner`, `eprint_fail`/`eprint_warn`) rather than emitting inline ANSI. The banner is only
+shown on bare `kst` and `kst init`.
 
-### Sync Data Flow
+Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable),
+`-v`/`--verbose` (repeatable), and `--project`/`--global`. `--plain` is a hidden deprecated alias
+for `--color never`. Flags are resolved at the `app.rs` boundary via `OutputArgs::resolve_plain()`
+/ `SyncArgs::resolve_plain()`. `NO_COLOR` and `CLICOLOR_FORCE` are honored.
 
-1. Load config from file or HTTP URL (with GitLab/GitHub/Gitea auth via env vars). If the YAML has `extends:`, the loader recursively fetches and merges parent configs before deserialization (cycle-detected, capped at depth 8).
-2. Resolve scope (CLI flag → config field → default Global) and destination paths per agent
-3. For each skill source: materialize (download if remote) → discover available skills → select targets → hash → copy → update lock state. `commands/sync/skills.rs` runs in three phases: plan each source locally (locked-satisfiability, `needs_fetch`), **materialize every fetch-bound source in parallel via `rayon`** (downloads/extractions are independent; the source cache serializes same-key races), then process results sequentially in config order so output, lock writes, and last-writer-wins destination semantics stay deterministic
-4. For each command source: materialize → discover commands (`commands: "*"` auto-discovers the `commands/` directory; named/explicit entries otherwise) → parse frontmatter → transform each into the target agent's native format (`prompts::apply_command`, 5 output formats) → write to destination → update lock
-5. For each instruction source: materialize → discover instructions (`instructions: "*"` auto-discovers `instructions/**/*.{md,mdc}`; named/explicit entries otherwise) → parse frontmatter → transform per agent (`instructions::apply_instruction`) → write (managed-block upsert for aggregate files, per-instruction file for dir formats) → update lock
-6. For each MCP source: materialize → resolve files (`mcps: "*"` → auto-discover `.mcp.json` / `mcp.json` / `mcps/*.json`; `mcps: [names]` → `mcps/<name>.json`; `mcps: [{name, path}]` → `<path>/<name>.json`) → **inject `${kst_...}` secrets** into the parsed `mcpServers` object (only on the merge path, so unchanged entries skip re-injection; a missing required secret fails the entry) → collect pending installs → merge into agent settings files (an entry is re-merged with `overwrite` only when `--update` targets a secret-bearing pack, so a rotated secret propagates) → update lock (placeholder hash, never the value)
-7. Save lock file and report (unless `--dry-run`)
+### Env vars the CLI reads
 
-### UI System
+`KASETTO_CONFIG`, `KASETTO_CACHE_DIR`, `KASETTO_NO_CACHE`, `NO_COLOR`, `CLICOLOR_FORCE`,
+XDG (`XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_CACHE_HOME`, `HOME`, `APPDATA`),
+`KST_KEEPASS_PASSWORD`, and source auth tokens (`GITHUB_TOKEN`/`GH_TOKEN`, `GITLAB_TOKEN`,
+`CI_JOB_TOKEN`, `BITBUCKET_*`, `CODEBERG_TOKEN`/`GITEA_TOKEN`/`FORGEJO_TOKEN`).
 
-**Color palette** (`colors.rs`): Operational output and clap help use a fixed **24-bit truecolor** palette of seven semantic roles (hex values live only in `colors.rs`); body text inherits from the user's terminal. There is deliberately no foreground constant. Roles: `ACCENT` (bold, no color: emphasis / lead verbs), `ATTENTION` (`#e8a94d` amber: help & section headers, `Updated`/`Would ...` verbs, `warning:`, spinner glyph), `SUCCESS` (`#84c578` green: `Installed`/`Created`/`Audited` verbs, `+`/`✓` glyphs), `ERROR` (`#e87e6c` red: `error:` prefix, `−`/`✗` glyphs), `INFO` (`#6cbfd3` cyan: `tip:`/`note:` prefixes, source labels), `BRAND` (`#b6a6ef` violet: brand mark only: banner frame/wordmark + `◆` farewell), `SECONDARY` (`#a8a195` muted grey: paths, hints, `[y/N]`, clap placeholders), `INFRA` (`#6e6759`: tree branches/bullets, never content). `NO_COLOR` / `--color never` gate emission via `ui::color_stdout_enabled()`; `CLICOLOR_FORCE` (set by `--color always`) overrides TTY detection. `clap_styles()` renders headers/usage/literals in bold amber and placeholders in secondary grey. The brand banner (`banner.rs`) reuses `BRAND` (frame + logo) and `ATTENTION` (Japanese subtitle) from the shared palette.
+## Site (`site/`)
 
-**Shared helpers** (`ui.rs`): `SPINNER_FRAMES` (braille animation), `BRAND_GLYPH` (`◆`) / `STAR_GLYPH` (`✦`), `with_spinner()` / `with_spinner_transient()` (threaded progress animation), `print_json()`, `eprint_fail()` (red `error:` prefix) / `eprint_warn()` / `eprint_error()`, `action_glyph()` (per-asset sync rows: ` + ` installed / ` ↑ ` updated / ` − ` removed / ` ✓ ` unchanged / ` ! ` broken), `color_stdout_enabled()`, plus the tree/section/table printers (`print_section_header`, `print_source_header`, `print_tree_leaf`, `print_sync_chips`, ...). All commands consume these rather than emitting inline ANSI.
+Next.js 15 + React 19, Tailwind 3 with the Fumadocs preset, Biome (not ESLint/Prettier) for both
+lint and format, pnpm 11 / Node >= 22.
 
-**Output styling (uv-aligned)**: operational paths (`sync`/`list`/`doctor`/`clean`) follow uv discipline: terminal-default body text, bold-colored lead verbs in summaries (`Installed N items in Xms`, `Updated N items`, `Removed N items`, `Audited N items` for `--locked` no-ops), `warning:` / `error:` prefixed lines to stderr for non-fatal/fatal counts. `kst list` prints aligned tables (`NAME / SCOPE / SOURCE`, plus `UPDATED` for skills); per-action `--verbose` rows use the prefix-glyph format above.
+- `app/page.tsx` is the marketing landing; `app/docs/[[...slug]]/page.tsx` renders MDX from
+  `content/docs/*.mdx` (sidebar order comes from `content/docs/meta.json`).
+- Raw-Markdown and LLM routes: `app/docs-md/[[...slug]]/route.ts` (reached via the
+  `/docs/:path*.md` rewrite in `next.config.mjs`), `app/llms.txt`, `app/llms-full.txt`.
+- `app/install/route.ts` and `app/install.ps1/route.ts` serve the installer scripts behind
+  `kasetto.dev/install`.
+- `next.config.mjs` also holds security headers and host-gated 308 redirects from
+  `docs.kasetto.dev/<slug>` to `kasetto.dev/docs/<slug>` (add new slugs to `DOC_SLUGS`).
+- ` ```mermaid ` fences become live `<Mermaid>` JSX via the `remarkMermaid` plugin in
+  `source.config.ts`, bypassing Shiki.
+- Design tokens live only in `:root` in `app/globals.css`; dark-only, no theme toggle.
+- Vercel auto-deploy on `main` is disabled (`site/vercel.json`); the site ships via the manual
+  `site.yaml` workflow.
 
-### Key Patterns
+## Conventions
 
-- **Scope as first-class concept**: Global (`~/.agent/skills/`) vs Project (`./.agent/skills/`), with scope-scoped lock files. Resolution: CLI flag → config field → default Global. See `model::resolve_scope()`.
-- **Agent as exhaustive enum**: `model::Agent` with serde aliases, maps to install paths and MCP settings targets. Adding an agent = add enum variant + path mappings.
-- **Skill discovery by convention**: Skills found in `root/` or `root/skills/` by directory listing (no manifest needed). Each skill dir must contain a `SKILL.md`.
-- **Module docs**: Every `.rs` file opens with a `//!` doc comment. Non-root files start `Module that contains ...`; `lib.rs` and each `mod.rs` start `Package that contains ...`. Keep it to one summary sentence, with any extra detail in following `//!` lines.
-- **Output modes**: Most commands support `--color <auto|always|never>` (default `auto`), `--json` (structured), `-q`/`--quiet` (count action, repeat for stricter silence), and `-v`/`--verbose` (count action: `-v`/`-vv`/`-vvv`). `--plain` is preserved as a hidden deprecated alias for `--color never` and emits a stderr warning when used. Check `animations_enabled()` and the `as_json`/`plain`/`quiet` flags inside commands; resolve flags at the `app.rs` boundary via `OutputArgs::resolve_plain()` / `SyncArgs::resolve_plain()`.
+- **Module docs**: every `.rs` file opens with a `//!` comment. `lib.rs` and each `mod.rs` start
+  `Package that contains ...`; every other file starts `Module that contains ...`. One summary
+  sentence, extra detail on following `//!` lines.
+- **Tests are inline `#[cfg(test)] mod tests`** at the bottom of each module - there is no `tests/`
+  directory. `assert_cmd`/`predicates`/`tempfile` are available as dev-deps.
+- `unsafe_code` is forbidden; `clippy::all` is denied, `perf` warns, and `dbg!`/`todo!` warn
+  (`[lints]` in `Cargo.toml`).
+- Rust indents 4, everything else 2 (`.editorconfig`); max line length 120.
+- **Conventional Commits** (`<type>(<scope>): <subject>`, imperative, lowercase, no trailing
+  period) - `CHANGELOG.md` is generated by `git-cliff` from them, so commit messages are
+  user-facing. Branches are `<type>/<kebab-description>`. Full type table in `CONTRIBUTING.md`.
+- Feature or messaging changes must land in `README.md`, `site/content/docs/`, and the code
+  together.
+- The repo ships four local Claude skills under `.claude/skills/` (brand guidelines, CLI style,
+  docs style, site style). Consult them before writing CLI output, README/docs prose, or site
+  markup. `.claude/` is gitignored.
 
-## GitHub Workflows (`.github/workflows/`)
+## CI and release (`.github/workflows/`)
 
-All four workflows expose `workflow_dispatch` so they can be triggered manually with `gh workflow run <name>.yaml --ref main`.
+All four workflows expose `workflow_dispatch` (`gh workflow run <name>.yaml --ref main`).
 
-- **`ci.yaml`** - runs on push to `main` and on every PR. Two flat jobs running in parallel on `ubuntu-24.04-arm`. `ci-rs`: install-rs → lint-rs → audit-rs → test-rs → build-rs. `ci-next`: install-next → lint-next → audit-next → test-next → build-next. Rust job sets up the toolchain via `dtolnay/rust-toolchain@stable` (with `rustfmt,clippy` components), `Swatinem/rust-cache@v2` for build caching, and `taiki-e/install-action@v2` for `cargo-audit`. `test-rs` is guarded by a `.no-tests` sentinel (if the sentinel file exists it prints a skip message; since no sentinel is committed, `cargo test` always runs). `test-next` is a pure no-op placeholder (`@echo "no Next.js tests"`). All steps drive work through `just` recipes (`just lint-rs`, `just audit-rs`, `just test-rs`, `just build-rs`, `just lint-next`, `just audit-next`, `just test-next`, `just build-next`).
-- **`release.yaml`** - manual dispatch only. Optional `version` input; otherwise `git-cliff --bumped-version` derives the next version from conventional commits. Pipeline: `tag` (bump `Cargo.toml` + `Cargo.lock`, regenerate `CHANGELOG.md` via `git-cliff`, commit as `release: vX.Y.Z`, tag, push) → `build` (matrix across 6 targets: linux/macos/windows × x86_64/aarch64; cross-compiles aarch64 linux with `gcc-aarch64-linux-gnu`) → `release` (sha256 `checksums.txt`, GitHub Release with `--latest --strip header` changelog body) → `publish-crate` (`cargo publish`, needs `CARGO_REGISTRY_TOKEN`) + `update-homebrew` (regenerates `Formula/kasetto.rb` in `pivoshenko/homebrew-tap`, needs `HOMEBREW_TAP_TOKEN`) + `update-scoop` (regenerates `kasetto.json` in `pivoshenko/scoop-bucket`, needs `SCOOP_BUCKET_TOKEN`).
-- **`site.yaml`** - manual dispatch only. Runs `npx vercel deploy --prod --yes` against the Vercel project. Needs `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_SITE_PROJECT_ID`. Not coupled to `release.yaml`: site ships independently of the CLI.
-- **`labels.yaml`** - auto-syncs GitHub labels via `crazy-max/ghaction-github-labeler` whenever `.github/labels.yaml` or the workflow itself changes on `main`. Needs `GH_TOKEN`.
+- **`ci.yaml`** - push to `main` + every PR. Two parallel jobs on `ubuntu-24.04-arm`: `ci-rs`
+  (install -> lint -> audit -> test -> build) and `ci-next` (same shape). Every step is a `just`
+  recipe, so reproducing CI locally is `just check` plus `just audit`.
+- **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless overridden, bumps
+  `Cargo.toml`/`Cargo.lock`, regenerates `CHANGELOG.md`, commits `release: vX.Y.Z`, tags, pushes)
+  -> `build` (6 targets: linux/macos/windows x x86_64/aarch64) -> `release` (checksums + GitHub
+  Release) -> `publish-crate` + `update-homebrew` (`pivoshenko/homebrew-tap`) + `update-scoop`
+  (`pivoshenko/scoop-bucket`). Never bump the version by hand.
+- **`site.yaml`** - manual only, `npx vercel deploy --prod --yes`. Decoupled from the CLI release.
+- **`labels.yaml`** - syncs GitHub labels from `.github/labels.yaml`.
