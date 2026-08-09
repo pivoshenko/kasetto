@@ -33,7 +33,7 @@ fn fetch_ref_cached(
 ) -> Result<(PathBuf, Option<PathBuf>)> {
     // Sparse extraction stores only the requested sub-tree, so the cache key must
     // fold in the sub-dir, otherwise two sub-dirs of the same immutable ref would
-    // collide on one entry that holds only the first one's files.
+    // collide on one entry that holds only the first one's files
     let cache_key = match sub_dir {
         Some(s) => format!("{url}\n{s}"),
         None => url.to_string(),
@@ -112,15 +112,15 @@ pub(crate) fn materialize_source(
         let pin = src.git_pin();
 
         // Only the requested sub-dir needs extracting; pass it down so a monorepo
-        // tarball is filtered to that sub-tree instead of written out in full.
+        // tarball is filtered to that sub-tree instead of written out in full
         let sub = src.sub_dir.as_deref();
 
         // `root` is the materialized repository root (the cached tree on a hit,
         // else the freshly-extracted `stage`); `cleanup_dir` is `Some` only when
-        // `root` is a throwaway stage the caller should delete afterwards.
+        // `root` is a throwaway stage the caller should delete afterwards
         let (root, source_revision, cleanup_dir) = match &pin {
             GitPin::Ref(r) => {
-                // Immutable ref: URL fully determines content, so it is cacheable.
+                // Immutable ref: URL fully determines content, so it is cacheable
                 let (url, auth) = remote::remote_repo_archive_ref(&parsed, r);
                 let (root, cleanup) = fetch_ref_cached(&url, &auth, &src.source, stage, sub)?;
                 (root, format!("ref:{r}"), cleanup)
@@ -236,7 +236,7 @@ fn discover_skills_in_subdir(base: &Path, out: &mut HashMap<String, PathBuf>) ->
 pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
 
-    // Check well-known root-level MCP files (.mcp.json is the Claude Code convention).
+    // Check well-known root-level MCP files (.mcp.json is the Claude Code convention)
     for name in [".mcp.json", "mcp.json"] {
         let p = root.join(name);
         if p.is_file() {
@@ -244,7 +244,7 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         }
     }
 
-    // Warn if the old mcp/ layout is present but mcps/ is not.
+    // Warn if the old mcp/ layout is present but mcps/ is not
     if root.join("mcp").exists() && !root.join("mcps").exists() {
         eprintln!(
             "warning: found a `mcp/` directory but Kasetto now scans `mcps/`; \
@@ -252,7 +252,7 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         );
     }
 
-    // Check mcps/ subdirectory for additional pack JSON files.
+    // Check mcps/ subdirectory for additional pack JSON files
     let mcp_dir = root.join("mcps");
     if mcp_dir.exists() {
         for e in fs::read_dir(mcp_dir)? {
@@ -438,7 +438,7 @@ pub(crate) fn resolve_instruction_entry(
                 return resolve_named_instruction(root, name);
             };
             let base = root.join(dir);
-            // Accept an explicit extension, else try .md then .mdc.
+            // Accept an explicit extension, else try .md then .mdc
             let candidates: Vec<PathBuf> = if name.ends_with(".md") || name.ends_with(".mdc") {
                 vec![base.join(name)]
             } else {

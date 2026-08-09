@@ -18,8 +18,8 @@ pub(super) fn remote_repo_archive_branch(
     match parsed {
         RepoUrl::GitHub { host, owner, repo } => {
             let auth = UrlRequestAuth::for_github_archive();
-            // GitHub's web archive endpoint doesn't support token auth for private repositories.
-            // The API endpoint (api.github.com) does and works for public repos too.
+            // GitHub's web archive endpoint doesn't support token auth for private repositories
+            // The API endpoint (api.github.com) does and works for public repos too
             let url = if host == "github.com" && !auth.headers.is_empty() {
                 format!(
                     "https://api.{host}/repos/{owner}/{repo}/tarball/{}",
@@ -239,7 +239,7 @@ pub(super) fn download_extract(
     // Stream the response straight into the gzip decoder rather than buffering
     // the whole archive in memory (a monorepo tarball can be tens of MB). Peek
     // the first bytes without consuming them to catch an HTML error/login page
-    // served with a 200.
+    // served with a 200
     let mut reader = BufReader::with_capacity(64 * 1024, response);
     {
         let head = reader
@@ -284,7 +284,7 @@ fn extract_tar<R: Read>(reader: R, dst: &Path, sub_dir: Option<&str>) -> Result<
             return Err(err("unsafe archive path"));
         }
         if let Some(sub) = sub {
-            // Component-wise prefix match so `skills` does not match `skills-x`.
+            // Component-wise prefix match so `skills` does not match `skills-x`
             if !rel.starts_with(sub) {
                 continue;
             }
@@ -349,7 +349,7 @@ mod tests {
             ("repo-main/README.md", b"readme"),
             ("repo-main/skills/alpha/SKILL.md", b"# alpha"),
             ("repo-main/packages/huge/file.bin", b"xxxxxxxx"),
-            // A sibling with a shared prefix must NOT be captured by `skills`.
+            // A sibling with a shared prefix must NOT be captured by `skills`
             ("repo-main/skills-extra/beta/SKILL.md", b"# beta"),
         ]);
         let dst = crate::fsops::temp_dir("kasetto-extract-sparse");

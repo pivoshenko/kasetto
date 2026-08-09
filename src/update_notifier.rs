@@ -35,7 +35,7 @@ pub(crate) struct UpdateCheckHandle {
 }
 
 fn cache_path() -> Option<PathBuf> {
-    // Test override.
+    // Test override
     if let Ok(dir) = std::env::var("KASETTO_CACHE_DIR") {
         if !dir.is_empty() {
             return Some(PathBuf::from(dir).join(CACHE_FILE));
@@ -88,7 +88,7 @@ pub(crate) fn spawn_background_check() -> Option<UpdateCheckHandle> {
 
     let (tx, rx) = mpsc::channel();
     // Best-effort: this detached thread only refreshes a cosmetic update-check cache, so any
-    // panic here is intentionally isolated to the thread and never aborts the real command.
+    // panic here is intentionally isolated to the thread and never aborts the real command
     std::thread::spawn(move || {
         if let Ok(release) = fetch_latest_release() {
             let entry = CacheEntry {

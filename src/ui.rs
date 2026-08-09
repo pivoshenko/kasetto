@@ -138,7 +138,7 @@ where
     let result = operation();
     stop.store(true, Ordering::Relaxed);
     // Best-effort: a panic in the cosmetic spinner thread is intentionally swallowed here so it
-    // never surfaces to or aborts the real command whose result we return below.
+    // never surfaces to or aborts the real command whose result we return below
     let _ = handle.join();
     let mut stderr = std::io::stderr();
     match (&result, transient, plain) {
@@ -319,7 +319,7 @@ pub(crate) fn print_source_header(
     };
     match (count, right_col_at) {
         (Some(n), Some(col)) => {
-            // Visible width = "✓ repo" + " " + "N"; pad whitespace between repo and N.
+            // Visible width = "✓ repo" + " " + "N"; pad whitespace between repo and N
             let visible_prefix = 1 + 1 + repo.chars().count();
             let n_str = n.to_string();
             let pad = col.saturating_sub(visible_prefix + n_str.len());

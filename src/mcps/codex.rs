@@ -161,7 +161,7 @@ fn json_mcp_server_to_codex_toml_table(
         for (k, v) in env {
             let s = match v {
                 serde_json::Value::String(s) => s.clone(),
-                // Non-string values (numbers, bools) are rendered via Display.
+                // Non-string values (numbers, bools) are rendered via Display
                 _ => v.to_string(),
             };
             et.insert(k.clone(), Toml::String(s));

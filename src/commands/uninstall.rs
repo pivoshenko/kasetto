@@ -30,7 +30,7 @@ pub(crate) fn run(yes: bool) -> Result<()> {
         println!();
     }
 
-    // Snapshot what's about to be removed so we can report it after silent cleanup.
+    // Snapshot what's about to be removed so we can report it after silent cleanup
     let scope = resolve_scope(None, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let counts = match load_lock(scope, &project_root) {
@@ -101,7 +101,7 @@ fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
         .filter_map(|p| Path::new(p).parent().map(Path::to_path_buf))
         .collect();
     // `clean::run` tears down instructions too, so they belong in the summary;
-    // omitting them meant they were deleted without ever being reported.
+    // omitting them meant they were deleted without ever being reported
     let instructions = lock
         .assets
         .values()
@@ -178,7 +178,7 @@ mod tests {
         ]);
         let counts = count_assets(&lock);
         assert_eq!(counts.instructions, 2);
-        // One distinct parent directory across the command destinations.
+        // One distinct parent directory across the command destinations
         assert_eq!(counts.command_dirs, 1);
     }
 

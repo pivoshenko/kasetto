@@ -201,7 +201,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         print_sync_tree(&report, opts.plain);
         print_sync_summary(&report, opts.plain, opts.verbose, elapsed, opts.locked);
         // A plain sync never re-resolves secrets for an unchanged server, so a
-        // token rotated in env/credentials/op won't propagate until `--update`.
+        // token rotated in env/credentials/op won't propagate until `--update`
         if secrets_need_update {
             crate::ui::print_tip(
                 "some synced MCP servers carry secrets; a plain sync won't re-resolve a \
@@ -403,7 +403,7 @@ fn print_resolution_header(report: &Report, plain: bool) {
 /// tail. Order: actions stay in the order the sync emitted them (already
 /// grouped by source per the underlying sync flow).
 fn print_sync_tree(report: &Report, plain: bool) {
-    // Group actions by source, preserving first-seen order.
+    // Group actions by source, preserving first-seen order
     let mut groups: Vec<(String, Vec<&crate::model::Action>)> = Vec::new();
     for a in &report.actions {
         let src = a.source.as_deref().unwrap_or("-");
@@ -416,7 +416,7 @@ fn print_sync_tree(report: &Report, plain: bool) {
 
     for (source, items) in &groups {
         let repo = short_source(source);
-        // Sync source headers have NO count per design (terminal.jsx runSync).
+        // Sync source headers have NO count per design (terminal.jsx runSync)
         print_source_header(&repo, None, Some(true), None, plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;

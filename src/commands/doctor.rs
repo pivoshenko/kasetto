@@ -96,7 +96,7 @@ pub(crate) fn run(
 
     // Verify each locked skill destination actually exists on disk. The lock is
     // authoritative for `sync`, so a destination that was never written (or was
-    // deleted out-of-band) is invisible unless `doctor` stats the filesystem.
+    // deleted out-of-band) is invisible unless `doctor` stats the filesystem
     let mut missing_skills: Vec<String> = state
         .skills
         .values()
@@ -294,7 +294,7 @@ fn print_group_header_with_count(title: &str, count: usize, color: bool) {
 }
 
 fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {
-    // Scope COMMAND DIRECTORIES to the agents the config actually wires.
+    // Scope COMMAND DIRECTORIES to the agents the config actually wires
     // If no config or no agents configured, fall back to every supported agent
     // (debugging view: "what does kasetto know how to write to?")
     let agents: Vec<crate::model::Agent> =
@@ -412,7 +412,7 @@ fn collect_unmanaged(
     };
 
     // A custom `destination` redirects only skills (see `resolve_destinations`),
-    // resolved against the same `root` the locked skill paths use.
+    // resolved against the same `root` the locked skill paths use
     let mut skill_dirs = match &custom_dest {
         Some(dest) => vec![crate::fsops::resolve_path(root, dest)],
         None => skill_dirs,
@@ -423,7 +423,7 @@ fn collect_unmanaged(
     // `.agents/skills`, the old directory is no longer a managed path, so its
     // contents would go unreported. Scan it so anything left there surfaces as
     // untracked and the user can delete it. Nothing here is ever removed
-    // automatically. Drop this once the bad path is far enough behind us.
+    // automatically. Drop this once the bad path is far enough behind us
     let legacy_codex = root.join(".codex/skills");
     if legacy_codex.is_dir() && !skill_dirs.contains(&legacy_codex) {
         skill_dirs.push(legacy_codex);
@@ -443,7 +443,7 @@ fn collect_unmanaged(
 
     // Locked destination sets, built under the same `root` as the scan so plain
     // PathBuf equality holds (no canonicalize; it would fail on missing paths
-    // and resolve symlinks the scan side does not).
+    // and resolve symlinks the scan side does not)
     let mut locked_skill_dirs: HashSet<PathBuf> = HashSet::new();
     for e in lock.skills.values() {
         for d in e.destination.split(',').filter(|s| !s.is_empty()) {
@@ -632,7 +632,7 @@ fn find_unmanaged_mcp_servers(
 }
 
 fn is_writable(path: &Path) -> bool {
-    // Walk up to the first ancestor that exists, then probe write permissions there.
+    // Walk up to the first ancestor that exists, then probe write permissions there
     let mut probe = path.to_path_buf();
     loop {
         if probe.exists() {
@@ -719,7 +719,7 @@ mod tests {
         fs::create_dir_all(&scan).unwrap();
         let kept = write_skill(&scan, "kept");
         let stray = write_skill(&scan, "stray");
-        // A directory without SKILL.md and a loose file must be ignored.
+        // A directory without SKILL.md and a loose file must be ignored
         fs::create_dir_all(scan.join("not-a-skill")).unwrap();
         fs::write(scan.join("loose.md"), "x").unwrap();
 

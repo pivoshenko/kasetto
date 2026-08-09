@@ -85,7 +85,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
 
     let checksums_asset = release.assets.iter().find(|a| a.name == "checksums.txt");
 
-    // Phase 1: download archive bytes.
+    // Phase 1: download archive bytes
     let body = with_spinner_transient(
         animate,
         !color,
@@ -98,7 +98,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         as_json,
     );
 
-    // Phase 2: verify checksum.
+    // Phase 2: verify checksum
     if let Some(checksums_asset) = checksums_asset {
         with_spinner_transient(animate, !color, "Verifying checksum", || {
             let checksums_text = http_client()?
@@ -112,7 +112,7 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         print_step_done("Checksum verified", color, as_json);
     }
 
-    // Phase 3: install.
+    // Phase 3: install
     with_spinner_transient(animate, !color, "Installing", || {
         install_from_archive(&body, &current_exe)
     })?;

@@ -11,7 +11,7 @@ fn derive_relpath(name: &str, format: InstructionFormat) -> PathBuf {
     match format {
         InstructionFormat::CursorMdc => PathBuf::from(format!("{flat}.mdc")),
         InstructionFormat::PlainMarkdownDir => PathBuf::from(format!("{flat}.md")),
-        // Aggregate formats have no per-instruction relpath; callers must not ask.
+        // Aggregate formats have no per-instruction relpath; callers must not ask
         InstructionFormat::AggregateMarkdown => PathBuf::from(format!("{flat}.md")),
     }
 }
@@ -24,7 +24,7 @@ pub(crate) fn render(parsed: &Parsed, format: InstructionFormat) -> String {
     match format {
         InstructionFormat::CursorMdc => render_cursor_mdc(parsed),
         // Body only, frontmatter stripped. globs/alwaysApply have no meaning
-        // for agents that don't scope instructions, so they are dropped here.
+        // for agents that don't scope instructions, so they are dropped here
         InstructionFormat::PlainMarkdownDir | InstructionFormat::AggregateMarkdown => {
             parsed.body.clone()
         }
@@ -124,7 +124,7 @@ pub(crate) fn scan_managed_block_ids(text: &str) -> Vec<String> {
     let mut rest = text;
     // Both START and END markers share PREFIX; advance past each marker's close
     // so an END marker (or a marker for another block) can't swallow the START
-    // that follows it. Only START markers contribute an id.
+    // that follows it. Only START markers contribute an id
     while let Some(i) = rest.find(PREFIX) {
         let after = &rest[i + PREFIX.len()..];
         let Some(j) = after.find(CLOSE) else { break };
@@ -337,7 +337,7 @@ mod tests {
         assert!(updated.contains("user text."));
         assert!(updated.contains("v2"));
         assert!(!updated.contains("v1"));
-        // Exactly one block.
+        // Exactly one block
         assert_eq!(updated.matches("style-abc START").count(), 1);
     }
 
@@ -356,7 +356,7 @@ mod tests {
         let two = upsert_block(&one, "b-2", "beta");
         assert!(two.contains("alpha"));
         assert!(two.contains("beta"));
-        // Removing one leaves the other.
+        // Removing one leaves the other
         let only_b = remove_block(&two, "a-1");
         assert!(!only_b.contains("alpha"));
         assert!(only_b.contains("beta"));
@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn updating_first_block_does_not_corrupt_second() {
         // Regression: a naive independent find(END) would match the FIRST END
-        // and slice the wrong region when updating the first of two blocks.
+        // and slice the wrong region when updating the first of two blocks
         let two = upsert_block(&upsert_block("top.\n", "a-1", "alpha"), "b-2", "beta");
         let updated = upsert_block(&two, "a-1", "alpha2");
         assert!(updated.contains("top."));
@@ -379,10 +379,10 @@ mod tests {
     #[test]
     fn body_containing_a_different_marker_string_is_safe() {
         // An instruction that documents kasetto's marker format (a DIFFERENT id) must not
-        // confuse block detection for this id.
+        // confuse block detection for this id
         let body = "see <!-- kasetto:instruction:other-xyz END --> for the format";
         let out = upsert_block("user.\n", "style-abc", body);
-        // Update this block; the embedded other-id marker must not truncate it.
+        // Update this block; the embedded other-id marker must not truncate it
         let updated = upsert_block(&out, "style-abc", "clean body");
         assert!(updated.contains("clean body"));
         assert!(!updated.contains("see <!--"));
@@ -398,7 +398,7 @@ mod tests {
         assert!(v2.contains("User notes."));
         assert!(v2.contains("v2"));
         assert!(!v2.contains("v1"));
-        // No stray blank-line / CR accretion across updates.
+        // No stray blank-line / CR accretion across updates
         assert!(!v2.contains("\r\n\r\n\r\n"));
         assert_eq!(v2.matches("style-abc START").count(), 1);
     }
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn scan_ignores_prose_that_does_not_match_block_id_shape() {
         // A user paragraph that mentions the marker syntax with a non-conforming
-        // id must not be picked up as a managed block.
+        // id must not be picked up as a managed block
         let text = "Docs: wrap content in <!-- kasetto:instruction:EXAMPLE START --> ... END.\n";
         assert!(scan_managed_block_ids(text).is_empty());
     }

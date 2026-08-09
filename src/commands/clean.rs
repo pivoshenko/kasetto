@@ -41,7 +41,7 @@ pub(crate) fn run(
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
     let command_assets = lock.list_tracked_asset_ids("command");
     // Instructions need source + name (to recompute the managed-block id at teardown),
-    // so snapshot them directly rather than via the (id, dest) list helper.
+    // so snapshot them directly rather than via the (id, dest) list helper
     let instruction_meta: Vec<(String, String, String)> = lock
         .assets
         .iter()
@@ -134,7 +134,7 @@ fn apply_removals(
     }
 
     // Instructions: strip the managed block from shared aggregate files (never deleting
-    // the user-owned file) or delete a standalone per-instruction file.
+    // the user-owned file) or delete a standalone per-instruction file
     for (source, name, dest_csv) in instruction_assets {
         for token in dest_csv.split(',').filter(|s| !s.is_empty()) {
             crate::instructions::teardown_dest(token, source, name, &root);

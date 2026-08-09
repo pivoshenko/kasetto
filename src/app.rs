@@ -17,7 +17,7 @@ pub fn run() -> Result<()> {
 
     // Wait briefly so the cache is fresh before commands like `doctor` read it
     // and before we render the end-of-run notice. Suppressed paths skip this so
-    // scripted output stays fast.
+    // scripted output stays fast
     if !suppress_notice {
         crate::update_notifier::wait_for_check(update_handle, Duration::from_millis(800));
     }
@@ -125,7 +125,7 @@ pub fn run() -> Result<()> {
                 scope,
             } => {
                 // Apply color side effects (CLICOLOR_FORCE for `--color always`);
-                // `lock` renders via `color_stdout_enabled()`, not a plain flag.
+                // `lock` renders via `color_stdout_enabled()`, not a plain flag
                 let _ = output.resolve_plain();
                 crate::commands::lock::run(&crate::commands::lock::LockOptions {
                     config: config.as_deref(),

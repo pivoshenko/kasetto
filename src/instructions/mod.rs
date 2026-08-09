@@ -79,7 +79,7 @@ pub(crate) fn dest_token(target: &InstructionTarget, rel: &str) -> String {
 pub(crate) fn teardown_dest(token: &str, source_url: &str, name: &str, root: &Path) {
     // Only the known `agg:`/`file:` prefixes are stripped; splitting on the
     // first `:` would mangle an absolute Windows destination (`C:\...`), which
-    // `relativize_dest` stores verbatim when the dest is outside the scope root.
+    // `relativize_dest` stores verbatim when the dest is outside the scope root
     if let Some(rel) = token.strip_prefix("agg:") {
         let path = resolve_dest(rel, root);
         if path.is_file() {
@@ -150,12 +150,12 @@ mod tests {
         assert!(text.contains("Use tabs."));
         assert!(dest_present(&target, "style", "https://x/a"));
 
-        // Re-apply is idempotent (still one block).
+        // Re-apply is idempotent (still one block)
         apply_instruction(&src, &target, "https://x/a", "style").unwrap();
         let text2 = fs::read_to_string(&claude).unwrap();
         assert_eq!(text2.matches("kasetto:instruction").count(), 2); // START + END
 
-        // Teardown strips the block but keeps the user file + content.
+        // Teardown strips the block but keeps the user file + content
         let token = dest_token(&target, "CLAUDE.md");
         teardown_dest(&token, "https://x/a", "style", &proj);
         let after = fs::read_to_string(&claude).unwrap();

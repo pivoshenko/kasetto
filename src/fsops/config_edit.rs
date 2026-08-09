@@ -109,7 +109,7 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
                         "`{key}:` is an inline list; reformat it as a block list before editing"
                     )));
                 }
-                // Normalize `key: []` / `key:` into a block header.
+                // Normalize `key: []` / `key:` into a block header
                 lines[idx] = format!("{key}:");
             }
 
@@ -118,7 +118,7 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
             let indent = items.first().map(|it| it.indent).unwrap_or(2);
 
             // Append after the last item's real content, letting trailing blank
-            // lines and floating comments stay below the freshly inserted item.
+            // lines and floating comments stay below the freshly inserted item
             let mut insert_at = items.last().map(|it| it.end).unwrap_or(idx + 1);
             while insert_at > idx + 1 {
                 let prev = lines[insert_at - 1].trim_start();
@@ -133,7 +133,7 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
             splice(&mut lines, insert_at, block);
         }
         None => {
-            // Append a fresh section at the end of the file.
+            // Append a fresh section at the end of the file
             if let Some(last) = lines.last() {
                 if !last.trim().is_empty() {
                     lines.push(String::new());
@@ -237,7 +237,7 @@ pub(crate) fn remove_names(
     };
     let (istart, iend) = (it.start, it.end);
 
-    // Locate the selector field line (`skills:` / `mcps:` / `commands:`).
+    // Locate the selector field line (`skills:` / `mcps:` / `commands:`)
     let mut field = None;
     #[allow(clippy::needless_range_loop)]
     for i in istart..iend {
@@ -259,7 +259,7 @@ pub(crate) fn remove_names(
         )));
     }
 
-    // Collect the scalar name lines under the selector field.
+    // Collect the scalar name lines under the selector field
     let mut name_lines: Vec<(usize, String)> = Vec::new();
     let mut has_object = false;
     #[allow(clippy::needless_range_loop)]
@@ -588,7 +588,7 @@ mod tests {
         let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n\n# trailing note\nagent: cursor\n";
         let out = insert_item(text, Section::Skills, &wildcard("https://x/b")).unwrap();
         assert!(out.contains("- source: https://x/b"));
-        // The trailing comment + next key remain after the inserted item.
+        // The trailing comment + next key remain after the inserted item
         let b_pos = out.find("https://x/b").unwrap();
         let note_pos = out.find("# trailing note").unwrap();
         assert!(b_pos < note_pos);
@@ -772,7 +772,7 @@ mod tests {
     #[test]
     fn remove_last_item_leaves_bare_section_header() {
         // Dropping the final entry of a section leaves the section header
-        // behind without trailing whitespace; a later `insert_item` can repopulate.
+        // behind without trailing whitespace; a later `insert_item` can repopulate
         let text = "skills:\n  - source: https://x/a\n    skills: \"*\"\n";
         let (out, removed) = remove_item(text, Section::Skills, "https://x/a", None, None).unwrap();
         assert!(removed);
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     fn remove_last_named_item_collapses_then_can_be_reused() {
         // The same invariant for the names path: stripping the last name drops
-        // the entry, leaving only the section header.
+        // the entry, leaving only the section header
         let text = "mcps:\n  - source: https://x/a\n    mcps:\n      - foo\n";
         let (out, outcome) = remove_names(
             text,
@@ -804,10 +804,10 @@ mod tests {
 
     #[test]
     fn remove_then_insert_round_trips_indentation() {
-        // Four-space-indented list must round-trip without breaking the sequence.
+        // Four-space-indented list must round-trip without breaking the sequence
         let text = "skills:\n    - source: https://x/a\n      skills: \"*\"\n";
         let out = insert_item(text, Section::Skills, &wildcard("https://x/b")).unwrap();
-        // New item adopts the existing 4-space dash indent.
+        // New item adopts the existing 4-space dash indent
         assert!(out.contains("\n    - source: https://x/b"));
         assert!(out.contains("\n      skills: \"*\""));
     }

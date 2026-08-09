@@ -100,7 +100,7 @@ impl SecretContext {
         // External managers: only invoked when a matching `${kst:<tag>:...}` ref
         // appears (their `handles` gates on the tag), so adding them
         // unconditionally costs nothing for env/credentials-only configs. Each
-        // shells out to the provider's own CLI, inheriting its session.
+        // shells out to the provider's own CLI, inheriting its session
         sources.push(Box::new(OnePasswordSource));
         sources.push(Box::new(VaultSource));
         sources.push(Box::new(AwsSecretsSource));
@@ -111,7 +111,7 @@ impl SecretContext {
 
         // KeePass needs a configured database, so it is added only when the
         // `secrets.keepass` block is present. The master password (if any) is
-        // read from the environment, never from the committed config.
+        // read from the environment, never from the committed config
         if let Some(kp) = cfg.and_then(|c| c.keepass.as_ref()) {
             let database = crate::fsops::resolve_path(cfg_dir, &kp.database)
                 .to_string_lossy()
@@ -214,7 +214,7 @@ impl SecretContext {
             }
         }
         // A tagged ref no source claims is either unconfigured (keepass needs a
-        // `secrets.keepass` block) or an unknown manager.
+        // `secrets.keepass` block) or an unknown manager
         if !handled {
             if let Some(tag) = &r.tag {
                 if matches!(tag.as_str(), "kp" | "keepass") {

@@ -43,7 +43,7 @@ impl SecretSource for EnvSource {
             return Ok(std::env::var(&r.payload).ok().map(Secret::new));
         }
         // Chain `${kst_name}` → the lowercase key as written, then uppercased so
-        // a lowercase placeholder still resolves a conventional UPPER_CASE var.
+        // a lowercase placeholder still resolves a conventional UPPER_CASE var
         if let Ok(v) = std::env::var(&r.flat_key) {
             return Ok(Some(Secret::new(v)));
         }
@@ -94,7 +94,7 @@ impl SecretSource for CredentialsFileSource {
             return Ok(descend(&self.root, &segs).map(Secret::new));
         }
         // Chain: a flat top-level key (case-insensitive), then the nested
-        // `__`-separated path.
+        // `__`-separated path
         if let Some(v) = lookup_key(&self.root, &r.flat_key).and_then(Yaml::as_str) {
             return Ok(Some(Secret::new(v.to_string())));
         }
@@ -438,7 +438,7 @@ fn op_uri(payload: &str) -> String {
 
 /// Split a Vault payload `"<kv-path>#<field>"` into its path and field parts.
 fn vault_path_field(payload: &str) -> Result<(&str, &str)> {
-    // Same `#` split as `split_field`, but the field is mandatory for vault.
+    // Same `#` split as `split_field`, but the field is mandatory for vault
     match split_field(payload) {
         (path, Some(field)) if !path.is_empty() => Ok((path, field)),
         _ => Err(err(format!(
@@ -463,7 +463,7 @@ fn run_cli_stdin(bin: &str, args: &[&str], stdin: Option<&str>) -> Result<String
     let mut cmd = Command::new(bin);
     cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
     // Pipe when we have input to feed; otherwise close stdin so a CLI that would
-    // prompt interactively fails fast instead of hanging the sync on a tty read.
+    // prompt interactively fails fast instead of hanging the sync on a tty read
     cmd.stdin(if stdin.is_some() {
         Stdio::piped()
     } else {
@@ -476,7 +476,7 @@ fn run_cli_stdin(bin: &str, args: &[&str], stdin: Option<&str>) -> Result<String
     })?;
     if let Some(data) = stdin {
         use std::io::Write;
-        // Taking and dropping the handle closes the pipe (EOF) after the write.
+        // Taking and dropping the handle closes the pipe (EOF) after the write
         if let Some(mut pipe) = child.stdin.take() {
             pipe.write_all(data.as_bytes())
                 .and_then(|()| pipe.write_all(b"\n"))
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn credentials_flat_key_case_insensitive() {
-        // A lowercase `${kst_github_token}` resolves an UPPER_CASE flat key.
+        // A lowercase `${kst_github_token}` resolves an UPPER_CASE flat key
         let yaml: Yaml = serde_yaml::from_str("KST_GITHUB_TOKEN: ghp_abc\n").unwrap();
         let src = CredentialsFileSource::from_yaml(yaml);
         let got = src.get(&ref_for("kst_github_token")).unwrap().unwrap();
@@ -565,7 +565,7 @@ mod tests {
         assert_eq!(got.unwrap().expose(), "from_env_tag");
         std::env::remove_var("PLAIN_ENV_SECRET");
 
-        // Chain `${kst_chain_only}` resolves the uppercased `KST_CHAIN_ONLY`.
+        // Chain `${kst_chain_only}` resolves the uppercased `KST_CHAIN_ONLY`
         std::env::set_var("KST_CHAIN_ONLY", "from_chain");
         let got = EnvSource.get(&ref_for("kst_chain_only")).unwrap();
         assert_eq!(got.unwrap().expose(), "from_chain");
@@ -603,13 +603,13 @@ mod tests {
         let crd_src = CredentialsFileSource::from_yaml(serde_yaml::from_str("{}").unwrap());
         let kp_src = KeePassSource::new("db.kdbx".into(), None, None);
 
-        // Env claims the chain and the explicit `env:` tag, nothing else.
+        // Env claims the chain and the explicit `env:` tag, nothing else
         assert!(EnvSource.handles(&chain) && EnvSource.handles(&env_tag));
         assert!(!EnvSource.handles(&crd_tag) && !EnvSource.handles(&op));
-        // Credentials claims the chain and the explicit `crd:` tag.
+        // Credentials claims the chain and the explicit `crd:` tag
         assert!(crd_src.handles(&chain) && crd_src.handles(&crd_tag));
         assert!(!crd_src.handles(&env_tag) && !crd_src.handles(&op));
-        // External managers claim only their own tag.
+        // External managers claim only their own tag
         assert!(OnePasswordSource.handles(&op) && !OnePasswordSource.handles(&chain));
         assert!(VaultSource.handles(&vault) && !VaultSource.handles(&op));
         assert!(kp_src.handles(&kp) && kp_src.handles(&tagged_ref("keepass", "x#y")));

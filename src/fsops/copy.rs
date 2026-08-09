@@ -49,11 +49,11 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
     // fs::copy uses kernel-level copy where available and preserves
-    // permissions, so executable scripts inside skills keep their +x bit.
+    // permissions, so executable scripts inside skills keep their +x bit
     fs::copy(src, dst)?;
     // A propagated READONLY attribute would wedge every later re-sync on
-    // Windows: remove_dir_all fails with PermissionDenied on read-only files.
-    // Unix is unaffected (unlink is governed by the parent dir).
+    // Windows: remove_dir_all fails with PermissionDenied on read-only files
+    // Unix is unaffected (unlink is governed by the parent dir)
     #[cfg(windows)]
     {
         let mut perms = fs::metadata(dst)?.permissions();

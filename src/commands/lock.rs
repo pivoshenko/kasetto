@@ -58,7 +58,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
     let prev_assets = lock.assets.clone();
 
     // Decide per source whether to re-resolve (default) or carry over existing
-    // entries from the on-disk lock (--upgrade-package excluded this source).
+    // entries from the on-disk lock (--upgrade-package excluded this source)
     let upgrade_active = |source_url: &str| -> bool {
         if opts.upgrade_only.is_empty() {
             return true;
@@ -69,7 +69,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
     };
 
     // Rebuild the skills section from a fresh resolve (re-resolves moving refs,
-    // like `sync --update`). Any source error aborts before writing.
+    // like `sync --update`). Any source error aborts before writing
     let mut new_skills: BTreeMap<String, SkillEntry> = BTreeMap::new();
     for (i, src) in cfg.skills.iter().enumerate() {
         if !upgrade_active(&src.source) {
@@ -124,7 +124,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
     let skills_count = lock.skills.len();
     let asset_count = lock.assets.len();
     // Everything the lock now pins, not just skills: a config with MCP,
-    // command, or instruction entries used to report only its skill count.
+    // command, or instruction entries used to report only its skill count
     let item_count = skills_count + asset_count;
     let source_count = configured_source_count(&cfg);
     let plain = !crate::ui::color_stdout_enabled();
@@ -368,7 +368,7 @@ instructions:
 "#,
         )
         .expect("config parses");
-        // one, two, three, four: the repeated `one` counts once.
+        // one, two, three, four: the repeated `one` counts once
         assert_eq!(configured_source_count(&cfg), 4);
     }
 

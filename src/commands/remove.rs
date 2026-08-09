@@ -47,7 +47,7 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
     let mut text = fs::read_to_string(&path)
         .map_err(|e| err(format!("failed to read {}: {e}", path.display())))?;
 
-    // Strip a trailing `@<ref>` shorthand so `remove foo@v1` matches `--ref v1`.
+    // Strip a trailing `@<ref>` shorthand so `remove foo@v1` matches `--ref v1`
     let (raw_source, at_ref) = super::source_edit::split_at_ref(opts.source);
     if at_ref.is_some() && (opts.git_ref.is_some() || opts.branch.is_some()) {
         return Err(err(
@@ -57,7 +57,7 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
 
     // A deep browse URL writes `source` + `ref`/`branch` + `sub-dir` (see
     // `add`); honor the same identity here so a pasted deep URL targets the
-    // exact entry. Explicit flags override the derived pieces.
+    // exact entry. Explicit flags override the derived pieces
     let derived = derive_browse_url(&raw_source).unwrap_or_else(|| BrowseDerived {
         source: raw_source.clone(),
         ..Default::default()
@@ -122,7 +122,7 @@ fn remove_whole_source(
         Section::Instructions,
     ] {
         // MCP entries never carry sub-dir; don't let a deep-URL sub-dir filter
-        // them out when the user is dropping the source from every list.
+        // them out when the user is dropping the source from every list
         let section_sub = if section == Section::Mcps {
             None
         } else {
@@ -160,7 +160,7 @@ fn remove_by_kind(
             continue;
         }
         // MCP entries never carry sub-dir (the schema has no such field there);
-        // pass None to avoid filtering MCPs out when sub-dir came from a deep URL.
+        // pass None to avoid filtering MCPs out when sub-dir came from a deep URL
         let section_sub = if *section == Section::Mcps {
             None
         } else {
@@ -222,7 +222,7 @@ fn emit_result(opts: &RemoveOptions, removed: &[Removed], dry: bool) -> Result<(
         return Ok(());
     }
     // Present continuous for the in-progress edit line (cargo precedent); the
-    // sync summary that follows carries the past-tense `Removed N items` closer.
+    // sync summary that follows carries the past-tense `Removed N items` closer
     let verb = if dry { "Would remove" } else { "Removing" };
     for r in removed {
         if crate::ui::color_stdout_enabled() {

@@ -41,7 +41,7 @@ pub(crate) fn select_targets(
                 out.push((k.clone(), v.clone()));
             }
             // HashMap iteration order is random; sort so install order, labels,
-            // and --json output are stable across runs.
+            // and --json output are stable across runs
             out.sort_by(|a, b| a.0.cmp(&b.0));
         }
         SkillsField::List(items) => {
@@ -104,7 +104,7 @@ pub(crate) struct BrokenSkill {
 
 pub(crate) fn resolve_path(base: &Path, raw: &str) -> PathBuf {
     // Expand only a leading `~` (home prefix); a `~` elsewhere in the path is
-    // an ordinary character (e.g. `./backup~old`) and must not be rewritten.
+    // an ordinary character (e.g. `./backup~old`) and must not be rewritten
     let p = match raw
         .strip_prefix("~/")
         .or(if raw == "~" { Some("") } else { None })
@@ -357,7 +357,7 @@ mod tests {
         ];
         let csv = join_dest_csv(&dests, "alpha", root);
         assert_eq!(csv, ".claude/skills/alpha,.codex/skills/alpha");
-        // Each element round-trips back to the absolute install dir.
+        // Each element round-trips back to the absolute install dir
         let abs: Vec<PathBuf> = csv.split(',').map(|p| resolve_dest(p, root)).collect();
         assert_eq!(abs[0], dests[0].join("alpha"));
         assert_eq!(abs[1], dests[1].join("alpha"));
@@ -379,7 +379,7 @@ mod tests {
         let home = dirs_home().expect("home");
         assert_eq!(resolve_path(base, "~/skills"), home.join("skills"));
         assert_eq!(resolve_path(base, "~"), home);
-        // A `~` that is not the home prefix is an ordinary path character.
+        // A `~` that is not the home prefix is an ordinary path character
         assert_eq!(
             resolve_path(base, "backup~old/skills"),
             Path::new("/base/backup~old/skills")
@@ -469,7 +469,7 @@ mod tests {
     fn agent_paths_cover_supported_presets() {
         let home = Path::new("/tmp/kasetto-home");
 
-        // Codex scans `$HOME/.agents/skills`, not `.codex/skills` (issue #48).
+        // Codex scans `$HOME/.agents/skills`, not `.codex/skills` (issue #48)
         assert_eq!(Agent::Codex.global_path(home), home.join(".agents/skills"));
         assert_eq!(
             Agent::Amp.global_path(home),

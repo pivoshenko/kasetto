@@ -35,7 +35,7 @@ pub(super) fn sync_instructions(
 
     // Dropping the `instructions:` block orphans every installed instruction, so skip
     // the install loop but still run remove_stale with an empty desired-set so the
-    // lock and on-disk blocks/files both get cleaned up.
+    // lock and on-disk blocks/files both get cleaned up
     if ctx.cfg.instructions.is_empty() {
         remove_stale(ctx, lock, summary, actions, &HashSet::new());
         return Ok(());
@@ -124,7 +124,7 @@ pub(super) fn sync_instructions(
         };
         // `source_root` already honors `sub-dir` for both local and remote sources;
         // `cleanup_dir` is the archive root (remote) and must not be used as the
-        // discovery root or a configured `sub-dir` would be ignored.
+        // discovery root or a configured `sub-dir` would be ignored
         let root = materialized.source_root.as_path();
 
         let selected: Vec<(String, PathBuf)> = match &src.instructions {
@@ -218,7 +218,7 @@ pub(super) fn sync_instructions(
             };
 
             // Unchanged requires: stored hash matches AND every expected
-            // destination is present (for aggregate files, the managed block).
+            // destination is present (for aggregate files, the managed block)
             let existing = lock.get_tracked_asset("instructions", &asset_id);
             let is_unchanged = existing
                 .as_ref()
@@ -280,7 +280,7 @@ fn desired_instruction_names(
                 crate::model::InstructionEntry::Name(n) => n.clone(),
                 // `resolve_instruction_entry` strips an explicit `.md`/`.mdc` extension
                 // when deriving the asset name; mirror that here so the lock lookup
-                // (and `--locked` validation) keys on the same stored name.
+                // (and `--locked` validation) keys on the same stored name
                 crate::model::InstructionEntry::Obj { name, .. } => name
                     .trim_end_matches(".mdc")
                     .trim_end_matches(".md")
@@ -453,7 +453,7 @@ fn remove_stale(
     desired_ids: &HashSet<String>,
 ) {
     // Snapshot (id, source, name, dest_csv) so the teardown closure can strip the
-    // right managed block / delete the right file without re-borrowing the lock.
+    // right managed block / delete the right file without re-borrowing the lock
     let existing: Vec<(String, String, String, String)> = lock
         .assets
         .iter()
@@ -565,7 +565,7 @@ mod tests {
 
         let project = temp_dir("kasetto-instruction-proj");
         fs::create_dir_all(&project).unwrap();
-        // Pre-existing user CLAUDE.md content that must survive.
+        // Pre-existing user CLAUDE.md content that must survive
         write(&project.join("CLAUDE.md"), "# Project\n\nUser notes.\n");
 
         let cfg = base_cfg(
@@ -580,20 +580,20 @@ mod tests {
         sync_instructions(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
         assert_eq!(summary.installed, 1);
 
-        // Claude aggregate: managed block added, user content preserved.
+        // Claude aggregate: managed block added, user content preserved
         let claude = fs::read_to_string(project.join("CLAUDE.md")).unwrap();
         assert!(claude.contains("User notes."));
         assert!(claude.contains("Use tabs."));
         assert!(claude.contains("kasetto:instruction:style-"));
-        // Cursor mdc: per-instruction file with reconstructed frontmatter.
+        // Cursor mdc: per-instruction file with reconstructed frontmatter
         let cursor = fs::read_to_string(project.join(".cursor/rules/style.mdc")).unwrap();
         assert!(cursor.contains("globs: *.rs"));
-        // Windsurf plain dir: body only.
+        // Windsurf plain dir: body only
         let windsurf = fs::read_to_string(project.join(".windsurf/rules/style.md")).unwrap();
         assert!(!windsurf.contains("description:"));
         assert!(windsurf.contains("Use tabs."));
 
-        // One instructions asset tracked.
+        // One instructions asset tracked
         assert_eq!(
             lock.assets
                 .values()
@@ -602,7 +602,7 @@ mod tests {
             1
         );
 
-        // Drop the instructions: remove_stale strips the block + deletes the dir files.
+        // Drop the instructions: remove_stale strips the block + deletes the dir files
         let mut summary2 = Summary::default();
         let mut actions2 = Vec::new();
         remove_stale(
@@ -660,7 +660,7 @@ mod tests {
         fs::create_dir_all(&project).unwrap();
         write(&project.join("CLAUDE.md"), "# Project\n\nUser notes.\n");
 
-        // First sync installs into Claude's aggregate CLAUDE.md.
+        // First sync installs into Claude's aggregate CLAUDE.md
         let cfg = base_cfg(
             &src_root,
             vec![Agent::ClaudeCode],
@@ -677,7 +677,7 @@ mod tests {
             .contains("body"));
 
         // Reconfigure to OpenClaw (no project instruction target) while keeping
-        // `instructions:` set: the orphaned managed block + lock entry must be pruned.
+        // `instructions:` set: the orphaned managed block + lock entry must be pruned
         let cfg2 = base_cfg(
             &src_root,
             vec![Agent::OpenClaw],

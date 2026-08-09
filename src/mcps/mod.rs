@@ -235,7 +235,7 @@ mod tests {
         )
         .unwrap();
         // The `--update` rotation path: overwrite=true replaces the managed
-        // entry with the freshly-injected one.
+        // entry with the freshly-injected one
         let src = servers(
             r#"{"mcpServers":{"vercel":{"url":"https://mcp.vercel.com","headers":{"Authorization":"Bearer new-token"}}}}"#,
         );

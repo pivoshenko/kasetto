@@ -278,7 +278,7 @@ impl Agent {
             Agent::Augment => home.join(".augment/skills"),
             Agent::ClaudeCode => home.join(".claude/skills"),
             // Codex scans `$HOME/.agents/skills`, never `.codex/skills`; the
-            // latter holds only its config.toml and prompts (issue #48).
+            // latter holds only its config.toml and prompts (issue #48)
             Agent::Cline | Agent::Codex | Agent::Warp => home.join(".agents/skills"),
             Agent::Continue => home.join(".continue/skills"),
             Agent::Cursor => home.join(".cursor/skills"),
@@ -541,30 +541,30 @@ impl Agent {
     ) -> Option<InstructionTarget> {
         use InstructionFormat::{AggregateMarkdown as Agg, CursorMdc, PlainMarkdownDir as Dir};
         match self {
-            // Aggregate single-file instruction files.
+            // Aggregate single-file instruction files
             Agent::ClaudeCode => instruction(project_root, "CLAUDE.md", Agg),
             Agent::Codex => instruction(project_root, "AGENTS.md", Agg),
             Agent::OpenCode => instruction(project_root, "AGENTS.md", Agg),
             Agent::Amp => instruction(project_root, "AGENTS.md", Agg),
-            // Antigravity's native file is GEMINI.md (takes precedence over AGENTS.md).
+            // Antigravity's native file is GEMINI.md (takes precedence over AGENTS.md)
             Agent::Antigravity => instruction(project_root, "GEMINI.md", Agg),
             Agent::GeminiCli => instruction(project_root, "GEMINI.md", Agg),
             Agent::GithubCopilot => {
                 instruction(project_root, ".github/copilot-instructions.md", Agg)
             }
-            // Junie's current primary file is .junie/AGENTS.md (.junie/guidelines.md is legacy).
+            // Junie's current primary file is .junie/AGENTS.md (.junie/guidelines.md is legacy)
             Agent::Junie => instruction(project_root, ".junie/AGENTS.md", Agg),
             Agent::Goose => instruction(project_root, ".goosehints", Agg),
             Agent::Warp => instruction(project_root, "WARP.md", Agg),
-            // Replit Agent reads replit.md, not AGENTS.md.
+            // Replit Agent reads replit.md, not AGENTS.md
             Agent::Replit => instruction(project_root, "replit.md", Agg),
-            // OpenHands' always-on repo instructions live in this single file.
+            // OpenHands' always-on repo instructions live in this single file
             Agent::OpenHands => instruction(project_root, ".openhands/microagents/repo.md", Agg),
-            // ZCode reads the workspace AGENTS.md after the user-global one.
+            // ZCode reads the workspace AGENTS.md after the user-global one
             Agent::ZCode => instruction(project_root, "AGENTS.md", Agg),
-            // Cursor MDC: per-instruction files with reconstructed frontmatter.
+            // Cursor MDC: per-instruction files with reconstructed frontmatter
             Agent::Cursor => instruction(project_root, ".cursor/rules", CursorMdc),
-            // Per-instruction plain-markdown directories.
+            // Per-instruction plain-markdown directories
             Agent::Windsurf => instruction(project_root, ".windsurf/rules", Dir),
             Agent::Cline => instruction(project_root, ".clinerules", Dir),
             Agent::Continue => instruction(project_root, ".continue/rules", Dir),
@@ -572,7 +572,7 @@ impl Agent {
             Agent::Augment => instruction(project_root, ".augment/rules", Dir),
             Agent::KiroCli => instruction(project_root, ".kiro/steering", Dir),
             Agent::Trae => instruction(project_root, ".trae/rules", Dir),
-            // OpenClaw has no per-project instructions file (workspace-level only).
+            // OpenClaw has no per-project instructions file (workspace-level only)
             Agent::OpenClaw => None,
         }
     }
@@ -604,9 +604,9 @@ impl Agent {
             Agent::Roo => instruction(home, ".roo/rules", Dir),
             Agent::Cline => instruction(home, "Documents/Cline/Rules", Dir),
             // Community-supported (not yet in official docs): global ~/.cursor/rules
-            // is read as .mdc by recent Cursor builds; harmless where it isn't.
+            // is read as .mdc by recent Cursor builds; harmless where it isn't
             Agent::Cursor => instruction(home, ".cursor/rules", CursorMdc),
-            // UI-managed or no documented on-disk global instructions.
+            // UI-managed or no documented on-disk global instructions
             Agent::Warp | Agent::Trae | Agent::Continue | Agent::OpenHands | Agent::Replit => None,
         }
     }
@@ -687,7 +687,7 @@ mod tests {
             Agent::Codex.instructions_project_path(pr).unwrap().path,
             pr.join("AGENTS.md")
         );
-        // Doc-verified corrections.
+        // Doc-verified corrections
         assert_eq!(
             Agent::Replit.instructions_project_path(pr).unwrap().path,
             pr.join("replit.md")
@@ -707,9 +707,9 @@ mod tests {
             Agent::Junie.instructions_project_path(pr).unwrap().path,
             pr.join(".junie/AGENTS.md")
         );
-        // OpenClaw has no per-project instructions concept.
+        // OpenClaw has no per-project instructions concept
         assert!(Agent::OpenClaw.instructions_project_path(pr).is_none());
-        // Every other preset resolves to a project instructions target.
+        // Every other preset resolves to a project instructions target
         for a in AGENT_PRESETS.iter().filter(|a| **a != Agent::OpenClaw) {
             assert!(
                 a.instructions_project_path(pr).is_some(),
@@ -736,7 +736,7 @@ mod tests {
             Agent::OpenClaw.instructions_global_path(home).unwrap().path,
             home.join(".openclaw/workspace/AGENTS.md")
         );
-        // Cursor global ~/.cursor/rules (community-supported .mdc dir).
+        // Cursor global ~/.cursor/rules (community-supported .mdc dir)
         let cursor = Agent::Cursor.instructions_global_path(home).unwrap();
         assert_eq!(cursor.path, home.join(".cursor/rules"));
         assert_eq!(cursor.format, InstructionFormat::CursorMdc);

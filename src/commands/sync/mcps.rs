@@ -51,13 +51,13 @@ pub(super) fn sync_mcps(
 ) -> Result<bool> {
     let mut desired_mcp_ids = HashSet::new();
     // Set when a secret-bearing pack is left unchanged without `--update`, so we
-    // can hint that a rotated secret won't propagate on a plain sync.
+    // can hint that a rotated secret won't propagate on a plain sync
     let mut secrets_need_update = false;
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
     // No agents configured (e.g. user dropped `agent:`) but lock still has MCP
     // entries. Config is source of truth, so scrub the orphans from every
-    // known agent's settings file as best-effort, prune the lock, and return.
+    // known agent's settings file as best-effort, prune the lock, and return
     if mcp_settings_list.is_empty() {
         let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
         if has_orphans {
@@ -86,10 +86,10 @@ pub(super) fn sync_mcps(
 
     for (i, src) in ctx.cfg.mcps.iter().enumerate() {
         // Desired MCP file names for this source, derived without any network:
-        // predicted file names for a list, or the locked set for a wildcard.
+        // predicted file names for a list, or the locked set for a wildcard
         let desired_file_names = desired_mcp_file_names(src, lock);
 
-        // `--locked`/`--frozen`: the lock must be able to satisfy the config.
+        // `--locked`/`--frozen`: the lock must be able to satisfy the config
         if ctx.locked {
             if let Err(e) = ensure_locked_satisfiable_mcps(src, &desired_file_names, lock) {
                 summary.failed += 1;
@@ -104,7 +104,7 @@ pub(super) fn sync_mcps(
         }
 
         // Whether any file in this source is targeted by `--update`. Drives the
-        // fetch decision (a moving source must be re-downloaded once).
+        // fetch decision (a moving source must be re-downloaded once)
         let update_names: Vec<String> = desired_file_names
             .iter()
             .flat_map(|f| update_aliases(f))
@@ -128,7 +128,7 @@ pub(super) fn sync_mcps(
         }
 
         if !fetch {
-            // Skip path: no network. Honor each desired MCP file from the lock.
+            // Skip path: no network. Honor each desired MCP file from the lock
             let mut first_in_run = true;
             for file_name in &desired_file_names {
                 let asset_id = format!("mcp::{}::{}", src.source, file_name);
@@ -169,7 +169,7 @@ pub(super) fn sync_mcps(
         // Resolve MCP files against the materialized source root. `source_root`
         // is correct for every case: a local path, a freshly-staged remote, and
         // a cache-served `ref:` source (which has no stage dir, so `cleanup_dir`
-        // is `None`). `cleanup_dir` is only a teardown handle, never the root.
+        // is `None`). `cleanup_dir` is only a teardown handle, never the root
         let root = materialized.source_root.as_path();
         let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
             McpsField::Wildcard(s) if s == "*" => discover_mcps(root),
@@ -238,7 +238,7 @@ pub(super) fn sync_mcps(
             first_in_run = false;
             // Scope `--update <name>` to the file actually named. A source can
             // hold several MCP files; rotating one (force-remerge with overwrite)
-            // must not clobber hand-edited servers from the source's other files.
+            // must not clobber hand-edited servers from the source's other files
             let file_update = update_active_for_source(ctx, &update_aliases(&file_name));
             let classified = classify_mcp_file(
                 ctx,
@@ -253,7 +253,7 @@ pub(super) fn sync_mcps(
                 Ok(c) => c,
                 Err(e) => {
                     // A malformed/unreadable file is `broken` (exit 0), distinct
-                    // from an unresolved secret below.
+                    // from an unresolved secret below
                     summary.broken += 1;
                     actions.push(Action {
                         source: Some(src.source.clone()),
@@ -308,7 +308,7 @@ pub(super) fn sync_mcps(
 
     // Remove MCP servers no longer in config. Skipped when any source failed
     // (locked_error et al.): `desired_mcp_ids` would be missing the failed
-    // source's existing entries and they'd be treated as orphans.
+    // source's existing entries and they'd be treated as orphans
     if summary.failed == 0 {
         remove_stale(
             ctx,
@@ -358,7 +358,7 @@ fn classify_mcp_file(
     source_revision: &str,
 ) -> Result<(String, McpFileOutcome)> {
     // `update_active` here is scoped to *this* file (see the caller): true only
-    // when a plain `--update` ran or `--update <name>` named this file.
+    // when a plain `--update` ran or `--update <name>` named this file
     let file_name = file_name_str(mcp_path);
     let hash = hash_file(mcp_path)?;
     let mcp_text = fs::read_to_string(mcp_path)?;
@@ -372,7 +372,7 @@ fn classify_mcp_file(
     // Only the `mcpServers` object is injected, so detect placeholders there,
     // not anywhere in the file. A `${kst_...}` in some other key would otherwise
     // raise a spurious world-readable warning and `--update` tip for a file that
-    // gets no secret written.
+    // gets no secret written
     let has_secrets = serde_json::to_string(&servers)
         .map(|s| crate::secrets::has_placeholder(&s))
         .unwrap_or(false);
@@ -382,7 +382,7 @@ fn classify_mcp_file(
 
     // A secret-bearing pack under `--update` is re-merged even when the
     // placeholder source is byte-identical, so a rotated secret (changed only in
-    // env/credentials.yaml) propagates.
+    // env/credentials.yaml) propagates
     let force_remerge = update_active && has_secrets;
     let is_unchanged = !force_remerge
         && existing
@@ -463,7 +463,7 @@ fn needs_fetch_mcps(
     lock: &LockFile,
     mcp_settings_list: &[McpSettingsTarget],
 ) -> bool {
-    // A wildcard source with no lock mcp-asset has never been resolved.
+    // A wildcard source with no lock mcp-asset has never been resolved
     if matches!(&src.mcps, McpsField::Wildcard(s) if s == "*")
         && !lock
             .assets
@@ -478,7 +478,7 @@ fn needs_fetch_mcps(
         let Some(asset) = lock.assets.get(&asset_id).filter(|a| a.kind == "mcp") else {
             return true;
         };
-        // Retargeted source (ref/branch changed since the lock was written).
+        // Retargeted source (ref/branch changed since the lock was written)
         if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
             return true;
         }
@@ -565,7 +565,7 @@ fn apply_pending(
                 for target in mcp_settings_list {
                     merge_mcp_config(&p.servers, target, p.overwrite)?;
                     // A resolved plaintext secret now lives in this file; warn if
-                    // it is group/world-readable (symmetric to credentials.yaml).
+                    // it is group/world-readable (symmetric to credentials.yaml)
                     if p.has_secrets {
                         crate::secrets::warn_if_world_readable(&target.path, ctx.plain);
                     }
@@ -731,13 +731,13 @@ mod tests {
             git_ref: None,
             mcps: McpsField::List(vec![McpEntry::Name("foo".into())]),
         };
-        // Desired file name predicted from the entry name.
+        // Desired file name predicted from the entry name
         let desired = vec!["foo.json".to_string()];
 
-        // No lock entry -> must fetch.
+        // No lock entry -> must fetch
         let lock = LockFile::default();
         let no_targets: Vec<McpSettingsTarget> = Vec::new();
-        // SyncContext is not needed by needs_fetch_mcps (ignored arg); build a minimal one.
+        // SyncContext is not needed by needs_fetch_mcps (ignored arg); build a minimal one
         let cfg = crate::model::Config {
             destination: None,
             scope: Some(crate::model::Scope::Project),
@@ -768,7 +768,7 @@ mod tests {
             "absent lock asset forces a fetch"
         );
 
-        // With a lock entry and no targets to satisfy, nothing is unsatisfied.
+        // With a lock entry and no targets to satisfy, nothing is unsatisfied
         let mut lock2 = LockFile::default();
         lock2.save_tracked_asset(
             "mcp::https://github.com/org/pack::foo.json",
@@ -819,14 +819,14 @@ mod tests {
             secrets: crate::secrets::SecretContext::empty(),
         };
 
-        // Source-level: the source is targeted (vercel matches), so a fetch happens.
+        // Source-level: the source is targeted (vercel matches), so a fetch happens
         let source_names: Vec<String> = ["vercel.json", "notion.json"]
             .iter()
             .flat_map(|f| update_aliases(f))
             .collect();
         assert!(update_active_for_source(&ctx, &source_names));
 
-        // File-level: only vercel.json is active; notion.json is not.
+        // File-level: only vercel.json is active; notion.json is not
         assert!(update_active_for_source(
             &ctx,
             &update_aliases("vercel.json")

@@ -40,7 +40,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed> {
             body: normalized,
         });
     };
-    // Find a line that is exactly "---" or "---\n" inside rest.
+    // Find a line that is exactly "---" or "---\n" inside rest
     let mut idx = 0usize;
     let bytes = rest.as_bytes();
     let mut found: Option<(usize, usize)> = None;
@@ -51,7 +51,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed> {
             .unwrap_or(bytes.len());
         let line = &rest[idx..line_end];
         if line == "---" {
-            // Frontmatter ends at idx; body starts after line_end + 1 (skip newline).
+            // Frontmatter ends at idx; body starts after line_end + 1 (skip newline)
             let body_start = (line_end + 1).min(bytes.len());
             found = Some((idx, body_start));
             break;

@@ -255,7 +255,7 @@ mod tests {
 
         // A v1 lock carrying fields that no longer exist in the schema plus an
         // absolute destination. Unknown fields must be ignored, absolute paths
-        // honored, and the version relabeled to the current schema on save.
+        // honored, and the version relabeled to the current schema on save
         let legacy = "version: 1\n\
 last_run: '111'\n\
 latest_report: '{\"actions\":[]}'\n\

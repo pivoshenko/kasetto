@@ -15,7 +15,7 @@ pub(crate) fn hash_dir(path: &Path) -> Result<String> {
     for f in files {
         // Normalize path separators so the digest is invariant across OSes
         // (Windows `\` vs Unix `/`); otherwise the same skill hashes differently
-        // per platform and breaks committed-lock portability.
+        // per platform and breaks committed-lock portability
         let rel = f.strip_prefix(path)?.to_string_lossy().replace('\\', "/");
         hasher.update(rel.as_bytes());
         hasher.update([0]);

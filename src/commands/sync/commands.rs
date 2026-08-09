@@ -36,7 +36,7 @@ pub(super) fn sync_commands(
     // When the user removes the `commands:` block from config, all previously
     // installed commands are orphans, so skip the install loop but still run
     // remove_stale with an empty desired-set so the lock and on-disk files
-    // both get cleaned up.
+    // both get cleaned up
     if ctx.cfg.commands.is_empty() {
         remove_stale(ctx, lock, summary, actions, &HashSet::new());
         return Ok(());
@@ -52,10 +52,10 @@ pub(super) fn sync_commands(
 
     for (i, src) in ctx.cfg.commands.iter().enumerate() {
         // Desired command names for this source, derived without any network:
-        // explicit config names for a list, or the locked set for a wildcard.
+        // explicit config names for a list, or the locked set for a wildcard
         let desired_names = desired_command_names(src, lock);
 
-        // `--locked`/`--frozen`: the lock must be able to satisfy the config.
+        // `--locked`/`--frozen`: the lock must be able to satisfy the config
         if ctx.locked {
             if let Err(e) = ensure_locked_satisfiable_commands(src, &desired_names, lock) {
                 summary.failed += 1;
@@ -87,7 +87,7 @@ pub(super) fn sync_commands(
         }
 
         if !fetch {
-            // Skip path: no network. Honor each desired command from the lock.
+            // Skip path: no network. Honor each desired command from the lock
             let mut first_in_run = true;
             for name in &desired_names {
                 let asset_id = format!("command::{}::{}", src.source, name);
@@ -125,7 +125,7 @@ pub(super) fn sync_commands(
         // Resolve commands against `source_root`, which honors `sub-dir` for
         // local, staged-remote, and cache-served sources alike. `cleanup_dir` is
         // the archive root (no sub-dir applied) and a teardown-only handle; using
-        // it as the root would miss commands under a `sub-dir`.
+        // it as the root would miss commands under a `sub-dir`
         let root = materialized.source_root.as_path();
 
         let selected: Vec<(String, PathBuf)> = match &src.commands {
@@ -215,7 +215,7 @@ pub(super) fn sync_commands(
             };
 
             // Decide unchanged vs pending. Unchanged requires: stored hash matches
-            // AND every expected destination file exists.
+            // AND every expected destination file exists
             let expected_paths: Vec<PathBuf> =
                 targets.iter().map(|t| destination_path(t, &name)).collect();
             let existing = lock.get_tracked_asset("command", &asset_id);
@@ -261,7 +261,7 @@ pub(super) fn sync_commands(
 
     // Same hazard as `sync_skills`: a partial failure (e.g. `locked_error`)
     // would have skipped extending `desired_ids` for the failed source. Defer
-    // stale removal until the next clean run.
+    // stale removal until the next clean run
     if summary.failed == 0 {
         remove_stale(ctx, lock, summary, actions, &desired_ids);
     }
@@ -301,7 +301,7 @@ fn needs_fetch_commands(
     lock: &LockFile,
     targets: &[CommandTarget],
 ) -> bool {
-    // A wildcard source with no lock command-asset has never been resolved.
+    // A wildcard source with no lock command-asset has never been resolved
     if matches!(&src.commands, CommandsField::Wildcard(s) if s == "*")
         && !lock
             .assets
@@ -316,7 +316,7 @@ fn needs_fetch_commands(
         let Some(asset) = lock.assets.get(&asset_id).filter(|a| a.kind == "command") else {
             return true;
         };
-        // Retargeted source (ref/branch changed since the lock was written).
+        // Retargeted source (ref/branch changed since the lock was written)
         if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
             return true;
         }
@@ -500,18 +500,18 @@ mod tests {
 
     #[test]
     fn sync_writes_to_supported_agents_and_skips_unsupported() {
-        // Source: a local path with one command file.
+        // Source: a local path with one command file
         let src_root = temp_dir("kasetto-src");
         write(
             &src_root.join("commands/git/commit.md"),
             "---\ndescription: commit\n---\nBody $ARGUMENTS\n",
         );
 
-        // Project root that doubles as the project scope target for the agents.
+        // Project root that doubles as the project scope target for the agents
         let project = temp_dir("kasetto-proj");
         fs::create_dir_all(&project).unwrap();
 
-        // Pre-existing user file under .claude/commands that must be preserved.
+        // Pre-existing user file under .claude/commands that must be preserved
         let user_file = project.join(".claude/commands/user-own.md");
         write(&user_file, "user authored\n");
 
@@ -559,23 +559,23 @@ mod tests {
 
         sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
 
-        // Claude (frontmatter, nested namespacing).
+        // Claude (frontmatter, nested namespacing)
         assert!(project.join(".claude/commands/git/commit.md").is_file());
-        // Gemini (TOML, flattened namespacing).
+        // Gemini (TOML, flattened namespacing)
         assert!(project.join(".gemini/commands/git-commit.toml").is_file());
-        // Cursor (plain Markdown).
+        // Cursor (plain Markdown)
         assert!(project.join(".cursor/commands/git-commit.md").is_file());
         // Codex has no project commands path, so the directory should not exist
         assert!(!project.join(".codex/prompts").exists());
 
-        // User-authored file untouched.
+        // User-authored file untouched
         assert!(user_file.is_file());
 
-        // Lock contains 1 command asset (one source × one command name).
+        // Lock contains 1 command asset (one source × one command name)
         let lock_assets = lock.assets.values().filter(|a| a.kind == "command").count();
         assert_eq!(lock_assets, 1);
 
-        // Second sync that removes the command (empty commands).
+        // Second sync that removes the command (empty commands)
         let cfg2 = Config {
             commands: Vec::new(),
             ..Config {
@@ -611,7 +611,7 @@ mod tests {
         let desired = HashSet::new();
         remove_stale(&ctx2, &mut lock, &mut summary2, &mut actions2, &desired);
 
-        // Managed file is gone, user file still there.
+        // Managed file is gone, user file still there
         assert!(!project.join(".claude/commands/git/commit.md").exists());
         assert!(user_file.is_file());
         assert!(!project.join(".gemini/commands/git-commit.toml").exists());
@@ -682,7 +682,7 @@ mod tests {
         sync_commands(&ctx, &mut lock, &mut summary, &mut actions).unwrap();
         assert_eq!(summary.installed, 1, "first run installs");
 
-        // Remove the source entirely: plain re-sync must still report unchanged.
+        // Remove the source entirely: plain re-sync must still report unchanged
         fs::remove_dir_all(&src_root).unwrap();
         let ctx2 = make_ctx(&cfg, &project, &dests, false);
         let mut summary2 = Summary::default();

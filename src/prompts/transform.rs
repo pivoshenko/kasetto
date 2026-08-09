@@ -52,7 +52,7 @@ pub(crate) fn render(parsed: &Parsed, format: CommandFormat) -> String {
 }
 
 fn render_prompt_file(parsed: &Parsed) -> String {
-    // Continue Dev `.prompt` files use a YAML preamble between `---` fences with `invokable: true`.
+    // Continue Dev `.prompt` files use a YAML preamble between `---` fences with `invokable: true`
     let body = parsed.body.replace("$ARGUMENTS", "{{{ input }}}");
     let mut preamble: Vec<String> = Vec::new();
     if let Some(fm) = &parsed.frontmatter {

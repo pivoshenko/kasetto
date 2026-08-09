@@ -146,13 +146,13 @@ pub(crate) fn derive_browse_url(url: &str) -> Option<BrowseDerived> {
     let without = url.trim_end_matches('/').strip_prefix(scheme)?;
     let segs: Vec<&str> = without.split('/').filter(|s| !s.is_empty()).collect();
 
-    // Need at least host/owner/repo/<marker>/<ref>.
+    // Need at least host/owner/repo/<marker>/<ref>
     let marker = segs.iter().position(|s| *s == "blob" || *s == "tree")?;
     if marker < 3 || marker + 1 >= segs.len() {
         return None;
     }
 
-    // Repo path is everything before the marker, dropping a trailing GitLab `-`.
+    // Repo path is everything before the marker, dropping a trailing GitLab `-`
     let mut repo_end = marker;
     if segs[repo_end - 1] == "-" {
         repo_end -= 1;
@@ -168,7 +168,7 @@ pub(crate) fn derive_browse_url(url: &str) -> Option<BrowseDerived> {
     // could be ref `feature` + subdir `foo/skills/a` *or* ref `feature/foo` +
     // subdir `skills/a`. We take the first segment as the ref, which matches
     // the most common case (single-segment branches, tags, SHAs). For a proper
-    // fix, probe the host's branches API for the longest existing prefix.
+    // fix, probe the host's branches API for the longest existing prefix
     // Today's failure modes: with verify on (the default), `add` errors at
     // fetch time; with `--no-verify`, a wrong entry can be written, so override
     // with explicit `--branch` + `--sub-dir` in that case

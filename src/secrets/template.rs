@@ -57,7 +57,7 @@ where
         let after = &rest[pos + SENTINEL.len()..]; // text after the sentinel prefix
         let kind = after.chars().next();
         // A valid placeholder continues with `_` (chain) or `:` (tagged) and has
-        // a closing brace. Anything else is copied verbatim.
+        // a closing brace. Anything else is copied verbatim
         match (kind, after.find('}')) {
             (Some('_') | Some(':'), Some(close)) => {
                 let inner = &after[..close];
@@ -157,14 +157,14 @@ mod tests {
 
     #[test]
     fn leaves_uppercase_sentinel_untouched() {
-        // The sentinel is strictly lowercase; `${KST_FOO}` is a foreign var.
+        // The sentinel is strictly lowercase; `${KST_FOO}` is a foreign var
         let out = substitute("${KST_FOO}", echo).unwrap();
         assert_eq!(out, "${KST_FOO}");
     }
 
     #[test]
     fn leaves_lookalike_sentinel_untouched() {
-        // `${kstuff}` is not a placeholder (no `_`/`:` after `kst`).
+        // `${kstuff}` is not a placeholder (no `_`/`:` after `kst`)
         let out = substitute("${kstuff}", echo).unwrap();
         assert_eq!(out, "${kstuff}");
     }

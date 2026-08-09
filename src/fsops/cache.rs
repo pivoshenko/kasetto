@@ -75,7 +75,7 @@ where
     }
 
     static SEQ: AtomicU64 = AtomicU64::new(0);
-    // Best-effort scratch setup: any infra failure here degrades to a miss.
+    // Best-effort scratch setup: any infra failure here degrades to a miss
     let root = sources_root().ok()?;
     std::fs::create_dir_all(&root).ok()?;
     let final_dir = entry_dir(&root, key);
@@ -87,7 +87,7 @@ where
         std::process::id(),
         nonce
     ));
-    // Clear any stale tmp from a crashed run before reusing the path.
+    // Clear any stale tmp from a crashed run before reusing the path
     let _ = std::fs::remove_dir_all(&tmp);
     let tmp_tree = tmp.join(TREE_SUBDIR);
     std::fs::create_dir_all(&tmp_tree).ok()?;
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn unwritable_cache_dir_degrades_to_miss() {
         let _g = ENV_LOCK.lock().unwrap();
-        // Point XDG_CACHE_HOME at a regular file so `sources/` cannot be created.
+        // Point XDG_CACHE_HOME at a regular file so `sources/` cannot be created
         let base = temp_dir("kasetto-cache-blocked");
         fs::create_dir_all(&base).unwrap();
         let file = base.join("not-a-dir");

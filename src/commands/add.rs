@@ -54,7 +54,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     // `--locked` forbids fetching, but a brand-new source has no lock entry yet,
     // so the follow-up sync would fail mid-flight after the manifest edit. Reject
     // the combination up front and point at the two valid workflows. cargo
-    // follows the same "lock would need updating but --locked was passed" model.
+    // follows the same "lock would need updating but --locked was passed" model
     if opts.locked && !opts.no_sync {
         return Err(err(
             "`--locked` on `add` requires `--no-sync`: a newly added source \
@@ -66,7 +66,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     let path = super::source_edit::resolve_local_config_path(opts.config)?;
 
     // Strip cargo/uv-style `@<ref>` shorthand off the positional before any
-    // URL decomposition. Explicit `--ref`/`--branch` win if also passed.
+    // URL decomposition. Explicit `--ref`/`--branch` win if also passed
     let (raw_source, at_ref) = super::source_edit::split_at_ref(opts.source);
     if at_ref.is_some() && (opts.git_ref.is_some() || opts.branch.is_some()) {
         return Err(err(
@@ -74,7 +74,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
         ));
     }
 
-    // Decompose a deep browse URL; explicit flags below take precedence.
+    // Decompose a deep browse URL; explicit flags below take precedence
     let derived = derive_browse_url(&raw_source).unwrap_or_else(|| BrowseDerived {
         source: raw_source.clone(),
         ..Default::default()
@@ -307,7 +307,7 @@ fn emit_result(opts: &AddOptions, source: &str, edits: &[SectionEdit], dry: bool
     }
     // Present continuous for the in-progress edit line. cargo says
     // `Adding serde v1.0... to dependencies`; the sync summary that follows
-    // (`Installed N items in 84ms`) carries the past-tense closer.
+    // (`Installed N items in 84ms`) carries the past-tense closer
     let verb = if dry { "Would add" } else { "Adding" };
     let mut sections: Vec<&str> = edits.iter().map(|e| e.section.key()).collect();
     sections.dedup();

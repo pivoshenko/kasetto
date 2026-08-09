@@ -88,7 +88,7 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
     }
     print_section_header("Skills", Some((skills.len(), "installed")), plain);
 
-    // Group by source, preserve first-seen order, keep skills inside sorted.
+    // Group by source, preserve first-seen order, keep skills inside sorted
     let mut groups: Vec<(String, Vec<&InstalledSkill>)> = Vec::new();
     for s in skills {
         if let Some(g) = groups.iter_mut().find(|(k, _)| k == &s.source) {
@@ -264,7 +264,7 @@ fn installed_skills_from_lock(
     let mut skills = Vec::new();
     for (id, entry) in &state.skills {
         // `destination` may list several agent dirs (one per configured agent);
-        // the first is enough to read the skill profile for display.
+        // the first is enough to read the skill profile for display
         let first_dest = entry
             .destination
             .split(',')

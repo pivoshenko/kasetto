@@ -106,14 +106,14 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
     let mut cache = HashCache::default();
 
     // Phase 1: plan each source (sequential, local-only). `needs_fetch` here
-    // also memoizes destination hashes into `cache` for the process phase.
+    // also memoizes destination hashes into `cache` for the process phase
     let mut plans: Vec<Plan> = Vec::with_capacity(ctx.cfg.skills.len());
     for src in &ctx.cfg.skills {
         // Desired skill names for this source, derived without any network:
-        // explicit config names for a list, or the locked set for a wildcard.
+        // explicit config names for a list, or the locked set for a wildcard
         let desired = desired_skill_names(src, sm.state);
 
-        // `--locked`/`--frozen`: the lock must be able to satisfy the config.
+        // `--locked`/`--frozen`: the lock must be able to satisfy the config
         if ctx.locked {
             if let Err(e) = ensure_locked_satisfiable(src, &desired, sm.state) {
                 plans.push(Plan::LockedError(e.to_string()));
@@ -126,7 +126,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
 
         if fetch && ctx.locked {
             // --locked must never fetch. If the lock cannot satisfy the config
-            // without a fetch (and local repair is impossible), this is an error.
+            // without a fetch (and local repair is impossible), this is an error
             plans.push(Plan::LockedError(
                 "lock requires a fetch to satisfy this source, but --locked forbids fetching"
                     .into(),
@@ -143,11 +143,11 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
 
     // Phase 2: download + extract every Fetch source in parallel. Each source
     // is independent (distinct stage dir / cache key), so this overlaps the
-    // network latency that dominates a cold sync.
+    // network latency that dominates a cold sync
     let mut materialized = materialize_fetch_sources(ctx, &plans);
 
     // Phase 3: process in source order so output, lock writes, and
-    // last-writer-wins destination semantics stay deterministic.
+    // last-writer-wins destination semantics stay deterministic
     for (i, src) in ctx.cfg.skills.iter().enumerate() {
         match &plans[i] {
             Plan::LockedError(msg) => {
@@ -177,7 +177,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
                 }
                 None => {
                     // Phase 2 produces exactly one entry per Fetch source; a gap
-                    // would be a logic bug, so surface it rather than skip silently.
+                    // would be a logic bug, so surface it rather than skip silently
                     sm.summary.failed += 1;
                     sm.actions.push(Action {
                         source: Some(src.source.clone()),
@@ -193,7 +193,7 @@ pub(super) fn sync_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>) -> Result<()>
     // Never prune when any source errored: a `locked_error` continue would
     // have skipped extending `desired_keys` for that source, so the already-
     // locked entries would look like orphans here and get destroyed before the
-    // non-zero exit. Wait until the next clean sync to clean up.
+    // non-zero exit. Wait until the next clean sync to clean up
     if sm.summary.failed == 0 {
         remove_stale_skills(ctx, sm, &desired_keys);
     }
@@ -301,7 +301,7 @@ fn sync_source_from_lock(
         let key = skill_key(&src.source, skill_name);
         desired_keys.insert(key.clone());
         let Some(entry) = sm.state.skills.get(&key).cloned() else {
-            // needs_fetch would have been true; defensive guard.
+            // needs_fetch would have been true; defensive guard
             continue;
         };
         let label = sync_label_with(skill_name, &src.source, ctx.plain, first_in_run);
@@ -354,11 +354,11 @@ fn process_single_skill(
         let has_prior = sm.state.skills.contains_key(&key);
 
         // Hash the source tree up front so the unchanged case short-circuits
-        // without writing.
+        // without writing
         let hash = hash_dir(job.path)?;
 
         // Unchanged only if the locked hash matches AND every destination already
-        // holds an identical copy (fixes the latent destinations[0]-only bug).
+        // holds an identical copy (fixes the latent destinations[0]-only bug)
         let is_unchanged = sm
             .state
             .skills
@@ -401,7 +401,7 @@ fn process_single_skill(
             return Ok(());
         }
 
-        // Copy the skill into every destination.
+        // Copy the skill into every destination
         for agent_dest in ctx.destinations {
             let dst = agent_dest.join(job.name);
             cache.invalidate(&dst);
@@ -452,7 +452,7 @@ fn process_locked_skill(
     let key = skill_key(&entry.source, skill_name);
     with_spinner_transient(ctx.animate, ctx.plain, label, || {
         // One pass: per-destination match against the locked hash, plus the
-        // first verified-good copy as the repair source.
+        // first verified-good copy as the repair source
         let DestStatus { all_match, good } = dest_status(ctx, cache, skill_name, &entry.hash);
 
         if all_match {
@@ -478,7 +478,7 @@ fn process_locked_skill(
         }
 
         // Local repair from a verified-good destination (no fetch). `needs_fetch`
-        // guarantees one exists on the skip path.
+        // guarantees one exists on the skip path
         let Some(src_dir) = good else {
             return Err(err(format!(
                 "no good local copy of `{skill_name}` to repair from"
@@ -493,7 +493,7 @@ fn process_locked_skill(
             }
         }
         sm.runtime.set_updated_at(&key, now_unix_str());
-        // Lock entry is unchanged (hash + revision identical); nothing to rewrite.
+        // Lock entry is unchanged (hash + revision identical); nothing to rewrite
         sm.summary.updated += 1;
         sm.actions.push(Action {
             source: Some(entry.source.clone()),
@@ -543,7 +543,7 @@ fn ensure_locked_satisfiable(src: &SourceSpec, desired: &[String], state: &State
             Ok(())
         }
         SkillsField::Wildcard(_) => {
-            // A wildcard source must contribute at least one locked entry.
+            // A wildcard source must contribute at least one locked entry
             let present = state.skills.values().any(|e| e.source == src.source);
             if present {
                 Ok(())
@@ -568,7 +568,7 @@ fn needs_fetch(
     state: &State,
 ) -> bool {
     // A wildcard source with no lock entries has never been resolved, so bootstrap
-    // it by fetching (the locked set is empty only because nothing is pinned yet).
+    // it by fetching (the locked set is empty only because nothing is pinned yet)
     if matches!(src.skills, SkillsField::Wildcard(_))
         && !state.skills.values().any(|e| e.source == src.source)
     {
@@ -577,13 +577,13 @@ fn needs_fetch(
     let expected_revision = src.expected_revision();
     for skill_name in desired {
         let key = skill_key(&src.source, skill_name);
-        // A skill named in the config but absent from the lock must be fetched.
+        // A skill named in the config but absent from the lock must be fetched
         let Some(entry) = state.skills.get(&key) else {
             return true;
         };
         // The user retargeted this source (changed ref/branch) since the lock
         // was written. The on-disk content might still hash correctly, but it
-        // no longer matches what the config asks for. Refetch.
+        // no longer matches what the config asks for. Refetch
         if !entry.source_revision.is_empty() && entry.source_revision != expected_revision {
             return true;
         }
@@ -606,8 +606,8 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
     // On-disk dirs a *kept* skill still occupies. A stale entry must never
     // delete one of these: two source keys can resolve to the same physical
     // path (retargeting a source from a URL to a local dir keeps the skill
-    // names), so a freshly-installed copy can live where an old entry once did.
-    // Without this guard, removing the old entry would destroy the new install.
+    // names), so a freshly-installed copy can live where an old entry once did
+    // Without this guard, removing the old entry would destroy the new install
     let occupied: HashSet<PathBuf> = sm
         .state
         .skills
@@ -617,7 +617,7 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
         .collect();
 
     // Snapshot what we need from `state` so the teardown closure doesn't
-    // alias the borrow `remove_stale` needs on `summary` / `actions`.
+    // alias the borrow `remove_stale` needs on `summary` / `actions`
     let snapshot: Vec<(String, String, String, String)> = sm
         .state
         .skills
@@ -661,7 +661,7 @@ fn remove_stale_skills(ctx: &SyncContext, sm: &mut SyncMut<'_>, desired_keys: &H
             if let Some(dest_csv) = dest_by_id.get(id) {
                 for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
                     let abs = crate::fsops::resolve_dest(p, &scope_root);
-                    // Don't delete a dir a kept skill still lives in (see `occupied`).
+                    // Don't delete a dir a kept skill still lives in (see `occupied`)
                     if occupied.contains(&abs) {
                         continue;
                     }
@@ -833,7 +833,7 @@ mod tests {
         assert_eq!(s1.installed, 1, "first run installs");
 
         // Remove the source entirely: a plain re-sync must still report unchanged
-        // (no fetch, re-hash of dest matches lock).
+        // (no fetch, re-hash of dest matches lock)
         fs::remove_dir_all(&h.src_root).unwrap();
         let s2 = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
         assert_eq!(s2.unchanged, 1, "second run unchanged, no fetch");
@@ -847,7 +847,7 @@ mod tests {
         let mut state = State::default();
         run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
 
-        // Tamper the installed copy. needs_fetch fires (no good local copy), repairs.
+        // Tamper the installed copy. needs_fetch fires (no good local copy), repairs
         fs::write(h.dests[0].join("alpha/SKILL.md"), "# alpha\n\nEDITED\n").unwrap();
         let s = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
         assert_eq!(s.updated, 1);
@@ -864,7 +864,7 @@ mod tests {
         run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
         assert!(dest2.join("alpha/SKILL.md").exists());
 
-        // Drop dest2 and remove the source: repair must copy from dest[0] (good copy).
+        // Drop dest2 and remove the source: repair must copy from dest[0] (good copy)
         fs::remove_dir_all(&dest2).unwrap();
         fs::remove_dir_all(&h.src_root).unwrap();
         let s = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], false);
@@ -888,7 +888,7 @@ mod tests {
         );
         assert_eq!(s1.installed, 2);
 
-        // Remove one skill from the SOURCE; plain wildcard sync keeps the locked set.
+        // Remove one skill from the SOURCE; plain wildcard sync keeps the locked set
         fs::remove_dir_all(h.src_root.join("beta")).unwrap();
         let s2 = run_sync(
             &h,
@@ -947,7 +947,7 @@ mod tests {
 
         // Tamper, then --locked should repair from the local source (good copy gone,
         // but source still present is irrelevant; repair uses good dest only). Here
-        // we keep a good copy by NOT tampering: assert zero fetch, unchanged.
+        // we keep a good copy by NOT tampering: assert zero fetch, unchanged
         let s = run_sync(&h, list(&["alpha"]), &mut state, false, vec![], true);
         assert_eq!(s.unchanged, 1);
         assert_eq!(s.failed, 0);
@@ -976,7 +976,7 @@ mod tests {
         let mut state = State::default();
 
         // First sync from source A: alpha installed into BOTH agent dirs, and the
-        // lock records both destinations.
+        // lock records both destinations
         let s1 = run_sync_src(&src_a, &dests, &scope_root, list(&["alpha"]), &mut state);
         assert_eq!(s1.installed, 1);
         assert!(claude.join("alpha/SKILL.md").exists());
@@ -988,13 +988,13 @@ mod tests {
 
         // Retarget the same skill name to source B. The old `src_a::alpha` entry
         // goes stale; without the collision guard its teardown would delete the
-        // fresh `src_b::alpha` copies that share the same paths.
+        // fresh `src_b::alpha` copies that share the same paths
         let s2 = run_sync_src(&src_b, &dests, &scope_root, list(&["alpha"]), &mut state);
         assert_eq!(s2.installed, 1, "new source install");
         assert_eq!(s2.removed, 1, "old source entry pruned");
         assert_eq!(s2.failed, 0);
 
-        // The data-loss bug: both copies must survive the retarget.
+        // The data-loss bug: both copies must survive the retarget
         assert!(
             claude.join("alpha/SKILL.md").exists(),
             ".claude copy must survive retarget"
@@ -1004,7 +1004,7 @@ mod tests {
             ".codex copy must survive retarget"
         );
 
-        // Lock now keyed by source B, recording both destinations; source A gone.
+        // Lock now keyed by source B, recording both destinations; source A gone
         let key_b = skill_key(&src_b.to_string_lossy(), "alpha");
         assert!(state.skills.contains_key(&key_b));
         assert!(!state.skills.contains_key(&key_a));
@@ -1114,7 +1114,7 @@ mod tests {
         assert_eq!(summary.failed, 0);
         assert!(dest.join("alpha/SKILL.md").is_file());
         assert!(dest.join("beta/SKILL.md").is_file());
-        // Actions preserve config order: source A's skill before source B's.
+        // Actions preserve config order: source A's skill before source B's
         let order: Vec<&str> = actions.iter().filter_map(|a| a.skill.as_deref()).collect();
         assert_eq!(order, vec!["alpha", "beta"]);
 
