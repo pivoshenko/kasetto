@@ -8,6 +8,14 @@ import { source } from "@/lib/source";
 import { breadcrumbJsonLd, faqJsonLd } from "@/lib/structured-data";
 import { getMDXComponents } from "@/mdx-components";
 
+/** The site-wide card image; dimensions and alt mirror `app/opengraph-image.tsx`. */
+const OG_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "Kasetto: Declarative AI agent environment manager",
+};
+
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
   const params = await props.params;
   const page = source.getPage(params.slug);
@@ -46,6 +54,10 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  // Declaring `openGraph` here replaces the root object wholesale, so the
+  // shared card image has to be named again or docs links share with no image.
+  const title = `${page.data.title} - Kasetto`;
+
   return {
     title: page.data.title,
     description: page.data.description,
@@ -55,8 +67,17 @@ export async function generateMetadata(props: {
     openGraph: {
       type: "article",
       url: page.url,
-      title: `${page.data.title} - Kasetto`,
+      siteName: "Kasetto",
+      locale: "en_US",
+      title,
       description: page.data.description,
+      images: OG_IMAGE,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: page.data.description,
+      images: OG_IMAGE,
     },
   };
 }
