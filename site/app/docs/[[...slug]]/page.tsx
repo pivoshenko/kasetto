@@ -2,8 +2,10 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CopyButton } from "@/app/components/copy-button";
+import { JsonLd } from "@/app/components/json-ld";
 import { getPageMarkdown } from "@/lib/markdown";
 import { source } from "@/lib/source";
+import { breadcrumbJsonLd, faqJsonLd } from "@/lib/structured-data";
 import { getMDXComponents } from "@/mdx-components";
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
@@ -12,9 +14,12 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const faq = page.url === "/docs/faq" ? faqJsonLd(page) : null;
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
+      <JsonLd data={breadcrumbJsonLd(page)} />
+      {faq && <JsonLd data={faq} />}
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <div className="docs-page-actions">
@@ -44,5 +49,14 @@ export async function generateMetadata(props: {
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: page.url,
+    },
+    openGraph: {
+      type: "article",
+      url: page.url,
+      title: `${page.data.title} - Kasetto`,
+      description: page.data.description,
+    },
   };
 }

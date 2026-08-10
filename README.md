@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.kasetto.dev/"><img alt="Kasetto logo" src="assets/logo.svg" width="450" /></a>
+  <a href="https://kasetto.dev/"><img alt="Kasetto logo" src="assets/logo.svg" width="450" /></a>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@ Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think
 
 ## Why Kasetto
 
-There are good tools in this space already. [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config.
+There are good tools in this space already. [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config. See [Kasetto vs the alternatives](https://kasetto.dev/docs/vs-alternatives) for the full comparison.
 
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible AI environment management across projects, machines, and agents.**
 

@@ -13,7 +13,9 @@ const DOC_SLUGS = [
   "how-sync-works",
   "installation",
   "security",
+  "sharing-instructions",
   "sync-flow",
+  "vs-alternatives",
   "writing-skills",
 ];
 
@@ -36,6 +38,16 @@ const nextConfig = {
           },
         ],
       },
+      // The raw-Markdown mirrors duplicate every docs page verbatim. They exist
+      // for humans and LLM agents that fetch them directly, so keep them
+      // reachable but out of the index - otherwise each page competes with its
+      // own HTML twin.
+      ...["/docs-md/:path*", "/docs-md", "/docs/:path*.md", "/docs.md", "/llms-full.txt"].map(
+        (source) => ({
+          source,
+          headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+        })
+      ),
     ];
   },
   async rewrites() {

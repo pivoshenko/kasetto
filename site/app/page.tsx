@@ -1,7 +1,9 @@
 import { FaGithub, FaGlobe, FaLinkedinIn } from "react-icons/fa";
 import { GoStar } from "react-icons/go";
+import { softwareApplicationJsonLd } from "@/lib/structured-data";
 import { AgentsGrid } from "./components/agents-grid";
 import { CopyButton } from "./components/copy-button";
+import { JsonLd } from "./components/json-ld";
 import { ConfigExample, FeatureList } from "./components/feature-tabs";
 import { SecretSources } from "./components/secret-sources";
 import { HeroTerminal } from "./components/hero-terminal";
@@ -85,6 +87,7 @@ export default async function Page() {
 
   return (
     <div className="page-wrap">
+      <JsonLd data={softwareApplicationJsonLd()} />
       {/* ── Cassette label ── */}
       <div className="logo-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}

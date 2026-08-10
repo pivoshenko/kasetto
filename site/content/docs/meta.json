@@ -2,6 +2,7 @@
   "title": "Documentation",
   "pages": [
     "index",
+    "vs-alternatives",
     "installation",
     "configuration",
     "commands",
@@ -10,6 +11,7 @@
     "secrets",
     "writing-skills",
     "slash-commands",
+    "sharing-instructions",
     "how-sync-works",
     "sync-flow",
     "cookbook",

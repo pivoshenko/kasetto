@@ -1,0 +1,102 @@
+---
+title: "Kasetto vs the Alternatives"
+description: "How Kasetto compares to Vercel Skills, Claude plugin marketplaces, dotfiles and symlinks, and copying files by hand."
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+**When you need this:** You are already managing AI agent config somehow and want to know whether
+Kasetto solves a problem you actually have.
+
+<Callout type="info">
+
+This page describes these tools as of August 2026. The space moves quickly - check each project's
+own documentation before making a decision.
+
+</Callout>
+
+## The Short Version
+
+Most tools in this space are **installers**: you run a command, a skill lands on disk, and the
+record of what you did is the disk itself. Kasetto is a **package manager**: the config declares
+what should exist, a lock file pins exactly what you got, and sync converges the disk to match.
+
+If you work in one repo, on one machine, with one agent, an installer is enough and Kasetto is
+overhead. The difference starts to matter at the second machine, the second agent, or the second
+teammate.
+
+## Compared to Vercel Skills
+
+[Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog. It is
+a good way to discover and try something quickly.
+
+The differences that matter:
+
+- **Source of truth.** With a catalog installer, the answer to "what is installed here" is whatever
+  is on disk. Kasetto's answer is `kasetto.yaml` plus `kasetto.lock`, both committable.
+- **Where skills come from.** Kasetto takes any Git URL or local path, including private and
+  self-hosted GitHub, GitLab, Bitbucket, Codeberg, and Gitea. There is no catalog to be accepted
+  into.
+- **Asset kinds.** Kasetto syncs skills, MCP servers, slash-commands, and instruction files from the
+  same source, not skills alone.
+
+## Compared to Claude Plugin Marketplaces
+
+Plugin marketplaces give Claude runtime integrations, installed and managed through the agent
+itself. They are the right tool when you want a capability inside one agent and you want that agent
+to own its lifecycle.
+
+Kasetto sits a layer below and is agent-agnostic. It writes files into the locations agents already
+read, so the same source lands in Claude Code, Cursor, Codex, and 19 others from one `kst sync`.
+The two compose - a marketplace plugin and a Kasetto-managed skill can coexist, because Kasetto
+never touches entries it did not install.
+
+## Compared to Dotfiles and Symlinks
+
+A dotfiles repo with symlinks is the honest DIY baseline, and for a single machine it works.
+
+Where it runs out:
+
+- **Merging.** A symlink replaces a file. It cannot merge shared rules into a `CLAUDE.md` that also
+  holds repo-specific content. Kasetto uses managed comment blocks so both survive in the same file.
+- **Per-agent formats.** Symlinking the same file into `.cursor/rules/` does not give Cursor the
+  MDC frontmatter it expects. Kasetto transforms each asset into the target's native format.
+- **Versioning.** Symlinks track your working copy, whatever state it is in. A lock file pins a
+  commit, so a teammate's clone renders exactly what yours does.
+- **Windows.** Symlinks need elevated permissions or developer mode; a static binary that copies
+  files does not.
+
+## Compared to Copying Files by Hand
+
+This is what most people actually do, and it works right up until the copies diverge. The failure is
+silent: one repo's conventions quietly go stale and the agent keeps confidently applying the old
+ones.
+
+## Feature Comparison
+
+| | Kasetto | Catalog installers | Plugin marketplaces | Dotfiles + symlinks |
+| --- | --- | --- | --- | --- |
+| Declarative config file | yes | no | no | partial |
+| Lock file with pinned commits | yes | no | no | no |
+| Multiple agents from one source | yes | no | no | manual |
+| Skills, MCPs, commands, instructions | yes | skills | varies | manual |
+| Arbitrary and private Git sources | yes | catalog | marketplace | yes |
+| Merges into existing files | yes | n/a | n/a | no |
+| Secret injection at sync time | yes | no | no | no |
+| Works offline from the lock | yes | no | no | yes |
+
+## When Not to Use Kasetto
+
+Being direct about this is more useful than a feature list:
+
+- **One repo, one agent, no team.** Copy the file. You do not need a lock file.
+- **You want runtime behavior inside one agent.** That is what plugins are for. Kasetto only moves
+  files into place; it never executes what it installs.
+- **Your skills are not in Git.** Kasetto reads Git repositories and local directories. If your
+  assets live somewhere else, there is nothing for it to resolve.
+
+## Next Steps
+
+- [What is Kasetto?](/docs) - the five-minute tour
+- [Cookbook](/docs/cookbook) - team, monorepo, and pinned-rollout setups
+- [How sync works](/docs/how-sync-works) - the lock contract and merge rules

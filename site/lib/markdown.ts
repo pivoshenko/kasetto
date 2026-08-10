@@ -1,18 +1,23 @@
 import meta from "@/content/docs/meta.json";
 import { source } from "@/lib/source";
 
-type Page = NonNullable<ReturnType<typeof source.getPage>>;
+export type Page = NonNullable<ReturnType<typeof source.getPage>>;
 
 const FRONTMATTER = /^---\n[\s\S]*?\n---\n/;
 const LEADING_MDX_IMPORTS = /^(import .+\n)+/;
 
-/** Raw MDX source for a docs page, as plain Markdown with frontmatter swapped for a heading. */
-export function getPageMarkdown(page: Page): string {
-  const body = page.data.content
+/** A docs page's Markdown body, with frontmatter and leading MDX imports removed. */
+export function getPageBody(page: Page): string {
+  return page.data.content
     .replace(FRONTMATTER, "")
     .trimStart()
     .replace(LEADING_MDX_IMPORTS, "")
     .trim();
+}
+
+/** Raw MDX source for a docs page, as plain Markdown with frontmatter swapped for a heading. */
+export function getPageMarkdown(page: Page): string {
+  const body = getPageBody(page);
   const heading = page.data.description
     ? `# ${page.data.title}\n\n${page.data.description}`
     : `# ${page.data.title}`;
