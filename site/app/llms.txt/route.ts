@@ -1,9 +1,7 @@
 import { getOrderedDocsPages } from "@/lib/markdown";
+import { SITE_URL } from "@/lib/site";
 
 export const revalidate = false;
-
-// apex 307-redirects to www, so link the canonical host directly
-const SITE_URL = "https://www.kasetto.dev";
 
 export function GET() {
   const links = getOrderedDocsPages()

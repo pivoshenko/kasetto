@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 homepage = "https://kasetto.dev"
 repository = "https://github.com/pivoshenko/kasetto"
-documentation = "https://docs.kasetto.dev"
+documentation = "https://kasetto.dev/docs"
 keywords = [
   "claude-code",
   "codex",

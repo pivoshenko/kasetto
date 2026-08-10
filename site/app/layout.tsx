@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RootProvider } from "fumadocs-ui/provider";
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 import { TopNav } from "./components/top-nav";
 import "./globals.css";
 
@@ -13,25 +14,31 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
 });
 
+const DESCRIPTION =
+  "Sync skills, MCP servers, slash-commands, and instructions from Git into Claude Code, Cursor, Codex, Copilot, and 18 more agents. One YAML file, lock-pinned, in Rust.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.kasetto.dev"),
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s - Kasetto",
-    default: "Kasetto",
+    default: "Kasetto - Declarative AI Agent Environment Manager",
   },
-  description: "Declarative AI Agent Environment Manager written in Rust",
+  description: DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
-    url: "https://www.kasetto.dev",
+    url: SITE_URL,
     siteName: "Kasetto",
-    title: "Kasetto",
-    description: "Declarative AI Agent Environment Manager written in Rust",
+    title: "Kasetto - Declarative AI Agent Environment Manager",
+    description: DESCRIPTION,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kasetto",
-    description: "Declarative AI Agent Environment Manager written in Rust",
+    title: "Kasetto - Declarative AI Agent Environment Manager",
+    description: DESCRIPTION,
   },
 };
 

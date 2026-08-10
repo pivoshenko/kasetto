@@ -1,0 +1,152 @@
+---
+title: "Sharing Instructions Across Repos"
+description: "Keep one CLAUDE.md, AGENTS.md, and .cursor/rules in sync across every repository and agent, without copy-paste or symlinks."
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+**When you need this:** You have coding conventions in a `CLAUDE.md`, `AGENTS.md`, or
+`.cursor/rules` and you want the same rules in every repository, on every machine, for every agent
+you use.
+
+## The Drift Problem
+
+Instruction files are per-repository by design. Once you work in more than one repo, the copies
+diverge: you fix a rule in one project's `CLAUDE.md` and the other four keep the old wording. Add a
+second agent and it doubles, because Cursor wants `.cursor/rules/*.mdc` while Claude Code wants
+`CLAUDE.md` and Codex wants `AGENTS.md`.
+
+Symlinking a shared file breaks down quickly. It cannot merge with the repo-specific content that
+belongs in the same file, it does not survive a fresh clone, and it has no notion of a version.
+
+Kasetto treats instructions as a synced asset kind, like skills and MCP servers. You write each rule
+once, and `kst sync` renders it into whatever shape each agent expects.
+
+## Publish Instructions in a Repo
+
+An instruction is Markdown with optional YAML frontmatter, living in the source's `instructions/`
+directory. Any Git repository works - a dedicated one, or a folder inside a repo you already have.
+
+```markdown
+---
+description: Comment punctuation rules.
+globs: ["**/*.rs", "**/*.ts"]
+alwaysApply: false
+---
+
+Code comments never end with a period. Docstrings keep normal sentence punctuation.
+```
+
+Nested directories namespace with `:`, so `instructions/house/security.md` is referenced as
+`house:security`.
+
+## Consume Them
+
+Point a `kasetto.yaml` at the source and name the instructions you want:
+
+```yaml
+agent:
+  - claude-code
+  - cursor
+  - codex
+
+instructions:
+  - source: https://github.com/your-org/agent-conventions
+    instructions:
+      - comment-punctuation
+      - house:security
+```
+
+Then sync:
+
+```bash
+kst sync
+```
+
+Or skip the hand-editing and let the CLI write the config for you:
+
+```bash
+kst add https://github.com/your-org/agent-conventions --instruction comment-punctuation
+```
+
+Use `instructions: "*"` to take everything the source publishes.
+
+## What Lands Where
+
+One instruction becomes a different artifact per agent. There are two destination shapes:
+
+| Shape | Example agents | Result |
+| --- | --- | --- |
+| Aggregate file | Claude Code, Codex, Gemini CLI, Copilot | All instructions merge into one shared `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` |
+| Per-instruction directory | Cursor, Windsurf, Cline, Roo Code | One file per instruction, e.g. `.cursor/rules/comment-punctuation.mdc` |
+
+Cursor is the only agent that gets reconstructed `description` / `globs` / `alwaysApply`
+frontmatter; the rest receive the Markdown body. The full per-agent table is in
+[supported agents](/docs/agents#instruction-destinations).
+
+## Your Own Edits Survive
+
+Aggregate files are shared with content you wrote yourself, so Kasetto wraps each instruction it
+installs in a managed comment block:
+
+```markdown
+<!-- kasetto:instruction:comment-punctuation -->
+Code comments never end with a period. Docstrings keep normal sentence punctuation.
+<!-- /kasetto:instruction:comment-punctuation -->
+```
+
+Everything outside those markers is left byte-for-byte alone. `kst remove` and `kst clean` strip
+only Kasetto's own blocks and never delete the file.
+
+<Callout type="tip">
+
+Run `kst sync --dry-run` the first time you point Kasetto at an existing `CLAUDE.md`. It reports
+every file it would touch without writing anything.
+
+</Callout>
+
+## Project or Global
+
+Scope decides whether the rules apply to one repository or to everything you open:
+
+```bash
+kst sync --project   # writes ./CLAUDE.md, ./.cursor/rules/
+kst sync --global    # writes ~/.claude/CLAUDE.md, ~/.cursor/rules/
+```
+
+Org-wide conventions usually belong in global scope, with repo-specific rules layered on top in
+project scope. Configs compose with `extends`, so a team base config can carry the shared set while
+each project adds its own - see [extending another config](/docs/configuration#extending-another-config).
+
+## Updating and Rolling Back
+
+A plain `kst sync` installs exactly what `kasetto.lock` pins. To pick up new wording from a moving
+branch:
+
+```bash
+kst sync --update
+```
+
+Pin `ref:` to a tag or commit when you want a rule set frozen, and commit `kasetto.lock` so everyone
+on the team renders the same instructions. To roll a change back, move the `ref:` and sync again.
+
+## Auditing and Removing
+
+See what is installed:
+
+```bash
+kst list --type instructions
+```
+
+`kst doctor` additionally reports orphaned instruction blocks left in a shared `CLAUDE.md` - useful
+after someone hand-edits a file Kasetto manages. To drop one:
+
+```bash
+kst remove https://github.com/your-org/agent-conventions --instruction house:security
+```
+
+## Next Steps
+
+- [Configuration reference](/docs/configuration#instruction-source-fields) - every field on an instruction source
+- [Supported agents](/docs/agents#instruction-destinations) - exact destination for all 22 agents
+- [Cookbook](/docs/cookbook) - team, monorepo, and multi-agent setups
