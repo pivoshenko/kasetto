@@ -9,7 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Raw-Markdown mirrors of the docs; noindex-ed at the header level too.
         disallow: ["/docs-md/", "/api/"],
       },
     ],

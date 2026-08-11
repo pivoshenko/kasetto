@@ -1,8 +1,3 @@
-/**
- * Emits a schema.org JSON-LD block.
- *
- * `<` is escaped so a string in the payload can never close the script tag.
- */
 export function JsonLd({ data }: { data: object }) {
   return (
     <script

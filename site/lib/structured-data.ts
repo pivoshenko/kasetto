@@ -1,7 +1,6 @@
 import { getPageBody, type Page } from "@/lib/markdown";
 import { SITE_URL } from "@/lib/site";
 
-/** Reduce inline Markdown to the plain prose search engines should read. */
 function toPlainText(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, "")
@@ -13,7 +12,6 @@ function toPlainText(markdown: string): string {
     .trim();
 }
 
-/** The product itself, for the homepage. */
 export function softwareApplicationJsonLd() {
   return {
     "@context": "https://schema.org",
@@ -41,7 +39,6 @@ export function softwareApplicationJsonLd() {
   };
 }
 
-/** Home → Documentation → page trail for a docs page. */
 export function breadcrumbJsonLd(page: Page) {
   const trail = [
     { name: "Kasetto", url: SITE_URL },
@@ -63,12 +60,6 @@ export function breadcrumbJsonLd(page: Page) {
   };
 }
 
-/**
- * FAQ rich-result markup derived from the page's own `##` sections.
- *
- * Every question and answer is already visible on the page, which is what
- * Google requires - this only restates the existing structure.
- */
 export function faqJsonLd(page: Page) {
   const entries = getPageBody(page)
     .split(/^## /m)

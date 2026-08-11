@@ -8,7 +8,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const docs = getOrderedDocsPages().map((page) => ({
     url: `${SITE_URL}${page.url}`,
     changeFrequency: "weekly" as const,
-    // The docs index outranks the individual pages it links to.
     priority: page.url === "/docs" ? 0.9 : 0.7,
   }));
 

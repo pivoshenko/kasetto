@@ -8,7 +8,6 @@ import { source } from "@/lib/source";
 import { breadcrumbJsonLd, faqJsonLd } from "@/lib/structured-data";
 import { getMDXComponents } from "@/mdx-components";
 
-/** The site-wide card image; dimensions and alt mirror `app/opengraph-image.tsx`. */
 const OG_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
@@ -54,8 +53,6 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  // Declaring `openGraph` here replaces the root object wholesale, so the
-  // shared card image has to be named again or docs links share with no image.
   const title = `${page.data.title} - Kasetto`;
 
   return {
