@@ -81,6 +81,15 @@ const nextConfig = {
           permanent: true,
         },
       ]),
+      // Everything else on the docs host, which otherwise serves the whole site
+      // a second time: /docs/<path>, /llms.txt, /sitemap.xml. Last, so the
+      // legacy bare-slug rules above still win.
+      {
+        source: "/:path*",
+        has: docsHost,
+        destination: "https://kasetto.dev/:path*",
+        permanent: true,
+      },
     ];
   },
 };
