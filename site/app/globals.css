@@ -390,6 +390,10 @@ button {
 }
 
 /* ─── Docs page actions ─── */
+.docs-page-description {
+  margin-bottom: var(--space-4);
+}
+
 .docs-page-actions {
   display: flex;
   align-items: center;

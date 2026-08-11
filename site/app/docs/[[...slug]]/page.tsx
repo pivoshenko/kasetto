@@ -28,7 +28,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
       <JsonLd data={breadcrumbJsonLd(page)} />
       {faq && <JsonLd data={faq} />}
       <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsDescription className="docs-page-description">{page.data.description}</DocsDescription>
       <div className="docs-page-actions">
         <CopyButton text={getPageMarkdown(page)} label="Copy page" />
         <a className="action-link" href={`${page.url}.md`}>
