@@ -2,8 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
-// Node runtime (the default): the card is rendered once at build time, so it
-// costs nothing at request time and needs no network
 export const alt = "Kasetto: Declarative AI agent environment manager";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -17,25 +15,6 @@ const MUTED = "#a8a195"; // CLI SECONDARY
 const BORDER = "#2e2e2c"; // popil surface1
 const ACCENT_WARM = "#e8a94d"; // CLI ATTENTION
 
-/**
- * Fonts are bundled rather than fetched from Google at render time.
- *
- * Satori cannot parse WOFF2, so these have to be TTF, and the full uncompressed
- * Noto Sans JP is 5 MB. Both are therefore subsetted to the glyphs this card
- * draws - printable ASCII for JetBrains Mono, `カセット` for Noto Sans JP -
- * which takes all four files together from 5.5 MB to 131 KB.
- *
- * To regenerate, ask Google for a subset directly and save what it returns.
- * The `User-Agent` matters: too generic to be read as a modern browser, so the
- * CSS points at a TTF rather than a WOFF2 Satori could not parse.
- *
- *   curl -H 'User-Agent: Mozilla/5.0' \
- *     'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&text=カセット'
- *
- * They are read straight off disk rather than fetched. `fetch` cannot open a
- * `file:` URL in either runtime, and the bundler's `new URL(...)` rewrite yields
- * a root-relative path that `fetch` will not accept without an origin.
- */
 function loadFont(file: string) {
   return readFileSync(join(process.cwd(), "app/fonts", file));
 }

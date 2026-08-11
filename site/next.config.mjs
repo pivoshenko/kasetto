@@ -38,10 +38,6 @@ const nextConfig = {
           },
         ],
       },
-      // The raw-Markdown mirrors duplicate every docs page verbatim. They exist
-      // for humans and LLM agents that fetch them directly, so keep them
-      // reachable but out of the index - otherwise each page competes with its
-      // own HTML twin.
       ...["/docs-md/:path*", "/docs-md", "/docs/:path*.md", "/docs.md", "/llms-full.txt"].map(
         (source) => ({
           source,
@@ -81,9 +77,6 @@ const nextConfig = {
           permanent: true,
         },
       ]),
-      // Everything else on the docs host, which otherwise serves the whole site
-      // a second time: /docs/<path>, /llms.txt, /sitemap.xml. Last, so the
-      // legacy bare-slug rules above still win.
       {
         source: "/:path*",
         has: docsHost,
