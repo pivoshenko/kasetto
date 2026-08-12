@@ -402,15 +402,38 @@ button {
 }
 
 .prose h2 {
+  margin-top: 1.2em;
   margin-bottom: 0.5em;
 }
 
 .prose h3 {
+  margin-top: 1.1em;
   margin-bottom: 0.45em;
 }
 
 .prose h4 {
+  margin-top: 1em;
   margin-bottom: 0.375em;
+}
+
+.prose p,
+.prose ul,
+.prose ol {
+  margin-top: 0.85em;
+  margin-bottom: 0.85em;
+}
+
+.prose li {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+
+/* Re-assert Tailwind's own reset: :where(h2 + *) scores lower than .prose p,
+   so the rules above would otherwise push the first block away from its heading */
+.prose h2 + *,
+.prose h3 + *,
+.prose h4 + * {
+  margin-top: 0;
 }
 
 /* ─── Agents ─── */
