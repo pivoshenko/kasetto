@@ -390,11 +390,8 @@ button {
 }
 
 /* ─── Docs page actions ─── */
-/* Fumadocs lays the page out as a flex column with a 24px gap. Margins do not
-   collapse in flex, so that gap stacks on top of any margin set here - drive
-   the spacing from the gap and keep the margins at zero */
 article:has(> .docs-page-actions) {
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
 .docs-page-description {
@@ -405,9 +402,9 @@ article:has(> .docs-page-actions) {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: 0;
 }
 
+/* ─── Docs prose ─── */
 .prose {
   line-height: 1.65;
 }
@@ -439,9 +436,17 @@ article:has(> .docs-page-actions) {
   margin-bottom: 0.3em;
 }
 
-/* Re-assert Tailwind's own resets: they are wrapped in :where() and so score
-   lower than .prose p, which would otherwise push the first block away from
-   its heading and add a stray margin at the very top and bottom of the body */
+.prose .my-6,
+.prose div.relative.overflow-auto {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.prose table {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .prose h2 + *,
 .prose h3 + *,
 .prose h4 + * {
