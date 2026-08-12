@@ -390,15 +390,22 @@ button {
 }
 
 /* ─── Docs page actions ─── */
+/* Fumadocs lays the page out as a flex column with a 24px gap. Margins do not
+   collapse in flex, so that gap stacks on top of any margin set here - drive
+   the spacing from the gap and keep the margins at zero */
+article:has(> .docs-page-actions) {
+  gap: var(--space-2);
+}
+
 .docs-page-description {
-  margin-bottom: var(--space-2);
+  margin-bottom: 0;
 }
 
 .docs-page-actions {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-2);
+  margin-bottom: 0;
 }
 
 .prose {
