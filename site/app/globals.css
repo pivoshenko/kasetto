@@ -401,6 +401,18 @@ button {
   margin-bottom: var(--space-4);
 }
 
+.prose h2 {
+  margin-bottom: 0.5em;
+}
+
+.prose h3 {
+  margin-bottom: 0.45em;
+}
+
+.prose h4 {
+  margin-bottom: 0.375em;
+}
+
 /* ─── Agents ─── */
 .agents-header {
   padding: 14px 24px;
