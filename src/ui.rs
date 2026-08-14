@@ -221,48 +221,52 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
     }
 }
 
-/// Past-tense status verb + dim metadata tail per design. Pairs with
-/// [`action_glyph`] in source-grouped trees. Returns the colored tail (e.g.
-/// `updated  2.1.0 → 2.2.0`, `added  v1.0.0`, `removed`, `unchanged`).
-pub(crate) fn status_tail(
+/// Width of the status-label column in a source-grouped tree. The label
+/// vocabulary is closed (`added`/`updated`/`removed`/`unchanged`/`broken`, and
+/// dry-run reuses the same five words), so this is a constant rather than
+/// something measured from the rows — no name can ever push the column.
+pub(crate) const STATUS_LABEL_W: usize = 9;
+
+/// Past-tense status verb alone, colored per role. The word that sits in the
+/// [`STATUS_LABEL_W`] column, left of the asset name.
+pub(crate) fn status_label(status: &str, plain: bool) -> String {
+    let (label, color): (&str, &str) = match status {
+        "installed" | "would_install" => ("added", SUCCESS),
+        "updated" | "would_update" => ("updated", ATTENTION),
+        "removed" | "would_remove" => ("removed", ERROR),
+        "unchanged" => ("unchanged", INFRA),
+        "broken" | "source_error" => ("broken", ERROR),
+        other => return other.to_string(),
+    };
+    if plain {
+        label.to_string()
+    } else {
+        format!("{color}{label}{RESET}")
+    }
+}
+
+/// Dim version metadata that trails the asset name: `v1.0.0` on an install,
+/// `2.1.0 → 2.2.0` on an update, empty otherwise. Split out from
+/// [`status_label`] because it follows the name (uv-style) while the label
+/// precedes it.
+pub(crate) fn status_detail(
     status: &str,
     version_from: Option<&str>,
     version_to: Option<&str>,
     plain: bool,
 ) -> String {
-    if plain {
-        return match status {
-            "installed" | "would_install" => format!(
-                "added{}",
-                version_to.map(|v| format!("  v{v}")).unwrap_or_default()
-            ),
-            "updated" | "would_update" => match (version_from, version_to) {
-                (Some(f), Some(t)) => format!("updated  {f} → {t}"),
-                _ => "updated".to_string(),
-            },
-            "removed" | "would_remove" => "removed".to_string(),
-            "unchanged" => "unchanged".to_string(),
-            "broken" | "source_error" => "broken".to_string(),
-            _ => status.to_string(),
-        };
-    }
-    match status {
-        "installed" | "would_install" => {
-            let tail = version_to
-                .map(|v| format!("{SECONDARY}  v{v}{RESET}"))
-                .unwrap_or_default();
-            format!("{SUCCESS}added{RESET}{tail}")
-        }
+    let text = match status {
+        "installed" | "would_install" => version_to.map(|v| format!("v{v}")),
         "updated" | "would_update" => match (version_from, version_to) {
-            (Some(f), Some(t)) => {
-                format!("{ATTENTION}updated{RESET}{SECONDARY}  {f} → {t}{RESET}")
-            }
-            _ => format!("{ATTENTION}updated{RESET}"),
+            (Some(f), Some(t)) => Some(format!("{f} → {t}")),
+            _ => None,
         },
-        "removed" | "would_remove" => format!("{ERROR}removed{RESET}"),
-        "unchanged" => format!("{INFRA}unchanged{RESET}"),
-        "broken" | "source_error" => format!("{ERROR}broken{RESET}"),
-        _ => status.to_string(),
+        _ => None,
+    };
+    match (text, plain) {
+        (None, _) => String::new(),
+        (Some(t), true) => t,
+        (Some(t), false) => format!("{SECONDARY}{t}{RESET}"),
     }
 }
 
@@ -354,6 +358,45 @@ pub(crate) fn tree_name_width<'a>(names: impl IntoIterator<Item = &'a str>, min:
         .max()
         .unwrap_or(0)
         .max(min)
+}
+
+/// Status tree leaf, uv-style: `├─ ↑ updated    blog-write  2.1.0 → 2.2.0`.
+/// Branch, then the status glyph, then the status label in a fixed
+/// [`STATUS_LABEL_W`] column, then the name, then optional dim detail. Every
+/// column left of the name is constant width, so names always start at the
+/// same offset no matter how long any row's name is — the reason this shape is
+/// preferred over a right-aligned status column.
+pub(crate) fn print_status_leaf(
+    is_last: bool,
+    status: &str,
+    name: &str,
+    detail: &str,
+    plain: bool,
+) {
+    let branch = if is_last { "└─" } else { "├─" };
+    let glyph = action_glyph(status, plain);
+    let label = status_label(status, plain);
+    // The colored label carries ANSI, so pad from the plain word's width
+    let label_pad = STATUS_LABEL_W.saturating_sub(status_label(status, true).chars().count());
+    let name_styled = if plain || !matches!(status, "removed" | "would_remove") {
+        name.to_string()
+    } else {
+        format!("{INFRA}{STRIKE}{name}{STRIKE_RESET}{RESET}")
+    };
+    let detail_part = if detail.is_empty() {
+        String::new()
+    } else {
+        format!("  {detail}")
+    };
+    let branch_styled = if plain {
+        branch.to_string()
+    } else {
+        format!("{INFRA}{branch}{RESET}")
+    };
+    println!(
+        "{branch_styled} {glyph} {label}{}  {name_styled}{detail_part}",
+        " ".repeat(label_pad)
+    );
 }
 
 /// Tree leaf row: `├─` for non-last, `└─` for last, then optional glyph,
@@ -559,6 +602,45 @@ mod tests {
         assert_eq!(action_glyph("unchanged", true), "✓");
         assert_eq!(action_glyph("broken", true), "!");
         assert_eq!(action_glyph("source_error", true), "!");
+    }
+
+    #[test]
+    fn status_labels_all_fit_the_fixed_column() {
+        // The whole point of a constant column: no label may overflow it, or
+        // names stop starting at the same offset
+        for status in [
+            "installed",
+            "would_install",
+            "updated",
+            "would_update",
+            "removed",
+            "would_remove",
+            "unchanged",
+            "broken",
+            "source_error",
+        ] {
+            let w = status_label(status, true).chars().count();
+            assert!(w <= STATUS_LABEL_W, "{status} label is {w} wide");
+        }
+        assert_eq!(
+            status_label("unchanged", true).chars().count(),
+            STATUS_LABEL_W
+        );
+    }
+
+    #[test]
+    fn status_detail_carries_versions_and_is_empty_otherwise() {
+        assert_eq!(
+            status_detail("installed", None, Some("1.0.0"), true),
+            "v1.0.0"
+        );
+        assert_eq!(
+            status_detail("updated", Some("2.1.0"), Some("2.2.0"), true),
+            "2.1.0 → 2.2.0"
+        );
+        assert_eq!(status_detail("updated", None, None, true), "");
+        assert_eq!(status_detail("unchanged", None, None, true), "");
+        assert_eq!(status_detail("removed", None, None, true), "");
     }
 
     #[test]

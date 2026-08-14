@@ -121,9 +121,15 @@ style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error
 `SUCCESS` (green), `ERROR` (red), `INFO` (cyan), `BRAND` (violet), `SECONDARY` (grey), `INFRA`
 (dim) - and hex values live *only* there. There is deliberately no foreground constant; body text
 inherits the terminal. Commands must render through `ui.rs` helpers (`action_glyph`,
-`print_section_header`, `print_source_header`, `print_tree_leaf`, `print_sync_chips`,
-`with_spinner`, `eprint_fail`/`eprint_warn`) rather than emitting inline ANSI. The banner is only
-shown on bare `kst` and `kst init`.
+`print_section_header`, `print_source_header`, `print_status_leaf`, `print_tree_leaf`,
+`print_sync_chips`, `with_spinner`, `eprint_fail`/`eprint_warn`) rather than emitting inline ANSI.
+The banner is only shown on bare `kst` and `kst init`.
+
+Sync/clean tree rows are `├─ {glyph} {label} {name} {detail}` (`print_status_leaf`) - icon, then
+the status word in a fixed `STATUS_LABEL_W` column, then the name, then dim version metadata.
+Every column left of the name is constant width, so names always start at the same offset. `list`
+uses `print_tree_leaf` instead, whose right column *is* data (the source slug) and so is measured
+across the whole block via `tree_name_width`.
 
 Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable),
 `-v`/`--verbose` (repeatable), and `--project`/`--global`. `--plain` is a hidden deprecated alias

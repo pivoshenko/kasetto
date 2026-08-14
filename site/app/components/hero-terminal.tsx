@@ -176,12 +176,16 @@ function SyncScene({
                   <div key={slug} className="t-row">
                     <span className="t-faint">{isLast ? "└─" : "├─"}</span>
                     <span className={cls}>{gl}</span>
-                    <strong className={st?.s === "removed" ? "t-strike" : "t-fg"}>{slug}</strong>
-                    <span className="t-tail">
+                    <span className="t-label">
                       {!st && <span className="t-faint">unchanged</span>}
                       {st?.s === "updated" && <span className="t-amber">updated</span>}
                       {st?.s === "added" && <span className="t-green">added</span>}
                       {st?.s === "removed" && <span className="t-red">removed</span>}
+                    </span>
+                    <strong className={st?.s === "removed" ? "t-strike" : "t-fg"}>{slug}</strong>
+                    <span className="t-detail">
+                      {st?.s === "updated" && `${st.v[0]} → ${st.v[1]}`}
+                      {st?.s === "added" && `v${st.v[0]}`}
                     </span>
                   </div>
                 );
@@ -552,10 +556,11 @@ export function HeroTerminal() {
                       <div className="t-row">
                         <span className="t-faint">└─</span>
                         <span className="t-green">+</span>
-                        <strong className="t-fg">{ADD_ITEM}</strong>
-                        <span className="t-tail">
+                        <span className="t-label">
                           <span className="t-green">added</span>
                         </span>
+                        <strong className="t-fg">{ADD_ITEM}</strong>
+                        <span className="t-detail">v1.2.0</span>
                       </div>
                     )}
                   </div>
@@ -632,10 +637,11 @@ export function HeroTerminal() {
                       <div className="t-row">
                         <span className="t-faint">└─</span>
                         <span className="t-red">−</span>
-                        <strong className="t-fg t-strike">{REMOVE_ITEM}</strong>
-                        <span className="t-tail">
+                        <span className="t-label">
                           <span className="t-red">removed</span>
                         </span>
+                        <strong className="t-fg t-strike">{REMOVE_ITEM}</strong>
+                        <span className="t-detail" />
                       </div>
                     )}
                   </div>

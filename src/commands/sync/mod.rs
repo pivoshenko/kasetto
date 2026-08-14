@@ -18,8 +18,8 @@ use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Action, Config, Report, Scope, State, Summary};
 use crate::state::{load_runtime_state, save_runtime_state, RuntimeState};
 use crate::ui::{
-    action_glyph, animations_enabled, print_json, print_source_header, print_sync_chips,
-    print_tree_leaf, short_source, status_tail,
+    action_glyph, animations_enabled, print_json, print_source_header, print_status_leaf,
+    print_sync_chips, short_source, status_detail,
 };
 
 pub(super) struct SyncContext<'a> {
@@ -423,11 +423,9 @@ fn print_sync_tree(report: &Report, plain: bool) {
         print_source_header(&repo, None, Some(true), None, plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
-            let glyph = action_glyph(&a.status, plain);
             let name = a.skill.as_deref().unwrap_or("-");
-            let strike = matches!(a.status.as_str(), "removed" | "would_remove");
-            let tail = status_tail(&a.status, None, None, plain);
-            print_tree_leaf(is_last, Some(&glyph), name, strike, &tail, 24, plain);
+            let detail = status_detail(&a.status, None, None, plain);
+            print_status_leaf(is_last, &a.status, name, &detail, plain);
         }
     }
 }
