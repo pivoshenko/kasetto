@@ -307,7 +307,7 @@ pub(crate) fn print_source_header(
         match (count, right_col_at) {
             (Some(n), Some(col)) => {
                 let prefix = format!("{glyph_plain} {repo}");
-                let pad = col.saturating_sub(prefix.len() + n.to_string().len());
+                let pad = right_col_pad(col, prefix.chars().count() + n.to_string().len());
                 println!("{prefix}{}{n}", " ".repeat(pad));
             }
             (Some(n), None) => println!("{glyph_plain} {repo}    {n}"),
@@ -325,7 +325,7 @@ pub(crate) fn print_source_header(
             // Visible width = "✓ repo" + " " + "N"; pad whitespace between repo and N
             let visible_prefix = 1 + 1 + repo.chars().count();
             let n_str = n.to_string();
-            let pad = col.saturating_sub(visible_prefix + n_str.len());
+            let pad = right_col_pad(col, visible_prefix + n_str.chars().count());
             println!(
                 "{glyph_colored} {INFO}{repo}{RESET}{}{INFRA}{n_str}{RESET}",
                 " ".repeat(pad)
@@ -334,6 +334,26 @@ pub(crate) fn print_source_header(
         (Some(n), None) => println!("{glyph_colored} {INFO}{repo}{RESET}   {INFRA}{n}{RESET}"),
         (None, _) => println!("{glyph_colored} {INFO}{repo}{RESET}"),
     }
+}
+
+/// Whitespace between a row's left text and its right-aligned tail, so the
+/// tail lands on column `col`. Never returns 0: a row whose content already
+/// overruns `col` keeps a two-space gutter instead of fusing `pathwritable`.
+fn right_col_pad(col: usize, content_w: usize) -> usize {
+    col.saturating_sub(content_w).max(2)
+}
+
+/// Tail column for a tree block: the widest name in it, floored at `min` so
+/// short-named trees keep their usual gutter. Callers measure once per tree —
+/// not per source group — so the status tails form one straight column down
+/// the whole block instead of jumping where a name overruns a fixed width.
+pub(crate) fn tree_name_width<'a>(names: impl IntoIterator<Item = &'a str>, min: usize) -> usize {
+    names
+        .into_iter()
+        .map(|n| n.chars().count())
+        .max()
+        .unwrap_or(0)
+        .max(min)
 }
 
 /// Tree leaf row: `├─` for non-last, `└─` for last, then optional glyph,
@@ -415,7 +435,10 @@ pub(crate) fn print_doctor_head(version: &str, healthy: bool, plain: bool) {
     const COL: usize = 62;
     let left_plain = format!("◆ kasetto v{version}");
     let badge_plain = if healthy { "✓ healthy" } else { "✗ issues" };
-    let pad = COL.saturating_sub(left_plain.chars().count() + badge_plain.chars().count());
+    let pad = right_col_pad(
+        COL,
+        left_plain.chars().count() + badge_plain.chars().count(),
+    );
     if plain {
         println!("{left_plain}{}{badge_plain}", " ".repeat(pad));
         return;
@@ -482,7 +505,7 @@ pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
     let tag = if writable { "writable" } else { "not writable" };
     let path_relative = relativize_home(path);
     let visible_left = 1 + 1 + path_relative.chars().count();
-    let pad = COL.saturating_sub(visible_left + tag.chars().count());
+    let pad = right_col_pad(COL, visible_left + tag.chars().count());
     if plain {
         let glyph = if writable { "✓" } else { "✗" };
         println!("{glyph} {path_relative}{}{tag}", " ".repeat(pad));
@@ -536,6 +559,26 @@ mod tests {
         assert_eq!(action_glyph("unchanged", true), "✓");
         assert_eq!(action_glyph("broken", true), "!");
         assert_eq!(action_glyph("source_error", true), "!");
+    }
+
+    #[test]
+    fn right_col_pad_keeps_a_gutter_when_content_overruns_the_column() {
+        assert_eq!(right_col_pad(62, 40), 22);
+        // overrun: never 0, or the tail fuses onto the left text
+        assert_eq!(right_col_pad(62, 62), 2);
+        assert_eq!(right_col_pad(62, 90), 2);
+    }
+
+    #[test]
+    fn tree_name_width_floors_at_min_and_grows_past_it() {
+        assert_eq!(tree_name_width(["a", "bb"], 24), 24);
+        assert_eq!(
+            tree_name_width(["instruction:co-authored-attribution"], 24),
+            35
+        );
+        assert_eq!(tree_name_width([], 24), 24);
+        // counts characters, not bytes, so multi-byte names still line up
+        assert_eq!(tree_name_width(["スキル"], 0), 3);
     }
 
     #[test]

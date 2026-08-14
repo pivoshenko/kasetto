@@ -12,7 +12,7 @@ use crate::profile::{format_updated_ago, read_skill_profile};
 use crate::state::{load_runtime_state, RuntimeState};
 use crate::ui::{
     color_stdout_enabled, print_json, print_section_header, print_source_header, print_tip,
-    print_tree_leaf, short_source,
+    print_tree_leaf, short_source, tree_name_width,
 };
 
 #[derive(Clone, Serialize)]
@@ -100,6 +100,7 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
             groups.push((s.source.clone(), vec![s]));
         }
     }
+    let name_width = tree_name_width(skills.iter().map(|s| s.name.as_str()), 30);
     for (source, items) in &groups {
         let repo = short_source(source);
         print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
@@ -110,7 +111,7 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
             } else {
                 s.skill.clone()
             };
-            print_tree_leaf(is_last, None, &s.name, false, &tail, 30, plain);
+            print_tree_leaf(is_last, None, &s.name, false, &tail, name_width, plain);
         }
     }
 }
@@ -129,12 +130,13 @@ fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) 
             groups.push((a.source.clone(), vec![a]));
         }
     }
+    let name_width = tree_name_width(rows.iter().map(|a| a.name.as_str()), 30);
     for (source, items) in &groups {
         let repo = short_source(source);
         print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
-            print_tree_leaf(is_last, None, &a.name, false, "-", 30, plain);
+            print_tree_leaf(is_last, None, &a.name, false, "-", name_width, plain);
         }
     }
 }
