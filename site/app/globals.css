@@ -1113,9 +1113,6 @@ article:has(> .docs-page-actions) {
 .t-row > :nth-child(1) {
   padding-left: var(--space-2);
 }
-.t-row > :nth-child(3) {
-  text-align: right;
-}
 .t-summary-line {
   grid-column: 1 / -1;
   display: inline-flex;
@@ -1170,9 +1167,13 @@ article:has(> .docs-page-actions) {
   padding-left: var(--space-2);
   margin-top: var(--space-2);
 }
+/* Columns left of the name are all fixed width, so names start at the same
+   offset on every row no matter how long any one name is. The status label
+   column is sized to the widest word in the closed vocabulary ("unchanged"),
+   mirroring STATUS_LABEL_W in src/ui.rs */
 .t-row {
   display: grid;
-  grid-template-columns: auto auto minmax(34ch, max-content) auto 1fr;
+  grid-template-columns: auto auto 9ch auto 1fr;
   column-gap: var(--space-2);
   align-items: baseline;
   padding-left: var(--space-2);
@@ -1180,9 +1181,11 @@ article:has(> .docs-page-actions) {
 .t-row strong {
   font-weight: 500;
 }
-.t-tail {
-  color: var(--n-400);
+.t-label {
   text-align: left;
+}
+.t-detail {
+  color: var(--n-400);
   padding-left: var(--space-2);
 }
 

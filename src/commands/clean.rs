@@ -15,8 +15,8 @@ use crate::model::{
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
 use crate::ui::{
-    action_glyph, print_json, print_section_header, print_source_header, print_tip,
-    print_tree_leaf, short_source, status_tail,
+    print_json, print_section_header, print_source_header, print_status_leaf, print_tip,
+    short_source,
 };
 
 #[derive(serde::Serialize)]
@@ -233,9 +233,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             print_source_header(&repo, None, Some(true), None, plain);
             for (i, (name, _)) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
-                let glyph = action_glyph(status, plain);
-                let tail = status_tail(status, None, None, plain);
-                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+                print_status_leaf(is_last, status, name, "", plain);
             }
         }
     }
@@ -267,9 +265,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             print_source_header(&repo, None, Some(true), None, plain);
             for (i, name) in servers.iter().enumerate() {
                 let is_last = i == servers.len() - 1;
-                let glyph = action_glyph(status, plain);
-                let tail = status_tail(status, None, None, plain);
-                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+                print_status_leaf(is_last, status, name, "", plain);
             }
         }
     }
@@ -295,9 +291,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             print_source_header(&repo, None, Some(true), None, plain);
             for (i, name) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
-                let glyph = action_glyph(status, plain);
-                let tail = status_tail(status, None, None, plain);
-                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+                print_status_leaf(is_last, status, name, "", plain);
             }
         }
     }
@@ -327,9 +321,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             print_source_header(&repo, None, Some(true), None, plain);
             for (i, name) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
-                let glyph = action_glyph(status, plain);
-                let tail = status_tail(status, None, None, plain);
-                print_tree_leaf(is_last, Some(&glyph), name, true, &tail, 30, plain);
+                print_status_leaf(is_last, status, name, "", plain);
             }
         }
     }
