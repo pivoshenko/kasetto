@@ -310,7 +310,14 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
     }
 
     if !(lines.is_empty() || locked && only_unchanged) {
-        print_sync_chips(s.updated, s.installed, s.removed, s.unchanged, plain);
+        print_sync_chips(
+            s.updated,
+            s.installed,
+            s.removed,
+            s.unchanged,
+            s.broken + s.failed,
+            plain,
+        );
     }
 
     if lines.is_empty() && s.broken == 0 && s.failed == 0 {
