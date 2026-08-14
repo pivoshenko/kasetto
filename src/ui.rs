@@ -452,22 +452,40 @@ pub(crate) fn print_tree_leaf(
 /// Render the per-action summary chips shown beneath a sync's lead verb line:
 /// `● N updated  ● N added  ● N removed  ● N unchanged`. The dot inherits the
 /// role color (amber/green/red/dim) and the count is bold.
+///
+/// `broken` covers everything that did not land (missing assets plus source
+/// resolution failures), matching the single `broken` word the tree labels both
+/// with. Unlike the other four it is omitted at zero, so a clean sync keeps the
+/// four-chip strip and the red chip only ever appears as a signal.
 pub(crate) fn print_sync_chips(
     updated: usize,
     added: usize,
     removed: usize,
     unchanged: usize,
+    broken: usize,
     plain: bool,
 ) {
     if plain {
-        println!("  {updated} updated  {added} added  {removed} removed  {unchanged} unchanged");
+        let tail = if broken > 0 {
+            format!("  {broken} broken")
+        } else {
+            String::new()
+        };
+        println!(
+            "  {updated} updated  {added} added  {removed} removed  {unchanged} unchanged{tail}"
+        );
         return;
     }
+    let tail = if broken > 0 {
+        format!("  {ERROR}●{RESET} {broken} {SECONDARY}broken{RESET}")
+    } else {
+        String::new()
+    };
     println!(
         "  {ATTENTION}●{RESET} {updated} {SECONDARY}updated{RESET}  \
          {SUCCESS}●{RESET} {added} {SECONDARY}added{RESET}  \
          {ERROR}●{RESET} {removed} {SECONDARY}removed{RESET}  \
-         {INFRA}●{RESET} {unchanged} {SECONDARY}unchanged{RESET}"
+         {INFRA}●{RESET} {unchanged} {SECONDARY}unchanged{RESET}{tail}"
     );
 }
 
