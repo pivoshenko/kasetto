@@ -86,18 +86,15 @@ fn resolve_source_root(base_root: &Path, sub_dir: Option<&str>) -> Result<PathBu
         return Err(err("source `sub-dir` must not escape the source root"));
     }
 
+    // Name the sub-dir as written in the config, not `resolved`: the latter is
+    // an absolute path inside the extraction stage dir, which is deleted when
+    // the run ends, so it is unactionable in the error the user actually reads
     let resolved = base_root.join(rel);
     if !resolved.exists() {
-        return Err(err(format!(
-            "source sub-dir not found: {}",
-            resolved.display()
-        )));
+        return Err(err(format!("source sub-dir not found: {trimmed}")));
     }
     if !resolved.is_dir() {
-        return Err(err(format!(
-            "source sub-dir is not a directory: {}",
-            resolved.display()
-        )));
+        return Err(err(format!("source sub-dir is not a directory: {trimmed}")));
     }
     Ok(resolved)
 }
