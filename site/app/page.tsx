@@ -202,7 +202,7 @@ export default async function Page() {
             </p>
             <div className="footer-social">
               <a
-                href="https://www.pivoshenko.dev"
+                href="https://pivoshenko.dev"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Author's blog"
