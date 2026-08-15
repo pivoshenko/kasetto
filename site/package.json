@@ -28,7 +28,7 @@
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
+    "@biomejs/biome": "^2.5.8",
     "@types/mdast": "^4.0.4",
     "@types/mdx": "^2.0.14",
     "@types/node": "^22.20.1",
