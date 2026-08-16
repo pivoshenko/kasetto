@@ -179,19 +179,14 @@ impl SyncArgs {
 
 /// Apply color-flag side effects (CLICOLOR_FORCE for `always`, NO_COLOR for
 /// `never`, deprecation warning for the legacy `--plain`) and return the
-/// effective `plain` value.
+/// effective `plain` value. A resolved `plain` always clears CLICOLOR_FORCE,
+/// so the two variables can never disagree about the same run.
 ///
 /// The resolved choice is mirrored into the environment because not every
 /// surface receives the flag: `lock` and the top-level error handler decide
 /// color from `color_stdout_enabled` / `color_stderr_enabled`, which read the
 /// environment. Without the mirror, `--color never` still colored them.
 fn resolve_plain(plain_flag: bool, color: ColorMode) -> bool {
-    if plain_flag {
-        crate::ui::eprint_warn(
-            "--plain is deprecated; use --color never instead",
-            color == ColorMode::Never,
-        );
-    }
     let plain = match color {
         ColorMode::Always => {
             std::env::set_var("CLICOLOR_FORCE", "1");
@@ -201,7 +196,12 @@ fn resolve_plain(plain_flag: bool, color: ColorMode) -> bool {
         ColorMode::Auto => plain_flag,
     };
     if plain {
+        // Both probes check CLICOLOR_FORCE first, so it would outrank NO_COLOR
+        std::env::remove_var("CLICOLOR_FORCE");
         std::env::set_var("NO_COLOR", "1");
+    }
+    if plain_flag {
+        crate::ui::eprint_warn("--plain is deprecated; use --color never instead", plain);
     }
     plain
 }
