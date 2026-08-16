@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use crate::banner::print_banner;
 use crate::cli::{Cli, Commands, SelfAction};
+use crate::commands::Outcome;
 use crate::default_config_path;
 use crate::error::Result;
 
@@ -16,7 +17,7 @@ use crate::error::Result;
 /// `Error: Custom { kind: Other, error: "..." }`.
 pub fn run() -> ExitCode {
     match dispatch() {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(err) => {
             crate::ui::eprint_error(&err.to_string(), !crate::ui::color_stderr_enabled());
             ExitCode::FAILURE
@@ -24,7 +25,13 @@ pub fn run() -> ExitCode {
     }
 }
 
-fn dispatch() -> Result<()> {
+/// Adapt a command that has no failure verdict of its own: for these,
+/// completing without an error is success.
+fn ok(result: Result<()>) -> Result<Outcome> {
+    result.map(|()| Outcome::Success)
+}
+
+fn dispatch() -> Result<ExitCode> {
     let cli = Cli::parse();
     let program_name = current_program_name();
     let default_config = default_config_path();
@@ -41,7 +48,7 @@ fn dispatch() -> Result<()> {
 
     let result = match cli.command {
         Some(command) => match command {
-            Commands::Init { force, global } => crate::commands::init::run(force, global),
+            Commands::Init { force, global } => ok(crate::commands::init::run(force, global)),
             Commands::Sync { sync } => {
                 let update = sync.update_active();
                 let update_only = sync.update_only();
@@ -158,13 +165,13 @@ fn dispatch() -> Result<()> {
                 kind,
                 output,
                 scope,
-            } => crate::commands::list::run(
+            } => ok(crate::commands::list::run(
                 json,
                 kind,
                 output.resolve_plain(),
                 output.is_quiet(),
                 scope.scope_override(),
-            ),
+            )),
             Commands::Doctor {
                 json,
                 output,
@@ -181,33 +188,33 @@ fn dispatch() -> Result<()> {
                 json,
                 output,
                 scope,
-            } => crate::commands::clean::run(
+            } => ok(crate::commands::clean::run(
                 dry_run,
                 json,
                 output.is_quiet(),
                 output.resolve_plain(),
                 scope.scope_override(),
-            ),
+            )),
             Commands::ManageSelf { action } => match action {
-                SelfAction::Update { json } => crate::commands::self_update::run(json),
-                SelfAction::Uninstall { yes } => crate::commands::uninstall::run(yes),
+                SelfAction::Update { json } => ok(crate::commands::self_update::run(json)),
+                SelfAction::Uninstall { yes } => ok(crate::commands::uninstall::run(yes)),
             },
             Commands::Completions { shell } => {
-                crate::commands::completions::run(shell, &program_name)
+                ok(crate::commands::completions::run(shell, &program_name))
             }
         },
         None => {
             print_banner();
             let _ = Cli::command().print_help();
             println!();
-            Ok(())
+            Ok(Outcome::Success)
         }
     };
 
     if result.is_ok() {
         crate::update_notifier::print_notice_if_available(suppress_notice);
     }
-    result
+    result.map(Outcome::code)
 }
 
 /// Suppress the update notice for machine-readable / scripted output and for

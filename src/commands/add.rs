@@ -13,6 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::colors::{INFO, RESET};
+use crate::commands::Outcome;
 use crate::error::{err, Result};
 use crate::fsops::{
     insert_item, item_exists, now_unix, select_targets, Pin, Section, Selector, SourceItem,
@@ -47,7 +48,7 @@ struct SectionEdit {
     item: SourceItem,
 }
 
-pub(crate) fn run(opts: &AddOptions) -> Result<()> {
+pub(crate) fn run(opts: &AddOptions) -> Result<Outcome> {
     if opts.git_ref.is_some() && opts.branch.is_some() {
         return Err(err("--ref and --branch are mutually exclusive"));
     }
@@ -106,7 +107,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
 
     if opts.dry_run {
         emit_result(opts, &source, &edits, true)?;
-        return Ok(());
+        return Ok(Outcome::Success);
     }
 
     if !opts.no_verify {
@@ -121,17 +122,17 @@ pub(crate) fn run(opts: &AddOptions) -> Result<()> {
     emit_result(opts, &source, &edits, false)?;
 
     if !opts.no_sync {
-        super::source_edit::sync_after(
+        return super::source_edit::sync_after(
             &path,
             opts.scope_override,
             opts.quiet,
             opts.plain,
             opts.locked,
-        )?;
+        );
     } else if !opts.as_json && opts.quiet == 0 {
         print_tip("run `kasetto sync` to install the new source", opts.plain);
     }
-    Ok(())
+    Ok(Outcome::Success)
 }
 
 fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>) -> Pin {

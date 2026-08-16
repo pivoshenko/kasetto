@@ -44,13 +44,16 @@ pub(super) fn split_at_ref(source: &str) -> (String, Option<String>) {
 /// Run a plain sync against the freshly edited config so installs and the lock
 /// catch up with the change. `add` installs the new source; `remove` prunes the
 /// orphaned assets via sync's existing stale-cleanup pass.
+///
+/// The sync's verdict is returned, not discarded: an `add` whose install broke
+/// has not done what the user asked and must not exit 0.
 pub(super) fn sync_after(
     path: &Path,
     scope: Option<Scope>,
     quiet: u8,
     plain: bool,
     locked: bool,
-) -> Result<()> {
+) -> Result<crate::commands::Outcome> {
     let config_path = path.to_string_lossy();
     crate::commands::sync::run(&crate::commands::sync::SyncOptions {
         config_path: &config_path,

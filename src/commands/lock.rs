@@ -20,6 +20,7 @@ use std::fs;
 use std::time::Instant;
 
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
+use crate::commands::Outcome;
 use crate::error::{err, Result};
 use crate::fsops::{
     hash_dir, join_dest_csv, load_config_any, now_unix, resolve_destinations, scope_root,
@@ -43,7 +44,7 @@ pub(crate) struct LockOptions<'a> {
     pub upgrade_only: Vec<String>,
 }
 
-pub(crate) fn run(opts: &LockOptions) -> Result<()> {
+pub(crate) fn run(opts: &LockOptions) -> Result<Outcome> {
     let started = Instant::now();
     let config_path = opts
         .config
@@ -143,7 +144,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
                     "sources": source_count,
                 }))?;
             }
-            return Ok(());
+            return Ok(Outcome::Success);
         }
         if opts.as_json {
             let changes: Vec<_> = drift
@@ -157,9 +158,9 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
         } else {
             eprint_error(
                 &format!(
-                    "lock is out of date with the config ({} change{} pending); run `kasetto lock` without --check",
+                    "lock is out of date with the config ({} {} pending); run `kasetto lock` without --check",
                     drift.len(),
-                    if drift.len() == 1 { "" } else { "s" },
+                    crate::ui::pluralize(drift.len(), "change", "changes"),
                 ),
                 plain,
             );
@@ -169,7 +170,10 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
                 }
             }
         }
-        std::process::exit(1);
+        // Drift is a verdict, not an error: `--check` did its job and reported
+        // it. Returned rather than `process::exit`ed so `app::run` stays the
+        // one place the process decides its exit code
+        return Ok(Outcome::Failure);
     }
 
     let lock_path = save_lock(&mut lock, scope, &cfg_dir)?;
@@ -187,7 +191,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<()> {
             print_locked(item_count, source_count, started.elapsed().as_millis());
         }
     }
-    Ok(())
+    Ok(Outcome::Success)
 }
 
 /// Distinct source URLs across every asset kind the lock resolves. Counting

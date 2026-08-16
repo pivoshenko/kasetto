@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use crate::colors::{ACCENT, ERROR, RESET, SECONDARY};
+use crate::commands::Outcome;
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, lock_path};
@@ -69,11 +70,7 @@ pub(crate) fn run(
     quiet: bool,
     scope_override: Option<Scope>,
     program_name: &str,
-) -> Result<()> {
-    if quiet && !as_json {
-        return Ok(());
-    }
-
+) -> Result<Outcome> {
     let scope = resolve_scope(scope_override, None);
     let project_root = std::env::current_dir().unwrap_or_default();
     let lock = load_lock(scope, &project_root)?;
@@ -158,14 +155,23 @@ pub(crate) fn run(
         update_check,
     };
 
+    // The verdict is what the exit code reports, so it is computed before any
+    // output branch: `--json` and `-q` must score the same run the human
+    // rendering would
+    let healthy = output.failures.is_empty() && output.missing_skills.is_empty();
+    let outcome = Outcome::from_failed(!healthy);
+
     if as_json {
-        return print_json(&output);
+        print_json(&output)?;
+        return Ok(outcome);
+    }
+    if quiet {
+        return Ok(outcome);
     }
 
     let color = list_color_enabled() && !plain;
     let update_check_text = format_update_check(&output.update_check);
 
-    let healthy = output.failures.is_empty() && output.missing_skills.is_empty();
     print_doctor_head(&output.version, healthy, !color);
 
     print_section_header("Environment", None, true, !color);
@@ -296,7 +302,7 @@ pub(crate) fn run(
         }
     }
 
-    Ok(())
+    Ok(outcome)
 }
 
 fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {

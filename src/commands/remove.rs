@@ -7,6 +7,7 @@
 use std::fs;
 
 use crate::colors::{INFO, RESET};
+use crate::commands::Outcome;
 use crate::error::{err, Result};
 use crate::model::Scope;
 use crate::source::{derive_browse_url, BrowseDerived};
@@ -39,7 +40,7 @@ struct Removed {
     section: &'static str,
 }
 
-pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
+pub(crate) fn run(opts: &RemoveOptions) -> Result<Outcome> {
     let path = super::source_edit::resolve_local_config_path(opts.config)?;
     if !path.exists() {
         return Err(err(format!("config not found: {}", path.display())));
@@ -87,24 +88,24 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<()> {
 
     if opts.dry_run {
         emit_result(opts, &removed, true)?;
-        return Ok(());
+        return Ok(Outcome::Success);
     }
 
     fs::write(&path, &text).map_err(|e| err(format!("failed to write {}: {e}", path.display())))?;
     emit_result(opts, &removed, false)?;
 
     if !opts.no_sync {
-        super::source_edit::sync_after(
+        return super::source_edit::sync_after(
             &path,
             opts.scope_override,
             opts.quiet,
             opts.plain,
             opts.locked,
-        )?;
+        );
     } else if !opts.as_json && opts.quiet == 0 {
         print_tip("run `kasetto sync` to prune the removed assets", opts.plain);
     }
-    Ok(())
+    Ok(Outcome::Success)
 }
 
 /// No kind flags: drop the source's entry from every list it appears in.
