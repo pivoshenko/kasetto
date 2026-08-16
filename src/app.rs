@@ -211,7 +211,7 @@ fn dispatch() -> Result<ExitCode> {
         }
     };
 
-    if result.is_ok() {
+    if matches!(result, Ok(Outcome::Success)) {
         crate::update_notifier::print_notice_if_available(suppress_notice);
     }
     result.map(Outcome::code)
