@@ -282,9 +282,9 @@ pub(crate) fn status_detail(
     }
 }
 
-/// Amber, uppercase, letter-spaced section header per design: `SKILLS   23 installed`.
-/// `count_unit` is `(count, "installed")` for inline metadata, always separated
-/// by the same three spaces. Body content follows immediately, no trailing blank.
+/// Amber, uppercase, letter-spaced section header per design: `SKILLS 23 installed`.
+/// `count_unit` is `(count, "installed")` for inline metadata, one space after
+/// the label. Body content follows immediately, no trailing blank.
 ///
 /// `lead_blank` inserts the separating blank line above the header. Pass `false`
 /// for the first section a command prints, so no command's output opens on a
@@ -303,27 +303,30 @@ pub(crate) fn print_section_header(
     let label_up = label.to_uppercase();
     if plain {
         match count_unit {
-            Some((n, unit)) => println!("{label_up}   {n} {unit}"),
+            Some((n, unit)) => println!("{label_up} {n} {unit}"),
             None => println!("{label_up}"),
         }
         return;
     }
     match count_unit {
         Some((n, unit)) => {
-            println!("{ACCENT}{ATTENTION}{label_up}{RESET}   {SECONDARY}{n} {unit}{RESET}")
+            println!("{ACCENT}{ATTENTION}{label_up}{RESET} {SECONDARY}{n} {unit}{RESET}")
         }
         None => println!("{ACCENT}{ATTENTION}{label_up}{RESET}"),
     }
 }
 
-/// Per-source header: status glyph + cyan `org/repo`. Optional right-aligned
-/// faint item count padded to `right_col_at` characters. `done = Some(true)`
-/// → ✓ green, `Some(false)` → • faint idle, `None` → no leading glyph.
+/// Per-source header: status glyph + cyan `org/repo`, then an optional faint
+/// item count one space after the label. `done = Some(true)` → ✓ green,
+/// `Some(false)` → • faint idle, `None` → no leading glyph.
+///
+/// The count sits beside the label rather than in a reserved column: sources
+/// vary from `/tmp/pk` to a long monorepo URL, and any column wide enough for
+/// the long one leaves the short one trailing whitespace across the terminal.
 pub(crate) fn print_source_header(
     repo: &str,
     count: Option<usize>,
     done: Option<bool>,
-    right_col_at: Option<usize>,
     plain: bool,
 ) {
     let glyph_plain = match done {
@@ -332,14 +335,9 @@ pub(crate) fn print_source_header(
         None => " ",
     };
     if plain {
-        match (count, right_col_at) {
-            (Some(n), Some(col)) => {
-                let prefix = format!("{glyph_plain} {repo}");
-                let pad = right_col_pad(col, prefix.chars().count() + n.to_string().len());
-                println!("{prefix}{}{n}", " ".repeat(pad));
-            }
-            (Some(n), None) => println!("{glyph_plain} {repo}   {n}"),
-            (None, _) => println!("{glyph_plain} {repo}"),
+        match count {
+            Some(n) => println!("{glyph_plain} {repo} {n}"),
+            None => println!("{glyph_plain} {repo}"),
         }
         return;
     }
@@ -348,30 +346,13 @@ pub(crate) fn print_source_header(
         Some(false) => format!("{INFRA}{glyph_plain}{RESET}"),
         None => " ".to_string(),
     };
-    match (count, right_col_at) {
-        (Some(n), Some(col)) => {
-            // Visible width = "✓ repo" + " " + "N"; pad whitespace between repo and N
-            let visible_prefix = 1 + 1 + repo.chars().count();
-            let n_str = n.to_string();
-            let pad = right_col_pad(col, visible_prefix + n_str.chars().count());
-            println!(
-                "{glyph_colored} {INFO}{repo}{RESET}{}{INFRA}{n_str}{RESET}",
-                " ".repeat(pad)
-            );
-        }
-        (Some(n), None) => println!("{glyph_colored} {INFO}{repo}{RESET}   {INFRA}{n}{RESET}"),
-        (None, _) => println!("{glyph_colored} {INFO}{repo}{RESET}"),
+    match count {
+        Some(n) => println!("{glyph_colored} {INFO}{repo}{RESET} {INFRA}{n}{RESET}"),
+        None => println!("{glyph_colored} {INFO}{repo}{RESET}"),
     }
 }
 
-/// Whitespace between a row's left text and its right-aligned tail, so the
-/// tail lands on column `col`. Never returns 0: a row whose content already
-/// overruns `col` keeps a two-space gutter instead of fusing `pathwritable`.
-fn right_col_pad(col: usize, content_w: usize) -> usize {
-    col.saturating_sub(content_w).max(2)
-}
-
-/// Status tree leaf, uv-style: `├─ ↑ updated    blog-write  2.1.0 → 2.2.0`.
+/// Status tree leaf, uv-style: `├─ ↑ updated   blog-write 2.1.0 → 2.2.0`.
 /// Branch, then the status glyph, then the status label in a fixed
 /// [`STATUS_LABEL_W`] column, then the name, then optional dim detail. Every
 /// column left of the name is constant width, so names always start at the
@@ -397,7 +378,7 @@ pub(crate) fn print_status_leaf(
     let detail_part = if detail.is_empty() {
         String::new()
     } else {
-        format!("  {detail}")
+        format!(" {detail}")
     };
     let branch_styled = if plain {
         branch.to_string()
@@ -405,7 +386,7 @@ pub(crate) fn print_status_leaf(
         format!("{INFRA}{branch}{RESET}")
     };
     println!(
-        "{branch_styled} {glyph} {label}{}  {name_styled}{detail_part}",
+        "{branch_styled} {glyph} {label}{} {name_styled}{detail_part}",
         " ".repeat(label_pad)
     );
 }
@@ -461,19 +442,12 @@ pub(crate) fn print_sync_chips(
     );
 }
 
-/// `◆ kasetto vX.Y.Z                          ✓ healthy`. Doctor head per
-/// design. Amber diamond + bold `kasetto`, dim version, right-aligned green
-/// `✓ healthy` badge at column ~62.
+/// `◆ kasetto vX.Y.Z ✓ healthy`. Doctor head per design: amber diamond + bold
+/// `kasetto`, dim version, then the verdict badge one space later.
 pub(crate) fn print_doctor_head(version: &str, healthy: bool, plain: bool) {
-    const COL: usize = 62;
-    let left_plain = format!("◆ kasetto v{version}");
-    let badge_plain = if healthy { "✓ healthy" } else { "✗ issues" };
-    let pad = right_col_pad(
-        COL,
-        left_plain.chars().count() + badge_plain.chars().count(),
-    );
     if plain {
-        println!("{left_plain}{}{badge_plain}", " ".repeat(pad));
+        let badge = if healthy { "✓ healthy" } else { "✗ issues" };
+        println!("◆ kasetto v{version} {badge}");
         return;
     }
     let badge = if healthy {
@@ -482,8 +456,7 @@ pub(crate) fn print_doctor_head(version: &str, healthy: bool, plain: bool) {
         format!("{ERROR}✗ issues{RESET}")
     };
     println!(
-        "{ATTENTION}{ACCENT}{BRAND_GLYPH} kasetto{RESET} {SECONDARY}v{version}{RESET}{}{badge}",
-        " ".repeat(pad),
+        "{ATTENTION}{ACCENT}{BRAND_GLYPH} kasetto{RESET} {SECONDARY}v{version}{RESET} {badge}"
     );
 }
 
@@ -500,7 +473,7 @@ pub(crate) fn relativize_home(path: &str) -> String {
     path.to_string()
 }
 
-/// Print a `KEY  value` row for the cassette doctor panel: key in foreground
+/// Print a `KEY value` row for the cassette doctor panel: key in foreground
 /// (no color), padded to `key_w` chars, value in the supplied color (default
 /// foreground; pass `Some(ATTENTION)` for INVENTORY counts).
 pub(crate) fn print_doctor_kv(
@@ -511,12 +484,12 @@ pub(crate) fn print_doctor_kv(
     plain: bool,
 ) {
     if plain {
-        println!("{key:<key_w$}  {value}");
+        println!("{key:<key_w$} {value}");
         return;
     }
     match value_color {
-        Some(c) => println!("{key:<key_w$}  {c}{value}{RESET}"),
-        None => println!("{key:<key_w$}  {value}"),
+        Some(c) => println!("{key:<key_w$} {c}{value}{RESET}"),
+        None => println!("{key:<key_w$} {value}"),
     }
 }
 
@@ -531,17 +504,16 @@ pub(crate) fn print_check(passed: bool, label: &str, plain: bool) {
     println!("{color}{glyph}{RESET} {label}");
 }
 
-/// `✓ ~/.foo/bar               writable`. Command-directory row with
-/// right-aligned faint trailing tag.
+/// `✓ ~/.foo/bar writable`. Command-directory row with a faint trailing tag
+/// one space after the path, for the same reason as [`print_source_header`]:
+/// `~/.claude/commands` is short, and a column sized for the longest agent
+/// path would leave it trailing whitespace most of the way across the screen.
 pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
-    const COL: usize = 62;
     let tag = if writable { "writable" } else { "not writable" };
     let path_relative = relativize_home(path);
-    let visible_left = 1 + 1 + path_relative.chars().count();
-    let pad = right_col_pad(COL, visible_left + tag.chars().count());
+    let glyph = if writable { "✓" } else { "✗" };
     if plain {
-        let glyph = if writable { "✓" } else { "✗" };
-        println!("{glyph} {path_relative}{}{tag}", " ".repeat(pad));
+        println!("{glyph} {path_relative} {tag}");
         return;
     }
     let (glyph_color, tag_color) = if writable {
@@ -549,21 +521,19 @@ pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
     } else {
         (ERROR, ERROR)
     };
-    let glyph = if writable { "✓" } else { "✗" };
     println!(
-        "{glyph_color}{glyph}{RESET} {SECONDARY}{path_relative}{RESET}{}{tag_color}{tag}{RESET}",
-        " ".repeat(pad)
+        "{glyph_color}{glyph}{RESET} {SECONDARY}{path_relative}{RESET} {tag_color}{tag}{RESET}"
     );
 }
 
-/// `◆ Updated to vNEW  was vOLD`. Self update finalizer (amber diamond).
+/// `◆ Updated to vNEW was vOLD`. Self update finalizer (amber diamond).
 pub(crate) fn print_update_closer(new: &str, old: &str, plain: bool) {
     if plain {
-        println!("Updated to v{new}  was v{old}");
+        println!("Updated to v{new} was v{old}");
         return;
     }
     println!(
-        "{ATTENTION}{BRAND_GLYPH}{RESET} {ACCENT}Updated to v{new}{RESET}{SECONDARY}  was v{old}{RESET}"
+        "{ATTENTION}{BRAND_GLYPH}{RESET} {ACCENT}Updated to v{new}{RESET}{SECONDARY} was v{old}{RESET}"
     );
 }
 
@@ -631,14 +601,6 @@ mod tests {
         assert_eq!(status_detail("updated", None, None, true), "");
         assert_eq!(status_detail("unchanged", None, None, true), "");
         assert_eq!(status_detail("removed", None, None, true), "");
-    }
-
-    #[test]
-    fn right_col_pad_keeps_a_gutter_when_content_overruns_the_column() {
-        assert_eq!(right_col_pad(62, 40), 22);
-        // overrun: never 0, or the tail fuses onto the left text
-        assert_eq!(right_col_pad(62, 62), 2);
-        assert_eq!(right_col_pad(62, 90), 2);
     }
 
     #[test]

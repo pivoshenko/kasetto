@@ -132,11 +132,17 @@ uses `print_tree_leaf` instead, a single-column `├─ {name}` row - the asset 
 the source it came from is already the group header above it.
 
 Section headers all go through `print_section_header(label, count_unit, lead_blank, plain)` - amber
-uppercase, count separated by three spaces. `lead_blank` is the blank line *above* the header:
+uppercase, count one space after the label. `lead_blank` is the blank line *above* the header:
 pass `false` for the first section a command prints so no command opens on a blank line, `true`
 afterwards. `doctor` passes `true` throughout because its head line always precedes the panels.
 Every helper takes `plain` (never `color`), and plain mode must differ from colored mode only in
 ANSI - never in wording, casing, or column position.
+
+Trailing tails (`✓ healthy` on the doctor head, `writable` on a dir row, the item count on a source
+header) sit **one space after their label** - never right-aligned to a column. Labels here are
+paths and source URLs that range from `/tmp/pk` to a long monorepo URL, so any reserved column
+strands the short rows' tails mid-terminal. Fixed-width columns are only for the closed
+vocabularies: `STATUS_LABEL_W` in tree rows, and `print_doctor_kv`'s key column.
 
 Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable), and
 `--project`/`--global`; only `sync` has `-v`/`--verbose`. `--plain` is a hidden deprecated alias
