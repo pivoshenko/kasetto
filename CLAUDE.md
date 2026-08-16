@@ -128,8 +128,8 @@ The banner is only shown on bare `kst` and `kst init`.
 Sync/clean tree rows are `├─ {glyph} {label} {name} {detail}` (`print_status_leaf`) - icon, then
 the status word in a fixed `STATUS_LABEL_W` column, then the name, then dim version metadata.
 Every column left of the name is constant width, so names always start at the same offset. `list`
-uses `print_tree_leaf` instead, whose right column *is* data (the source slug) and so is measured
-across the whole block via `tree_name_width`.
+uses `print_tree_leaf` instead, a single-column `├─ {name}` row - the asset id and nothing else;
+the source it came from is already the group header above it.
 
 Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable),
 `-v`/`--verbose` (repeatable), and `--project`/`--global`. `--plain` is a hidden deprecated alias

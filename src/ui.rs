@@ -347,19 +347,6 @@ fn right_col_pad(col: usize, content_w: usize) -> usize {
     col.saturating_sub(content_w).max(2)
 }
 
-/// Tail column for a tree block: the widest name in it, floored at `min` so
-/// short-named trees keep their usual gutter. Callers measure once per tree —
-/// not per source group — so the status tails form one straight column down
-/// the whole block instead of jumping where a name overruns a fixed width.
-pub(crate) fn tree_name_width<'a>(names: impl IntoIterator<Item = &'a str>, min: usize) -> usize {
-    names
-        .into_iter()
-        .map(|n| n.chars().count())
-        .max()
-        .unwrap_or(0)
-        .max(min)
-}
-
 /// Status tree leaf, uv-style: `├─ ↑ updated    blog-write  2.1.0 → 2.2.0`.
 /// Branch, then the status glyph, then the status label in a fixed
 /// [`STATUS_LABEL_W`] column, then the name, then optional dim detail. Every
@@ -399,54 +386,15 @@ pub(crate) fn print_status_leaf(
     );
 }
 
-/// Tree leaf row: `├─` for non-last, `└─` for last, then optional glyph,
-/// then name padded to `name_width` chars (foreground or strike-through for
-/// removed), then dim tail. `name_width = 0` means no padding (use 2-space
-/// gutter instead).
-pub(crate) fn print_tree_leaf(
-    is_last: bool,
-    glyph: Option<&str>,
-    name: &str,
-    name_strike: bool,
-    tail: &str,
-    name_width: usize,
-    plain: bool,
-) {
+/// Tree leaf row: `├─` for non-last, `└─` for last, then the name. The branch
+/// is dim; the name inherits the terminal foreground.
+pub(crate) fn print_tree_leaf(is_last: bool, name: &str, plain: bool) {
     let branch = if is_last { "└─" } else { "├─" };
-    let name_visible_w = name.chars().count();
-    let name_pad = name_width.saturating_sub(name_visible_w);
     if plain {
-        let g = glyph.map(|g| format!(" {g}")).unwrap_or_default();
-        let padded_name = if name_width == 0 {
-            name.to_string()
-        } else {
-            format!("{name}{}", " ".repeat(name_pad))
-        };
-        let t = if tail.is_empty() {
-            String::new()
-        } else {
-            format!("  {tail}")
-        };
-        println!("{branch}{g} {padded_name}{t}");
+        println!("{branch} {name}");
         return;
     }
-    let name_styled = if name_strike {
-        format!("{INFRA}{STRIKE}{name}{STRIKE_RESET}{RESET}")
-    } else {
-        name.to_string()
-    };
-    let padded_name = if name_width == 0 {
-        name_styled
-    } else {
-        format!("{name_styled}{}", " ".repeat(name_pad))
-    };
-    let glyph_part = glyph.map(|g| format!(" {g}")).unwrap_or_default();
-    let tail_part = if tail.is_empty() {
-        String::new()
-    } else {
-        format!("  {tail}")
-    };
-    println!("{INFRA}{branch}{RESET}{glyph_part} {padded_name}{tail_part}");
+    println!("{INFRA}{branch}{RESET} {name}");
 }
 
 /// Render the per-action summary chips shown beneath a sync's lead verb line:
@@ -667,18 +615,6 @@ mod tests {
         // overrun: never 0, or the tail fuses onto the left text
         assert_eq!(right_col_pad(62, 62), 2);
         assert_eq!(right_col_pad(62, 90), 2);
-    }
-
-    #[test]
-    fn tree_name_width_floors_at_min_and_grows_past_it() {
-        assert_eq!(tree_name_width(["a", "bb"], 24), 24);
-        assert_eq!(
-            tree_name_width(["instruction:co-authored-attribution"], 24),
-            35
-        );
-        assert_eq!(tree_name_width([], 24), 24);
-        // counts characters, not bytes, so multi-byte names still line up
-        assert_eq!(tree_name_width(["スキル"], 0), 3);
     }
 
     #[test]

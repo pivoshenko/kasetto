@@ -40,7 +40,7 @@ Directory names are used as skill identifiers for folder-based skills.
 </Callout>
 ## SKILL.md Format
 
-`SKILL.md` is a markdown file. YAML frontmatter is optional but gives you control over how the skill appears in `kst list`:
+`SKILL.md` is a markdown file. YAML frontmatter is optional but gives you control over the metadata Kasetto records for the skill:
 
 ```markdown
 ---
@@ -58,7 +58,7 @@ installed into the agent's skill directory.
 
 | Field         | Required | Description                                        |
 | ------------- | -------- | -------------------------------------------------- |
-| `name`        | no       | Display name shown in `kst list` and `kst doctor`  |
+| `name`        | no       | Display name carried in `kst list --json` output   |
 | `description` | no       | Short description carried in the lock + JSON output |
 
 Both are optional. If you skip them, Kasetto parses the markdown body instead:
