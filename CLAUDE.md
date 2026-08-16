@@ -213,8 +213,10 @@ All four workflows expose `workflow_dispatch` (`gh workflow run <name>.yaml --re
 - **`ci.yaml`** - push to `main` + every PR. Two parallel jobs on `ubuntu-24.04-arm`: `ci-rs`
   (install -> lint -> audit -> test -> build) and `ci-next` (same shape). Every step is a `just`
   recipe, so reproducing CI locally is `just check` plus `just audit`.
-- **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless overridden, bumps
-  `Cargo.toml`/`Cargo.lock`, regenerates `CHANGELOG.md`, commits `release: vX.Y.Z`, tags, pushes)
+- **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless the `version` input
+  overrides it - pass that one bare, `3.7.0` not `v3.7.0`, because only the auto-detect path strips
+  the `v` and the workflow prepends it; bumps `Cargo.toml`/`Cargo.lock`, regenerates
+  `CHANGELOG.md`, commits `release: vX.Y.Z`, tags, pushes)
   -> `build` (6 targets: linux/macos/windows x x86_64/aarch64) -> `release` (checksums + GitHub
   Release) -> `publish-crate` + `update-homebrew` (`pivoshenko/homebrew-tap`) + `update-scoop`
   (`pivoshenko/scoop-bucket`). Never bump the version by hand.
