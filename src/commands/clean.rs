@@ -201,7 +201,7 @@ fn print_report(
         } else {
             println!("Would remove {total} {items} in {timing}");
         }
-        print_tip("run without `--dry-run` to apply", plain);
+        print_tip("run without `--dry-run` to apply", !color);
     } else {
         if color {
             println!("{ERROR}{ACCENT}Removed{RESET} {total} {items} {SECONDARY}in {timing}{RESET}");

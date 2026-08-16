@@ -201,20 +201,23 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         print_json(&report)?;
     } else if !opts.quiet {
         let elapsed = started.elapsed();
-        print_resolution_header(&report, opts.plain);
-        print_sync_tree(&report, opts.plain);
-        print_sync_summary(&report, opts.plain, opts.verbose, elapsed, opts.locked);
+        // stdout-gated like `list`/`clean`/`doctor`; `ctx.plain` stays on the
+        // flag alone because it drives stderr spinner labels
+        let report_plain = opts.plain || !crate::ui::color_stdout_enabled();
+        print_resolution_header(&report, report_plain);
+        print_sync_tree(&report, report_plain);
+        print_sync_summary(&report, report_plain, opts.verbose, elapsed, opts.locked);
         // A plain sync never re-resolves secrets for an unchanged server, so a
         // token rotated in env/credentials/op won't propagate until `--update`
         if secrets_need_update {
             crate::ui::print_tip(
                 "some synced MCP servers carry secrets; a plain sync won't re-resolve a \
                  rotated secret; run `kst sync --update` to push changes",
-                opts.plain,
+                report_plain,
             );
         }
         if opts.dry_run {
-            crate::ui::print_tip("run without `--dry-run` to apply", opts.plain);
+            crate::ui::print_tip("run without `--dry-run` to apply", report_plain);
         }
     }
 
