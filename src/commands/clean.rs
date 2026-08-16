@@ -1,13 +1,14 @@
 //! Module that contains `kasetto clean`, which removes every installed asset for
 //! the scope and resets the lock.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::time::{Duration, Instant};
 
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
-use crate::lock::{load_lock, save_lock, LockFile};
+use crate::lock::{load_lock, save_lock, AssetEntry};
 use crate::mcps::remove_mcp_server;
 use crate::model::{
     all_mcp_project_targets, all_mcp_settings_targets, resolve_scope, Scope, State,
@@ -57,6 +58,9 @@ pub(crate) fn run(
     let commands_count = command_assets.len();
     let instructions_count = instruction_meta.len();
 
+    // `clear_all` empties the lock before the tree renders it
+    let tracked_assets = lock.assets.clone();
+
     let total = skills_count + mcps_count + commands_count + instructions_count;
     // A real clean announces what it is about to remove; the tree that follows
     // must then separate itself from that line
@@ -100,7 +104,7 @@ pub(crate) fn run(
         print_json(&output)?;
     } else if !quiet {
         print_report(
-            &lock,
+            &tracked_assets,
             &state,
             dry_run,
             plain,
@@ -166,7 +170,7 @@ fn apply_removals(
 }
 
 fn print_report(
-    lock: &LockFile,
+    assets: &BTreeMap<String, AssetEntry>,
     state: &State,
     dry_run: bool,
     plain: bool,
@@ -186,7 +190,7 @@ fn print_report(
         return;
     }
 
-    print_removal_tree(lock, state, dry_run, !color, preamble);
+    print_removal_tree(assets, state, dry_run, !color, preamble);
 
     let items = pluralize(total, "item", "items");
     if dry_run {
@@ -214,7 +218,13 @@ fn print_report(
 /// Print a source-grouped red teardown tree for skills, MCP packs, commands,
 /// and instructions captured in the lock state. Used by both `--dry-run` (with
 /// `would_remove` glyphs) and the real run (with `removed` glyphs).
-fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool, preamble: bool) {
+fn print_removal_tree(
+    assets: &BTreeMap<String, AssetEntry>,
+    state: &State,
+    dry_run: bool,
+    plain: bool,
+    preamble: bool,
+) {
     let status = if dry_run { "would_remove" } else { "removed" };
     // Blank line between sections, but not above the first one unless the
     // caller already printed the `Removing ...` preamble above this tree
@@ -249,11 +259,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
     }
 
-    let mcp_packs: Vec<_> = lock
-        .assets
-        .iter()
-        .filter(|(_, a)| a.kind == "mcp")
-        .collect();
+    let mcp_packs: Vec<_> = assets.iter().filter(|(_, a)| a.kind == "mcp").collect();
     if !mcp_packs.is_empty() {
         let total_servers: usize = mcp_packs
             .iter()
@@ -287,11 +293,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
     }
 
-    let cmd_assets: Vec<_> = lock
-        .assets
-        .iter()
-        .filter(|(_, a)| a.kind == "command")
-        .collect();
+    let cmd_assets: Vec<_> = assets.iter().filter(|(_, a)| a.kind == "command").collect();
     if !cmd_assets.is_empty() {
         print_section_header(
             "Commands",
@@ -319,8 +321,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
     }
 
-    let instruction_assets: Vec<_> = lock
-        .assets
+    let instruction_assets: Vec<_> = assets
         .iter()
         .filter(|(_, a)| a.kind == "instructions")
         .collect();
