@@ -230,7 +230,7 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
         "updated" | "would_update" => ("↑", ATTENTION),
         "removed" | "would_remove" => ("−", ERROR),
         "unchanged" => ("✓", INFRA),
-        "broken" | "source_error" => ("!", ERROR),
+        "broken" | "source_error" | "locked_error" => ("!", ERROR),
         _ => ("?", ERROR),
     };
     if plain {
@@ -254,8 +254,8 @@ pub(crate) fn status_label(status: &str, plain: bool) -> String {
         "updated" | "would_update" => ("updated", ATTENTION),
         "removed" | "would_remove" => ("removed", ERROR),
         "unchanged" => ("unchanged", INFRA),
-        "broken" | "source_error" => ("broken", ERROR),
-        other => return other.to_string(),
+        "broken" | "source_error" | "locked_error" => ("broken", ERROR),
+        other => return other.chars().take(STATUS_LABEL_W).collect(),
     };
     if plain {
         label.to_string()
@@ -562,6 +562,7 @@ mod tests {
         assert_eq!(action_glyph("unchanged", true), "✓");
         assert_eq!(action_glyph("broken", true), "!");
         assert_eq!(action_glyph("source_error", true), "!");
+        assert_eq!(action_glyph("locked_error", true), "!");
     }
 
     #[test]
@@ -578,6 +579,8 @@ mod tests {
             "unchanged",
             "broken",
             "source_error",
+            "locked_error",
+            "a_status_nobody_mapped",
         ] {
             let w = status_label(status, true).chars().count();
             assert!(w <= STATUS_LABEL_W, "{status} label is {w} wide");
@@ -586,6 +589,13 @@ mod tests {
             status_label("unchanged", true).chars().count(),
             STATUS_LABEL_W
         );
+    }
+
+    #[test]
+    fn every_failure_status_renders_as_broken() {
+        for status in ["broken", "source_error", "locked_error"] {
+            assert_eq!(status_label(status, true), "broken", "{status}");
+        }
     }
 
     #[test]
