@@ -2,6 +2,7 @@
 
 use clap::{CommandFactory, Parser};
 use std::path::Path;
+use std::process::ExitCode;
 use std::time::Duration;
 
 use crate::banner::print_banner;
@@ -9,7 +10,21 @@ use crate::cli::{Cli, Commands, SelfAction};
 use crate::default_config_path;
 use crate::error::Result;
 
-pub fn run() -> Result<()> {
+/// Entrypoint for both binaries. Owns the process exit code so a failure is
+/// reported once, in the CLI's own `error:` grammar — returning `Result` from
+/// `main` instead would hand the error to Rust's `Debug` formatter and print
+/// `Error: Custom { kind: Other, error: "..." }`.
+pub fn run() -> ExitCode {
+    match dispatch() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            crate::ui::eprint_error(&err.to_string(), !crate::ui::color_stderr_enabled());
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn dispatch() -> Result<()> {
     let cli = Cli::parse();
     let program_name = current_program_name();
     let default_config = default_config_path();

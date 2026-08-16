@@ -15,7 +15,7 @@ use crate::model::{
 use crate::profile::list_color_enabled;
 use crate::state::clear_runtime_state;
 use crate::ui::{
-    print_json, print_section_header, print_source_header, print_status_leaf, print_tip,
+    pluralize, print_json, print_section_header, print_source_header, print_status_leaf, print_tip,
     short_source,
 };
 
@@ -186,24 +186,25 @@ fn print_report(
 
     print_removal_tree(lock, state, dry_run, !color);
 
+    let items = pluralize(total, "item", "items");
     if dry_run {
         if color {
             println!(
-                "{ATTENTION}{ACCENT}Would remove{RESET} {total} items {SECONDARY}in {timing}{RESET}"
+                "{ATTENTION}{ACCENT}Would remove{RESET} {total} {items} {SECONDARY}in {timing}{RESET}"
             );
         } else {
-            println!("Would remove {total} items in {timing}");
+            println!("Would remove {total} {items} in {timing}");
         }
         println!();
         print_tip("run without `--dry-run` to apply", plain);
     } else {
         if color {
-            println!("{ERROR}{ACCENT}Removed{RESET} {total} items {SECONDARY}in {timing}{RESET}");
+            println!("{ERROR}{ACCENT}Removed{RESET} {total} {items} {SECONDARY}in {timing}{RESET}");
             println!(
                 "  {SECONDARY}lock file reset · run{RESET} {ATTENTION}kasetto sync{RESET} {SECONDARY}to restore{RESET}"
             );
         } else {
-            println!("Removed {total} items in {timing}");
+            println!("Removed {total} {items} in {timing}");
             println!("  lock file reset · run kasetto sync to restore");
         }
     }

@@ -71,14 +71,26 @@ pub(crate) const CLEAR_LINE: &str = "\r\x1b[2K";
 
 /// Clap help styling: amber `Usage:` / `Commands:` headers + literals,
 /// `SECONDARY`-grey `<COMMAND>` / `<ARG>` placeholders.
+///
+/// The diagnostic roles are set too, so a clap arg error reads in the same
+/// palette as a kasetto runtime error: `error:` in `ERROR`, clap's `tip:` and
+/// its suggested value in `INFO`, the rejected token in `ATTENTION`. Left at
+/// clap's defaults these fall back to basic 4-bit red/green/yellow, which is
+/// the one place the CLI would speak a different color language than the rest
+/// of its output.
 pub(crate) fn clap_styles() -> Styles {
     let amber = Style::new().fg_color(Some(RgbColor(232, 169, 77).into())) | Effects::BOLD;
     let secondary = Style::new().fg_color(Some(RgbColor(168, 161, 149).into()));
+    let red = Style::new().fg_color(Some(RgbColor(232, 126, 108).into())) | Effects::BOLD;
+    let cyan = Style::new().fg_color(Some(RgbColor(108, 191, 211).into())) | Effects::BOLD;
     Styles::styled()
         .header(amber)
         .usage(amber)
         .literal(amber)
         .placeholder(secondary)
+        .error(red)
+        .valid(cyan)
+        .invalid(amber)
 }
 
 /// Clap `after_help`: amber `Examples:` header, `SECONDARY` example lines.
