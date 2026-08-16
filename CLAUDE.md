@@ -131,10 +131,26 @@ Every column left of the name is constant width, so names always start at the sa
 uses `print_tree_leaf` instead, a single-column `├─ {name}` row - the asset id and nothing else;
 the source it came from is already the group header above it.
 
-Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable),
-`-v`/`--verbose` (repeatable), and `--project`/`--global`. `--plain` is a hidden deprecated alias
+Section headers all go through `print_section_header(label, count_unit, lead_blank, plain)` - amber
+uppercase, count separated by three spaces. `lead_blank` is the blank line *above* the header:
+pass `false` for the first section a command prints so no command opens on a blank line, `true`
+afterwards. `doctor` passes `true` throughout because its head line always precedes the panels.
+Every helper takes `plain` (never `color`), and plain mode must differ from colored mode only in
+ANSI - never in wording, casing, or column position.
+
+Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable), and
+`--project`/`--global`; only `sync` has `-v`/`--verbose`. `--plain` is a hidden deprecated alias
 for `--color never`. Flags are resolved at the `app.rs` boundary via `OutputArgs::resolve_plain()`
-/ `SyncArgs::resolve_plain()`. `NO_COLOR` and `CLICOLOR_FORCE` are honored.
+/ `SyncArgs::resolve_plain()`, which also mirrors the choice into `CLICOLOR_FORCE`/`NO_COLOR` so
+surfaces that never see the flag (the top-level error handler, `lock`) agree with it. `NO_COLOR`
+and `CLICOLOR_FORCE` are honored.
+
+**One exit path.** `app::run` returns `ExitCode` and is the only place the process decides its
+status; no command calls `process::exit`. Commands that can complete *and* report a problem return
+`commands::Outcome` (`sync` when anything is broken or failed, `doctor` when a check fails,
+`lock --check` on drift, `add`/`remove` by propagating their follow-up sync's verdict); the rest
+return `Result<()>` and are wrapped by `app::ok`. An `Err` is rendered once by `eprint_error` -
+never let one reach `main`, or Rust's `Debug` formatter prints `Error: Custom { .. }`.
 
 ### Env vars the CLI reads
 
