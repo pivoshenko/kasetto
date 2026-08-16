@@ -188,11 +188,10 @@ pub(crate) fn run(
     ];
     let env_key_w = env_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &env_rows {
-        print_doctor_kv(k, v, env_key_w, None, !color);
+        print_doctor_kv(k, v, env_key_w, !color);
     }
 
     print_section_header("Inventory", None, true, !color);
-    use crate::colors::ATTENTION;
     let inv_rows: Vec<(&str, String)> = vec![
         ("Skills", output.skills.len().to_string()),
         ("MCP servers", output.mcps.len().to_string()),
@@ -201,7 +200,7 @@ pub(crate) fn run(
     ];
     let inv_key_w = inv_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &inv_rows {
-        print_doctor_kv(k, v, inv_key_w, Some(ATTENTION), !color);
+        print_doctor_kv(k, v, inv_key_w, !color);
     }
     let _ = program_name;
 

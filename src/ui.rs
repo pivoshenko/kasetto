@@ -474,23 +474,16 @@ pub(crate) fn relativize_home(path: &str) -> String {
 }
 
 /// Print a `KEY value` row for the cassette doctor panel: key in foreground
-/// (no color), padded to `key_w` chars, value in the supplied color (default
-/// foreground; pass `Some(ATTENTION)` for INVENTORY counts).
-pub(crate) fn print_doctor_kv(
-    key: &str,
-    value: &str,
-    key_w: usize,
-    value_color: Option<&str>,
-    plain: bool,
-) {
+/// (no color), padded to `key_w` chars, value in `SECONDARY` grey. The key is
+/// the label you scan for and the value is the content it carries, so the
+/// value recedes — the same split as every other row in the CLI, where paths
+/// and metadata are grey against a foreground label.
+pub(crate) fn print_doctor_kv(key: &str, value: &str, key_w: usize, plain: bool) {
     if plain {
         println!("{key:<key_w$} {value}");
         return;
     }
-    match value_color {
-        Some(c) => println!("{key:<key_w$} {c}{value}{RESET}"),
-        None => println!("{key:<key_w$} {value}"),
-    }
+    println!("{key:<key_w$} {SECONDARY}{value}{RESET}");
 }
 
 /// `✓ Sentence`. A single check row in the CHECKS section.
