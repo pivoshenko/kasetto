@@ -150,7 +150,7 @@ kst sync [OPTIONS]
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
-Missing skills are reported as broken but won't stop the rest of the run. The exit code is non-zero only for source-level failures.
+Missing skills are reported as broken but won't stop the rest of the run: every other asset still syncs. The exit code is non-zero if anything ended up broken, so a partial sync fails CI rather than passing quietly.
 
 <Callout type="tip">
 
@@ -210,7 +210,7 @@ kst list [OPTIONS]
 With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
 ## `kst doctor`
 
-Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed.
+Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed. It exits non-zero when it reports issues (failed assets, or locked skills missing on disk), so `kst doctor` works as a CI gate; `-q` runs the same checks and sets the same exit code without printing.
 
 It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCP servers in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
 
