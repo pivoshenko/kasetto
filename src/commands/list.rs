@@ -69,7 +69,7 @@ pub(crate) fn run(
     let has_anything =
         !skills.is_empty() || !mcps.is_empty() || !commands.is_empty() || !instructions.is_empty();
     if !has_anything {
-        print_nothing_installed(kind, plain);
+        print_nothing_installed(kind, !color);
         return Ok(());
     }
 
