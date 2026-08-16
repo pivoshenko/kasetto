@@ -54,9 +54,16 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     Ok(())
 }
 
-/// Print a uv-style `tip: <msg>` line in popil sky (`INFO`). Plain mode
-/// omits color but keeps the prefix.
+/// Print a uv-style `tip: <msg>` line in popil sky (`INFO`), preceded by a
+/// blank line. Plain mode omits color but keeps the prefix and the blank.
+///
+/// A tip is an aside about the run, not part of the report it follows, so it
+/// always gets the separating blank line. Owning that here rather than at the
+/// call sites is why: half of them used to print it and half did not, so the
+/// same `tip:` sat flush against the summary in `sync` and detached in
+/// `clean`.
 pub(crate) fn print_tip(msg: &str, plain: bool) {
+    println!();
     if plain {
         println!("tip: {msg}");
     } else {

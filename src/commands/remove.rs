@@ -234,7 +234,6 @@ fn emit_result(opts: &RemoveOptions, removed: &[Removed], dry: bool) -> Result<(
         }
     }
     if dry {
-        println!();
         crate::ui::print_tip("run without `--dry-run` to apply", plain);
     }
     Ok(())

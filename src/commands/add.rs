@@ -320,7 +320,6 @@ fn emit_result(opts: &AddOptions, source: &str, edits: &[SectionEdit], dry: bool
         println!("{verb} {INFO}{source}{RESET} to {sections}");
     }
     if dry {
-        println!();
         crate::ui::print_tip("run without `--dry-run` to apply", plain);
     }
     Ok(())

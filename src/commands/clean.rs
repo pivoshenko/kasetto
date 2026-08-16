@@ -197,7 +197,6 @@ fn print_report(
         } else {
             println!("Would remove {total} {items} in {timing}");
         }
-        println!();
         print_tip("run without `--dry-run` to apply", plain);
     } else {
         if color {
