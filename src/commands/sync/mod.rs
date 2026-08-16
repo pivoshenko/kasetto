@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
+use crate::commands::Outcome;
 use crate::error::Result;
 use crate::fsops::{load_config_any, now_unix, now_unix_str, resolve_destinations, scope_root};
 use crate::lock::{load_lock, save_lock};
@@ -110,7 +111,7 @@ pub(crate) struct SyncOptions<'a> {
     pub allow_missing_secrets: bool,
 }
 
-pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
+pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
     if opts.locked && opts.update {
         return Err(crate::error::err(
             "`--locked`/`--frozen` and `--update` are contradictory: \
@@ -218,10 +219,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
         }
     }
 
-    if report.summary.failed > 0 {
-        std::process::exit(1);
-    }
-    Ok(())
+    // A broken asset is a failure the caller should be able to gate on, same as
+    // a hard `failed`: the sync ran, but the environment it produced is not the
+    // one the config asked for. Returned rather than `process::exit`ed so the
+    // single exit path in `app::run` stays single
+    Ok(Outcome::from_failed(
+        report.summary.failed > 0 || report.summary.broken > 0,
+    ))
 }
 
 /// `-vv` (and higher) diagnostic header printed before the sync proper:
