@@ -36,6 +36,18 @@ pub(crate) fn color_stdout_enabled() -> bool {
     std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
 }
 
+/// Whether to emit colored diagnostics on stderr. Mirrors
+/// [`color_stdout_enabled`] but probes the stderr handle, so `kst sync > out`
+/// keeps its `error:` lines colored on the terminal they actually reach. Used
+/// by the top-level error handler, which runs outside any command's resolved
+/// `plain` flag.
+pub(crate) fn color_stderr_enabled() -> bool {
+    if std::env::var_os("CLICOLOR_FORCE").is_some() {
+        return true;
+    }
+    std::io::stderr().is_terminal() && std::env::var_os("NO_COLOR").is_none()
+}
+
 /// Print a serializable value as pretty JSON.
 pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(val)?);
@@ -191,6 +203,17 @@ where
     spinner_run(false, enabled, plain, label, operation)
 }
 
+/// Pick the singular or plural noun for `n`. Every count the CLI narrates goes
+/// through here; summary lines that hardcoded the plural used to print
+/// `Resolved 1 sources`.
+pub(crate) fn pluralize(n: usize, one: &'static str, many: &'static str) -> &'static str {
+    if n == 1 {
+        one
+    } else {
+        many
+    }
+}
+
 /// Strip the URL scheme + leading `www.` so source labels read like
 /// `github.com/org/repo` instead of `https://github.com/org/repo`.
 pub(crate) fn short_source(source: &str) -> String {
@@ -276,14 +299,14 @@ pub(crate) fn status_detail(
 /// immediately, no trailing blank.
 pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)>, plain: bool) {
     println!();
+    let label_up = label.to_uppercase();
     if plain {
         match count_unit {
-            Some((n, unit)) => println!("{label}   {n} {unit}"),
-            None => println!("{label}"),
+            Some((n, unit)) => println!("{label_up}   {n} {unit}"),
+            None => println!("{label_up}"),
         }
         return;
     }
-    let label_up = label.to_uppercase();
     match count_unit {
         Some((n, unit)) => {
             println!("{ACCENT}{ATTENTION}{label_up}{RESET}   {SECONDARY}{n} {unit}{RESET}")
@@ -314,7 +337,7 @@ pub(crate) fn print_source_header(
                 let pad = right_col_pad(col, prefix.chars().count() + n.to_string().len());
                 println!("{prefix}{}{n}", " ".repeat(pad));
             }
-            (Some(n), None) => println!("{glyph_plain} {repo}    {n}"),
+            (Some(n), None) => println!("{glyph_plain} {repo}   {n}"),
             (None, _) => println!("{glyph_plain} {repo}"),
         }
         return;
@@ -615,6 +638,13 @@ mod tests {
         // overrun: never 0, or the tail fuses onto the left text
         assert_eq!(right_col_pad(62, 62), 2);
         assert_eq!(right_col_pad(62, 90), 2);
+    }
+
+    #[test]
+    fn pluralize_switches_only_on_one() {
+        assert_eq!(pluralize(0, "source", "sources"), "sources");
+        assert_eq!(pluralize(1, "source", "sources"), "source");
+        assert_eq!(pluralize(2, "source", "sources"), "sources");
     }
 
     #[test]

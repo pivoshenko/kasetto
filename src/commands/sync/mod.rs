@@ -18,7 +18,7 @@ use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Action, Config, Report, Scope, State, Summary};
 use crate::state::{load_runtime_state, save_runtime_state, RuntimeState};
 use crate::ui::{
-    action_glyph, animations_enabled, print_json, print_source_header, print_status_leaf,
+    action_glyph, animations_enabled, pluralize, print_json, print_source_header, print_status_leaf,
     print_sync_chips, short_source, status_detail,
 };
 
@@ -243,14 +243,6 @@ fn emit_resolution_diag(cfg_label: &str, scope: Scope, destinations: &[PathBuf],
     println!();
 }
 
-fn pluralize_item(n: usize) -> &'static str {
-    if n == 1 {
-        "item"
-    } else {
-        "items"
-    }
-}
-
 /// uv-style duration: sub-second → `Nms`, otherwise `N.Ns`.
 fn format_elapsed(d: Duration) -> String {
     let ms = d.as_millis();
@@ -306,7 +298,7 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
         } else {
             format!("{color}{ACCENT}{verb}{RESET}")
         };
-        println!("{lead} {count} {}{suffix}", pluralize_item(*count));
+        println!("{lead} {count} {}{suffix}", pluralize(*count, "item", "items"));
     }
 
     if !(lines.is_empty() || locked && only_unchanged) {
@@ -333,13 +325,13 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
 
     if s.broken > 0 {
         crate::ui::eprint_warn(
-            &format!("{} {} broken", s.broken, pluralize_item(s.broken)),
+            &format!("{} {} broken", s.broken, pluralize(s.broken, "item", "items")),
             plain,
         );
     }
     if s.failed > 0 {
         crate::ui::eprint_error(
-            &format!("{} {} failed", s.failed, pluralize_item(s.failed)),
+            &format!("{} {} failed", s.failed, pluralize(s.failed, "item", "items")),
             plain,
         );
     }
@@ -398,11 +390,13 @@ fn print_resolution_header(report: &Report, plain: bool) {
     if n_sources == 0 {
         return;
     }
+    let src_word = pluralize(n_sources, "source", "sources");
+    let item_word = pluralize(n_items, "item", "items");
     if plain {
-        println!("✓ Resolved {n_sources} sources · {n_items} items");
+        println!("✓ Resolved {n_sources} {src_word} · {n_items} {item_word}");
     } else {
         println!(
-            "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Resolved{RESET} {n_sources} sources {SECONDARY}· {n_items} items{RESET}"
+            "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Resolved{RESET} {n_sources} {src_word} {SECONDARY}· {n_items} {item_word}{RESET}"
         );
     }
     println!();

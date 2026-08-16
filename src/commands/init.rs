@@ -60,9 +60,11 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
     let path = init_config_path(global)?;
 
     if path.exists() && !force {
-        let color = crate::ui::color_stdout_enabled();
-        eprint_warn(&format!("{} already exists", path.display()), !color);
+        // The warning only sets up the prompt that follows it. Off a TTY there
+        // is no prompt, and the error below already says the same thing
         if io::stdin().is_terminal() {
+            let color = crate::ui::color_stdout_enabled();
+            eprint_warn(&format!("{} already exists", path.display()), !color);
             print!("{ACCENT}Overwrite?{RESET} {SECONDARY}[y/N]{RESET} ");
             io::stdout().flush()?;
             let mut buf = String::new();
