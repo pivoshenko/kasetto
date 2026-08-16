@@ -4,6 +4,7 @@
 use serde::Serialize;
 
 use crate::cli::ListKind;
+use crate::colors::{RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{resolve_dest, scope_root};
 use crate::lock::{load_lock, LockFile};
@@ -68,28 +69,52 @@ pub(crate) fn run(
     let has_anything =
         !skills.is_empty() || !mcps.is_empty() || !commands.is_empty() || !instructions.is_empty();
     if !has_anything {
-        println!("Nothing installed.");
-        print_tip(
-            "run `kasetto init` to scaffold a config, then `kasetto sync` to install your assets",
-            plain,
-        );
+        print_nothing_installed(kind, plain);
         return Ok(());
     }
 
     let plain = !color;
-    print_skills_tree(&skills, plain);
-    print_assets_tree("MCP Servers", "connected", &mcps, plain);
-    print_assets_tree("Commands", "available", &commands, plain);
-    print_assets_tree("Instructions", "active", &instructions, plain);
+    // Sections are separated by a blank line, but the first one starts the
+    // output, so it must not open on one
+    let mut printed = false;
+    print_skills_tree(&skills, plain, &mut printed);
+    print_assets_tree("MCP Servers", &mcps, plain, &mut printed);
+    print_assets_tree("Commands", &commands, plain, &mut printed);
+    print_assets_tree("Instructions", &instructions, plain, &mut printed);
 
     Ok(())
 }
 
-fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
+/// Empty-state line. A `--type` filter that matched nothing is a different
+/// situation from an empty install, and only the latter warrants the
+/// scaffold-a-config tip.
+fn print_nothing_installed(kind: ListKind, plain: bool) {
+    let line = match kind {
+        ListKind::All => "Nothing installed",
+        ListKind::Skills => "No skills installed",
+        ListKind::Mcps => "No MCP servers installed",
+        ListKind::Commands => "No commands installed",
+        ListKind::Instructions => "No instructions installed",
+    };
+    if plain {
+        println!("{line}");
+    } else {
+        println!("{SECONDARY}{line}{RESET}");
+    }
+    if matches!(kind, ListKind::All) {
+        print_tip(
+            "run `kasetto init` to scaffold a config, then `kasetto sync` to install your assets",
+            plain,
+        );
+    }
+}
+
+fn print_skills_tree(skills: &[InstalledSkill], plain: bool, printed: &mut bool) {
     if skills.is_empty() {
         return;
     }
-    print_section_header("Skills", Some((skills.len(), "installed")), plain);
+    print_section_header("Skills", Some((skills.len(), "installed")), *printed, plain);
+    *printed = true;
 
     // Group by source, preserve first-seen order, keep skills inside sorted
     let mut groups: Vec<(String, Vec<&InstalledSkill>)> = Vec::new();
@@ -112,11 +137,12 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool) {
     }
 }
 
-fn print_assets_tree(label: &str, unit: &str, rows: &[AssetEntry], plain: bool) {
+fn print_assets_tree(label: &str, rows: &[AssetEntry], plain: bool, printed: &mut bool) {
     if rows.is_empty() {
         return;
     }
-    print_section_header(label, Some((rows.len(), unit)), plain);
+    print_section_header(label, Some((rows.len(), "installed")), *printed, plain);
+    *printed = true;
 
     let mut groups: Vec<(String, Vec<&AssetEntry>)> = Vec::new();
     for a in rows {

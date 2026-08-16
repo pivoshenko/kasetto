@@ -18,8 +18,8 @@ use crate::lock::{load_lock, save_lock};
 use crate::model::{resolve_scope, Action, Config, Report, Scope, State, Summary};
 use crate::state::{load_runtime_state, save_runtime_state, RuntimeState};
 use crate::ui::{
-    action_glyph, animations_enabled, pluralize, print_json, print_source_header, print_status_leaf,
-    print_sync_chips, short_source, status_detail,
+    action_glyph, animations_enabled, pluralize, print_json, print_source_header,
+    print_status_leaf, print_sync_chips, short_source, status_detail,
 };
 
 pub(super) struct SyncContext<'a> {
@@ -212,6 +212,10 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<()> {
                 opts.plain,
             );
         }
+        if opts.dry_run {
+            println!();
+            crate::ui::print_tip("run without `--dry-run` to apply", opts.plain);
+        }
     }
 
     if report.summary.failed > 0 {
@@ -298,7 +302,10 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
         } else {
             format!("{color}{ACCENT}{verb}{RESET}")
         };
-        println!("{lead} {count} {}{suffix}", pluralize(*count, "item", "items"));
+        println!(
+            "{lead} {count} {}{suffix}",
+            pluralize(*count, "item", "items")
+        );
     }
 
     if !(lines.is_empty() || locked && only_unchanged) {
@@ -325,13 +332,21 @@ fn print_sync_summary(report: &Report, plain: bool, verbose: u8, elapsed: Durati
 
     if s.broken > 0 {
         crate::ui::eprint_warn(
-            &format!("{} {} broken", s.broken, pluralize(s.broken, "item", "items")),
+            &format!(
+                "{} {} broken",
+                s.broken,
+                pluralize(s.broken, "item", "items")
+            ),
             plain,
         );
     }
     if s.failed > 0 {
         crate::ui::eprint_error(
-            &format!("{} {} failed", s.failed, pluralize(s.failed, "item", "items")),
+            &format!(
+                "{} {} failed",
+                s.failed,
+                pluralize(s.failed, "item", "items")
+            ),
             plain,
         );
     }

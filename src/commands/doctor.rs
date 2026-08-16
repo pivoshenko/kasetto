@@ -12,8 +12,8 @@ use crate::model::{resolve_scope, Scope, SyncFailure};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
 use crate::ui::{
-    print_check, print_dir_row, print_doctor_head, print_doctor_kv, print_group_header, print_json,
-    relativize_home,
+    print_check, print_dir_row, print_doctor_head, print_doctor_kv, print_json,
+    print_section_header, relativize_home,
 };
 
 #[derive(serde::Serialize)]
@@ -168,7 +168,7 @@ pub(crate) fn run(
     let healthy = output.failures.is_empty() && output.missing_skills.is_empty();
     print_doctor_head(&output.version, healthy, !color);
 
-    print_group_header("Environment", color);
+    print_section_header("Environment", None, true, !color);
     let last_sync_short = match &output.last_sync {
         Some(ts) => format_updated_ago(ts),
         None => "none".to_string(),
@@ -185,7 +185,7 @@ pub(crate) fn run(
         print_doctor_kv(k, v, env_key_w, None, !color);
     }
 
-    print_group_header("Inventory", color);
+    print_section_header("Inventory", None, true, !color);
     use crate::colors::ATTENTION;
     let inv_rows: Vec<(&str, String)> = vec![
         ("Skills", output.skills.len().to_string()),
@@ -199,7 +199,7 @@ pub(crate) fn run(
     }
     let _ = program_name;
 
-    print_group_header("Checks", color);
+    print_section_header("Checks", None, true, !color);
     let lock_ok = std::path::Path::new(&output.lock_file).exists() || !output.lock_file.is_empty();
     print_check(lock_ok, "Lock file readable", !color);
     let install_ok = std::path::Path::new(&output.installation_path).exists()
@@ -240,7 +240,12 @@ pub(crate) fn run(
     print_check(dirs_writable == dirs_total, &dirs_label, !color);
 
     if !output.command_dirs.is_empty() {
-        print_group_header_with_count("Command directories", output.command_dirs.len(), color);
+        print_section_header(
+            "Command directories",
+            Some((output.command_dirs.len(), "checked")),
+            true,
+            !color,
+        );
         for d in &output.command_dirs {
             print_dir_row(&d.path, d.writable, !color);
         }
@@ -249,51 +254,49 @@ pub(crate) fn run(
     // Untracked detail (only when present); advisory, never deleted
     if !output.unmanaged.is_empty() {
         use crate::colors::ATTENTION;
-        print_group_header_with_count("Untracked", output.unmanaged.len(), color);
+        print_section_header(
+            "Untracked",
+            Some((output.unmanaged.len(), "found")),
+            true,
+            !color,
+        );
         for u in &output.unmanaged {
             let tag = short_kind(&u.kind);
             let path = relativize_home(&u.path);
             if color {
                 println!(
-                    "  {ATTENTION}{ACCENT}!{RESET} {SECONDARY}[{tag}]{RESET} {ACCENT}{}{RESET} {SECONDARY}{path}{RESET}",
+                    "{ATTENTION}{ACCENT}!{RESET} {SECONDARY}[{tag}]{RESET} {ACCENT}{}{RESET} {SECONDARY}{path}{RESET}",
                     u.name
                 );
             } else {
-                println!("  ! [{tag}] {} {path}", u.name);
+                println!("! [{tag}] {} {path}", u.name);
             }
         }
     }
 
     // Failures detail (only when present)
     if !output.failures.is_empty() {
-        print_group_header("Failures", color);
+        print_section_header(
+            "Failures",
+            Some((output.failures.len(), "to fix")),
+            true,
+            !color,
+        );
         for f in &output.failures {
+            // Same grammar as the `error:` line sync prints for the failure,
+            // minus the prefix: `<name> from <source>: <reason>`
             if color {
                 println!(
-                    "  {ERROR}{ACCENT}!{RESET} {ACCENT}{}{RESET} {} {SECONDARY}{}{RESET}",
-                    f.name, f.reason, f.source
+                    "{ERROR}{ACCENT}!{RESET} {ACCENT}{}{RESET} {SECONDARY}from {}{RESET}: {}",
+                    f.name, f.source, f.reason
                 );
             } else {
-                println!("  ! {} {} {}", f.name, f.reason, f.source);
+                println!("! {} from {}: {}", f.name, f.source, f.reason);
             }
         }
     }
 
     Ok(())
-}
-
-/// `LABEL  N` header: amber uppercase + dim count, blank line above.
-fn print_group_header_with_count(title: &str, count: usize, color: bool) {
-    println!();
-    if color {
-        use crate::colors::{ATTENTION, SECONDARY};
-        println!(
-            "{ACCENT}{ATTENTION}{}{RESET}  {SECONDARY}{count}{RESET}",
-            title.to_uppercase()
-        );
-    } else {
-        println!("{}  {count}", title.to_uppercase());
-    }
 }
 
 fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {

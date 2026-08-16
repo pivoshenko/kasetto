@@ -54,17 +54,6 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     Ok(())
 }
 
-/// Print an amber-uppercase, letter-spaced section header preceded by a blank
-/// line (the cassette section grammar). Used by `kst doctor` and `kst init`.
-pub(crate) fn print_group_header(title: &str, color: bool) {
-    println!();
-    if color {
-        println!("{ACCENT}{ATTENTION}{}{RESET}", title.to_uppercase());
-    } else {
-        println!("{}", title.to_uppercase());
-    }
-}
-
 /// Print a uv-style `tip: <msg>` line in popil sky (`INFO`). Plain mode
 /// omits color but keeps the prefix.
 pub(crate) fn print_tip(msg: &str, plain: bool) {
@@ -294,11 +283,23 @@ pub(crate) fn status_detail(
 }
 
 /// Amber, uppercase, letter-spaced section header per design: `SKILLS   23 installed`.
-/// `count_unit` is `(count, "installed")` for inline metadata. Emits a leading
-/// blank line to match [`print_group_header`]; body content follows
-/// immediately, no trailing blank.
-pub(crate) fn print_section_header(label: &str, count_unit: Option<(usize, &str)>, plain: bool) {
-    println!();
+/// `count_unit` is `(count, "installed")` for inline metadata, always separated
+/// by the same three spaces. Body content follows immediately, no trailing blank.
+///
+/// `lead_blank` inserts the separating blank line above the header. Pass `false`
+/// for the first section a command prints, so no command's output opens on a
+/// blank line, and `true` for every section after it. Panels whose header always
+/// trails other content (the `doctor` groups, which sit under its head line)
+/// pass `true` throughout.
+pub(crate) fn print_section_header(
+    label: &str,
+    count_unit: Option<(usize, &str)>,
+    lead_blank: bool,
+    plain: bool,
+) {
+    if lead_blank {
+        println!();
+    }
     let label_up = label.to_uppercase();
     if plain {
         match count_unit {

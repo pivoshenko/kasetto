@@ -57,11 +57,11 @@ pub(crate) fn run(
     let commands_count = command_assets.len();
     let instructions_count = instruction_meta.len();
 
-    if !dry_run
-        && !as_json
-        && !quiet
-        && (skills_count + mcps_count + commands_count + instructions_count) > 0
-    {
+    let total = skills_count + mcps_count + commands_count + instructions_count;
+    // A real clean announces what it is about to remove; the tree that follows
+    // must then separate itself from that line
+    let preamble = !dry_run && !as_json && !quiet && total > 0;
+    if preamble {
         let color = list_color_enabled() && !plain;
         if color {
             println!(
@@ -104,8 +104,9 @@ pub(crate) fn run(
             &state,
             dry_run,
             plain,
-            skills_count + mcps_count + commands_count + instructions_count,
+            total,
             started.elapsed(),
+            preamble,
         );
     }
 
@@ -171,6 +172,7 @@ fn print_report(
     plain: bool,
     total: usize,
     elapsed: Duration,
+    preamble: bool,
 ) {
     let color = list_color_enabled() && !plain;
     let timing = format_elapsed(elapsed);
@@ -184,7 +186,7 @@ fn print_report(
         return;
     }
 
-    print_removal_tree(lock, state, dry_run, !color);
+    print_removal_tree(lock, state, dry_run, !color, preamble);
 
     let items = pluralize(total, "item", "items");
     if dry_run {
@@ -213,8 +215,11 @@ fn print_report(
 /// Print a source-grouped red teardown tree for skills, MCP packs, commands,
 /// and instructions captured in the lock state. Used by both `--dry-run` (with
 /// `would_remove` glyphs) and the real run (with `removed` glyphs).
-fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool) {
+fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool, preamble: bool) {
     let status = if dry_run { "would_remove" } else { "removed" };
+    // Blank line between sections, but not above the first one unless the
+    // caller already printed the `Removing ...` preamble above this tree
+    let mut printed = preamble;
 
     if !state.skills.is_empty() {
         let mut by_source: Vec<(String, Vec<(&str, &str)>)> = Vec::new();
@@ -228,7 +233,13 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
                 by_source.push((key, vec![(e.skill.as_str(), e.skill.as_str())]));
             }
         }
-        print_section_header("Skills", Some((state.skills.len(), "to remove")), plain);
+        print_section_header(
+            "Skills",
+            Some((state.skills.len(), "to remove")),
+            printed,
+            plain,
+        );
+        printed = true;
         for (source, items) in &by_source {
             let repo = short_source(source);
             print_source_header(&repo, None, Some(true), None, plain);
@@ -249,7 +260,13 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
             .iter()
             .map(|(_, a)| a.destination.split(',').filter(|s| !s.is_empty()).count())
             .sum();
-        print_section_header("MCP Servers", Some((total_servers, "to remove")), plain);
+        print_section_header(
+            "MCP Servers",
+            Some((total_servers, "to remove")),
+            printed,
+            plain,
+        );
+        printed = true;
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &mcp_packs {
             for server in a.destination.split(',').filter(|s| !s.is_empty()) {
@@ -277,7 +294,13 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         .filter(|(_, a)| a.kind == "command")
         .collect();
     if !cmd_assets.is_empty() {
-        print_section_header("Commands", Some((cmd_assets.len(), "to remove")), plain);
+        print_section_header(
+            "Commands",
+            Some((cmd_assets.len(), "to remove")),
+            printed,
+            plain,
+        );
+        printed = true;
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
         for (_, a) in &cmd_assets {
             let key = a.source.clone();
@@ -306,6 +329,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         print_section_header(
             "Instructions",
             Some((instruction_assets.len(), "to remove")),
+            printed,
             plain,
         );
         let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY, SUCCESS};
 use crate::error::{err, Result};
 use crate::fsops::dirs_kasetto_config;
-use crate::ui::{animations_enabled, eprint_warn, print_group_header, with_spinner_transient};
+use crate::ui::{animations_enabled, eprint_warn, print_section_header, with_spinner_transient};
 use crate::{DEFAULT_CONFIG_FILENAME, DEFAULT_GLOBAL_CONFIG_FILENAME};
 
 const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
@@ -101,7 +101,7 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Created{RESET} {ACCENT}{}{RESET}",
         path.display()
     );
-    print_group_header("Next steps", color);
+    print_section_header("Next steps", None, true, !color);
     println!(
         "  {ATTENTION}{ACCENT}1{RESET}   Edit {ATTENTION}{}{RESET} to add your sources and target agent",
         path.display()
