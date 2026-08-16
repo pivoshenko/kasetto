@@ -96,20 +96,44 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         },
     )?;
 
-    let color = crate::ui::color_stdout_enabled();
+    let plain = !crate::ui::color_stdout_enabled();
+    let config = path.display().to_string();
+    if plain {
+        println!("✓ Created {config}");
+    } else {
+        println!("{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Created{RESET} {ACCENT}{config}{RESET}");
+    }
+    print_section_header("Next steps", None, true, plain);
+    // The step number is a marker, not content: grey, so the eye lands on the
+    // instruction. Amber stays for the things you act on (paths, env vars,
+    // the command to run)
+    let step = |n: u8| {
+        if plain {
+            n.to_string()
+        } else {
+            format!("{SECONDARY}{n}{RESET}")
+        }
+    };
+    let hl = |s: &str| {
+        if plain {
+            s.to_string()
+        } else {
+            format!("{ATTENTION}{s}{RESET}")
+        }
+    };
     println!(
-        "{SUCCESS}✓{RESET} {SUCCESS}{ACCENT}Created{RESET} {ACCENT}{}{RESET}",
-        path.display()
-    );
-    print_section_header("Next steps", None, true, !color);
-    println!(
-        "  {ATTENTION}{ACCENT}1{RESET}   Edit {ATTENTION}{}{RESET} to add your sources and target agent",
-        path.display()
+        "  {} Edit {} to add your sources and target agent",
+        step(1),
+        hl(&config)
     );
     println!(
-        "  {ATTENTION}{ACCENT}2{RESET}   For private repositories set {ATTENTION}GITHUB_TOKEN{RESET} / {ATTENTION}GH_TOKEN{RESET} / {ATTENTION}GITLAB_TOKEN{RESET}",
+        "  {} For private repositories set {} / {} / {}",
+        step(2),
+        hl("GITHUB_TOKEN"),
+        hl("GH_TOKEN"),
+        hl("GITLAB_TOKEN"),
     );
-    println!("  {ATTENTION}{ACCENT}3{RESET}   Run {ATTENTION}kasetto sync{RESET} to install");
+    println!("  {} Run {} to install", step(3), hl("kasetto sync"));
 
     Ok(())
 }
