@@ -2,6 +2,88 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.0] - 2026-08-16
+
+### Bug fixes
+
+- **cli**: Gate the list empty state, clean tip, and sync report on the tty
+- **cli**: Keep the clean tree after the lock is reset
+- **cli**: Suppress the update notice on a failed run
+- **cli**: Let a resolved plain outrank an inherited CLICOLOR_FORCE
+- **cli**: Label locked_error rows like every other failure
+- **cli**: Render errors in the CLI's own palette and grammar
+- **cli**: Name the relative sub-dir in source sub-dir errors
+- **ui**: Align tree columns and keep right-column gutters
+- **site**: Redirect the whole docs host to the canonical apex
+- **site**: Restore og:image and per-page twitter cards on docs pages
+- **site**: Stop the hero terminal from reflowing the page
+- **site**: Use canonical www host in metadata and llms.txt
+- **ci**: Ignore unfixable image-size advisories in pnpm audit
+
+### Design
+
+- **cli**: Move sync status labels left of the asset name
+- **site**: Align table and block spacing with the prose rhythm
+- **site**: Drive docs page spacing from the layout gap
+- **site**: Tighten docs leading and page-action spacing
+- **site**: Tighten vertical rhythm across docs prose
+- **site**: Tighten spacing below docs headings
+- **site**: Tighten the gap under the docs page description
+
+### Documentation
+
+- Record the exit-code contract and the output conventions
+- Add pull request template
+- Regenerate CLAUDE.md
+- Document the module doc comment convention
+- Normalize module and package doc comments
+- **configuration**: Explain persisting a default remote config
+- Fix heading case, em dashes, and wording in prose
+- Drop trailing periods from inline code comments
+- Standardize heading case, wording, and punctuation
+
+### Features
+
+- **cli**: Exit non-zero when a command reports problems
+- **cli**: Show only the asset id in list rows
+- **cli**: Add a broken chip to the sync summary strip
+- **site**: Make the site crawlable and add search-intent content
+- **site**: Serve docs pages as markdown for agents and LLMs
+
+### Miscellaneous
+
+- Ignore the local kasetto.yaml
+- **site**: Match the biome schema to the pinned CLI version
+- Use apex url for the author blog link
+- **deps**: Update locked dependencies
+- Update dependencies (cargo update, pnpm update)
+- Update dependencies and migrate biome config
+
+### Refactor
+
+- **site**: Drop the cassette etymology line from the hero
+
+### Testing
+
+- **commands**: Drop redundant cleanup comment
+
+### Build
+
+- **site**: Override nanoid to a patched version
+
+### Perf
+
+- **site**: Bundle subsetted fonts for the og image
+
+### Style
+
+- **cli**: Grey the init step numbers
+- **cli**: Always set a tip off with a blank line
+- **cli**: Grey the doctor panel values
+- **cli**: One space between a label and its trailing value
+- **cli**: Give every command the same section and row grammar
+- **site**: Drop explanatory comments from the seo changes
+
 ## [3.6.2] - 2026-08-04
 
 ### Bug fixes
@@ -17,6 +99,10 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 
 - Use plain ASCII punctuation in README, docs, and site copy
+
+### Release
+
+- V3.6.2
 
 ## [3.6.1] - 2026-08-04
 
