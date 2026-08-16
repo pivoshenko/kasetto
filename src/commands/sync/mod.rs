@@ -214,7 +214,6 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
             );
         }
         if opts.dry_run {
-            println!();
             crate::ui::print_tip("run without `--dry-run` to apply", opts.plain);
         }
     }

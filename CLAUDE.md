@@ -138,6 +138,9 @@ afterwards. `doctor` passes `true` throughout because its head line always prece
 Every helper takes `plain` (never `color`), and plain mode must differ from colored mode only in
 ANSI - never in wording, casing, or column position.
 
+`print_tip` emits its own leading blank line - a tip is an aside about the run, not part of the
+report above it. Never hand-roll a `println!()` before one.
+
 Trailing tails (`✓ healthy` on the doctor head, `writable` on a dir row, the item count on a source
 header) sit **one space after their label** - never right-aligned to a column. Labels here are
 paths and source URLs that range from `/tmp/pk` to a long monorepo URL, so any reserved column
