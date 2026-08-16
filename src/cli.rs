@@ -11,8 +11,9 @@ use crate::model::Scope;
     version,
     color = clap::ColorChoice::Always,
     styles = crate::colors::clap_styles(),
+    // No `long_about`: it only restated `about` with an article and a period,
+    // so `--help` and `-h` opened on different sentences
     about = "Declarative AI agent environment manager, written in Rust",
-    long_about = "A declarative AI agent environment manager, written in Rust.",
     after_help = crate::cli_examples!(
         "kasetto",
         "kasetto sync --config https://example.com/kasetto.yaml --verbose",

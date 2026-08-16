@@ -312,10 +312,15 @@ fn emit_result(opts: &AddOptions, source: &str, edits: &[SectionEdit], dry: bool
     let mut sections: Vec<&str> = edits.iter().map(|e| e.section.key()).collect();
     sections.dedup();
     let sections = sections.join(", ");
-    if crate::ui::color_stdout_enabled() {
-        println!("{verb} {INFO}{source}{RESET} to {sections}");
-    } else {
+    let plain = !crate::ui::color_stdout_enabled();
+    if plain {
         println!("{verb} {source} to {sections}");
+    } else {
+        println!("{verb} {INFO}{source}{RESET} to {sections}");
+    }
+    if dry {
+        println!();
+        crate::ui::print_tip("run without `--dry-run` to apply", plain);
     }
     Ok(())
 }

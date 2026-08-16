@@ -224,12 +224,17 @@ fn emit_result(opts: &RemoveOptions, removed: &[Removed], dry: bool) -> Result<(
     // Present continuous for the in-progress edit line (cargo precedent); the
     // sync summary that follows carries the past-tense `Removed N items` closer
     let verb = if dry { "Would remove" } else { "Removing" };
+    let plain = !crate::ui::color_stdout_enabled();
     for r in removed {
-        if crate::ui::color_stdout_enabled() {
-            println!("{verb} {INFO}{}{RESET} from {}", r.target, r.section);
-        } else {
+        if plain {
             println!("{verb} {} from {}", r.target, r.section);
+        } else {
+            println!("{verb} {INFO}{}{RESET} from {}", r.target, r.section);
         }
+    }
+    if dry {
+        println!();
+        crate::ui::print_tip("run without `--dry-run` to apply", plain);
     }
     Ok(())
 }
