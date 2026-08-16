@@ -440,7 +440,7 @@ fn print_sync_tree(report: &Report, plain: bool) {
     for (source, items) in &groups {
         let repo = short_source(source);
         // Sync source headers have NO count per design (terminal.jsx runSync)
-        print_source_header(&repo, None, Some(true), None, plain);
+        print_source_header(&repo, None, Some(true), plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
             let name = a.skill.as_deref().unwrap_or("-");

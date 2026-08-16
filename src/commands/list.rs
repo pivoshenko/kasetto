@@ -129,7 +129,7 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool, printed: &mut bool)
         // Rows show the skill id, so order them by it rather than by display name
         items.sort_by_cached_key(|s| s.skill.to_lowercase());
         let repo = short_source(source);
-        print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
+        print_source_header(&repo, Some(items.len()), Some(false), plain);
         for (i, s) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
             print_tree_leaf(is_last, &s.skill, plain);
@@ -154,7 +154,7 @@ fn print_assets_tree(label: &str, rows: &[AssetEntry], plain: bool, printed: &mu
     }
     for (source, items) in &groups {
         let repo = short_source(source);
-        print_source_header(&repo, Some(items.len()), Some(false), Some(62), plain);
+        print_source_header(&repo, Some(items.len()), Some(false), plain);
         for (i, a) in items.iter().enumerate() {
             let is_last = i == items.len() - 1;
             print_tree_leaf(is_last, &a.name, plain);

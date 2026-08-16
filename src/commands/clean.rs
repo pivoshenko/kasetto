@@ -242,7 +242,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         printed = true;
         for (source, items) in &by_source {
             let repo = short_source(source);
-            print_source_header(&repo, None, Some(true), None, plain);
+            print_source_header(&repo, None, Some(true), plain);
             for (i, (name, _)) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
                 print_status_leaf(is_last, status, name, "", plain);
@@ -280,7 +280,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
         for (source, servers) in &by_source {
             let repo = short_source(source);
-            print_source_header(&repo, None, Some(true), None, plain);
+            print_source_header(&repo, None, Some(true), plain);
             for (i, name) in servers.iter().enumerate() {
                 let is_last = i == servers.len() - 1;
                 print_status_leaf(is_last, status, name, "", plain);
@@ -312,7 +312,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
         for (source, items) in &by_source {
             let repo = short_source(source);
-            print_source_header(&repo, None, Some(true), None, plain);
+            print_source_header(&repo, None, Some(true), plain);
             for (i, name) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
                 print_status_leaf(is_last, status, name, "", plain);
@@ -343,7 +343,7 @@ fn print_removal_tree(lock: &LockFile, state: &State, dry_run: bool, plain: bool
         }
         for (source, items) in &by_source {
             let repo = short_source(source);
-            print_source_header(&repo, None, Some(true), None, plain);
+            print_source_header(&repo, None, Some(true), plain);
             for (i, name) in items.iter().enumerate() {
                 let is_last = i == items.len() - 1;
                 print_status_leaf(is_last, status, name, "", plain);
