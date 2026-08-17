@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://kasetto.dev/"><img alt="Kasetto logo" src="assets/logo.svg" width="450" /></a>
+  <a href="https://kasetto.dev/"><img alt="Kasetto - a declarative AI agent environment manager, written in Rust" src="assets/social-preview.svg" width="100%" /></a>
 </p>
 
 <p align="center">
@@ -17,8 +17,6 @@
 <p align="center">
   A declarative AI agent environment manager, written in Rust.
 </p>
-
-<img alt="kasetto sync output" src="assets/demo.svg?v=7" width="100%" />
 
 **About the name**
 
