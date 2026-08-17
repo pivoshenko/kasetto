@@ -77,7 +77,6 @@ export default function OpengraphImage() {
           width: size.width - 76,
           height: size.height - 76,
           border: `4px solid ${LAVENDER}`,
-          borderRadius: 15,
           display: "flex",
         }}
       />
