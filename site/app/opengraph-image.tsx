@@ -12,9 +12,38 @@ export const contentType = "image/png";
 const BG = "#1f1f1e"; // popil base
 const FG = "#e4e2de"; // popil text
 const MUTED = "#a8a195"; // CLI SECONDARY
-const BORDER = "#2e2e2c"; // popil surface1
+const LAVENDER = "#b89cdc"; // CLI BRAND
+const FRAME = "rgba(184, 156, 220, 0.4)"; // LAVENDER at the card's frame opacity
 const ACCENT_WARM = "#e8a94d"; // CLI ATTENTION
+const ADDED = "#84c578"; // CLI SUCCESS
+const REMOVED = "#e87e6c"; // CLI ERROR
+const DIM = "#6e6759"; // CLI INFRA
+const JP_YELLOW = "#d4b070"; // popil yellow
 
+// Same six lines as `assets/social-preview.svg`, so the shared card and the
+// GitHub social preview stay in sync. 58 columns; at 28px in JetBrains Mono
+// (0.6em advance) that is 974px, which clears the 1120px frame interior.
+const WORDMARK = [
+  "██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗",
+  "██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗",
+  "█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║",
+  "██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║",
+  "██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝",
+  "╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝",
+];
+
+const CHIPS = [
+  { dot: ACCENT_WARM, count: "4", label: "updated", labelColor: ACCENT_WARM },
+  { dot: ADDED, count: "2", label: "added", labelColor: ADDED },
+  { dot: REMOVED, count: "1", label: "removed", labelColor: REMOVED },
+  { dot: DIM, count: "11", label: "unchanged", labelColor: MUTED },
+];
+
+// The bundled fonts are subsets, unhinted and stripped of layout tables:
+// JetBrains Mono 2.304 (Latin + U+25CF/U+276F, plus U+2500-257F box drawing and
+// U+2580-259F block elements at 700 for the wordmark) and Noto Sans JP,
+// instanced at wght 700 and cut to the kana in the subtitle. Widen the ranges
+// before adding glyphs the subsets do not carry, or they render as tofu.
 function loadFont(file: string) {
   return readFileSync(join(process.cwd(), "app/fonts", file));
 }
@@ -32,85 +61,85 @@ export default function OpengraphImage() {
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         background: BG,
         color: FG,
         fontFamily: "JetBrains Mono, monospace",
-        padding: 56,
         position: "relative",
       }}
     >
-      {/* J-card border */}
+      {/* J-card border - Satori ignores the `inset` shorthand, so size it explicitly */}
       <div
         style={{
           position: "absolute",
-          inset: 32,
-          border: `2px solid ${BORDER}`,
+          top: 38,
+          left: 38,
+          width: size.width - 76,
+          height: size.height - 76,
+          border: `2px solid ${FRAME}`,
+          borderRadius: 15,
           display: "flex",
         }}
       />
 
-      {/* Title block */}
-      <div
-        style={{
-          marginTop: 48,
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
-        }}
-      >
-        <div
-          style={{
-            color: ACCENT_WARM,
-            fontSize: 22,
-            fontWeight: 700,
-            letterSpacing: "0.32em",
-            fontFamily: "Noto Sans JP",
-          }}
-        >
-          カセット
-        </div>
-        <div
-          style={{
-            fontSize: 140,
-            fontWeight: 700,
-            lineHeight: 1,
-            letterSpacing: "-0.02em",
-            color: ACCENT_WARM,
-          }}
-        >
-          Kasetto
-        </div>
-        <div
-          style={{
-            fontSize: 32,
-            color: MUTED,
-            letterSpacing: "0.02em",
-            maxWidth: 1040,
-            lineHeight: 1.3,
-          }}
-        >
-          Declarative AI Agent Environment Manager written in Rust
-        </div>
+      {/* ASCII wordmark */}
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 24, color: LAVENDER }}>
+        {WORDMARK.map((line) => (
+          <div
+            key={line}
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              lineHeight: "32px",
+              whiteSpace: "pre",
+            }}
+          >
+            {line}
+          </div>
+        ))}
       </div>
 
-      {/* Footer bar */}
+      {/* Tagline */}
+      <div style={{ display: "flex", fontSize: 24, marginTop: 46, whiteSpace: "pre" }}>
+        <span style={{ color: MUTED }}>A declarative </span>
+        <span style={{ color: FG }}>AI agent environment manager</span>
+        <span style={{ color: MUTED }}>, written in </span>
+        <span style={{ color: ACCENT_WARM }}>Rust</span>
+        <span style={{ color: MUTED }}>.</span>
+      </div>
+
+      {/* Prompt + command */}
+      <div style={{ display: "flex", fontSize: 22, marginTop: 20, whiteSpace: "pre" }}>
+        <span style={{ color: ACCENT_WARM }}>❯</span>
+        <span style={{ color: FG }}> kasetto </span>
+        <span style={{ color: ACCENT_WARM }}>sync</span>
+      </div>
+
+      {/* Chip strip totals */}
+      <div style={{ display: "flex", fontSize: 19, marginTop: 18, gap: 34, whiteSpace: "pre" }}>
+        {CHIPS.map((chip) => (
+          <div key={chip.label} style={{ display: "flex" }}>
+            <span style={{ color: chip.dot }}>●</span>
+            <span style={{ color: FG }}>{` ${chip.count} `}</span>
+            <span style={{ color: chip.labelColor }}>{chip.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Japanese subtitle */}
       <div
         style={{
-          position: "absolute",
-          left: 56,
-          right: 56,
-          bottom: 56,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: 20,
-          letterSpacing: "0.24em",
-          fontWeight: 600,
-          color: ACCENT_WARM,
+          marginTop: 24,
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 5.2,
+          color: JP_YELLOW,
+          fontFamily: "Noto Sans JP",
         }}
       >
-        <span>KASETTO.DEV</span>
-        <span style={{ color: MUTED }}>$ curl -fsSL kasetto.dev/install | sh</span>
+        スキル・パッケージ・マネージャー
       </div>
     </div>,
     {
