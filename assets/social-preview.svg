@@ -14,7 +14,7 @@
   <rect x="0" y="0" width="1280" height="640" fill="#1f1f1e"/>
 
   <!-- outline border -->
-  <rect x="40" y="40" width="1200" height="560" rx="16" ry="16" fill="none" stroke="#b89cdc" stroke-width="2" opacity="0.4"/>
+  <rect x="40" y="40" width="1200" height="560" rx="16" ry="16" fill="none" stroke="#b89cdc" stroke-width="4"/>
 
   <!-- ASCII wordmark — left-anchored. Block width at font-size 30 in JetBrains Mono ≈ 1050px; x=122 leaves ~80px on each side of the frame. -->
   <text x="122" y="200" fill="#b89cdc" font-size="30" font-weight="700" xml:space="preserve">

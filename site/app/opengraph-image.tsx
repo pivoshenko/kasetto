@@ -13,7 +13,6 @@ const BG = "#1f1f1e"; // popil base
 const FG = "#e4e2de"; // popil text
 const MUTED = "#a8a195"; // CLI SECONDARY
 const LAVENDER = "#b89cdc"; // CLI BRAND
-const FRAME = "rgba(184, 156, 220, 0.4)"; // LAVENDER at the card's frame opacity
 const ACCENT_WARM = "#e8a94d"; // CLI ATTENTION
 const ADDED = "#84c578"; // CLI SUCCESS
 const REMOVED = "#e87e6c"; // CLI ERROR
@@ -77,7 +76,7 @@ export default function OpengraphImage() {
           left: 38,
           width: size.width - 76,
           height: size.height - 76,
-          border: `2px solid ${FRAME}`,
+          border: `4px solid ${LAVENDER}`,
           borderRadius: 15,
           display: "flex",
         }}
