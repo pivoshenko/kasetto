@@ -5,7 +5,9 @@
   Palette mirrors the popil flavor (lavender #b89cdc, yellow #d4b070)
   and the terminal frame from `assets/demo.svg`.
 
-  The canvas is transparent so the README picks up the reader's GitHub theme.
+  The canvas is transparent so the README picks up the reader's GitHub theme;
+  `assets/social-preview-light.svg` is the light-theme twin, so geometry edits
+  here belong there too.
   Share cards cannot be, so the raster paints the popil base back in:
     rsvg-convert -b '#1f1f1e' -w 1280 -h 640 assets/social-preview.svg -o assets/social-preview.png
   Upload the PNG under Settings → Social preview on GitHub.
