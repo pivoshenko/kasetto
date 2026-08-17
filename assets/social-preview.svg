@@ -5,14 +5,12 @@
   Palette mirrors the popil flavor (lavender #b89cdc, yellow #d4b070)
   and the terminal frame from `assets/demo.svg`.
 
-  Render via:
-    rsvg-convert -w 1280 -h 640 assets/social-preview.svg -o assets/social-preview.png
+  The canvas is transparent so the README picks up the reader's GitHub theme.
+  Share cards cannot be, so the raster paints the popil base back in:
+    rsvg-convert -b '#1f1f1e' -w 1280 -h 640 assets/social-preview.svg -o assets/social-preview.png
   Upload the PNG under Settings → Social preview on GitHub.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" font-family="'JetBrainsMono Nerd Font Mono','JetBrainsMono NFM','Iosevka Nerd Font Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">
-  <!-- background -->
-  <rect x="0" y="0" width="1280" height="640" fill="#1f1f1e"/>
-
   <!-- outline border -->
   <rect x="40" y="40" width="1200" height="560" fill="none" stroke="#b89cdc" stroke-width="4"/>
 
