@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Light-theme twin of `assets/social-preview.svg`, picked by the <picture> in
+  README.md when the reader's GitHub theme is light. Geometry is identical -
+  edit both files together, or the card will jump between themes.
+
+  Only the palette differs: every role is darkened until it clears 4.5:1 on
+  white, since the popil colors are tuned for the dark canvas and wash out.
+    lavender #b89cdc -> #7d54bd    text  #e4e2de -> #2e2e2c
+    muted    #a8a195 -> #6e6759    amber #e8a94d -> #96660c
+    green    #84c578 -> #377a2d    red   #e87e6c -> #b04129
+    dim dot  #6e6759 -> #8a8378    JP    #d4b070 -> #8a6a1e
+
+  This variant is README-only; the share card raster comes from the dark file.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" font-family="'JetBrainsMono Nerd Font Mono','JetBrainsMono NFM','Iosevka Nerd Font Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">
+  <!-- outline border -->
+  <rect x="40" y="40" width="1200" height="560" fill="none" stroke="#7d54bd" stroke-width="4"/>
+
+  <!-- ASCII wordmark — left-anchored. Block width at font-size 30 in JetBrains Mono ≈ 1050px; x=122 leaves ~80px on each side of the frame. -->
+  <text x="122" y="200" fill="#7d54bd" font-size="30" font-weight="700" xml:space="preserve">
+    <tspan x="122" dy="0">██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗</tspan>
+    <tspan x="122" dy="34">██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗</tspan>
+    <tspan x="122" dy="34">█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="122" dy="34">██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║</tspan>
+    <tspan x="122" dy="34">██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝</tspan>
+    <tspan x="122" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text x="640" y="438" text-anchor="middle" fill="#2e2e2c" font-size="26" letter-spacing="0.01em" xml:space="preserve">
+    <tspan fill="#6e6759">A declarative </tspan><tspan fill="#2e2e2c">AI agent environment manager</tspan><tspan fill="#6e6759">, written in </tspan><tspan fill="#96660c">Rust</tspan><tspan fill="#6e6759">.</tspan>
+  </text>
+
+  <!-- prompt + command -->
+  <text x="640" y="484" text-anchor="middle" font-size="24" xml:space="preserve">
+    <tspan fill="#96660c">❯</tspan><tspan fill="#2e2e2c"> kasetto </tspan><tspan fill="#96660c">sync</tspan>
+  </text>
+
+  <!-- chip strip totals -->
+  <text x="640" y="524" text-anchor="middle" font-size="20" xml:space="preserve">
+    <tspan fill="#96660c">●</tspan><tspan fill="#2e2e2c"> 4 </tspan><tspan fill="#96660c">updated</tspan><tspan fill="#6e6759">    </tspan><tspan fill="#377a2d">●</tspan><tspan fill="#2e2e2c"> 2 </tspan><tspan fill="#377a2d">added</tspan><tspan fill="#6e6759">    </tspan><tspan fill="#b04129">●</tspan><tspan fill="#2e2e2c"> 1 </tspan><tspan fill="#b04129">removed</tspan><tspan fill="#6e6759">    </tspan><tspan fill="#8a8378">●</tspan><tspan fill="#2e2e2c"> 11 </tspan><tspan fill="#6e6759">unchanged</tspan>
+  </text>
+
+  <!-- Japanese subtitle, popil yellow darkened for white -->
+  <text x="640" y="562" text-anchor="middle" fill="#8a6a1e" font-size="14" letter-spacing="0.4em" font-family="'Noto Sans Mono CJK JP','Noto Sans JP','Yu Gothic',sans-serif">スキル・パッケージ・マネージャー</text>
+</svg>

@@ -1,5 +1,10 @@
 <p align="center">
-  <a href="https://kasetto.dev/"><img alt="Kasetto - a declarative AI agent environment manager, written in Rust" src="assets/social-preview.svg" width="800" /></a>
+  <a href="https://kasetto.dev/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/social-preview.svg" />
+      <img alt="Kasetto - a declarative AI agent environment manager, written in Rust" src="assets/social-preview-light.svg" width="800" />
+    </picture>
+  </a>
 </p>
 
 <p align="center">
