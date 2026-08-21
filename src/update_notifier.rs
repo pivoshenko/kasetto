@@ -193,7 +193,7 @@ fn upgrade_command() -> &'static str {
     match detect_install_method() {
         InstallMethod::Homebrew => "brew upgrade kasetto",
         InstallMethod::Cargo => "cargo install kasetto",
-        InstallMethod::Installer => "kasetto self update",
+        InstallMethod::Installer => "kst self update",
     }
 }
 

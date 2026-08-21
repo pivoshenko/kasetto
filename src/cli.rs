@@ -15,11 +15,11 @@ use crate::model::Scope;
     // so `--help` and `-h` opened on different sentences
     about = "Declarative AI agent environment manager, written in Rust",
     after_help = crate::cli_examples!(
-        "kasetto",
-        "kasetto sync --config https://example.com/kasetto.yaml --verbose",
-        "kasetto init",
-        "kasetto list",
-        "kasetto doctor",
+        "kst",
+        "kst sync --config https://example.com/kasetto.yaml --verbose",
+        "kst init",
+        "kst list",
+        "kst doctor",
     )
 )]
 pub(crate) struct Cli {
@@ -212,9 +212,9 @@ pub(crate) enum Commands {
         about = "Create a starter config file",
         long_about = "Writes a commented template you can edit before running sync.\n\nBy default, writes ./kasetto.yaml. With --global, writes $XDG_CONFIG_HOME/kasetto/kasetto.yaml (or ~/.config/kasetto/kasetto.yaml).\n\nIf the target file already exists, you are prompted to overwrite (TTY) unless `--force` is set.",
         after_help = crate::cli_examples!(
-            "kasetto init",
-            "kasetto init --global",
-            "kasetto init --force",
+            "kst init",
+            "kst init --global",
+            "kst init --force",
         )
     )]
     Init {
@@ -229,11 +229,11 @@ pub(crate) enum Commands {
         about = "Sync configured assets into your agents",
         long_about = "Read configuration, discover the requested skills, MCPs, commands, and instructions, then install/update/remove local copies so destinations match config.\n\nUse --dry-run to preview changes without modifying files.",
         after_help = crate::cli_examples!(
-            "kasetto sync",
-            "kasetto sync --update",
-            "kasetto sync --locked",
-            "kasetto sync --dry-run --verbose",
-            "kasetto sync --config https://example.com/kasetto.yaml",
+            "kst sync",
+            "kst sync --update",
+            "kst sync --locked",
+            "kst sync --dry-run --verbose",
+            "kst sync --config https://example.com/kasetto.yaml",
         )
     )]
     Sync {
@@ -244,13 +244,13 @@ pub(crate) enum Commands {
         about = "Add a source to the config and sync it",
         long_about = "Append a skill/MCP/command/instruction source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL; the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
         after_help = crate::cli_examples!(
-            "kasetto add https://github.com/example/skill-pack",
-            "kasetto add https://github.com/example/pack@v2.0",
-            "kasetto add https://github.com/example/pack --skill alpha --skill beta",
-            "kasetto add https://github.com/example/pack --skill find --mcp github --command review",
-            "kasetto add https://github.com/org/repo/blob/main/skills/personal/edit-article/SKILL.md",
-            "kasetto add https://github.com/example/pack --dry-run",
-            "kasetto add https://github.com/example/pack --ref v2.0 --no-sync",
+            "kst add https://github.com/example/skill-pack",
+            "kst add https://github.com/example/pack@v2.0",
+            "kst add https://github.com/example/pack --skill alpha --skill beta",
+            "kst add https://github.com/example/pack --skill find --mcp github --command review",
+            "kst add https://github.com/org/repo/blob/main/skills/personal/edit-article/SKILL.md",
+            "kst add https://github.com/example/pack --dry-run",
+            "kst add https://github.com/example/pack --ref v2.0 --no-sync",
         )
     )]
     Add {
@@ -306,13 +306,13 @@ pub(crate) enum Commands {
         about = "Remove a source or named entries from the config and prune them",
         long_about = "Delete entries from your local kasetto.yaml (preserving comments), then run a sync so the now-unconfigured assets are removed from disk and the lock.\n\nMirrors `add`: the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) name entries to subtract from a list; when the last name goes, the whole entry is dropped. A lone `*` value (e.g. --mcp \"*\") drops that kind's whole entry. With no kind flags, the source is removed from every list it appears in.\n\nThe source may be a repo URL or a deep blob/tree browse URL. When multiple entries share a source URL, pass --ref or --branch to pick one. Use --no-sync to edit the config without pruning.",
         after_help = crate::cli_examples!(
-            "kasetto remove https://github.com/example/skill-pack",
-            "kasetto remove https://github.com/example/pack@v2.0",
-            "kasetto remove https://github.com/example/pack --skill find-skills",
-            "kasetto remove https://github.com/example/repo --mcp github --command review",
-            "kasetto remove https://github.com/example/pack --mcp \"*\"",
-            "kasetto remove https://github.com/example/pack --dry-run",
-            "kasetto rm ./local/pack --no-sync",
+            "kst remove https://github.com/example/skill-pack",
+            "kst remove https://github.com/example/pack@v2.0",
+            "kst remove https://github.com/example/pack --skill find-skills",
+            "kst remove https://github.com/example/repo --mcp github --command review",
+            "kst remove https://github.com/example/pack --mcp \"*\"",
+            "kst remove https://github.com/example/pack --dry-run",
+            "kst rm ./local/pack --no-sync",
         )
     )]
     Remove {
@@ -364,11 +364,11 @@ pub(crate) enum Commands {
         about = "Resolve the config and pin it into kasetto.lock",
         long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. MCP, command, and instruction entries get refreshed revision pins; their content hash fills in on the next sync.",
         after_help = crate::cli_examples!(
-            "kasetto lock",
-            "kasetto lock --check",
-            "kasetto lock --upgrade-package alpha --upgrade-package beta",
-            "kasetto lock --project",
-            "kasetto lock --config https://example.com/kasetto.yaml",
+            "kst lock",
+            "kst lock --check",
+            "kst lock --upgrade-package alpha --upgrade-package beta",
+            "kst lock --project",
+            "kst lock --config https://example.com/kasetto.yaml",
         )
     )]
     Lock {
@@ -401,9 +401,9 @@ pub(crate) enum Commands {
         about = "List installed skills, MCPs, commands, and instructions",
         long_about = "Read installed assets from the lock file and print them as plain tables.\n\nFilter the output with `--type skills|mcps|commands|instructions|all` (default: all). Use --json for scripting.",
         after_help = crate::cli_examples!(
-            "kasetto list",
-            "kasetto list --type skills",
-            "kasetto list --json",
+            "kst list",
+            "kst list --type skills",
+            "kst list --json",
         )
     )]
     List {
@@ -421,7 +421,7 @@ pub(crate) enum Commands {
     #[command(
         about = "Run local diagnostics",
         long_about = "Inspect local kasetto setup, including version, manifest path, active installation paths, an inventory of installed skills, MCP servers, commands, and instructions, and any failed installs from the latest sync report.",
-        after_help = crate::cli_examples!("kasetto doctor", "kasetto doctor --json",)
+        after_help = crate::cli_examples!("kst doctor", "kst doctor --json",)
     )]
     Doctor {
         #[arg(long)]
@@ -436,7 +436,7 @@ pub(crate) enum Commands {
     #[command(
         about = "Remove every installed asset for the scope",
         long_about = "Remove all installed skills, MCP server configurations, commands, and instructions, resetting the lock file.",
-        after_help = crate::cli_examples!("kasetto clean", "kasetto clean --dry-run",)
+        after_help = crate::cli_examples!("kst clean", "kst clean --dry-run",)
     )]
     Clean {
         #[arg(long)]
@@ -455,10 +455,10 @@ pub(crate) enum Commands {
         about = "Manage this kasetto installation",
         long_about = "Update the running binary from GitHub releases, or uninstall kasetto and remove local config and data.",
         after_help = crate::cli_examples!(
-            "kasetto self update",
-            "kasetto self update --json",
-            "kasetto self uninstall",
-            "kasetto self uninstall --yes",
+            "kst self update",
+            "kst self update --json",
+            "kst self uninstall",
+            "kst self uninstall --yes",
         )
     )]
     ManageSelf {
@@ -469,10 +469,10 @@ pub(crate) enum Commands {
         about = "Generate shell completions",
         long_about = "Generate shell completion scripts for kasetto.\n\nThe output is written to stdout so it can be sourced directly or redirected to a file.",
         after_help = crate::cli_examples!(
-            "kasetto completions bash",
-            "kasetto completions zsh",
-            "kasetto completions fish",
-            "kasetto completions powershell",
+            "kst completions bash",
+            "kst completions zsh",
+            "kst completions fish",
+            "kst completions powershell",
         )
     )]
     Completions {
@@ -486,7 +486,7 @@ pub(crate) enum SelfAction {
     #[command(
         about = "Update kasetto to the latest release",
         long_about = "Check GitHub for the latest kasetto release. If a newer version is available, download the matching binary and replace the current executable in-place.",
-        after_help = crate::cli_examples!("kasetto self update", "kasetto self update --json",)
+        after_help = crate::cli_examples!("kst self update", "kst self update --json",)
     )]
     Update {
         #[arg(long)]
@@ -496,7 +496,7 @@ pub(crate) enum SelfAction {
     #[command(
         about = "Completely uninstall kasetto",
         long_about = "Remove all installed assets, $XDG_CONFIG_HOME/kasetto/, $XDG_DATA_HOME/kasetto/, and the kasetto binary itself.",
-        after_help = crate::cli_examples!("kasetto self uninstall", "kasetto self uninstall --yes",)
+        after_help = crate::cli_examples!("kst self uninstall", "kst self uninstall --yes",)
     )]
     Uninstall {
         #[arg(long)]

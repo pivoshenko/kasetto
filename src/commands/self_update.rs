@@ -135,10 +135,10 @@ pub(crate) fn run(as_json: bool) -> Result<()> {
         print_update_closer(latest_version, current_version, !color);
         if color {
             println!(
-                "  {SECONDARY}Run{RESET} {ATTENTION}kasetto --version{RESET} {SECONDARY}to confirm{RESET}"
+                "  {SECONDARY}Run{RESET} {ATTENTION}kst --version{RESET} {SECONDARY}to confirm{RESET}"
             );
         } else {
-            println!("  Run kasetto --version to confirm");
+            println!("  Run kst --version to confirm");
         }
     }
 

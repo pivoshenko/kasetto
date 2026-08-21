@@ -133,7 +133,7 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
         hl("GH_TOKEN"),
         hl("GITLAB_TOKEN"),
     );
-    println!("  {} Run {} to install", step(3), hl("kasetto sync"));
+    println!("  {} Run {} to install", step(3), hl("kst sync"));
 
     Ok(())
 }

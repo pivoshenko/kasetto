@@ -206,11 +206,11 @@ fn print_report(
         if color {
             println!("{ERROR}{ACCENT}Removed{RESET} {total} {items} {SECONDARY}in {timing}{RESET}");
             println!(
-                "  {SECONDARY}lock file reset · run{RESET} {ATTENTION}kasetto sync{RESET} {SECONDARY}to restore{RESET}"
+                "  {SECONDARY}lock file reset · run{RESET} {ATTENTION}kst sync{RESET} {SECONDARY}to restore{RESET}"
             );
         } else {
             println!("Removed {total} {items} in {timing}");
-            println!("  lock file reset · run kasetto sync to restore");
+            println!("  lock file reset · run kst sync to restore");
         }
     }
 }

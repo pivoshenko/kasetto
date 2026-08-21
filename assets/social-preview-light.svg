@@ -35,7 +35,7 @@
 
   <!-- prompt + command -->
   <text x="640" y="397" text-anchor="middle" font-size="24" xml:space="preserve">
-    <tspan fill="#96660c">❯</tspan><tspan fill="#2e2e2c"> kasetto </tspan><tspan fill="#96660c">sync</tspan>
+    <tspan fill="#96660c">❯</tspan><tspan fill="#2e2e2c"> kst </tspan><tspan fill="#96660c">sync</tspan>
   </text>
 
   <!-- chip strip totals -->
