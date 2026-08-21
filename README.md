@@ -255,7 +255,7 @@ To pin exactly one source, use the tagged form `${kst:<source>:<ref>}`:
 - **`pass`**: Pass / GoPass
 - **`keychain`**: MacOS Keychain
 
-Each external manager inherits your existing CLI session, so kasetto stores no tokens of its own. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry, so run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
+Each external manager inherits your existing CLI session, so Kasetto stores no tokens of its own. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry, so run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
 
 ## Supported Agents
 
