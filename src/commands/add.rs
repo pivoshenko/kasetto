@@ -60,7 +60,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<Outcome> {
         return Err(err(
             "`--locked` on `add` requires `--no-sync`: a newly added source \
              cannot be installed without fetching. Either pass `--no-sync --locked` \
-             (edit the manifest only, then run `kasetto lock` + `kasetto sync --locked` \
+             (edit the manifest only, then run `kst lock` + `kst sync --locked` \
              to install offline), or drop `--locked` to fetch the new source now.",
         ));
     }
@@ -99,7 +99,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<Outcome> {
     for edit in &edits {
         if item_exists(&text, edit.section, &edit.item) {
             return Err(err(format!(
-                "`{source}` is already in `{}:`; edit it directly or `kasetto remove` it first",
+                "`{source}` is already in `{}:`; edit it directly or `kst remove` it first",
                 edit.section.key()
             )));
         }
@@ -130,7 +130,7 @@ pub(crate) fn run(opts: &AddOptions) -> Result<Outcome> {
             opts.locked,
         );
     } else if !opts.as_json && opts.quiet == 0 {
-        print_tip("run `kasetto sync` to install the new source", opts.plain);
+        print_tip("run `kst sync` to install the new source", opts.plain);
     }
     Ok(Outcome::Success)
 }

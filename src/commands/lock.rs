@@ -158,7 +158,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<Outcome> {
         } else {
             eprint_error(
                 &format!(
-                    "lock is out of date with the config ({} {} pending); run `kasetto lock` without --check",
+                    "lock is out of date with the config ({} {} pending); run `kst lock` without --check",
                     drift.len(),
                     crate::ui::pluralize(drift.len(), "change", "changes"),
                 ),

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Animated kasetto session mock — mirrors the hero terminal on kasetto.dev.
-  Three-scene loop: kasetto sync, then a cleared `kst add` screen, then a
+  Three-scene loop: kst sync, then a cleared `kst add` screen, then a
   cleared `kst remove` screen. Palette aligned with `src/colors.rs` (CLI
   source of truth) and the popil surfaces from `site/app/globals.css`. SMIL
   animations are sandboxed via GitHub's camo proxy when embedded as an <img>;
   no scripts, no external fonts. 13-second loop.
 
   Animation phases:
-    0.10s            ❯ kasetto sync                (prompt types)
+    0.10s            ❯ kst sync                    (prompt types)
     0.40s            ✓ Resolved …                  (lands)
     0.70 → 3.10s     source tree fills in          (per-row reveal)
     3.10s            chip strip totals
@@ -35,7 +35,7 @@
   <g xml:space="preserve" fill="#e4e2de">
 
     <!-- prompt -->
-    <text x="20" y="52" opacity="0"><tspan fill="#e8a94d">❯</tspan> <tspan fill="#e4e2de">kasetto </tspan><tspan fill="#e8a94d">sync</tspan>
+    <text x="20" y="52" opacity="0"><tspan fill="#e8a94d">❯</tspan> <tspan fill="#e4e2de">kst </tspan><tspan fill="#e8a94d">sync</tspan>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0075;0.0156;0.385;0.408;1" dur="13s" repeatCount="indefinite"/>
     </text>
 

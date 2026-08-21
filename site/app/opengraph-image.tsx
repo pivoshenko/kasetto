@@ -110,7 +110,7 @@ export default function OpengraphImage() {
       {/* Prompt + command */}
       <div style={{ display: "flex", fontSize: 22, marginTop: 20, whiteSpace: "pre" }}>
         <span style={{ color: ACCENT_WARM }}>❯</span>
-        <span style={{ color: FG }}> kasetto </span>
+        <span style={{ color: FG }}> kst </span>
         <span style={{ color: ACCENT_WARM }}>sync</span>
       </div>
 

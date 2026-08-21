@@ -103,7 +103,7 @@ fn print_nothing_installed(kind: ListKind, plain: bool) {
     }
     if matches!(kind, ListKind::All) {
         print_tip(
-            "run `kasetto init` to scaffold a config, then `kasetto sync` to install your assets",
+            "run `kst init` to scaffold a config, then `kst sync` to install your assets",
             plain,
         );
     }
