@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import type { CSSProperties } from "react";
 
 export const alt = "Kasetto: Declarative AI agent environment manager";
 export const size = { width: 1200, height: 630 };
@@ -30,6 +31,37 @@ const WORDMARK = [
   "██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝",
   "╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝",
 ];
+
+// The wordmark draws as two layers over one grid so the letters read as stacked
+// tiles rather than a solid slab, matching `assets/social-preview-dark.svg`: the
+// box-drawing rules paint over the blocks, keeping the shadow outline
+// continuous, while BG-colored bars cut a 3px gap into every row seam.
+const BLOCK = "\u2588";
+const splitLayer = (keepBlocks: boolean) =>
+  WORDMARK.map((line) =>
+    Array.from(line, (ch) => ((ch === BLOCK) === keepBlocks ? ch : " ")).join("")
+  );
+const WORDMARK_BLOCKS = splitLayer(true);
+const WORDMARK_RULES = splitLayer(false);
+
+// U+2588 renders exactly 40px tall at font-size 28, so a 40px line box butts the
+// rows together with no overlap and the seams land on clean 40px multiples.
+const WORDMARK_FONT_SIZE = 28;
+const WORDMARK_LINE_H = 40;
+const WORDMARK_SEAM_W = 3;
+const WORDMARK_SEAMS = WORDMARK.slice(1).map(
+  (_, i) => WORDMARK_LINE_H * (i + 1) - WORDMARK_SEAM_W / 2
+);
+// Satori resolves a percentage width on the seam bars against more than the
+// wordmark, and the overhang notches the J-card border - so pin the bars to the
+// longest line at the 0.6em advance instead.
+const WORDMARK_W = Math.max(...WORDMARK.map((line) => line.length)) * WORDMARK_FONT_SIZE * 0.6;
+const WORDMARK_ROW: CSSProperties = {
+  fontSize: WORDMARK_FONT_SIZE,
+  fontWeight: 700,
+  lineHeight: `${WORDMARK_LINE_H}px`,
+  whiteSpace: "pre",
+};
 
 const CHIPS = [
   { dot: ACCENT_WARM, count: "4", label: "updated", labelColor: ACCENT_WARM },
@@ -82,20 +114,45 @@ export default function OpengraphImage() {
       />
 
       {/* ASCII wordmark */}
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 24, color: LAVENDER }}>
-        {WORDMARK.map((line) => (
+      <div style={{ display: "flex", position: "relative", marginTop: 24, color: LAVENDER }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {WORDMARK_BLOCKS.map((line, i) => (
+            <div key={`block-${i}`} style={WORDMARK_ROW}>
+              {line}
+            </div>
+          ))}
+        </div>
+
+        {WORDMARK_SEAMS.map((top) => (
           <div
-            key={line}
+            key={top}
             style={{
-              fontSize: 28,
-              fontWeight: 700,
-              lineHeight: "32px",
-              whiteSpace: "pre",
+              position: "absolute",
+              display: "flex",
+              left: 0,
+              top,
+              width: WORDMARK_W,
+              height: WORDMARK_SEAM_W,
+              background: BG,
             }}
-          >
-            {line}
-          </div>
+          />
         ))}
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            position: "absolute",
+            top: 0,
+            left: 0,
+          }}
+        >
+          {WORDMARK_RULES.map((line, i) => (
+            <div key={`rule-${i}`} style={WORDMARK_ROW}>
+              {line}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Tagline */}
