@@ -103,7 +103,7 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<Outcome> {
             opts.locked,
         );
     } else if !opts.as_json && opts.quiet == 0 {
-        print_tip("run `kasetto sync` to prune the removed assets", opts.plain);
+        print_tip("run `kst sync` to prune the removed assets", opts.plain);
     }
     Ok(Outcome::Success)
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const SYNC_COMMAND = "kasetto sync";
+const SYNC_COMMAND = "kst sync";
 const ADD_COMMAND = "kst add github.com/anthropics/skills@v1.2.0 --skill pdf";
 const ADD_SOURCE = "https://github.com/anthropics/skills";
 const ADD_REPO = "github.com/anthropics/skills";
@@ -82,7 +82,7 @@ function glyphFor(s: Status | undefined): { g: string; cls: string } {
   return { g: "−", cls: "t-red" };
 }
 
-// scene "sync" runs the original kasetto sync animation; "edit" runs the
+// scene "sync" runs the original kst sync animation; "edit" runs the
 // continuation cargo-style `kst add ...` then `kst remove ...` session; "to-*"
 // are brief clear-screen transitions between scenes so the loop reads as one
 // terminal. Within "edit" the EditStep state machine threads add → remove.
@@ -122,8 +122,8 @@ function SyncScene({
       <div className="t-line">
         <span className="t-prompt">❯</span>
         <span>
-          <span className="t-fg">kasetto </span>
-          <span className="t-amber">{typed > 8 ? SYNC_COMMAND.slice(8, typed) : ""}</span>
+          <span className="t-fg">kst </span>
+          <span className="t-amber">{typed > 4 ? SYNC_COMMAND.slice(4, typed) : ""}</span>
         </span>
         {typingCursor && <span className="t-cursor" aria-hidden />}
       </div>
@@ -472,7 +472,7 @@ export function HeroTerminal() {
     <figure
       className="hero-terminal"
       ref={ref}
-      aria-label="Example kasetto sync, then kst add and kst remove output"
+      aria-label="Example kst sync, then kst add and kst remove output"
     >
       <div className="hero-terminal-bar">
         <span className="hero-terminal-dot" />
