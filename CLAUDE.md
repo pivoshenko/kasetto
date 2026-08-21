@@ -30,7 +30,7 @@ just build-next      # cd site && pnpm build
 just dev-next        # local Next.js dev server
 just audit           # cargo-audit + pnpm audit (installs cargo-audit if missing)
 just sync-config     # regenerate README/docs/hero from kasetto.example.yaml
-just sync-preview    # rasterize assets/social-preview.png from the dark svg (needs rsvg-convert)
+just sync-preview    # rasterize assets/social-preview-dark.png from the dark svg (needs rsvg-convert)
 just bench           # cold-sync benchmark (needs hyperfine + network)
 
 cargo test <name>                     # single test by substring
