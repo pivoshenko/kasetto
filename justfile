@@ -75,7 +75,7 @@ sync-config:
 # rasterize the share card from the README svg, padded to GitHub's 1280x640
 sync-preview:
     rsvg-convert -b '#1f1f1e' --page-width 1280 --page-height 640 --top 41 \
-      -w 1280 -h 558 assets/social-preview-dark.svg -o assets/social-preview.png
+      -w 1280 -h 558 assets/social-preview-dark.svg -o assets/social-preview-dark.png
 
 check: format lint test build
 
