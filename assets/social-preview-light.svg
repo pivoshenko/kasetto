@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Light-theme twin of `assets/social-preview.svg`, picked by the <picture> in
+  Light-theme twin of `assets/social-preview-dark.svg`, picked by the <picture> in
   README.md when the reader's GitHub theme is light. Geometry is identical -
   edit both files together, or the card will jump between themes.
 
