@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.1] - 2026-08-21
+
+### Design
+
+- **readme**: Hug the card frame to its content
+- **readme**: Balance the card's vertical margins
+- **readme**: Add a light-theme twin of the social preview card
+- **readme**: Drop the card background so it takes the github theme
+- **site**: Square off the card frame corners
+- **site**: Draw the card frame solid at 4px
+- **site**: Match the og image to the social preview card
+
+### Documentation
+
+- Capitalize the Kasetto brand name in prose
+- Show kst instead of kasetto in every command example
+- **readme**: Scale the social preview card to 800px
+- **readme**: Lead with the social preview card
+- Record the release version input and its bare form
+
+### Refactor
+
+- **assets**: Match the rasterized card to its source name
+- **assets**: Name the social preview twins dark and light
+
 ## [3.7.0] - 2026-08-16
 
 ### Bug fixes
@@ -74,6 +99,10 @@ All notable changes to this project will be documented in this file.
 ### Perf
 
 - **site**: Bundle subsetted fonts for the og image
+
+### Release
+
+- V3.7.0
 
 ### Style
 
