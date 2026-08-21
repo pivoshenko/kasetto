@@ -18,15 +18,46 @@
   <!-- outline border -->
   <rect x="40" y="40" width="1200" height="478" fill="none" stroke="#7d54bd" stroke-width="4"/>
 
-  <!-- ASCII wordmark — left-anchored. Block width at font-size 30 in JetBrains Mono ≈ 1050px; x=122 leaves ~80px on each side of the frame. -->
-  <text x="122" y="113" fill="#7d54bd" font-size="30" font-weight="700" xml:space="preserve">
-    <tspan x="122" dy="0">██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗</tspan>
-    <tspan x="122" dy="34">██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗</tspan>
-    <tspan x="122" dy="34">█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║</tspan>
-    <tspan x="122" dy="34">██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║</tspan>
-    <tspan x="122" dy="34">██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝</tspan>
-    <tspan x="122" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
-  </text>
+  <!--
+    ASCII wordmark - left-anchored. Block width at font-size 30 in JetBrains Mono
+    ≈ 1050px; x=122 leaves ~80px on each side of the frame.
+
+    Drawn as two layers over one grid so the letters read as stacked tiles rather
+    than a solid slab: the box-drawing rules render unmasked, keeping the shadow
+    outline continuous, while the █ blocks are masked by a 3px transparent line on
+    every row seam. Seams sit 3.5px under each baseline (113 + 34n), so moving y
+    or dy means moving the mask lines with them; widening stroke-width opens the
+    gaps, and dropping the mask attribute restores the solid wordmark.
+  -->
+  <defs>
+    <mask id="wordmark-tiles" maskUnits="userSpaceOnUse" x="0" y="0" width="1280" height="558">
+      <rect width="1280" height="558" fill="#fff"/>
+      <g stroke="#000" stroke-width="3">
+        <line x1="118" y1="116.5" x2="1190" y2="116.5"/>
+        <line x1="118" y1="150.5" x2="1190" y2="150.5"/>
+        <line x1="118" y1="184.5" x2="1190" y2="184.5"/>
+        <line x1="118" y1="218.5" x2="1190" y2="218.5"/>
+        <line x1="118" y1="252.5" x2="1190" y2="252.5"/>
+      </g>
+    </mask>
+  </defs>
+  <g fill="#7d54bd" font-size="30" font-weight="700" xml:space="preserve">
+    <text x="122" y="113" xml:space="preserve">
+      <tspan x="122" dy="0">  ╗    ╗      ╗        ╗       ╗        ╗        ╗       ╗</tspan>
+      <tspan x="122" dy="34">  ║   ╔╝  ╔══  ╗  ╔════╝  ╔════╝╚══  ╔══╝╚══  ╔══╝  ╔═══  ╗</tspan>
+      <tspan x="122" dy="34">     ╔╝        ║       ╗     ╗       ║        ║     ║     ║</tspan>
+      <tspan x="122" dy="34">  ╔═  ╗   ╔══  ║╚════  ║  ╔══╝       ║        ║     ║     ║</tspan>
+      <tspan x="122" dy="34">  ║    ╗  ║    ║       ║       ╗     ║        ║   ╚      ╔╝</tspan>
+      <tspan x="122" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
+    </text>
+    <text x="122" y="113" xml:space="preserve" mask="url(#wordmark-tiles)">
+      <tspan x="122" dy="0">██   ██  █████  ███████ ███████ ████████ ████████  ██████</tspan>
+      <tspan x="122" dy="34">██  ██  ██   ██ ██      ██         ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">█████   ███████ ███████ █████      ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">██  ██  ██   ██      ██ ██         ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">██   ██ ██   ██ ███████ ███████    ██       ██     ██████</tspan>
+    </text>
+  </g>
 
   <!-- tagline -->
   <text x="640" y="351" text-anchor="middle" fill="#2e2e2c" font-size="26" letter-spacing="0.01em" xml:space="preserve">
