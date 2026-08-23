@@ -58,9 +58,9 @@ pub(super) fn sync_mcps(
     let mut secrets_need_update = false;
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
-    // No agents configured (e.g. user dropped `agent:`) but lock still has MCP
-    // entries. Config is source of truth, so scrub the orphans from every
-    // known agent's settings file as best-effort, prune the lock, and return
+    // No configured agent has a native MCP target (e.g. no `agent:` or Pi only).
+    // Config is source of truth, so scrub any previously locked MCPs from every
+    // known target as best-effort, prune the lock, and return without fetching.
     if mcp_settings_list.is_empty() {
         let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
         if has_orphans {

@@ -60,7 +60,9 @@ Kasetto auto-discovers MCP pack files in the source:
 
 Each file must contain a `mcpServers` JSON object. Use a `mcps:` list to pick specific files instead of discovering all.
 
-Server entries are merged into each agent's native settings file (e.g., `.claude.json`, `.cursor/mcp.json`). The merge follows two rules:
+Server entries are merged into each selected agent's native settings file (e.g., `.claude.json`,
+`.cursor/mcp.json`) when that agent supports MCP. Pi intentionally has no native MCP support, so
+Kasetto skips MCP sources for the `pi` preset. The merge follows two rules:
 
 1. **New entries are added.** If the settings file doesn't have a server with that name, it's
    inserted.

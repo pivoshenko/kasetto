@@ -1,6 +1,7 @@
 //! Module that contains the supported agent registry and its per-asset destinations and formats.
 
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use super::{
@@ -49,6 +50,8 @@ pub(crate) enum Agent {
     OpenCode,
     #[serde(rename = "openhands")]
     OpenHands,
+    #[serde(rename = "pi")]
+    Pi,
     #[serde(rename = "replit")]
     Replit,
     #[serde(rename = "roo")]
@@ -81,6 +84,7 @@ pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::OpenClaw,
     Agent::OpenCode,
     Agent::OpenHands,
+    Agent::Pi,
     Agent::Replit,
     Agent::Roo,
     Agent::Trae,
@@ -89,7 +93,7 @@ pub(crate) const AGENT_PRESETS: &[Agent] = &[
     Agent::ZCode,
 ];
 
-/// Deduped native MCP config files for every known agent (for `clean` manifest wipe).
+/// Deduped native MCP config files for every known MCP-capable agent.
 pub(crate) fn all_mcp_settings_targets(
     home: &Path,
     kasetto_config: &Path,
@@ -101,7 +105,7 @@ pub(crate) fn all_mcp_settings_targets(
     )
 }
 
-/// Deduped project-level MCP config files for every known agent (for `clean` in project scope).
+/// Deduped project MCP config files for every known MCP-capable agent.
 pub(crate) fn all_mcp_project_targets(project_root: &Path) -> Vec<McpSettingsTarget> {
     dedup_targets(
         AGENT_PRESETS
@@ -119,8 +123,8 @@ fn dedup_by_path<T>(iter: impl Iterator<Item = T>, key: impl Fn(&T) -> &Path) ->
     out
 }
 
-fn dedup_targets(iter: impl Iterator<Item = McpSettingsTarget>) -> Vec<McpSettingsTarget> {
-    dedup_by_path(iter, |t| t.path.as_path())
+fn dedup_targets(iter: impl Iterator<Item = Option<McpSettingsTarget>>) -> Vec<McpSettingsTarget> {
+    dedup_by_path(iter.flatten(), |t| t.path.as_path())
 }
 
 fn dedup_command_targets(iter: impl Iterator<Item = Option<CommandTarget>>) -> Vec<CommandTarget> {
@@ -219,7 +223,7 @@ pub(crate) fn all_instruction_project_targets(project_root: &Path) -> Vec<Instru
     )
 }
 
-/// Deduped global MCP settings files for a specific set of agents.
+/// Deduped global MCP settings files for the MCP-capable agents in a set.
 pub(crate) fn mcp_settings_targets(home: &Path, agents: &[Agent]) -> Vec<McpSettingsTarget> {
     dedup_targets(
         agents
@@ -228,7 +232,7 @@ pub(crate) fn mcp_settings_targets(home: &Path, agents: &[Agent]) -> Vec<McpSett
     )
 }
 
-/// Deduped project-level MCP settings files for a specific set of agents.
+/// Deduped project MCP settings files for the MCP-capable agents in a set.
 pub(crate) fn mcp_settings_project_targets(
     project_root: &Path,
     agents: &[Agent],
@@ -250,6 +254,26 @@ fn instruction(base: &Path, rel: &str, format: InstructionFormat) -> Option<Inst
         path: base.join(rel),
         format,
     })
+}
+
+/// Pi's user resources share a configurable root. Keep Kasetto aligned with
+/// Pi's `PI_CODING_AGENT_DIR` handling, including leading-tilde expansion.
+fn pi_agent_dir(home: &Path) -> PathBuf {
+    pi_agent_dir_from(home, std::env::var_os("PI_CODING_AGENT_DIR").as_deref())
+}
+
+fn pi_agent_dir_from(home: &Path, configured: Option<&OsStr>) -> PathBuf {
+    let Some(configured) = configured else {
+        return home.join(".pi/agent");
+    };
+    let configured = Path::new(configured);
+    if configured == Path::new("~") {
+        return home.to_path_buf();
+    }
+    match configured.strip_prefix("~") {
+        Ok(rest) => home.join(rest),
+        Err(_) => configured.to_path_buf(),
+    }
 }
 
 /// VS Code / Copilot user-profile `mcp.json` (not Insiders).
@@ -292,6 +316,7 @@ impl Agent {
             Agent::OpenClaw => home.join(".openclaw/skills"),
             Agent::OpenCode => home.join(".config/opencode/skills"),
             Agent::OpenHands => home.join(".openhands/skills"),
+            Agent::Pi => pi_agent_dir(home).join("skills"),
             Agent::Roo => home.join(".roo/skills"),
             Agent::Trae => home.join(".trae/skills"),
             Agent::Windsurf => home.join(".codeium/windsurf/skills"),
@@ -299,13 +324,13 @@ impl Agent {
         }
     }
 
-    /// Native MCP config location and merge format for this agent.
+    /// Native MCP config location and merge format, if the agent supports MCP.
     pub(crate) fn mcp_settings_target(
         self,
         home: &Path,
         _kasetto_config: &Path,
-    ) -> McpSettingsTarget {
-        match self {
+    ) -> Option<McpSettingsTarget> {
+        Some(match self {
             Agent::ClaudeCode => mcp_servers_target(home, ".claude.json"),
             Agent::Cursor => mcp_servers_target(home, ".cursor/mcp.json"),
             Agent::GithubCopilot => McpSettingsTarget {
@@ -336,12 +361,15 @@ impl Agent {
                 format: McpSettingsFormat::OpenCode,
             },
             Agent::OpenHands => mcp_servers_target(home, ".openhands/mcp.json"),
+            // Pi intentionally has no native MCP support. Third-party extensions
+            // own their configuration, so Kasetto must not invent a target.
+            Agent::Pi => return None,
             Agent::Trae => mcp_servers_target(home, ".trae/mcp.json"),
             Agent::ZCode => McpSettingsTarget {
                 path: home.join(".zcode/cli/config.json"),
                 format: McpSettingsFormat::ZCode,
             },
-        }
+        })
     }
 
     /// Project-local skills directory for this agent, relative to `project_root`.
@@ -362,6 +390,7 @@ impl Agent {
             Agent::OpenClaw => project_root.join(".openclaw/skills"),
             Agent::OpenCode => project_root.join(".opencode/skills"),
             Agent::OpenHands => project_root.join(".openhands/skills"),
+            Agent::Pi => project_root.join(".pi/skills"),
             Agent::Roo => project_root.join(".roo/skills"),
             Agent::Trae => project_root.join(".trae/skills"),
             Agent::Windsurf => project_root.join(".windsurf/skills"),
@@ -369,9 +398,9 @@ impl Agent {
         }
     }
 
-    /// Project-local MCP config location and merge format for this agent.
-    pub(crate) fn mcp_project_target(self, project_root: &Path) -> McpSettingsTarget {
-        match self {
+    /// Project-local MCP config location and merge format, if the agent supports MCP.
+    pub(crate) fn mcp_project_target(self, project_root: &Path) -> Option<McpSettingsTarget> {
+        Some(match self {
             Agent::ClaudeCode => McpSettingsTarget {
                 path: project_root.join(".mcp.json"),
                 format: McpSettingsFormat::McpServers,
@@ -404,6 +433,7 @@ impl Agent {
                 path: project_root.join(".zcode/config.json"),
                 format: McpSettingsFormat::ZCode,
             },
+            Agent::Pi => return None,
             Agent::Antigravity
             | Agent::Augment
             | Agent::Goose
@@ -411,7 +441,7 @@ impl Agent {
             | Agent::OpenHands
             | Agent::Replit
             | Agent::Warp => mcp_servers_target(project_root, ".mcp.json"),
-        }
+        })
     }
 
     /// Global commands directory and write format for this agent, if supported.
@@ -427,6 +457,11 @@ impl Agent {
                 home,
                 ".config/opencode/commands",
                 CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Pi => cmd(
+                &pi_agent_dir(home),
+                "prompts",
+                CommandFormat::MarkdownFlatFrontmatter,
             ),
             Agent::Continue => cmd(home, ".continue/prompts", CommandFormat::PromptFile),
             Agent::Amp => cmd(
@@ -485,6 +520,11 @@ impl Agent {
                 project_root,
                 ".opencode/commands",
                 CommandFormat::MarkdownFrontmatter,
+            ),
+            Agent::Pi => cmd(
+                project_root,
+                ".pi/prompts",
+                CommandFormat::MarkdownFlatFrontmatter,
             ),
             Agent::Continue => cmd(project_root, ".continue/prompts", CommandFormat::PromptFile),
             Agent::GithubCopilot => cmd(project_root, ".github/prompts", CommandFormat::PromptMd),
@@ -548,6 +588,7 @@ impl Agent {
             Agent::Codex => instruction(project_root, "AGENTS.md", Agg),
             Agent::OpenCode => instruction(project_root, "AGENTS.md", Agg),
             Agent::Amp => instruction(project_root, "AGENTS.md", Agg),
+            Agent::Pi => instruction(project_root, "AGENTS.md", Agg),
             // Antigravity's native file is GEMINI.md (takes precedence over AGENTS.md)
             Agent::Antigravity => instruction(project_root, "GEMINI.md", Agg),
             Agent::GeminiCli => instruction(project_root, "GEMINI.md", Agg),
@@ -596,6 +637,7 @@ impl Agent {
             Agent::Junie => instruction(home, ".junie/AGENTS.md", Agg),
             Agent::OpenCode => instruction(home, ".config/opencode/AGENTS.md", Agg),
             Agent::Amp => instruction(home, ".config/amp/AGENTS.md", Agg),
+            Agent::Pi => instruction(&pi_agent_dir(home), "AGENTS.md", Agg),
             Agent::Goose => instruction(home, ".config/goose/.goosehints", Agg),
             Agent::GithubCopilot => instruction(home, ".copilot/copilot-instructions.md", Agg),
             Agent::OpenClaw => instruction(home, ".openclaw/workspace/AGENTS.md", Agg),
@@ -761,11 +803,13 @@ mod tests {
             Agent::ZCode.commands_project_path(pr).unwrap().format,
             CommandFormat::MarkdownFrontmatter
         );
-        let mcp = Agent::ZCode.mcp_settings_target(home, Path::new(""));
+        let mcp = Agent::ZCode
+            .mcp_settings_target(home, Path::new(""))
+            .unwrap();
         assert_eq!(mcp.path, home.join(".zcode/cli/config.json"));
         assert_eq!(mcp.format, McpSettingsFormat::ZCode);
         assert_eq!(
-            Agent::ZCode.mcp_project_target(pr).path,
+            Agent::ZCode.mcp_project_target(pr).unwrap().path,
             pr.join(".zcode/config.json")
         );
         assert_eq!(
@@ -775,6 +819,54 @@ mod tests {
         assert_eq!(
             Agent::ZCode.instructions_project_path(pr).unwrap().path,
             pr.join("AGENTS.md")
+        );
+    }
+
+    #[test]
+    fn pi_paths_and_formats() {
+        let home = Path::new("/tmp/home");
+        let pr = Path::new("/work");
+        let global_root = pi_agent_dir(home);
+
+        assert_eq!(Agent::Pi.global_path(home), global_root.join("skills"));
+        assert_eq!(Agent::Pi.project_path(pr), pr.join(".pi/skills"));
+        let global_command = Agent::Pi.commands_global_path(home).unwrap();
+        assert_eq!(global_command.path, global_root.join("prompts"));
+        assert_eq!(
+            global_command.format,
+            CommandFormat::MarkdownFlatFrontmatter
+        );
+        let project_command = Agent::Pi.commands_project_path(pr).unwrap();
+        assert_eq!(project_command.path, pr.join(".pi/prompts"));
+        assert_eq!(
+            project_command.format,
+            CommandFormat::MarkdownFlatFrontmatter
+        );
+        assert_eq!(
+            Agent::Pi.instructions_global_path(home).unwrap().path,
+            global_root.join("AGENTS.md")
+        );
+        assert_eq!(
+            Agent::Pi.instructions_project_path(pr).unwrap().path,
+            pr.join("AGENTS.md")
+        );
+        assert!(Agent::Pi.mcp_settings_target(home, Path::new("")).is_none());
+        assert!(Agent::Pi.mcp_project_target(pr).is_none());
+        assert!(mcp_settings_targets(home, &[Agent::Pi]).is_empty());
+        assert_eq!(serde_yaml::from_str::<Agent>("pi").unwrap(), Agent::Pi);
+    }
+
+    #[test]
+    fn pi_agent_dir_honors_native_override_shape() {
+        let home = Path::new("/tmp/home");
+        assert_eq!(pi_agent_dir_from(home, None), home.join(".pi/agent"));
+        assert_eq!(
+            pi_agent_dir_from(home, Some(OsStr::new("~/custom-pi"))),
+            home.join("custom-pi")
+        );
+        assert_eq!(
+            pi_agent_dir_from(home, Some(OsStr::new("relative-pi"))),
+            PathBuf::from("relative-pi")
         );
     }
 

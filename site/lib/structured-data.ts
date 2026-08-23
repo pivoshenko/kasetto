@@ -25,7 +25,7 @@ export function softwareApplicationJsonLd() {
     programmingLanguage: "Rust",
     license: "https://github.com/pivoshenko/kasetto/blob/main/LICENSE-MIT",
     description:
-      "A declarative AI agent environment manager. Syncs skills, MCP servers, slash-commands, and instructions from Git repositories into 22 AI coding agents.",
+      "A declarative AI agent environment manager. Syncs skills, MCP servers, slash-commands, and instructions from Git repositories into 23 AI coding agents.",
     author: {
       "@type": "Person",
       name: "Volodymyr Pivoshenko",

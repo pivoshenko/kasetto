@@ -284,6 +284,7 @@ Set the `agent` field and Kasetto figures out where to put things.
 | OpenClaw       | `openclaw`       | `~/.openclaw/skills/`           |
 | OpenCode       | `opencode`       | `~/.config/opencode/skills/`    |
 | OpenHands      | `openhands`      | `~/.openhands/skills/`          |
+| Pi             | `pi`             | `~/.pi/agent/skills/`           |
 | Replit         | `replit`         | `~/.config/agents/skills/`      |
 | Roo Code       | `roo`            | `~/.roo/skills/`                |
 | Trae           | `trae`           | `~/.trae/skills/`               |
@@ -292,6 +293,9 @@ Set the `agent` field and Kasetto figures out where to put things.
 | ZCode          | `zcode`          | `~/.zcode/skills/`              |
 
 </details>
+
+Pi's preset syncs skills, prompt templates, and `AGENTS.md`. Pi intentionally has no native MCP
+support, so MCP sources are skipped for Pi and still sync to other selected agents that support MCP.
 
 Don't see your agent? Use the `destination` field to point at any path.
 
