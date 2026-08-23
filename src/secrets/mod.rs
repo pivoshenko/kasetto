@@ -143,10 +143,8 @@ impl SecretContext {
     /// a required secret is missing (unless the policy is `warn`).
     pub(crate) fn inject_value(&self, value: &mut serde_json::Value) -> Result<()> {
         match value {
-            serde_json::Value::String(s) => {
-                if has_placeholder(s) {
-                    *s = self.substitute_str(s)?;
-                }
+            serde_json::Value::String(s) if has_placeholder(s) => {
+                *s = self.substitute_str(s)?;
             }
             serde_json::Value::Array(arr) => {
                 for v in arr.iter_mut() {
