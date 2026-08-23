@@ -662,6 +662,47 @@ fn remove_stale(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsops::temp_dir;
+    use crate::model::{Agent, AgentField, Config, McpSourceSpec};
+
+    fn mcp_cfg(src_root: &Path, agents: Vec<Agent>) -> Config {
+        Config {
+            destination: None,
+            scope: Some(Scope::Project),
+            agent: Some(AgentField::Many(agents)),
+            skills: Vec::new(),
+            mcps: vec![McpSourceSpec {
+                source: src_root.to_string_lossy().to_string(),
+                branch: None,
+                git_ref: None,
+                mcps: McpsField::Wildcard("*".into()),
+            }],
+            commands: Vec::new(),
+            instructions: Vec::new(),
+            secrets: None,
+        }
+    }
+
+    fn project_ctx<'a>(cfg: &'a Config, project: &'a PathBuf) -> SyncContext<'a> {
+        SyncContext {
+            cfg,
+            cfg_dir: project,
+            destinations: std::slice::from_ref(project),
+            scope_root: project.clone(),
+            scope: Scope::Project,
+            dry_run: false,
+            animate: false,
+            plain: true,
+            update: false,
+            update_only: Vec::new(),
+            locked: false,
+            secrets: crate::secrets::SecretContext::empty(),
+        }
+    }
+
+    fn project_mcp_settings(project: &Path) -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(project.join(".mcp.json")).unwrap()).unwrap()
+    }
 
     #[test]
     fn pending_mcp_classification_new_vs_update() {
@@ -722,6 +763,64 @@ mod tests {
             !update_only.iter().any(|p| p.is_new),
             "updates should not trigger the gate"
         );
+    }
+
+    #[test]
+    fn reconfig_from_mixed_pi_to_pi_only_prunes_installed_mcp() {
+        let src_root = temp_dir("kasetto-mcp-pi-src");
+        fs::create_dir_all(&src_root).unwrap();
+        fs::write(
+            src_root.join("mcp.json"),
+            r#"{"mcpServers":{"managed":{"command":"echo"}}}"#,
+        )
+        .unwrap();
+        let project = temp_dir("kasetto-mcp-pi-project");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(
+            project.join(".mcp.json"),
+            r#"{"mcpServers":{"user-owned":{"command":"keep"}}}"#,
+        )
+        .unwrap();
+
+        let mixed_cfg = mcp_cfg(&src_root, vec![Agent::Pi, Agent::ClaudeCode]);
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_mcps(
+            &project_ctx(&mixed_cfg, &project),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+
+        assert_eq!(summary.installed, 1);
+        let settings = project_mcp_settings(&project);
+        assert!(settings["mcpServers"]["managed"].is_object());
+        assert!(settings["mcpServers"]["user-owned"].is_object());
+        assert_eq!(lock.assets.values().filter(|a| a.kind == "mcp").count(), 1);
+
+        // Pi has no MCP target, so this transition must prune the prior managed
+        // server without reading the still-configured source or touching user data.
+        fs::remove_dir_all(&src_root).unwrap();
+        let pi_cfg = mcp_cfg(&src_root, vec![Agent::Pi]);
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_mcps(
+            &project_ctx(&pi_cfg, &project),
+            &mut lock,
+            &mut summary2,
+            &mut actions2,
+        )
+        .unwrap();
+
+        assert_eq!(summary2.removed, 1);
+        let settings = project_mcp_settings(&project);
+        assert!(settings["mcpServers"].get("managed").is_none());
+        assert!(settings["mcpServers"]["user-owned"].is_object());
+        assert_eq!(lock.assets.values().filter(|a| a.kind == "mcp").count(), 0);
+
+        let _ = fs::remove_dir_all(&project);
     }
 
     #[test]
