@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Kasetto is a declarative AI agent environment manager: a Rust CLI that syncs four asset kinds -
 **skills**, **slash-commands**, **MCP servers**, and **instructions** (`CLAUDE.md` / `AGENTS.md` /
-`.cursor/rules` / ...) - from git repos or local dirs into 22 agent environments, driven by a
+`.cursor/rules` / ...) - from git repos or local dirs into 23 agent environments, driven by a
 `kasetto.yaml` config and pinned by a `kasetto.lock`. Modeled on cargo/uv ergonomics.
 
 Two things live here:
@@ -72,13 +72,15 @@ style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error
 - **Scope** (`model::resolve_scope`): `Project` or `Global`, resolved CLI flag -> config field ->
   default `Global`. It picks install paths *and* the lock location: `<project root>/kasetto.lock`
   for Project, `$XDG_DATA_HOME/kasetto/kasetto.lock` for Global.
-- **Agent as exhaustive enum** (`model/agent.rs`, 22 variants + `AGENT_PRESETS`): each variant maps
-  to skill dirs, command dirs, instruction destinations, and MCP settings targets, per scope.
+- **Agent as exhaustive enum** (`model/agent.rs`, 23 variants + `AGENT_PRESETS`): each variant maps
+  to skill dirs, command dirs, instruction destinations, and MCP settings targets where supported,
+  per scope.
   Adding an agent = new variant + entries in every path table + the `AGENT_PRESETS` array + the
   README agent table.
 - **Per-agent output formats**: `McpSettingsFormat` (5: McpServers, VsCodeServers, OpenCode,
-  CodexToml, ZCode), `CommandFormat` (5: MarkdownFrontmatter, MarkdownPlain, PromptMd, PromptFile,
-  GeminiToml), `InstructionFormat` (3: AggregateMarkdown, CursorMdc, PlainMarkdownDir). All three
+  CodexToml, ZCode), `CommandFormat` (6: MarkdownFrontmatter, MarkdownFlatFrontmatter,
+  MarkdownPlain, PromptMd, PromptFile, GeminiToml), `InstructionFormat` (3: AggregateMarkdown,
+  CursorMdc, PlainMarkdownDir). All three
   enums live in `model/mod.rs` alongside their `*Target` structs.
 - **Aggregate vs per-file instructions**: `AggregateMarkdown` merges many instructions into one
   shared file (`CLAUDE.md`, `AGENTS.md`, ...) using managed `<!-- kasetto:instruction:ID -->`
@@ -164,7 +166,8 @@ never let one reach `main`, or Rust's `Debug` formatter prints `Error: Custom { 
 
 ### Env vars the CLI reads
 
-`KASETTO_CONFIG`, `KASETTO_CACHE_DIR`, `KASETTO_NO_CACHE`, `NO_COLOR`, `CLICOLOR_FORCE`,
+`KASETTO_CONFIG`, `KASETTO_CACHE_DIR`, `KASETTO_NO_CACHE`, `PI_CODING_AGENT_DIR`, `NO_COLOR`,
+`CLICOLOR_FORCE`,
 XDG (`XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_CACHE_HOME`, `HOME`, `APPDATA`),
 `KST_KEEPASS_PASSWORD`, and source auth tokens (`GITHUB_TOKEN`/`GH_TOKEN`, `GITLAB_TOKEN`,
 `CI_JOB_TOKEN`, `BITBUCKET_*`, `CODEBERG_TOKEN`/`GITEA_TOKEN`/`FORGEJO_TOKEN`).

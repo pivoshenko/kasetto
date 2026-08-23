@@ -164,8 +164,9 @@ Paths are resolved relative to the source root; absolute paths are honored as-is
 
 
 MCP config files must contain a `mcpServers` object with server definitions. Servers are merged
-into each agent's native settings file (e.g., `.claude.json` for Claude Code, `.cursor/mcp.json`
-for Cursor). See [how sync works](/docs/how-sync-works) for merge behavior details.
+into each selected agent's native settings file when that agent supports MCP (e.g., `.claude.json`
+for Claude Code, `.cursor/mcp.json` for Cursor). Pi intentionally has no native MCP support, so the
+`pi` preset skips MCP sources. See [how sync works](/docs/how-sync-works) for merge behavior details.
 
 A pack can reference secrets with `${kst_<name>}` placeholders (tokens, passwords, API keys) instead
 of committing them. They're resolved at sync time from the environment or a credentials file. See
@@ -296,7 +297,7 @@ The value does not have to be a URL. An absolute local path works too, which is 
 
 ## Multiple Agents
 
-The `agent` field accepts a single value or a list. With a list, Kasetto installs skills, commands, and instructions to every agent's directory and merges MCPs into every agent's settings file:
+The `agent` field accepts a single value or a list. With a list, Kasetto installs each asset into every selected agent that supports that asset type:
 
 ```yaml
 agent:
@@ -337,3 +338,4 @@ These environment variables affect Kasetto's behavior:
 | `CLICOLOR_FORCE`  | Forces color even when stdout is not a TTY. Set automatically by `--color always`.              |
 | `KASETTO_CONFIG`  | Overrides config discovery to use the exact path or URL (see [Configuration](#configuration)).  |
 | `KASETTO_NO_CACHE`| Disables the on-disk source cache, forcing a fresh download + extract on every fetch. Set to any value. |
+| `PI_CODING_AGENT_DIR` | Overrides Pi's global resource root (default `~/.pi/agent`), matching Pi's native environment variable. |

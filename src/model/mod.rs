@@ -52,6 +52,8 @@ pub(crate) struct McpSettingsTarget {
 pub(crate) enum CommandFormat {
     /// Verbatim Markdown with YAML frontmatter (Claude Code style).
     MarkdownFrontmatter,
+    /// Flat `<name>.md` with YAML frontmatter preserved (Pi prompt templates).
+    MarkdownFlatFrontmatter,
     /// Markdown body only, frontmatter stripped.
     MarkdownPlain,
     /// `<name>.prompt.md`, frontmatter preserved (GitHub Copilot).

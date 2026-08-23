@@ -8,12 +8,14 @@ use crate::model::{CommandFormat, CommandTarget};
 
 /// Returns the on-disk relative filename for a command, given its name and format.
 ///
-/// Namespaced names with `:` map to nested subdirectories for formats that keep
-/// the original Markdown shape. Plain formats flatten namespaces with `-`.
+/// Namespaced names with `:` map to nested subdirectories only where the agent
+/// scans recursively. Flat formats replace namespace separators with `-`.
 fn derive_relpath(name: &str, format: CommandFormat) -> PathBuf {
     match format {
         CommandFormat::MarkdownFrontmatter => name_to_nested_path(name, "md"),
-        CommandFormat::MarkdownPlain => PathBuf::from(format!("{}.md", flatten_name(name))),
+        CommandFormat::MarkdownFlatFrontmatter | CommandFormat::MarkdownPlain => {
+            PathBuf::from(format!("{}.md", flatten_name(name)))
+        }
         CommandFormat::PromptMd => PathBuf::from(format!("{}.prompt.md", flatten_name(name))),
         CommandFormat::PromptFile => PathBuf::from(format!("{}.prompt", flatten_name(name))),
         CommandFormat::GeminiToml => PathBuf::from(format!("{}.toml", flatten_name(name))),
@@ -40,7 +42,9 @@ fn flatten_name(name: &str) -> String {
 /// Render `parsed` to bytes for the given `format`.
 pub(crate) fn render(parsed: &Parsed, format: CommandFormat) -> String {
     match format {
-        CommandFormat::MarkdownFrontmatter | CommandFormat::PromptMd => {
+        CommandFormat::MarkdownFrontmatter
+        | CommandFormat::MarkdownFlatFrontmatter
+        | CommandFormat::PromptMd => {
             if let Some(fm) = &parsed.frontmatter {
                 format!("---\n{}\n---\n{}", fm, parsed.body)
             } else {
@@ -136,6 +140,10 @@ mod tests {
     #[test]
     fn flat_names_for_other_formats() {
         assert_eq!(
+            derive_relpath("git:commit", CommandFormat::MarkdownFlatFrontmatter),
+            PathBuf::from("git-commit.md")
+        );
+        assert_eq!(
             derive_relpath("git:commit", CommandFormat::MarkdownPlain),
             PathBuf::from("git-commit.md")
         );
@@ -159,6 +167,16 @@ mod tests {
         let rendered = render(&p, CommandFormat::MarkdownFrontmatter);
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("description: do thing"));
+        assert!(rendered.contains("Use $ARGUMENTS here."));
+    }
+
+    #[test]
+    fn flat_markdown_frontmatter_preserves_pi_metadata() {
+        let p = sample();
+        let rendered = render(&p, CommandFormat::MarkdownFlatFrontmatter);
+        assert!(rendered.starts_with("---\n"));
+        assert!(rendered.contains("description: do thing"));
+        assert!(rendered.contains("argument-hint: <n>"));
         assert!(rendered.contains("Use $ARGUMENTS here."));
     }
 
