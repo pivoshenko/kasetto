@@ -149,7 +149,7 @@ pub(crate) fn resolve_destinations(
     }
 }
 
-/// Returns one MCP settings path per configured agent, respecting scope.
+/// Returns one MCP settings path per MCP-capable configured agent, respecting scope.
 pub(crate) fn resolve_mcp_settings_targets(
     cfg: &Config,
     scope: Scope,
@@ -164,9 +164,10 @@ pub(crate) fn resolve_mcp_settings_targets(
     match scope {
         Scope::Project => {
             for a in agents {
-                let t = a.mcp_project_target(project_root);
-                if seen.insert(t.path.clone()) {
-                    out.push(t);
+                if let Some(t) = a.mcp_project_target(project_root) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
                 }
             }
         }
@@ -174,9 +175,10 @@ pub(crate) fn resolve_mcp_settings_targets(
             let home = dirs_home()?;
             let kasetto_config = dirs_kasetto_config()?;
             for a in agents {
-                let t = a.mcp_settings_target(&home, &kasetto_config);
-                if seen.insert(t.path.clone()) {
-                    out.push(t);
+                if let Some(t) = a.mcp_settings_target(&home, &kasetto_config) {
+                    if seen.insert(t.path.clone()) {
+                        out.push(t);
+                    }
                 }
             }
         }

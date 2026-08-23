@@ -19,6 +19,7 @@ const AGENTS = [
   { name: "OpenClaw", value: "openclaw" },
   { name: "OpenCode", value: "opencode" },
   { name: "OpenHands", value: "openhands" },
+  { name: "Pi", value: "pi" },
   { name: "Replit", value: "replit" },
   { name: "Roo Code", value: "roo" },
   { name: "Trae", value: "trae" },
