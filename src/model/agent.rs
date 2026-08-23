@@ -263,7 +263,7 @@ fn pi_agent_dir(home: &Path) -> PathBuf {
 }
 
 fn pi_agent_dir_from(home: &Path, configured: Option<&OsStr>) -> PathBuf {
-    let Some(configured) = configured else {
+    let Some(configured) = configured.filter(|value| !value.is_empty()) else {
         return home.join(".pi/agent");
     };
     let configured = Path::new(configured);
@@ -860,6 +860,10 @@ mod tests {
     fn pi_agent_dir_honors_native_override_shape() {
         let home = Path::new("/tmp/home");
         assert_eq!(pi_agent_dir_from(home, None), home.join(".pi/agent"));
+        assert_eq!(
+            pi_agent_dir_from(home, Some(OsStr::new(""))),
+            home.join(".pi/agent")
+        );
         assert_eq!(
             pi_agent_dir_from(home, Some(OsStr::new("~/custom-pi"))),
             home.join("custom-pi")
