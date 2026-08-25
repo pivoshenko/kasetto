@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8.0] - 2026-08-25
+
+### Bug fixes
+
+- **agent**: Honor empty pi agent directory override
+
+### Design
+
+- **site**: Match the og image to the tiled wordmark
+- **readme**: Tile the wordmark blocks on the social preview
+
+### Features
+
+- **agent**: Add pi support
+
+### Miscellaneous
+
+- **rust**: Satisfy updated clippy lint
+
+### Testing
+
+- **mcps**: Cover pi-only cleanup transition
+
 ## [3.7.1] - 2026-08-21
 
 ### Design
@@ -26,6 +49,10 @@ All notable changes to this project will be documented in this file.
 
 - **assets**: Match the rasterized card to its source name
 - **assets**: Name the social preview twins dark and light
+
+### Release
+
+- V3.7.1
 
 ## [3.7.0] - 2026-08-16
 
