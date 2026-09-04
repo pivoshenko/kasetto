@@ -1,9 +1,3 @@
-# Publishes via crates.io trusted publishing (OIDC), so no cargo token is
-# needed. The trusted publisher on crates.io must match: owner pivoshenko,
-# repository kasetto, workflow release.yaml, no environment.
-# - HOMEBREW_TAP_TOKEN
-# - SCOOP_BUCKET_TOKEN
-
 name: Release
 
 on:
