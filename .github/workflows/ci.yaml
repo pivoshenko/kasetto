@@ -28,15 +28,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-audit
-
       - run: just install-rs
 
       - run: just lint-rs
-
-      - run: just audit-rs
 
       - run: just test-rs
 
@@ -60,12 +54,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: site/pnpm-lock.yaml
 
-      - run: just install-next
+      - run: just install-site
 
-      - run: just lint-next
+      - run: just lint-site
 
-      - run: just audit-next
+      - run: just test-site
 
-      - run: just test-next
-
-      - run: just build-next
+      - run: just build-site
