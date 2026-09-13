@@ -1,84 +1,72 @@
 default:
     @just --list
 
+install: install-rs install-site
+
 install-rs:
     cargo fetch
 
-install-next:
+install-site:
     cd site && pnpm install
 
-install: install-rs install-next
+format: format-rs format-site
 
 format-rs:
     cargo fmt
 
-format-next:
+format-site:
     cd site && pnpm format
 
-format: format-rs format-next
+lint: lint-rs lint-site
 
 lint-rs:
     cargo clippy --all-targets -- -D warnings
 
-lint-next:
+lint-site:
     cd site && pnpm lint
 
-lint: lint-rs lint-next
+test: test-rs test-site
 
 test-rs:
     @[ -f .no-tests ] && echo "skipping (.no-tests sentinel)" || cargo test
 
-test-next:
+test-site:
     @echo "no Next.js tests"
 
-test: test-rs test-next
+check: lint test build
+
+update: update-rs update-site
 
 update-rs:
     cargo update
 
-update-next:
+update-site:
     cd site && pnpm update
 
-update: update-rs update-next
+build: build-rs build-site
 
 build-rs:
     cargo build --release
 
-build-next:
+build-site:
     cd site && pnpm build
 
-build: build-rs build-next
-
-audit-rs:
-    @command -v cargo-audit >/dev/null || cargo install --locked cargo-audit
-    cargo audit
-
-audit-next:
-    cd site && pnpm audit
-
-audit: audit-rs audit-next
-
-dev-next:
+run-dev-server:
     cd site && pnpm dev
 
-start-next:
+run-prod-server:
     cd site && pnpm start
 
-changelog:
+generate-changelog:
     git-cliff --output CHANGELOG.md
 
-# regenerate README + docs config block from kasetto.example.yaml
-sync-config:
+generate-config-docs:
     node scripts/sync-config-example.mjs
     cd site && pnpm exec biome format --write app/components/feature-tabs.tsx
 
-# rasterize the share card from the README svg, padded to GitHub's 1280x640
-sync-preview:
+generate-social-preview:
     rsvg-convert -b '#1f1f1e' --page-width 1280 --page-height 640 --top 41 \
       -w 1280 -h 558 assets/social-preview-dark.svg -o assets/social-preview-dark.png
 
-check: format lint test build
-
-# cold-sync performance benchmark (needs hyperfine + network)
-bench:
+benchmark-sync:
     ./scripts/bench-sync.sh

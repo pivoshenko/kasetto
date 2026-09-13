@@ -22,31 +22,30 @@ Everything goes through `just` (CI drives the same recipes). Recipes are split `
 the bare name runs both.
 
 ```bash
-just check           # format + lint + test + build, both targets - the pre-PR gate
+just check           # lint + test + build, both targets, read-only - the pre-PR gate
 just lint-rs         # cargo clippy --all-targets -- -D warnings
 just test-rs         # cargo test (skipped if a .no-tests sentinel file exists)
 just build-rs        # cargo build --release
 just format-rs       # cargo fmt
-just lint-next       # cd site && pnpm lint (biome, --write)
-just format-next     # cd site && pnpm format (biome)
-just build-next      # cd site && pnpm build
-just dev-next        # local Next.js dev server
-just audit           # cargo-audit + pnpm audit (installs cargo-audit if missing)
-just changelog       # git-cliff --output CHANGELOG.md
-just sync-config     # regenerate README/docs/hero from kasetto.example.yaml
-just sync-preview    # rasterize assets/social-preview-dark.png (needs rsvg-convert)
-just bench           # cold-sync benchmark via scripts/bench-sync.sh (needs hyperfine + network)
+just lint-site       # cd site && pnpm lint (biome, --write)
+just format-site     # cd site && pnpm format (biome)
+just build-site      # cd site && pnpm build
+just run-dev-server        # local Next.js dev server
+just generate-changelog       # git-cliff --output CHANGELOG.md
+just generate-config-docs     # regenerate README/docs/hero from kasetto.example.yaml
+just generate-social-preview    # rasterize assets/social-preview-dark.png (needs rsvg-convert)
+just benchmark-sync           # cold-sync benchmark via scripts/bench-sync.sh (needs hyperfine + network)
 
 cargo test <name>                     # single test by substring
 cargo test --lib model::agent::tests  # one module's tests
 cargo run -- sync --dry-run           # exercise the CLI locally
 ```
 
-`just test-next` is a deliberate no-op (`echo "no Next.js tests"`); the site has no test suite.
+`just test-site` is a deliberate no-op (`echo "no Next.js tests"`); the site has no test suite.
 
 **`kasetto.example.yaml` is the single source of truth for the example config.** It is copied into
 `README.md` (between `<!-- kasetto-config:start/end -->`), the docs, and the homepage hero by
-`scripts/sync-config-example.mjs`. After editing it run `just sync-config`;
+`scripts/sync-config-example.mjs`. After editing it run `just generate-config-docs`;
 `node scripts/sync-config-example.mjs --check` exits non-zero on drift.
 
 ## Rust architecture
@@ -214,8 +213,8 @@ lint and format, pnpm 11 / Node >= 22.
 All three workflows expose `workflow_dispatch` (`gh workflow run <name>.yaml --ref main`).
 
 - **`ci.yaml`** - push to `main` + every PR. Two parallel jobs on `ubuntu-24.04-arm`: `ci-rs`
-  (install -> lint -> audit -> test -> build) and `ci-next` (same shape). Every step is a `just`
-  recipe, so reproducing CI locally is `just check` plus `just audit`.
+  (install -> lint -> test -> build) and `ci-next` (same shape). Every step is a `just`
+  recipe, so reproducing CI locally is `just check`.
 - **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless the `version`
   input overrides it - pass that one bare, `3.8.0` not `v3.8.0`, because only the auto-detect path
   strips the `v` and the workflow prepends it; bumps `Cargo.toml`/`Cargo.lock`, regenerates
