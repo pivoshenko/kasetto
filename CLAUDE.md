@@ -1,226 +1,127 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Kasetto is a declarative AI agent environment manager written in Rust: a user declares skills, slash
+commands, MCP servers, and instruction files in a `kasetto.yaml`, and `kst sync` pulls them from git
+forges, transforms them into each agent's native format, installs them, and records exactly what was
+installed in `kasetto.lock`. The repo is one Rust crate at the root shipping two binaries (`kasetto`
+and its short alias `kst`, both calling `kasetto::run()`) plus the documentation site at `site/`.
 
-## What This Repo Is
+## Never
 
-Kasetto is a declarative AI agent environment manager: a Rust CLI that syncs four asset kinds -
-**skills**, **slash-commands**, **MCP servers**, and **instructions** (`CLAUDE.md` / `AGENTS.md` /
-`.cursor/rules` / ...) - from git repos or local dirs into 23 agent environments, driven by a
-`kasetto.yaml` config and pinned by a `kasetto.lock`. Modeled on cargo/uv ergonomics.
+- never hand-edit the generated config blocks in `README.md`, the docs, or the site hero.
+  `kasetto.example.yaml` is the single source of truth; run `just generate-config-docs`
+- never bump the version by hand. Releases are `workflow_dispatch`-only and git-cliff resolves the
+  version, bumps `Cargo.toml`, tags, and publishes
+- never let a resolved secret value reach the lock, the source cache, or the stage dir. Injection
+  happens on the in-memory config and is written **only** to the agent destination; the lock hashes
+  the placeholder source
+- never change the lock schema without bumping `LOCK_VERSION` in `model/types.rs`
+- never put machine- or run-specific data in `kasetto.lock`. It is committed and portable, so install
+  paths are stored **relative to the scope root**
+- never read `destination:` outside the skills path. It redirects skills only; commands, instructions,
+  and MCPs go through `resolve_command_targets`, `resolve_instruction_targets`, and
+  `resolve_mcp_settings_targets`, which always use the agent presets
+- never make `fsops/config_edit.rs` round-trip serde. It edits `kasetto.yaml` at the raw-line level
+  because `add`/`remove` must preserve the user's comments and key order byte-for-byte. Keep it that way
+- never cache a mutable ref. `fsops/cache.rs` caches extracted trees **only** for immutable refs (explicit
+  tag or SHA); a branch or default ref can change upstream without the URL changing. Its `.complete`
+  marker is written last and kept beside `tree/`, never inside it, so it cannot leak into hashed content
 
-Two things live here:
+## Silent failure modes
 
-- **`/` (Rust crate `kasetto`)** - the CLI. Two binaries from one lib: `kasetto` (default-run) and
-  `kst` (`src/bin/kst.rs`); both call `kasetto::run`
-- **`site/`** - Next.js 15 App Router app serving both the marketing landing and the Fumadocs docs
-  (`kasetto.dev`). Independent pnpm project, not a cargo workspace member
+- `just test-rs` prints `skipping (.no-tests sentinel)` and exits 0 when a `.no-tests` file exists, so
+  `just check` can go green with zero tests run. Check the reported test count before saying tests passed
+- a new `site/content/docs/*.mdx` file is invisible in the site nav unless it is also added to the
+  ordered `pages` array in `site/content/docs/meta.json`
 
 ## Commands
 
-Everything goes through `just` (CI drives the same recipes). Recipes are split `-rs` / `-next`;
-the bare name runs both.
+`just` is the task runner; every recipe is split `-rs` (crate) / `-site` (Next.js app), with the bare
+name running both - `just --list`, or the recipe table in `CONTRIBUTING.md`, for the full set. `just
+check` is lint + test + build over both halves, and CI runs exactly those recipes, so a green `just
+check` locally means a green CI. The Rust suite is hermetic - no test issues a network request, so a
+failure is a real failure, not a sandbox artifact.
 
 ```bash
-just check           # lint + test + build, both targets, read-only - the pre-PR gate
-just lint-rs         # cargo clippy --all-targets -- -D warnings
-just test-rs         # cargo test (skipped if a .no-tests sentinel file exists)
-just build-rs        # cargo build --release
-just format-rs       # cargo fmt
-just lint-site       # cd site && pnpm lint (biome, --write)
-just format-site     # cd site && pnpm format (biome)
-just build-site      # cd site && pnpm build
-just run-dev-server        # local Next.js dev server
-just generate-changelog       # git-cliff --output CHANGELOG.md
-just generate-config-docs     # regenerate README/docs/hero from kasetto.example.yaml
-just generate-social-preview    # rasterize assets/social-preview-dark.png (needs rsvg-convert)
-just benchmark-sync           # cold-sync benchmark via scripts/bench-sync.sh (needs hyperfine + network)
-
-cargo test <name>                     # single test by substring
-cargo test --lib model::agent::tests  # one module's tests
-cargo run -- sync --dry-run           # exercise the CLI locally
+cargo test resolve_config_path                 # by test-name substring
+cargo test --lib commands::sync::skills        # by module path
+cargo test -- --nocapture                      # keep stdout
 ```
 
-`just test-site` is a deliberate no-op (`echo "no Next.js tests"`); the site has no test suite.
-
-**`kasetto.example.yaml` is the single source of truth for the example config.** It is copied into
-`README.md` (between `<!-- kasetto-config:start/end -->`), the docs, and the homepage hero by
-`scripts/sync-config-example.mjs`. After editing it run `just generate-config-docs`;
-`node scripts/sync-config-example.mjs --check` exits non-zero on drift.
-
-## Rust Architecture
-
-`src/lib.rs` owns default-config resolution and re-exports `run` + `Result`. `src/app.rs` parses
-clap args and dispatches; with no subcommand it prints the banner + `--help` and exits 0 (cargo/uv
-style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error enum.
-
-### Module Map
-
-| Module | Responsibility |
-| --- | --- |
-| `cli.rs` | clap `Cli`/`Commands` plus the flattened `OutputArgs` / `ScopeArgs` / `SyncArgs` groups |
-| `commands/` | one module per subcommand; `sync/` splits into `skills` / `mcps` / `commands` / `instructions` |
-| `model/` | `Agent` enum + install-path registry (`agent.rs`), config schema (`config.rs`), lock/report types (`types.rs`), `extends` merge (`extend.rs`) |
-| `source/` | URL parsing (`parse.rs`), archive download + sparse extraction (`remote.rs`), env-token auth (`auth.rs`), git-host rewriting (`hosts.rs`) |
-| `fsops/` | config load incl. HTTP + `extends` (`config.rs`), comment-preserving YAML edits (`config_edit.rs`), extracted-tree cache (`cache.rs`), XDG dirs, SHA256, copy, settings I/O |
-| `secrets/` | `${kst...}` placeholder scanning (`template.rs`) and resolution backends (`source.rs`) |
-| `mcps/` | format-aware merge into agent settings (`merge.rs`), Codex TOML (`codex.rs`) |
-| `prompts/` / `instructions/` | per-agent transforms for commands and instruction files; both parse via the shared `frontmatter.rs` |
-| `lock.rs` / `state.rs` | committed `kasetto.lock` vs machine-local runtime state |
-| `ui.rs` / `colors.rs` / `banner.rs` | all terminal rendering |
-| `update_notifier.rs` | background "new version available" check (24h TTL cache) |
-
-### Core Concepts
-
-- **Scope** (`model::resolve_scope`): `Project` or `Global`, resolved CLI flag -> config field ->
-  default `Global`. It picks install paths *and* the lock location: `<project root>/kasetto.lock`
-  for Project, XDG data dir for Global
-- **Agent as exhaustive enum** (`model/agent.rs`, 23 variants + `AGENT_PRESETS`): each variant maps
-  to skill dirs, command dirs, instruction destinations, and MCP settings targets where supported,
-  per scope. Adding an agent = new variant + entries in every path table + the `AGENT_PRESETS`
-  array + the README agent table
-- **Per-agent output formats** (all in `model/mod.rs` with their `*Target` structs):
-  `McpSettingsFormat` (McpServers, VsCodeServers, OpenCode, CodexToml, ZCode), `CommandFormat`
-  (MarkdownFrontmatter, MarkdownFlatFrontmatter, MarkdownPlain, PromptMd, PromptFile, GeminiToml),
-  `InstructionFormat` (AggregateMarkdown, CursorMdc, PlainMarkdownDir)
-- **Aggregate vs per-file instructions**: `AggregateMarkdown` merges many instructions into one
-  shared file (`CLAUDE.md`, `AGENTS.md`, ...) using managed `<!-- kasetto:instruction:ID -->`
-  comment blocks so hand edits and other instructions survive; the other two formats write one file
-  per instruction into a rules directory. The lock's `destination` token encodes which
-  (`agg:<rel>` = strip the block on teardown, `file:<rel>` = delete the file)
-- **The lock is authoritative.** A plain `sync` installs exactly what `kasetto.lock` pins and does
-  zero network I/O when on-disk hashes already match (`needs_fetch` in `commands/sync/skills.rs`
-  re-hashes destinations *before* deciding to download). `--update`/`-u` is the only path that
-  re-resolves moving refs and rewrites hashes; `--locked`/`--frozen` never fetches and errors if
-  the lock cannot satisfy the config; the two flags together are rejected. `LOCK_VERSION` is 3
-  (`model/types.rs`). Lock paths are stored relative to the scope root and contain no timestamps,
-  so it is portable and commit-friendly
-- **`state.rs` holds everything machine-local** (last run, latest report JSON, per-skill install
-  timestamps) under the cache dir's `runtime/` subdir, deliberately out of the lock - same split
-  as `uv.lock` vs uv's cache. Safe to delete
-- **Source cache** (`fsops/cache.rs`): only immutable `ref:` sources are cached, under
-  `sources/<sha256(key)>/tree/` with a sibling `.complete` marker written last (extract to
-  `.tmp-*`, then rename, so a crash never leaves a half-populated "complete" entry). Moving
-  branches are never cached. `KASETTO_NO_CACHE` opts out; `KASETTO_CACHE_DIR` relocates
-- **Secrets are in-memory only.** `${kst_<name>}` (chain form: env var as written, then uppercased,
-  then `credentials.yaml`) or `${kst:<tag>:<ref>}` (tagged: `env`, `crd`, `op`, `vault`,
-  `kp`/`keepass`, `aws`, `gcp`, `az`, `pass`, `keychain`). Only the lowercase `kst` sentinel is
-  claimed - `${VAR}` and `${KST_...}` pass through untouched. Injection happens on the MCP merge
-  path after parsing, so the lock hashes the *placeholder* file and resolved values never reach
-  `kasetto.lock`, the source cache, or a stage dir. Unresolved placeholders fail the sync unless
-  `--allow-missing-secrets`
-- **Comment-preserving config edits**: `add`/`remove` rewrite `kasetto.yaml` line-surgically via
-  `fsops/config_edit.rs`, never a serde round-trip, so user comments and key order survive
-  byte-for-byte. Then they delegate to `sync`
-- **Config resolution** when `--config` is omitted (`lib.rs::resolve_config_path`):
-  `$KASETTO_CONFIG` -> `./kasetto.yaml` -> `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml`
-  -> `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` -> `./kasetto.yaml` fallback. `--config` also accepts
-  an HTTP(S) URL. `extends:` in a config is merged before deserialization (scalars replace; asset
-  lists merge by source identity)
-- **Perf shape**: sources that need fetching are materialized in parallel with `rayon`
-  (`commands/sync/skills.rs` is the only rayon user), then results are processed sequentially in
-  config order so output, lock writes, and last-writer-wins destination semantics stay
-  deterministic. `remote.rs` streams into the gzip decoder and sparse-extracts only entries under
-  `sub-dir`
-
-### Output Conventions
-
-`colors.rs` defines 8 semantic 24-bit roles - `ACCENT` (bold, no color), `ATTENTION` (amber),
-`SUCCESS` (green), `ERROR` (red), `INFO` (cyan), `BRAND` (violet), `SECONDARY` (grey), `INFRA`
-(dim) - and hex values live *only* there. There is deliberately no foreground constant; body text
-inherits the terminal. Commands must render through `ui.rs` helpers (`action_glyph`,
-`print_section_header`, `print_source_header`, `print_status_leaf`, `print_tree_leaf`,
-`print_sync_chips`, `with_spinner`, `eprint_fail`/`eprint_warn`) rather than emitting inline ANSI.
-The banner is only shown on bare `kst` and `kst init`.
-
-Sync/clean tree rows are `├─ {glyph} {label} {name} {detail}` (`print_status_leaf`) - icon, then
-the status word in a fixed `STATUS_LABEL_W` column, then the name, then dim version metadata.
-Every column left of the name is constant width, so names always start at the same offset. `list`
-uses `print_tree_leaf` instead, a single-column `├─ {name}` row - the source it came from is the
-group header above it.
-
-Section headers all go through `print_section_header(label, count_unit, lead_blank, plain)`.
-`lead_blank` is the blank line *above* the header: pass `false` for the first section a command
-prints, `true` afterwards. Every helper takes `plain` (never `color`), and plain mode must differ
-from colored mode only in ANSI - never in wording, casing, or column position. `print_tip` emits
-its own leading blank line - never hand-roll a `println!()` before one. Trailing tails
-(`✓ healthy`, `writable`, item counts) sit one space after their label, never right-aligned;
-fixed-width columns are only for closed vocabularies (`STATUS_LABEL_W`, `print_doctor_kv`'s key
-column).
-
-Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeatable), and
-`--project`/`--global`; only `sync` has `-v`/`--verbose`. `--plain` is a hidden deprecated alias
-for `--color never`. Flags are resolved at the `app.rs` boundary via `resolve_plain()`, which also
-mirrors the choice into `CLICOLOR_FORCE`/`NO_COLOR` so surfaces that never see the flag agree with
-it. `NO_COLOR` and `CLICOLOR_FORCE` are honored.
-
-**One exit path.** `app::run` returns `ExitCode` and is the only place the process decides its
-status; no command calls `process::exit`. Commands that can complete *and* report a problem return
-`commands::Outcome` (`sync` when anything is broken or failed, `doctor` when a check fails,
-`lock --check` on drift, `add`/`remove` by propagating their follow-up sync's verdict); the rest
-return `Result<()>` and are wrapped by `app::ok`. An `Err` is rendered once by `eprint_error` -
-never let one reach `main`, or Rust's `Debug` formatter prints `Error: Custom { .. }`.
-
-### Env Vars the CLI Reads
-
-`KASETTO_CONFIG`, `KASETTO_CACHE_DIR`, `KASETTO_NO_CACHE`, `PI_CODING_AGENT_DIR`, `NO_COLOR`,
-`CLICOLOR_FORCE`, XDG (`XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_CACHE_HOME`, `HOME`, `APPDATA`),
-`KST_KEEPASS_PASSWORD`, and source auth tokens (`GITHUB_TOKEN`/`GH_TOKEN`, `GITLAB_TOKEN`,
-`CI_JOB_TOKEN`, `BITBUCKET_*`, `CODEBERG_TOKEN`/`GITEA_TOKEN`/`FORGEJO_TOKEN`).
-
-## Site (`site/`)
-
-Next.js 15 + React 19, Tailwind 3 with the Fumadocs preset, Biome (not ESLint/Prettier) for both
-lint and format, pnpm 11 / Node >= 22.
-
-- `app/page.tsx` is the marketing landing; `app/docs/[[...slug]]/page.tsx` renders MDX from
-  `content/docs/*.mdx` (sidebar order comes from `content/docs/meta.json`)
-- Raw-Markdown and LLM routes: `app/docs-md/[[...slug]]/route.ts` (reached via the
-  `/docs/:path*.md` rewrite in `next.config.mjs`), `app/llms.txt`, `app/llms-full.txt`
-- `app/install/route.ts` and `app/install.ps1/route.ts` serve `scripts/install.sh` /
-  `scripts/install.ps1` behind `kasetto.dev/install`
-- `next.config.mjs` also holds security headers and host-gated 308 redirects from
-  `docs.kasetto.dev/<slug>` to `kasetto.dev/docs/<slug>` (add new slugs to `DOC_SLUGS`)
-- ` ```mermaid ` fences become live `<Mermaid>` JSX via the `remarkMermaid` plugin in
-  `source.config.ts`, bypassing Shiki
-- Vercel auto-deploy on `main` is disabled (`site/vercel.json`); the site ships via the manual
-  `site.yaml` workflow
+Generation recipes, run after editing their inputs: `just generate-config-docs` (regenerates the example
+config in `README.md`, the docs, and the site hero from `kasetto.example.yaml`; `node
+scripts/sync-config-example.mjs --check` exits non-zero on drift) and `just generate-changelog`
+(regenerates `CHANGELOG.md` with git-cliff and `cliff.toml`).
 
 ## Conventions
 
-- **Module docs**: every `.rs` file opens with a `//!` comment. `lib.rs` and each `mod.rs` start
-  `Package that contains ...`; every other file starts `Module that contains ...`. One summary
-  sentence, extra detail on following `//!` lines
-- **Tests are inline `#[cfg(test)] mod tests`** at the bottom of each module - there is no
-  `tests/` directory. `assert_cmd`/`predicates`/`tempfile` are available as dev-deps
-- `unsafe_code` is forbidden; `clippy::all` is denied, `perf` warns, and `dbg!`/`todo!` warn
-  (`[lints]` in `Cargo.toml`)
-- Rust indents 4, everything else 2 (`.editorconfig`); max line length 120
-- **Conventional Commits** (`<type>(<scope>): <subject>`, imperative, lowercase, no trailing
-  period) - `CHANGELOG.md` is generated by `git-cliff` (`cliff.toml`) from them, so commit
-  messages are user-facing. Branches are `<type>/<kebab-description>`. Full type table in
-  `CONTRIBUTING.md`
-- Feature or messaging changes must land in `README.md`, `site/content/docs/`, and the code
-  together
-- `/kasetto.yaml` is gitignored (local config from `kst init`); the tracked example is
-  `kasetto.example.yaml`. `.claude/` is gitignored (per-user local)
-- `Formula/kasetto.rb` at the repo root is a legacy source-build formula with placeholder values;
-  the real Homebrew formula is generated inside `release.yaml` and pushed to
-  `pivoshenko/homebrew-tap` - don't edit the local one expecting it to ship
+- every module starts with a `//!` doc comment beginning "Module that contains ..." or, for a
+  directory module, "Package that contains ..."
+- `unsafe_code` is forbidden and `clippy::all` is denied at the crate level; `lint-rs` runs Clippy with
+  `-D warnings`, so a warning is a build failure
+- tests are inline `#[cfg(test)] mod tests` blocks next to the code they cover - there is no `tests/`
+  directory. `fsops::temp_dir` is the shared helper for filesystem tests
+- the crate is a single private module tree: everything is `pub(crate)` / `pub(super)`, and `lib.rs`
+  exports only `run` and `Result`
+- `run()` returns `ExitCode`, not `Result`, so a failure prints the CLI's own `error:` line instead of
+  Rust's `Debug` rendering
+- `commands::Outcome` separates "could not do the job" (an `Err`) from "did the job, found problems,
+  should still exit non-zero" (`Outcome::Failure`) - a broken asset in `sync`, a failed check in `doctor`
+- `colors.rs` is the only file holding hex values; it defines the semantic roles and call sites use those
+  names. There is deliberately no "foreground" constant - body text inherits from the terminal. Color is
+  gated on `color_stdout_enabled()`; `NO_COLOR` and piping drop it
+- commits and branches follow `CONTRIBUTING.md`: Conventional Commits with a module/command scope
+- behavioral changes come with tests; interface changes update `site/content/docs/` alongside the code
+- `AGENTS.md` is a symlink to this file
 
-## CI and Release (`.github/workflows/`)
+## Cross-Cutting Changes
 
-All three workflows expose `workflow_dispatch` (`gh workflow run <name>.yaml --ref main`).
+**Adding an agent** starts in `model/agent.rs` - one enum variant, and with it that agent's
+skill/command/instruction/MCP paths and formats for both global and project scope. The roster is then
+mirrored by hand and every copy has to move together, and a half-updated roster still compiles: the
+README's agent table, `site/app/components/agents-grid.tsx`, and the per-agent tables in
+`site/content/docs/` (`agents.mdx`, `slash-commands.mdx`, `how-sync-works.mdx`). A new MCP settings shape
+additionally needs an arm in `src/mcps/`.
 
-- **`ci.yaml`** - push to `main` + every PR. Two parallel jobs on `ubuntu-24.04-arm`: `ci-rs`
-  (install -> lint -> test -> build) and `ci-next` (same shape). Every step is a `just`
-  recipe, so reproducing CI locally is `just check`
-- **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless the `version`
-  input overrides it - either `3.8.0` or `v3.8.0` works, both paths strip a leading `v` and the
-  workflow prepends it; bumps `Cargo.toml`/`Cargo.lock`, regenerates
-  `CHANGELOG.md`, commits `release: vX.Y.Z`, tags, pushes) -> `build` (6 targets:
-  linux/macos/windows x x86_64/aarch64) -> `release` (checksums + GitHub Release) ->
-  `publish-crate` + `update-homebrew` (`pivoshenko/homebrew-tap`) + `update-scoop`
-  (`pivoshenko/scoop-bucket`). `scripts/release.sh` is the local equivalent of the `tag` job.
-  Never bump the version by hand
-- **`site.yaml`** - manual only, `npx vercel deploy --prod --yes`. Decoupled from the CLI release
+**Adding a subcommand** touches the `Commands` enum in `cli.rs`, a new module under `commands/` declared
+in `commands/mod.rs`, a dispatch arm plus a `should_suppress_notice` arm in `app.rs`, an `Outcome`
+choice, the README's Commands table, and `site/content/docs/commands.mdx`.
+
+**Adding anything for one asset kind** usually needs the same treatment in the other three. Skills,
+commands, MCPs, and instructions are parallel concepts, each with its own config list, its own
+discovery convention in a source repo, and its own per-agent destination and format.
+
+## Architecture
+
+**Sync.** The four asset kinds meet in `commands/sync/`, one submodule per kind plus a shared `mod.rs`
+holding `SyncContext`, `SyncMut`, and the shared orphan-pruning pass `remove_stale`. Discovery
+conventions live in `source/mod.rs`: skills are directories with a `SKILL.md`, commands are
+`commands/**/*.md` with nesting namespaced by `:` (`commands/git/commit.md` -> `git:commit`),
+instructions are `instructions/**/*.{md,mdc}` with the same namespacing, MCPs are `mcps/<name>.json`.
+
+**Config and scope.** Scope resolution is CLI override > config `scope:` > `Global`, and
+`fsops::resolve_destinations` turns (config, scope) into the concrete skills dirs, an explicit
+`destination:` winning outright. With `--config` omitted, `lib.rs::resolve_config_path` tries
+`$KASETTO_CONFIG`, `./kasetto.yaml`, a `source:` key in the XDG preferences file `kasetto/config.yaml`,
+then the global `kasetto/kasetto.yaml`. `model/extend.rs` implements `extends:` as a YAML-level merge
+before deserialization: scalars replace, asset lists merge by identity tuple.
+
+**Lock file and runtime state.** Deliberately two files: `kasetto.lock` (`lock.rs`) is the committed,
+portable record, and `state.rs` holds machine-local runtime state (last run, latest `doctor` report) in
+the cache dir, keyed by lock path, and is safe to delete. Lock location follows scope: `./kasetto.lock`
+for project, `$XDG_DATA_HOME/kasetto/` for global. The `--locked` / `--frozen` / `--update` triad is the
+main branching axis in sync: `--locked` forbids all network access and errors if the lock cannot satisfy
+the config, `--update` re-resolves moving refs (optionally narrowed via `update_only`). They are mutually
+exclusive and rejected up front.
+
+**Sources and caching.** `source/` fetches and extracts a repo tarball for a given ref. `source/hosts.rs`
+classifies hosts and `source/auth.rs` maps them to env-var tokens; there is no login command or stored
+credential by design. Cache population in `fsops/cache.rs` is atomic via a private tmp dir renamed into
+place under `$XDG_CACHE_HOME/kasetto/sources/`.
+
+**Transforms and secrets.** `instructions/` is the layer with a twist: some agents take a directory of
+files, others an aggregate file (`CLAUDE.md`, `AGENTS.md`) that many instructions share, and aggregate
+targets are written as managed `<!-- kasetto:instruction:ID ... -->` blocks so user hand-edits outside
+the block survive a sync. `secrets/` resolves `${kst_...}` and tagged `${kst:<source>:<ref>}` placeholders
+at sync time from env vars, a `credentials.yaml`, or an external secret manager, by shelling out to the
+user's existing CLI session.
