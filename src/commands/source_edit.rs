@@ -65,6 +65,7 @@ pub(super) fn sync_after(
         scope_override: scope,
         update: false,
         update_only: Vec::new(),
+        update_local: false,
         locked,
         allow_missing_secrets: false,
     })
