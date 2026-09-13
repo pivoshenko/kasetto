@@ -37,9 +37,9 @@ New MCPs are merged into agent settings files automatically on `kst sync`, with 
 
 ## What Kasetto Does Not Do
 
-- It does not run skill code.
-- It does not overwrite MCP server entries it didn't install (only a Kasetto-managed server is replaced, and only under `--update`).
-- It does not write a credentials file. It can optionally *read* one for [secret injection](/docs/secrets).
+- It does not run skill code
+- It does not overwrite MCP server entries it didn't install (only a Kasetto-managed server is replaced, and only under `--update`)
+- It does not write a credentials file. It can optionally *read* one for [secret injection](/docs/secrets)
 
 ## Secret Injection
 
@@ -68,5 +68,5 @@ This means a private config hosted on a git provider can be accessed by setting 
 
 ## Practical Recommendations
 
-- Prefer pinning remote sources to immutable refs (`ref: v1.2.3` or a commit SHA) for stable rollouts.
-- In CI, use `--dry-run` (and ideally `--json`) to validate without writing changes.
+- Prefer pinning remote sources to immutable refs (`ref: v1.2.3` or a commit SHA) for stable rollouts
+- In CI, use `--dry-run` (and ideally `--json`) to validate without writing changes

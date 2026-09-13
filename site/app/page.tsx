@@ -88,7 +88,7 @@ export default async function Page() {
   return (
     <div className="page-wrap">
       <JsonLd data={softwareApplicationJsonLd()} />
-      {/* ── Cassette label ── */}
+      {/* == Cassette Label == */}
       <div className="logo-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="Kasetto" className="logo-img" />
@@ -118,7 +118,7 @@ export default async function Page() {
 
       <ScrollCue />
 
-      {/* ─────── SIDE A ─────── */}
+      {/* == SIDE A == */}
       <SideBanner side="A" label="GET STARTED · FEATURES · EXAMPLE" />
 
       <Track num="A1" title="QUICKSTART">
@@ -171,7 +171,7 @@ export default async function Page() {
         <ConfigExample />
       </Track>
 
-      {/* ─────── SIDE B ─────── */}
+      {/* == SIDE B == */}
       <SideBanner side="B" label="AGENTS · INSTALL" />
 
       <Track num="B1" title="SUPPORTED AGENTS">
@@ -192,7 +192,7 @@ export default async function Page() {
         </div>
       </Track>
 
-      {/* ── Footer ── */}
+      {/* == Footer == */}
       <footer className="site-footer">
         <div className="footer-grid">
           <div className="footer-brand">

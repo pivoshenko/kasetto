@@ -367,7 +367,7 @@ fn render_item(item: &SourceItem, indent: usize, section: Section) -> Vec<String
     out
 }
 
-// --- line helpers ---------------------------------------------------------
+// == Line Helpers ==
 
 fn split_lines(text: &str) -> Vec<String> {
     text.lines().map(String::from).collect()

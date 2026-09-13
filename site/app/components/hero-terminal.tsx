@@ -12,7 +12,7 @@ const REMOVE_SOURCE = "https://github.com/mattpocock/skills";
 const REMOVE_REPO = "github.com/mattpocock/skills";
 const REMOVE_ITEM = "grill-me";
 
-// status: undefined → unchanged; otherwise updated/added/removed.
+// status: undefined → unchanged; otherwise updated/added/removed
 type Status =
   | { s: "updated"; v: [string, string] }
   | { s: "added"; v: [string] }
@@ -85,7 +85,7 @@ function glyphFor(s: Status | undefined): { g: string; cls: string } {
 // scene "sync" runs the original kst sync animation; "edit" runs the
 // continuation cargo-style `kst add ...` then `kst remove ...` session; "to-*"
 // are brief clear-screen transitions between scenes so the loop reads as one
-// terminal. Within "edit" the EditStep state machine threads add → remove.
+// terminal. Within "edit" the EditStep state machine threads add → remove
 type Scene = "sync" | "to-edit" | "edit" | "to-sync";
 type SyncPhase = "idle" | "typing" | "resolving" | "running" | "done";
 type EditStep =
@@ -101,7 +101,7 @@ type EditStep =
 
 // The sync scene is rendered twice: once live, and once as a hidden "ghost" in
 // its final state, which reserves the terminal's full height so appending
-// output never reflows the page below it.
+// output never reflows the page below it
 function SyncScene({
   typed,
   phase,
@@ -264,7 +264,7 @@ export function HeroTerminal() {
     return () => obs.disconnect();
   }, []);
 
-  // --- sync scene state machine ---
+  // == Sync Scene State Machine ==
   useEffect(() => {
     if (scene !== "sync" || phase !== "typing") return;
     if (reduced) {
@@ -331,12 +331,12 @@ export function HeroTerminal() {
     return () => clearTimeout(t);
   }, [scene]);
 
-  // --- edit scene state machine: add → remove, in one session ---
+  // == Edit Scene State Machine: Add → Remove, in One Session ==
   useEffect(() => {
     if (scene !== "edit" || step !== "add-typing") return;
     if (reduced) {
       // Land on the final remove screen so reduced-motion users still see what
-      // the remove flow looks like (the add output has already played through).
+      // the remove flow looks like (the add output has already played through)
       setAddTyped(ADD_COMMAND.length);
       setAddItemShown(true);
       setRmTyped(REMOVE_COMMAND.length);
@@ -429,7 +429,7 @@ export function HeroTerminal() {
   // True once we've moved past the corresponding sub-phase (current step's
   // ordinal compared against each anchor). Drives "remember everything I've
   // already shown" semantics so the session stays on screen as we type the
-  // next command.
+  // next command
   const stepOrder: EditStep[] = [
     "add-typing",
     "add-resolving",
@@ -446,7 +446,7 @@ export function HeroTerminal() {
   const inOrPast = (s: EditStep) => stepIdx >= stepOrder.indexOf(s);
   // True while we're still in any of the add-* steps. The screen "clears" once
   // we move into clear-after-add: every add-* element hides so the remove
-  // session starts on an empty terminal.
+  // session starts on an empty terminal
   const inAddPhase =
     scene === "edit" &&
     (step === "add-typing" ||

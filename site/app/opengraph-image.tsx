@@ -9,7 +9,7 @@ export const contentType = "image/png";
 
 // Brand tokens mirror the canonical palette in `src/colors.rs` (CLI is the
 // source of truth) and the popil surfaces in `app/globals.css`. Update both
-// when this changes.
+// when this changes
 const BG = "#1f1f1e"; // popil base
 const FG = "#e4e2de"; // popil text
 const MUTED = "#a8a195"; // CLI SECONDARY
@@ -22,7 +22,7 @@ const JP_YELLOW = "#d4b070"; // popil yellow
 
 // Same six lines as `assets/social-preview-dark.svg`, so the shared card and the
 // GitHub social preview stay in sync. 58 columns; at 28px in JetBrains Mono
-// (0.6em advance) that is 974px, which clears the 1120px frame interior.
+// (0.6em advance) that is 974px, which clears the 1120px frame interior
 const WORDMARK = [
   "██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗",
   "██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗",
@@ -35,7 +35,7 @@ const WORDMARK = [
 // The wordmark draws as two layers over one grid so the letters read as stacked
 // tiles rather than a solid slab, matching `assets/social-preview-dark.svg`: the
 // box-drawing rules paint over the blocks, keeping the shadow outline
-// continuous, while BG-colored bars cut a 3px gap into every row seam.
+// continuous, while BG-colored bars cut a 3px gap into every row seam
 const BLOCK = "\u2588";
 const splitLayer = (keepBlocks: boolean) =>
   WORDMARK.map((line) =>
@@ -45,7 +45,7 @@ const WORDMARK_BLOCKS = splitLayer(true);
 const WORDMARK_RULES = splitLayer(false);
 
 // U+2588 renders exactly 40px tall at font-size 28, so a 40px line box butts the
-// rows together with no overlap and the seams land on clean 40px multiples.
+// rows together with no overlap and the seams land on clean 40px multiples
 const WORDMARK_FONT_SIZE = 28;
 const WORDMARK_LINE_H = 40;
 const WORDMARK_SEAM_W = 3;
@@ -54,7 +54,7 @@ const WORDMARK_SEAMS = WORDMARK.slice(1).map(
 );
 // Satori resolves a percentage width on the seam bars against more than the
 // wordmark, and the overhang notches the J-card border - so pin the bars to the
-// longest line at the 0.6em advance instead.
+// longest line at the 0.6em advance instead
 const WORDMARK_W = Math.max(...WORDMARK.map((line) => line.length)) * WORDMARK_FONT_SIZE * 0.6;
 const WORDMARK_ROW: CSSProperties = {
   fontSize: WORDMARK_FONT_SIZE,
@@ -74,7 +74,7 @@ const CHIPS = [
 // JetBrains Mono 2.304 (Latin + U+25CF/U+276F, plus U+2500-257F box drawing and
 // U+2580-259F block elements at 700 for the wordmark) and Noto Sans JP,
 // instanced at wght 700 and cut to the kana in the subtitle. Widen the ranges
-// before adding glyphs the subsets do not carry, or they render as tofu.
+// before adding glyphs the subsets do not carry, or they render as tofu
 function loadFont(file: string) {
   return readFileSync(join(process.cwd(), "app/fonts", file));
 }

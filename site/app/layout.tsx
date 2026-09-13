@@ -7,7 +7,7 @@ import { SITE_URL } from "@/lib/site";
 import { TopNav } from "./components/top-nav";
 import "./globals.css";
 
-// Variable axis covers wght 100-800; see SKILL.md for the brand weight ladder.
+// Variable axis covers wght 100-800; see SKILL.md for the brand weight ladder
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",

@@ -362,7 +362,7 @@ impl Agent {
             },
             Agent::OpenHands => mcp_servers_target(home, ".openhands/mcp.json"),
             // Pi intentionally has no native MCP support. Third-party extensions
-            // own their configuration, so Kasetto must not invent a target.
+            // own their configuration, so Kasetto must not invent a target
             Agent::Pi => return None,
             Agent::Trae => mcp_servers_target(home, ".trae/mcp.json"),
             Agent::ZCode => McpSettingsTarget {

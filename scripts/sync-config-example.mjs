@@ -10,10 +10,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
 const example = readFileSync(join(root, "kasetto.example.yaml"), "utf8").replace(/\n+$/, "");
 
-// ── Markdown embed (README + docs): verbatim fenced block ──────────────
+// == Markdown Embed (README + Docs): Verbatim Fenced Block ==
 const mdBlock = "```yaml\n" + example + "\n```";
 
-// ── Hero tokens (feature-tabs.tsx): tokenize YAML for syntax coloring ──
+// == Hero Tokens (feature-tabs.tsx): Tokenize YAML for Syntax Coloring ==
 function jsStr(s) {
   return s.includes('"') ? `'${s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'` : `"${s}"`;
 }
@@ -76,7 +76,7 @@ for (const t of targets) {
   const next = src.slice(0, i + startLen) + "\n" + t.body + "\n" + src.slice(j);
   if (next === src) { console.log(`✓ ${t.file}: up to date`); continue; }
   drift = true;
-  if (check) console.error(`✗ ${t.file}: out of date — run \`just sync-config\``);
+  if (check) console.error(`✗ ${t.file}: out of date - run \`just sync-config\``);
   else { writeFileSync(path, next); console.log(`✎ ${t.file}: updated`); }
 }
 if (check && drift) process.exit(1);

@@ -19,8 +19,8 @@ To persist a remote URL as your default, add a `source:` key to `~/.config/kaset
 
 Two similarly named files live in `~/.config/kasetto/`, and they do different jobs:
 
-- **`kasetto.yaml`** is a config. It holds your agents, skills, MCPs, commands, and instructions. `kst init --global` writes this one.
-- **`config.yaml`** is a preferences file. Its only job is a `source:` key naming the config to use, and it never contains skills itself.
+- **`kasetto.yaml`** is a config. It holds your agents, skills, MCPs, commands, and instructions. `kst init --global` writes this one
+- **`config.yaml`** is a preferences file. Its only job is a `source:` key naming the config to use, and it never contains skills itself
 
 Because `./kasetto.yaml` is checked first, a project that has its own config always wins over a persisted `source:`.
 
@@ -207,10 +207,10 @@ Each instruction is transformed into the target agent's native format. Two desti
   `GEMINI.md`, `.github/copilot-instructions.md`, ...). Each instruction is wrapped in a managed
   `<!-- kasetto:instruction:ID ... -->` comment block, so your own hand-written content and other instructions in
   the same file are preserved. `remove`/`clean` strip only kasetto's blocks and never delete the
-  file.
+  file
 - **Per-instruction directory**: one file per instruction. Cursor (`.cursor/rules/<name>.mdc`) gets reconstructed
   MDC frontmatter (`description`, `globs`, `alwaysApply`); other directory agents
-  (`.windsurf/rules`, `.clinerules`, `.continue/rules`, ...) get the Markdown body only.
+  (`.windsurf/rules`, `.clinerules`, `.continue/rules`, ...) get the Markdown body only
 
 `globs`/`alwaysApply` are only meaningful for Cursor; they are dropped for agents that don't scope
 instructions. See [supported agents](/docs/agents) for the per-agent destinations.
