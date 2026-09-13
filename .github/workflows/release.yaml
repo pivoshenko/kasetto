@@ -10,14 +10,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   tag:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     outputs:
       tag: v${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -34,6 +38,7 @@ jobs:
         run: |
           if [[ -n "${{ github.event.inputs.version }}" ]]; then
             VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#v}"
           else
             VERSION=$(git-cliff --bumped-version)
             VERSION="${VERSION#v}"
@@ -94,7 +99,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
@@ -131,7 +136,7 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/kst.exe" staging/
           Compress-Archive -Path staging/kasetto.exe, staging/kst.exe -DestinationPath "${{ matrix.archive }}"
 
-      - name: Upload Artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.archive }}
@@ -139,15 +144,15 @@ jobs:
 
   release:
     needs: [tag, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
           fetch-depth: 0
 
-      - name: Download Artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist
@@ -158,14 +163,14 @@ jobs:
           cd dist
           sha256sum *.tar.gz *.zip > checksums.txt
 
-      - name: Generate Changelog
+      - name: Generate changelog
         uses: orhun/git-cliff-action@v4
         id: changelog
         with:
           args: --latest --strip header
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
           body: ${{ steps.changelog.outputs.content }}
@@ -174,13 +179,13 @@ jobs:
 
   publish-crate:
     needs: [tag, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
@@ -198,14 +203,14 @@ jobs:
 
   update-homebrew:
     needs: [tag, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
 
-      - name: Download Artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist
@@ -274,10 +279,10 @@ jobs:
 
   update-scoop:
     needs: [tag, release]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
 

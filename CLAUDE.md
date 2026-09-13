@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this repo is
+## What This Repo Is
 
 Kasetto is a declarative AI agent environment manager: a Rust CLI that syncs four asset kinds -
 **skills**, **slash-commands**, **MCP servers**, and **instructions** (`CLAUDE.md` / `AGENTS.md` /
@@ -12,9 +12,9 @@ Kasetto is a declarative AI agent environment manager: a Rust CLI that syncs fou
 Two things live here:
 
 - **`/` (Rust crate `kasetto`)** - the CLI. Two binaries from one lib: `kasetto` (default-run) and
-  `kst` (`src/bin/kst.rs`); both call `kasetto::run`.
+  `kst` (`src/bin/kst.rs`); both call `kasetto::run`
 - **`site/`** - Next.js 15 App Router app serving both the marketing landing and the Fumadocs docs
-  (`kasetto.dev`). Independent pnpm project, not a cargo workspace member.
+  (`kasetto.dev`). Independent pnpm project, not a cargo workspace member
 
 ## Commands
 
@@ -48,13 +48,13 @@ cargo run -- sync --dry-run           # exercise the CLI locally
 `scripts/sync-config-example.mjs`. After editing it run `just generate-config-docs`;
 `node scripts/sync-config-example.mjs --check` exits non-zero on drift.
 
-## Rust architecture
+## Rust Architecture
 
 `src/lib.rs` owns default-config resolution and re-exports `run` + `Result`. `src/app.rs` parses
 clap args and dispatches; with no subcommand it prints the banner + `--help` and exits 0 (cargo/uv
 style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error enum.
 
-### Module map
+### Module Map
 
 | Module | Responsibility |
 | --- | --- |
@@ -70,60 +70,60 @@ style). Errors are a boxed `Box<dyn Error + Send + Sync>` (`error.rs`), no error
 | `ui.rs` / `colors.rs` / `banner.rs` | all terminal rendering |
 | `update_notifier.rs` | background "new version available" check (24h TTL cache) |
 
-### Core concepts
+### Core Concepts
 
 - **Scope** (`model::resolve_scope`): `Project` or `Global`, resolved CLI flag -> config field ->
   default `Global`. It picks install paths *and* the lock location: `<project root>/kasetto.lock`
-  for Project, XDG data dir for Global.
+  for Project, XDG data dir for Global
 - **Agent as exhaustive enum** (`model/agent.rs`, 23 variants + `AGENT_PRESETS`): each variant maps
   to skill dirs, command dirs, instruction destinations, and MCP settings targets where supported,
   per scope. Adding an agent = new variant + entries in every path table + the `AGENT_PRESETS`
-  array + the README agent table.
+  array + the README agent table
 - **Per-agent output formats** (all in `model/mod.rs` with their `*Target` structs):
   `McpSettingsFormat` (McpServers, VsCodeServers, OpenCode, CodexToml, ZCode), `CommandFormat`
   (MarkdownFrontmatter, MarkdownFlatFrontmatter, MarkdownPlain, PromptMd, PromptFile, GeminiToml),
-  `InstructionFormat` (AggregateMarkdown, CursorMdc, PlainMarkdownDir).
+  `InstructionFormat` (AggregateMarkdown, CursorMdc, PlainMarkdownDir)
 - **Aggregate vs per-file instructions**: `AggregateMarkdown` merges many instructions into one
   shared file (`CLAUDE.md`, `AGENTS.md`, ...) using managed `<!-- kasetto:instruction:ID -->`
   comment blocks so hand edits and other instructions survive; the other two formats write one file
   per instruction into a rules directory. The lock's `destination` token encodes which
-  (`agg:<rel>` = strip the block on teardown, `file:<rel>` = delete the file).
+  (`agg:<rel>` = strip the block on teardown, `file:<rel>` = delete the file)
 - **The lock is authoritative.** A plain `sync` installs exactly what `kasetto.lock` pins and does
   zero network I/O when on-disk hashes already match (`needs_fetch` in `commands/sync/skills.rs`
   re-hashes destinations *before* deciding to download). `--update`/`-u` is the only path that
   re-resolves moving refs and rewrites hashes; `--locked`/`--frozen` never fetches and errors if
   the lock cannot satisfy the config; the two flags together are rejected. `LOCK_VERSION` is 3
   (`model/types.rs`). Lock paths are stored relative to the scope root and contain no timestamps,
-  so it is portable and commit-friendly.
+  so it is portable and commit-friendly
 - **`state.rs` holds everything machine-local** (last run, latest report JSON, per-skill install
   timestamps) under the cache dir's `runtime/` subdir, deliberately out of the lock - same split
-  as `uv.lock` vs uv's cache. Safe to delete.
+  as `uv.lock` vs uv's cache. Safe to delete
 - **Source cache** (`fsops/cache.rs`): only immutable `ref:` sources are cached, under
   `sources/<sha256(key)>/tree/` with a sibling `.complete` marker written last (extract to
   `.tmp-*`, then rename, so a crash never leaves a half-populated "complete" entry). Moving
-  branches are never cached. `KASETTO_NO_CACHE` opts out; `KASETTO_CACHE_DIR` relocates.
+  branches are never cached. `KASETTO_NO_CACHE` opts out; `KASETTO_CACHE_DIR` relocates
 - **Secrets are in-memory only.** `${kst_<name>}` (chain form: env var as written, then uppercased,
   then `credentials.yaml`) or `${kst:<tag>:<ref>}` (tagged: `env`, `crd`, `op`, `vault`,
   `kp`/`keepass`, `aws`, `gcp`, `az`, `pass`, `keychain`). Only the lowercase `kst` sentinel is
   claimed - `${VAR}` and `${KST_...}` pass through untouched. Injection happens on the MCP merge
   path after parsing, so the lock hashes the *placeholder* file and resolved values never reach
   `kasetto.lock`, the source cache, or a stage dir. Unresolved placeholders fail the sync unless
-  `--allow-missing-secrets`.
+  `--allow-missing-secrets`
 - **Comment-preserving config edits**: `add`/`remove` rewrite `kasetto.yaml` line-surgically via
   `fsops/config_edit.rs`, never a serde round-trip, so user comments and key order survive
-  byte-for-byte. Then they delegate to `sync`.
+  byte-for-byte. Then they delegate to `sync`
 - **Config resolution** when `--config` is omitted (`lib.rs::resolve_config_path`):
   `$KASETTO_CONFIG` -> `./kasetto.yaml` -> `source:` key in `$XDG_CONFIG_HOME/kasetto/config.yaml`
   -> `$XDG_CONFIG_HOME/kasetto/kasetto.yaml` -> `./kasetto.yaml` fallback. `--config` also accepts
   an HTTP(S) URL. `extends:` in a config is merged before deserialization (scalars replace; asset
-  lists merge by source identity).
+  lists merge by source identity)
 - **Perf shape**: sources that need fetching are materialized in parallel with `rayon`
   (`commands/sync/skills.rs` is the only rayon user), then results are processed sequentially in
   config order so output, lock writes, and last-writer-wins destination semantics stay
   deterministic. `remote.rs` streams into the gzip decoder and sparse-extracts only entries under
-  `sub-dir`.
+  `sub-dir`
 
-### Output conventions
+### Output Conventions
 
 `colors.rs` defines 8 semantic 24-bit roles - `ACCENT` (bold, no color), `ATTENTION` (amber),
 `SUCCESS` (green), `ERROR` (red), `INFO` (cyan), `BRAND` (violet), `SECONDARY` (grey), `INFRA`
@@ -161,7 +161,7 @@ status; no command calls `process::exit`. Commands that can complete *and* repor
 return `Result<()>` and are wrapped by `app::ok`. An `Err` is rendered once by `eprint_error` -
 never let one reach `main`, or Rust's `Debug` formatter prints `Error: Custom { .. }`.
 
-### Env vars the CLI reads
+### Env Vars the CLI Reads
 
 `KASETTO_CONFIG`, `KASETTO_CACHE_DIR`, `KASETTO_NO_CACHE`, `PI_CODING_AGENT_DIR`, `NO_COLOR`,
 `CLICOLOR_FORCE`, XDG (`XDG_CONFIG_HOME` / `XDG_DATA_HOME` / `XDG_CACHE_HOME`, `HOME`, `APPDATA`),
@@ -174,53 +174,53 @@ Next.js 15 + React 19, Tailwind 3 with the Fumadocs preset, Biome (not ESLint/Pr
 lint and format, pnpm 11 / Node >= 22.
 
 - `app/page.tsx` is the marketing landing; `app/docs/[[...slug]]/page.tsx` renders MDX from
-  `content/docs/*.mdx` (sidebar order comes from `content/docs/meta.json`).
+  `content/docs/*.mdx` (sidebar order comes from `content/docs/meta.json`)
 - Raw-Markdown and LLM routes: `app/docs-md/[[...slug]]/route.ts` (reached via the
-  `/docs/:path*.md` rewrite in `next.config.mjs`), `app/llms.txt`, `app/llms-full.txt`.
+  `/docs/:path*.md` rewrite in `next.config.mjs`), `app/llms.txt`, `app/llms-full.txt`
 - `app/install/route.ts` and `app/install.ps1/route.ts` serve `scripts/install.sh` /
-  `scripts/install.ps1` behind `kasetto.dev/install`.
+  `scripts/install.ps1` behind `kasetto.dev/install`
 - `next.config.mjs` also holds security headers and host-gated 308 redirects from
-  `docs.kasetto.dev/<slug>` to `kasetto.dev/docs/<slug>` (add new slugs to `DOC_SLUGS`).
+  `docs.kasetto.dev/<slug>` to `kasetto.dev/docs/<slug>` (add new slugs to `DOC_SLUGS`)
 - ` ```mermaid ` fences become live `<Mermaid>` JSX via the `remarkMermaid` plugin in
-  `source.config.ts`, bypassing Shiki.
+  `source.config.ts`, bypassing Shiki
 - Vercel auto-deploy on `main` is disabled (`site/vercel.json`); the site ships via the manual
-  `site.yaml` workflow.
+  `site.yaml` workflow
 
 ## Conventions
 
 - **Module docs**: every `.rs` file opens with a `//!` comment. `lib.rs` and each `mod.rs` start
   `Package that contains ...`; every other file starts `Module that contains ...`. One summary
-  sentence, extra detail on following `//!` lines.
+  sentence, extra detail on following `//!` lines
 - **Tests are inline `#[cfg(test)] mod tests`** at the bottom of each module - there is no
-  `tests/` directory. `assert_cmd`/`predicates`/`tempfile` are available as dev-deps.
+  `tests/` directory. `assert_cmd`/`predicates`/`tempfile` are available as dev-deps
 - `unsafe_code` is forbidden; `clippy::all` is denied, `perf` warns, and `dbg!`/`todo!` warn
-  (`[lints]` in `Cargo.toml`).
-- Rust indents 4, everything else 2 (`.editorconfig`); max line length 120.
+  (`[lints]` in `Cargo.toml`)
+- Rust indents 4, everything else 2 (`.editorconfig`); max line length 120
 - **Conventional Commits** (`<type>(<scope>): <subject>`, imperative, lowercase, no trailing
   period) - `CHANGELOG.md` is generated by `git-cliff` (`cliff.toml`) from them, so commit
   messages are user-facing. Branches are `<type>/<kebab-description>`. Full type table in
-  `CONTRIBUTING.md`.
+  `CONTRIBUTING.md`
 - Feature or messaging changes must land in `README.md`, `site/content/docs/`, and the code
-  together.
+  together
 - `/kasetto.yaml` is gitignored (local config from `kst init`); the tracked example is
-  `kasetto.example.yaml`. `.claude/` is gitignored (per-user local).
+  `kasetto.example.yaml`. `.claude/` is gitignored (per-user local)
 - `Formula/kasetto.rb` at the repo root is a legacy source-build formula with placeholder values;
   the real Homebrew formula is generated inside `release.yaml` and pushed to
-  `pivoshenko/homebrew-tap` - don't edit the local one expecting it to ship.
+  `pivoshenko/homebrew-tap` - don't edit the local one expecting it to ship
 
-## CI and release (`.github/workflows/`)
+## CI and Release (`.github/workflows/`)
 
 All three workflows expose `workflow_dispatch` (`gh workflow run <name>.yaml --ref main`).
 
 - **`ci.yaml`** - push to `main` + every PR. Two parallel jobs on `ubuntu-24.04-arm`: `ci-rs`
   (install -> lint -> test -> build) and `ci-next` (same shape). Every step is a `just`
-  recipe, so reproducing CI locally is `just check`.
+  recipe, so reproducing CI locally is `just check`
 - **`release.yaml`** - manual only. `tag` (git-cliff derives the version unless the `version`
-  input overrides it - pass that one bare, `3.8.0` not `v3.8.0`, because only the auto-detect path
-  strips the `v` and the workflow prepends it; bumps `Cargo.toml`/`Cargo.lock`, regenerates
+  input overrides it - either `3.8.0` or `v3.8.0` works, both paths strip a leading `v` and the
+  workflow prepends it; bumps `Cargo.toml`/`Cargo.lock`, regenerates
   `CHANGELOG.md`, commits `release: vX.Y.Z`, tags, pushes) -> `build` (6 targets:
   linux/macos/windows x x86_64/aarch64) -> `release` (checksums + GitHub Release) ->
   `publish-crate` + `update-homebrew` (`pivoshenko/homebrew-tap`) + `update-scoop`
   (`pivoshenko/scoop-bucket`). `scripts/release.sh` is the local equivalent of the `tag` job.
-  Never bump the version by hand.
-- **`site.yaml`** - manual only, `npx vercel deploy --prod --yes`. Decoupled from the CLI release.
+  Never bump the version by hand
+- **`site.yaml`** - manual only, `npx vercel deploy --prod --yes`. Decoupled from the CLI release

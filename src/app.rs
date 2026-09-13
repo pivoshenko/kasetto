@@ -12,7 +12,7 @@ use crate::default_config_path;
 use crate::error::Result;
 
 /// Entrypoint for both binaries. Owns the process exit code so a failure is
-/// reported once, in the CLI's own `error:` grammar — returning `Result` from
+/// reported once, in the CLI's own `error:` grammar - returning `Result` from
 /// `main` instead would hand the error to Rust's `Debug` formatter and print
 /// `Error: Custom { kind: Other, error: "..." }`.
 pub fn run() -> ExitCode {

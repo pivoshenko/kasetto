@@ -2,11 +2,12 @@
 
 - [Contributing](#contributing)
   - [Reporting Bugs](#reporting-bugs)
-    - [How To Submit a Bug Report](#how-to-submit-a-bug-report)
+    - [How to Submit a Bug Report](#how-to-submit-a-bug-report)
   - [Suggesting Enhancements](#suggesting-enhancements)
-    - [How To Submit an Enhancement](#how-to-submit-an-enhancement)
+    - [How to Submit an Enhancement](#how-to-submit-an-enhancement)
   - [Code Contributions](#code-contributions)
     - [Local Development](#local-development)
+    - [CI/CD](#cicd)
     - [Branches](#branches)
     - [Commits](#commits)
     - [Pull Requests](#pull-requests)
@@ -26,7 +27,7 @@ When opening a bug report, include enough context for someone else to reproduce 
 
 ### How to Submit a Bug Report
 
-Use the bug issue template and provide the following:
+Open a bug report and provide the following:
 
 - A clear, descriptive title
 - Reproduction steps (minimal and reliable if possible)
@@ -45,7 +46,7 @@ Enhancement requests can include new features, changes to existing behavior, usa
 
 ### How to Submit an Enhancement
 
-Use the feature request template and provide the following:
+Open a feature request and provide the following:
 
 - A clear problem statement
 - The proposed solution
@@ -58,14 +59,55 @@ Concrete examples, API sketches, UI mockups, or references are helpful when rele
 
 ### Local Development
 
-1. Fork the repository and create a branch for your change.
-2. Set up the project using the repository's README or development docs.
-3. Run the project's tests and quality checks locally before opening a pull request.
+This project needs a Rust toolchain (`cargo`) for the CLI and a Node.js/pnpm toolchain for the `site/` app.
+This project uses [`just`](https://github.com/casey/just) as its task runner. Run `just --list` for the full set; these are the ones you need day to day:
 
-When a repository includes helper scripts or task runners, prefer using those documented commands.
+| Command | What it does |
+| --- | --- |
+| `install` | Runs `install-rs` and `install-site` |
+| `install-rs` | Fetches the crate dependencies into the cargo cache |
+| `install-site` | Installs the `site/` app's Node dependencies with pnpm |
+| `format` | Runs `format-rs` and `format-site` |
+| `format-rs` | Reformats the Rust sources in place |
+| `format-site` | Reformats the `site/` sources in place |
+| `lint` | Runs `lint-rs` and `lint-site` |
+| `lint-rs` | Lints every Rust target with Clippy, failing on any warning |
+| `lint-site` | Lints the `site/` sources |
+| `test` | Runs `test-rs` and `test-site` |
+| `test-rs` | Runs the Rust test suite, skipped with a message if a `.no-tests` sentinel file exists |
+| `test-site` | No-op; the site has no test suite |
+| `check` | Runs `lint`, `test`, and `build` |
+| `update` | Runs `update-rs` and `update-site` |
+| `update-rs` | Upgrades the crate lockfile to the newest compatible versions |
+| `update-site` | Upgrades the `site/` app's Node dependencies |
+| `build` | Runs `build-rs` and `build-site` |
+| `build-rs` | Builds the optimized release binaries |
+| `build-site` | Builds the production bundle for the `site/` app |
+| `run-dev-server` | Serves the `site/` app locally in development mode |
+| `run-prod-server` | Serves the built production `site/` app locally |
+| `generate-changelog` | Regenerates `CHANGELOG.md` from the commit history with git-cliff |
+| `generate-config-docs` | Regenerates the example config in the README and docs, then reformats the affected site file |
+| `generate-social-preview` | Rasterizes the social preview SVG into a 1280x640 PNG via `rsvg-convert` |
+| `benchmark-sync` | Runs the cold-sync benchmark script |
+
+1. Fork the repository and create a branch for your change
+2. Set up the project with `just install`, then make your change
+3. Run `just check` and fix anything it reports before opening a pull request
 
 > [!IMPORTANT]
 > Behavioral code changes should include or update tests.
+
+### CI/CD
+
+Workflows live in `.github/workflows`:
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| CI | Push to `main`, pull requests, `workflow_dispatch` | Two parallel jobs, both on `ubuntu-24.04-arm`: `ci-rs` sets up the stable Rust toolchain with rustfmt and Clippy over a cached cargo registry, then installs, lints, tests and builds the crate; `ci-next` sets up pnpm with Node 24, then installs, lints, tests and builds the `site/` app |
+| Release | `workflow_dispatch` (optional `version` input) | Six chained jobs: `tag` (`ubuntu-24.04-arm`) resolves the next version from the commit history with git-cliff or from the optional input, bumps the version in `Cargo.toml` and the lockfile, regenerates `CHANGELOG.md`, then commits and pushes `main` with the `v<version>` tag; `build` needs `tag` and cross-compiles release binaries for six targets (`x86_64` and `aarch64` for `unknown-linux-gnu` on `ubuntu-latest`, `apple-darwin` on `macos-latest`, `pc-windows-msvc` on `windows-latest`), packaging `kasetto` and `kst` into a per-target `.tar.gz` or `.zip`; `release` needs `tag` and `build` and publishes the GitHub Release with the generated notes, every archive and a `checksums.txt`; then `publish-crate`, `update-homebrew` and `update-scoop` (all `ubuntu-24.04-arm`, each needing `tag` and `release`) publish the crate to Crates.io, push a refreshed `Formula/kasetto.rb` to `pivoshenko/homebrew-tap`, and push a refreshed `kasetto.json` to `pivoshenko/scoop-bucket` |
+| Site | `workflow_dispatch` | Single `deploy` job on `ubuntu-latest`; deploys the `site/` app to Vercel production using the `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_SITE_PROJECT_ID` secrets |
+
+CI must be green before a pull request is merged.
 
 ### Branches
 

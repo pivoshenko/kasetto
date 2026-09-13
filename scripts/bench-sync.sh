@@ -5,7 +5,7 @@
 # Quantifies the two network/IO wins of the parallel-fetch + source-cache work:
 #
 #   1. Parallel vs serial source download
-#      Same binary, cache disabled, identical work — only the rayon thread count
+#      Same binary, cache disabled, identical work - only the rayon thread count
 #      differs (RAYON_NUM_THREADS=1 reproduces the old sequential fetch). Isolates
 #      the latency-overlap from downloading independent sources concurrently.
 #
@@ -28,7 +28,7 @@
 #   KASETTO_BIN=/path/to/kasetto scripts/bench-sync.sh
 #   BENCH_RUNS=10 scripts/bench-sync.sh
 #
-# Requires: hyperfine, network access to the configured sources.
+# Requires: hyperfine, network access to the configured sources
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,7 +37,7 @@ runs="${BENCH_RUNS:-8}"
 
 # Sources are real public skill repos. The cache scenario pins each to an
 # immutable commit SHA (only immutable refs are cacheable); override to taste.
-# Format per line: "<url> <sha>".
+# Format per line: "<url> <sha>"
 sources="${BENCH_SOURCES:-\
 https://github.com/obra/superpowers 896224c4b1879920ab573417e68fd51d2ccc9072
 https://github.com/anthropics/skills 57546260929473d4e0d1c1bb75297be2fdfa1949}"
@@ -58,7 +58,7 @@ lock="$work/kasetto.lock"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$cache"
 
-# Generate the two configs: branch-tracked (moving) and SHA-pinned (immutable).
+# Generate the two configs: branch-tracked (moving) and SHA-pinned (immutable)
 {
   echo "agent: claude-code"
   echo "scope: project"
@@ -89,7 +89,7 @@ reset_install="rm -rf '$dest' '$lock'"
 
 echo
 echo "════════════════════════════════════════════════════════════════════"
-echo " kasetto cold-sync benchmark — $n_sources sources, $runs runs each"
+echo " kasetto cold-sync benchmark - $n_sources sources, $runs runs each"
 echo " binary: $bin"
 echo "════════════════════════════════════════════════════════════════════"
 
@@ -107,7 +107,7 @@ hyperfine \
 echo
 echo "── Scenario 2: cold vs warm source cache (SHA-pinned) ──"
 # Pre-warm the cache once so the 'warm' command starts hot; --prepare wipes only
-# the install + lock (never the cache), so every warm run still re-materializes.
+# the install + lock (never the cache), so every warm run still re-materializes
 rm -rf "$dest" "$lock"
 env XDG_CACHE_HOME="$cache" "$bin" sync --config pinned.yaml --color never -q || true
 hyperfine \

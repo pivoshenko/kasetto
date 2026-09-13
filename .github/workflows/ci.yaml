@@ -2,62 +2,76 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 jobs:
   ci-rs:
-    name: Rust · CI
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-      - uses: extractions/setup-just@v4
+      - name: Install just
+        uses: extractions/setup-just@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt,clippy
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
 
-      - run: just install-rs
+      - name: Install dependencies
+        run: just install-rs
 
-      - run: just lint-rs
+      - name: Run linters
+        run: just lint-rs
 
-      - run: just test-rs
+      - name: Run tests
+        run: just test-rs
 
-      - run: just build-rs
+      - name: Build
+        run: just build-rs
 
   ci-next:
-    name: Next · CI
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-      - uses: extractions/setup-just@v4
+      - name: Install just
+        uses: extractions/setup-just@v4
 
-      - uses: pnpm/action-setup@v6
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
         with:
           package_json_file: site/package.json
 
-      - uses: actions/setup-node@v6
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           cache-dependency-path: site/pnpm-lock.yaml
 
-      - run: just install-site
+      - name: Install dependencies
+        run: just install-site
 
-      - run: just lint-site
+      - name: Run linters
+        run: just lint-site
 
-      - run: just test-site
+      - name: Run tests
+        run: just test-site
 
-      - run: just build-site
+      - name: Build
+        run: just build-site

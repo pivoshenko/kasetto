@@ -8,7 +8,7 @@ export const docs = defineDocs({
 });
 
 // Convert ```mermaid code blocks into <Mermaid chart={...} /> MDX JSX nodes
-// so they bypass Shiki and render as live diagrams on the client.
+// so they bypass Shiki and render as live diagrams on the client
 const remarkMermaid: Plugin<[], Root> = () => (tree) => {
   visit(tree, "code", (node: Code, index, parent) => {
     if (node.lang !== "mermaid" || !parent || index === undefined) return;

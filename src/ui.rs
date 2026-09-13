@@ -243,7 +243,7 @@ pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
 /// Width of the status-label column in a source-grouped tree. The label
 /// vocabulary is closed (`added`/`updated`/`removed`/`unchanged`/`broken`, and
 /// dry-run reuses the same five words), so this is a constant rather than
-/// something measured from the rows — no name can ever push the column.
+/// something measured from the rows - no name can ever push the column.
 pub(crate) const STATUS_LABEL_W: usize = 9;
 
 /// Past-tense status verb alone, colored per role. The word that sits in the
@@ -363,7 +363,7 @@ pub(crate) fn print_source_header(
 /// Branch, then the status glyph, then the status label in a fixed
 /// [`STATUS_LABEL_W`] column, then the name, then optional dim detail. Every
 /// column left of the name is constant width, so names always start at the
-/// same offset no matter how long any row's name is — the reason this shape is
+/// same offset no matter how long any row's name is - the reason this shape is
 /// preferred over a right-aligned status column.
 pub(crate) fn print_status_leaf(
     is_last: bool,
@@ -483,7 +483,7 @@ pub(crate) fn relativize_home(path: &str) -> String {
 /// Print a `KEY value` row for the cassette doctor panel: key in foreground
 /// (no color), padded to `key_w` chars, value in `SECONDARY` grey. The key is
 /// the label you scan for and the value is the content it carries, so the
-/// value recedes — the same split as every other row in the CLI, where paths
+/// value recedes - the same split as every other row in the CLI, where paths
 /// and metadata are grey against a foreground label.
 pub(crate) fn print_doctor_kv(key: &str, value: &str, key_w: usize, plain: bool) {
     if plain {

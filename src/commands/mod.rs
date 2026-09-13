@@ -7,7 +7,7 @@ use std::process::ExitCode;
 /// Distinct from `Err`: an error means the command could not do its job and
 /// prints one `error:` line. `Outcome::Failure` means it did its job, reported
 /// the problems it found in its own output, and should still exit non-zero so
-/// CI can gate on it — a broken asset in `sync`, a failing check in `doctor`.
+/// CI can gate on it - a broken asset in `sync`, a failing check in `doctor`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Outcome {
     Success,

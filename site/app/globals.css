@@ -4,7 +4,7 @@
 
 /* ─── Cassette palette: dark-only · warm "tape stock" + amber "tape gold"
    Source of truth: kasetto-cli design package. All component classes pull
-   from the semantic aliases below; the ramps stay as the raw tokens. */
+   from the semantic aliases below; the ramps stay as the raw tokens */
 :root {
   /* ── Palette: kasetto-cli is the source of truth (src/colors.rs).
      All site tokens resolve to one of:
@@ -12,9 +12,9 @@
        - the 7 CLI semantic hues (ATTENTION, SUCCESS, ERROR, INFO, BRAND,
          SECONDARY, INFRA). Cassette ramp aliases (--n-*, --a-*) are
          preserved for downstream call sites and remapped to the canonical
-         CLI hex anchors. */
+         CLI hex anchors */
 
-  /* ── neutral · popil warm-grey ── */
+  /* == Neutral · Popil Warm-Grey == */
   --n-950: #151514; /* crust */
   --n-900: #1f1f1e; /* base */
   --n-850: #1a1a19; /* mantle */
@@ -28,7 +28,7 @@
   --n-100: #e4e2de; /* popil text */
   --n-50: #f7f2e9;
 
-  /* ── amber · CLI ATTENTION (#e8a94d) anchored at --a-500 ── */
+  /* == Amber · CLI ATTENTION (#e8a94d) Anchored at --a-500 == */
   --a-900: #5e3a0e;
   --a-800: #854f15;
   --a-700: #ab6c22;
@@ -41,7 +41,7 @@
   --a-50: #fdf7ec;
 
   /* ── semantic: CLI hues are canonical; -d twins fall back to the same
-       bright tone because the site is dark-only (no docs-on-light surface). */
+       bright tone because the site is dark-only (no docs-on-light surface) */
   --green: #84c578; /* CLI SUCCESS */
   --green-d: #84c578;
   --red: #e87e6c; /* CLI ERROR */
@@ -51,7 +51,7 @@
   --violet: #b6a6ef; /* CLI BRAND */
   --violet-d: #b6a6ef;
 
-  /* ── surface semantic aliases: popil neutral warm-grey ── */
+  /* == Surface Semantic Aliases: Popil Neutral Warm-Grey == */
   --base: #1f1f1e;
   --mantle: #1a1a19;
   --surface0: #262625;
@@ -63,7 +63,7 @@
   --subtext1: var(--n-300);
   --text: var(--n-100);
 
-  /* ── legacy named tones → CLI hues ── */
+  /* == Legacy Named Tones → CLI Hues == */
   --mauve: var(--violet); /* CLI BRAND */
   --lavender: var(--violet);
   --sky: var(--cyan); /* CLI INFO */
@@ -72,7 +72,7 @@
   --rust: var(--a-500);
   --tape: var(--a-500);
 
-  /* ── chrome/prose roles ── */
+  /* == Chrome/Prose Roles == */
   --bg: var(--base);
   --bg-elevated: var(--mantle);
   --border: var(--surface1);
@@ -97,7 +97,7 @@
   /* Film-grain texture: analog cassette texture cue, ~1.5% opacity */
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.96  0 0 0 0 0.89  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 
-  /* ─── Type scale ─── */
+  /* == Type Scale == */
   --fs-xs: 11px;
   --fs-sm: 13px;
   --fs-md: 15px;
@@ -106,7 +106,7 @@
   --fs-xl: 22px;
   --fs-2xl: 28px;
 
-  /* ─── Spacing scale (4px base) ─── */
+  /* == Spacing Scale (4px Base) == */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -121,23 +121,23 @@
   --space-16: 64px;
   --space-18: 72px;
 
-  /* ─── Letter-spacing ─── */
+  /* == Letter-Spacing == */
   --tracking-tight: 0.02em;
   --tracking-normal: 0.04em;
   --tracking-wide: 0.14em;
   --tracking-wider: 0.22em;
   --tracking-widest: 0.32em;
 
-  /* ─── Radius ─── */
+  /* == Radius == */
   --radius-sm: 2px;
   --radius-md: 6px;
   --radius-lg: 10px;
 
-  /* ─── Font stacks ─── */
+  /* == Font Stacks == */
   --font-mono: "JetBrains Mono", "Courier New", Courier, monospace;
 }
 
-/* ─── Reset ─── */
+/* == Reset == */
 *,
 *::before,
 *::after {
@@ -178,14 +178,14 @@ button {
   font: inherit;
 }
 
-/* ─── Layout ─── */
+/* == Layout == */
 .page-wrap {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 32px;
 }
 
-/* ─── Logo banner ─── */
+/* == Logo Banner == */
 .logo-wrap {
   margin-top: var(--space-10);
   margin-bottom: var(--space-6);
@@ -199,7 +199,7 @@ button {
   display: block;
 }
 
-/* ─── Sections ─── */
+/* == Sections == */
 .section {
   padding: 0 0 56px;
 }
@@ -212,7 +212,7 @@ button {
   margin-bottom: 14px;
 }
 
-/* ─── Grid box: bordered container ─── */
+/* == Grid Box: Bordered Container == */
 .grid-box {
   position: relative;
   border: 1px solid var(--border);
@@ -240,7 +240,7 @@ button {
   z-index: 1;
 }
 
-/* ─── Hero ─── */
+/* == Hero == */
 .hero-row {
   padding: 72px 32px;
   text-align: center;
@@ -262,7 +262,7 @@ button {
   margin-top: 14px;
 }
 
-/* ─── Action rows ─── */
+/* == Action Rows == */
 .action-row {
   display: flex;
   align-items: center;
@@ -363,7 +363,7 @@ button {
   color: var(--fg-subtle);
 }
 
-/* ─── Copy button ─── */
+/* == Copy Button == */
 .copy-btn {
   display: inline-flex;
   align-items: center;
@@ -389,7 +389,7 @@ button {
   border-color: var(--green);
 }
 
-/* ─── Docs page actions ─── */
+/* == Docs Page Actions == */
 article:has(> .docs-page-actions) {
   gap: var(--space-4);
 }
@@ -404,7 +404,7 @@ article:has(> .docs-page-actions) {
   gap: var(--space-4);
 }
 
-/* ─── Docs prose ─── */
+/* == Docs Prose == */
 .prose {
   line-height: 1.65;
 }
@@ -461,7 +461,7 @@ article:has(> .docs-page-actions) {
   margin-bottom: 0;
 }
 
-/* ─── Agents ─── */
+/* == Agents == */
 .agents-header {
   padding: 14px 24px;
   font-size: var(--fs-base);
@@ -517,7 +517,7 @@ article:has(> .docs-page-actions) {
   background: var(--surface0);
 }
 
-/* ─── Features grid ─── */
+/* == Features Grid == */
 .feat-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -677,7 +677,7 @@ article:has(> .docs-page-actions) {
   color: var(--fg-muted);
 }
 
-/* ─── Install ─── */
+/* == Install == */
 .install-row {
   display: flex;
   align-items: flex-start;
@@ -717,7 +717,7 @@ article:has(> .docs-page-actions) {
   letter-spacing: var(--tracking-tight);
 }
 
-/* ─── Footer ─── */
+/* == Footer == */
 .footer {
   display: flex;
   align-items: center;
@@ -773,7 +773,7 @@ article:has(> .docs-page-actions) {
   color: var(--fg);
 }
 
-/* ─── Responsive ─── */
+/* == Responsive == */
 @media (max-width: 768px) {
   .page-wrap {
     padding: 0 20px;
@@ -857,7 +857,7 @@ article:has(> .docs-page-actions) {
   }
 }
 
-/* ─── Fumadocs theme bridge (HSL, dark cassette, muted accents) ─── */
+/* == Fumadocs Theme Bridge (HSL, Dark Cassette, Muted Accents) == */
 :root {
   --fd-background: 60 2% 12%; /* popil base #1f1f1e */
   --fd-foreground: 36 12% 88%; /* popil text #e4e2de */
@@ -877,7 +877,7 @@ article:has(> .docs-page-actions) {
   --fd-ring: 36 78% 61%;
 }
 
-/* ─── Top nav (shared across landing + docs) ─── */
+/* == Top Nav (Shared Across Landing + Docs) == */
 .top-nav {
   position: sticky;
   top: 0;
@@ -1011,7 +1011,7 @@ article:has(> .docs-page-actions) {
   transform: translate(2px, -2px);
 }
 
-/* ─── Cassette label (under logo) ─── */
+/* == Cassette Label (Under Logo) == */
 .cassette-label {
   text-align: center;
   padding: 0 0 var(--space-16);
@@ -1037,7 +1037,7 @@ article:has(> .docs-page-actions) {
   color: var(--accent-rust);
 }
 
-/* ─── Hero terminal demo ─── */
+/* == Hero Terminal Demo == */
 .hero-terminal {
   margin: var(--space-10) auto 0;
   width: 100%;
@@ -1316,7 +1316,7 @@ article:has(> .docs-page-actions) {
   }
 }
 
-/* ─── Buttons ─── */
+/* == Buttons == */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1369,7 +1369,7 @@ article:has(> .docs-page-actions) {
   color: var(--accent);
 }
 
-/* ─── Hero CTA row ─── */
+/* == Hero CTA Row == */
 .hero-cta {
   display: flex;
   gap: var(--space-3);
@@ -1387,7 +1387,7 @@ article:has(> .docs-page-actions) {
   }
 }
 
-/* ─── Tape side banner ─── */
+/* == Tape Side Banner == */
 .tape-side {
   display: flex;
   align-items: center;
@@ -1438,7 +1438,7 @@ article:has(> .docs-page-actions) {
   letter-spacing: 0.28em;
 }
 
-/* ─── Track row (left marker + content) ─── */
+/* == Track Row (Left Marker + Content) == */
 .track {
   display: grid;
   grid-template-columns: 110px 1fr;
@@ -1509,19 +1509,19 @@ article:has(> .docs-page-actions) {
   }
 }
 
-/* ─── Docs: hide site TopNav on mobile (Fumadocs's mobile subnav owns the sidebar trigger) ─── */
+/* == Docs: Hide Site TopNav on Mobile (Fumadocs's Mobile Subnav Owns the Sidebar Trigger) == */
 @media (max-width: 767px) {
   body:has(#nd-docs-layout) .top-nav {
     display: none;
   }
 }
 
-/* ─── Docs: drop the body grid; keep the flat --bg from html ─── */
+/* == Docs: Drop the Body Grid; Keep the Flat --bg from html == */
 body:has(#nd-docs-layout) {
   background-image: none;
 }
 
-/* ─── Docs: solid code-block bg over the flat background ─── */
+/* == Docs: Solid Code-Block Bg over the Flat Background == */
 .fd-codeblock {
   background: var(--bg-elevated) !important;
 }
@@ -1529,7 +1529,7 @@ body:has(#nd-docs-layout) {
   background: transparent;
 }
 
-/* ─── Cassette callouts (MDX): glyph + tint per skill table ─── */
+/* == Cassette Callouts (MDX): Glyph + Tint Per Skill Table == */
 .kasetto-callout {
   margin: var(--space-5) 0;
   border-left: 3px solid var(--kc-accent, var(--a-500));
@@ -1586,7 +1586,7 @@ body:has(#nd-docs-layout) {
   --kc-tint: rgba(200, 73, 58, 0.1);
 }
 
-/* ─── kbd: keyboard key chip ─── */
+/* == kbd: Keyboard Key Chip == */
 kbd {
   display: inline-block;
   padding: 1px var(--space-2);
@@ -1601,7 +1601,7 @@ kbd {
   white-space: nowrap;
 }
 
-/* ─── A11y: skip link + global focus-visible ─── */
+/* == A11y: Skip Link + Global focus-visible == */
 .skip-link {
   position: absolute;
   top: var(--space-2);
@@ -1636,7 +1636,7 @@ button:focus-visible,
   outline: none;
 }
 
-/* ─── Site footer (multi-column) ─── */
+/* == Site Footer (Multi-Column) == */
 .site-footer {
   margin-top: var(--space-16);
   padding: var(--space-14) 32px var(--space-10);
@@ -1788,7 +1788,7 @@ button:focus-visible,
   color: var(--accent);
 }
 
-/* ─── Scroll cue ─── */
+/* == Scroll Cue == */
 .scroll-cue {
   position: fixed;
   bottom: var(--space-6);
@@ -1843,7 +1843,7 @@ button:focus-visible,
   }
 }
 
-/* ─── Theme toggle (top nav) ─── */
+/* == Theme Toggle (Top Nav) == */
 .top-nav-toggle {
   display: inline-flex;
   align-items: center;

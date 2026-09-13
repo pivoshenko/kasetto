@@ -24,14 +24,18 @@ conventional_commits = true
 filter_unconventional = true
 split_commits = false
 commit_parsers = [
-    { message = "^feat", group = "Features" },
-    { message = "^fix", group = "Bug fixes" },
+    { message = "^feat",     group = "Features" },
+    { message = "^fix",      group = "Bug fixes" },
+    { message = "^perf",     group = "Performance" },
     { message = "^refactor", group = "Refactor" },
-    { message = "^doc|^docs", group = "Documentation" },
-    { message = "^test", group = "Testing" },
-    { message = "^ci", group = "CI/CD" },
-    { message = "^chore", group = "Miscellaneous" },
-    { message = "^design", group = "Design" },
+    { message = "^docs?",    group = "Documentation" },
+    { message = "^test",     group = "Testing" },
+    { message = "^build",    group = "Build" },
+    { message = "^ci",       group = "CI/CD" },
+    { message = "^style",    group = "Style" },
+    { message = "^design",   group = "Design" },
+    { message = "^chore",    group = "Miscellaneous" },
+    { message = "^revert",   group = "Reverts" },
 ]
 filter_commits = false
 tag_pattern = "v[0-9].*"

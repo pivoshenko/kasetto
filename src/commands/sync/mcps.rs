@@ -60,7 +60,7 @@ pub(super) fn sync_mcps(
 
     // No configured agent has a native MCP target (e.g. no `agent:` or Pi only).
     // Config is source of truth, so scrub any previously locked MCPs from every
-    // known target as best-effort, prune the lock, and return without fetching.
+    // known target as best-effort, prune the lock, and return without fetching
     if mcp_settings_list.is_empty() {
         let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
         if has_orphans {
@@ -801,7 +801,7 @@ mod tests {
         assert_eq!(lock.assets.values().filter(|a| a.kind == "mcp").count(), 1);
 
         // Pi has no MCP target, so this transition must prune the prior managed
-        // server without reading the still-configured source or touching user data.
+        // server without reading the still-configured source or touching user data
         fs::remove_dir_all(&src_root).unwrap();
         let pi_cfg = mcp_cfg(&src_root, vec![Agent::Pi]);
         let mut summary2 = Summary::default();
