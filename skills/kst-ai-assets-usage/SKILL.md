@@ -1,6 +1,6 @@
 ---
 name: kst-ai-assets-usage
-description: Report which kasetto-installed skills and MCP servers are actually being used across the AI agents on this machine, and render a branded HTML dashboard of the result. Use whenever the user asks what agent assets they actually use, which skills or MCPs are dead weight, what to prune or clean up from kasetto.yaml, why their context is bloated with unused MCP servers, whether a skill has ever been invoked, or wants a usage report, audit, or dashboard of their agent setup. Also trigger on "kst usage", "what skills do I actually use", "which MCPs are worth keeping", "audit my agent assets", "am I using all these skills", or any request to review, trim, or justify an installed agent toolkit.
+description: Report which kasetto-installed skills and MCP servers are actually being used across the AI agents on this machine, and render a branded HTML dashboard of the result. Use whenever the user asks what agent assets they actually use, which skills or MCPs are dead weight, what to prune or clean up from kasetto.yaml, why their context is bloated with unused MCP servers, whether a skill has ever been invoked, or wants a usage report, audit, or dashboard of their agent setup. Also trigger on "kst ai assets usage", "ai asset usage", "what skills do I actually use", "which MCPs are worth keeping", "audit my agent assets", "am I using all these skills", or any request to review, trim, or justify an installed agent toolkit.
 ---
 
 # kst-ai-assets-usage
