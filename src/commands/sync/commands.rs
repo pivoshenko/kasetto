@@ -72,7 +72,7 @@ pub(super) fn sync_commands(
             }
         }
 
-        let update_active = update_active_for_source(ctx, &desired_names);
+        let update_active = update_active_for_source(ctx, &src.source, &desired_names);
         let fetch = update_active || needs_fetch_commands(src, &desired_names, lock, &targets);
 
         if fetch && ctx.locked {
@@ -556,6 +556,7 @@ mod tests {
             plain: true,
             update: false,
             update_only: Vec::new(),
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
@@ -605,6 +606,7 @@ mod tests {
             plain: true,
             update: false,
             update_only: Vec::new(),
+            update_local: false,
             locked: false,
             secrets: crate::secrets::SecretContext::empty(),
         };
@@ -641,6 +643,7 @@ mod tests {
             plain: true,
             update: false,
             update_only: Vec::new(),
+            update_local: false,
             locked,
             secrets: crate::secrets::SecretContext::empty(),
         }

@@ -26,7 +26,7 @@ Yes. For project scope, commit **both** `kasetto.yaml` and `kasetto.lock`, just 
 
 ## How Do I Update Pinned Versions?
 
-Run `kst sync --update` (alias `-u`) to re-resolve branch / default-HEAD sources and rewrite the pins. A plain `kst sync` honors the lock and won't fetch when destinations already match. Use `kst sync --update <name>` to update only selected entries. See [How Sync Works → How `sync` Honors the Lock](/docs/how-sync-works#how-sync-honors-the-lock).
+Run `kst sync --update` (alias `-u`) to re-resolve branch / default-HEAD sources and rewrite the pins. A plain `kst sync` honors the lock and won't fetch when destinations already match. Use `kst sync --update <name>` to update only selected entries, or `kst sync --update-local` to re-resolve every local directory source (the usual way to ship your own skill edits without touching remote pins). See [How Sync Works → How `sync` Honors the Lock](/docs/how-sync-works#how-sync-honors-the-lock).
 
 ## How Do I Uninstall Safely?
 
