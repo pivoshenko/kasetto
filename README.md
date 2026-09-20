@@ -19,10 +19,6 @@
   <a href="https://backlinklog.com/listing/kasetto.dev?utm_source=backlinklog&utm_medium=badge"><img alt="Listed on BacklinkLog" src="https://backlinklog.com/badge/kasetto.dev.svg" width="160" height="40"></a>
 </p>
 
-<p align="center">
-  A declarative AI agent environment manager, written in Rust.
-</p>
-
 **About the name**
 
 Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands, and instructions as cassettes you plug in, swap out, and share across machines.
@@ -132,21 +128,25 @@ kst doctor                  # version, paths, last sync status
 
 ## Commands
 
-One-line synopsis below. Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
+| Command                   | What it does                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `kst init`                | Generate a starter `kasetto.yaml` (local, or `--global`)                            |
+| `kst add <source>`        | Append a source to the config and sync it in                                        |
+| `kst remove <source>`     | Drop entries from the config and prune the now-unconfigured assets (alias `rm`)     |
+| `kst lock`                | Re-resolve every source and pin it into `kasetto.lock` without installing           |
+| `kst sync`                | Install skills, MCPs, commands, and instructions into agent dirs, honoring the lock |
+| `kst list`                | Print a table of installed assets from the lock file                                |
+| `kst doctor`              | Local diagnostics: version, paths, last sync status, broken skills                  |
+| `kst clean`               | Remove tracked skills, commands, MCP configs, and instructions for the given scope  |
+| `kst self update`         | Fetch the latest release, verify SHA256, replace the binary in place                |
+| `kst self uninstall`      | Remove installed assets, data, and the binary                                       |
+| `kst completions <shell>` | Emit a shell completion script (`bash`/`zsh`/`fish`/`powershell`)                   |
 
-- **`kst init`**: generate a starter `kasetto.yaml` (local or `--global`)
-- **`kst add <source>`**: append a source to the config (comments preserved) and sync it in. Kind-tagged repeatable flags `--skill`/`--mcp`/`--command`/`--instruction` name entries (a lone `*` is a wildcard; no flags means `skills: "*"`), so one `add` can touch several lists. Accepts a cargo/uv-style `<source>@<ref>` shorthand and deep `blob`/`tree` browse URLs, the latter decomposed into source + `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); `--ref`/`--branch`/`--sub-dir` override. `--dry-run` previews the edit; `--no-sync` edits without installing; `--locked` keeps the follow-up sync offline; `--json` for scripting
-- **`kst remove <source>`** (alias `rm`): drop entries from the config and prune the now-unconfigured assets. Mirrors `add`: `--skill`/`--mcp`/`--command`/`--instruction` (repeatable) subtract named entries (last one drops the whole entry; a lone `*` drops it outright); no kind flags removes the source from every list. `--ref`/`--branch` (or the `@<ref>` shorthand) disambiguate a repeated URL. `--dry-run` previews; `--no-sync` edits only; `--locked` and `--json` mirror `add`
-- **`kst lock`**: re-resolve every source and pin it into `kasetto.lock` without installing; skills become offline-ready for `sync --locked`, MCP/command/instruction revision pins refresh. `--check` (alias `--locked`/`--frozen`) verifies the lock matches the config without writing (CI-friendly); `-P`/`--upgrade-package <name>...` re-resolves only the named skills' sources
-- **`kst sync`**: read config, install skills + MCPs + commands + instructions into agent dirs honoring `kasetto.lock`; `--update` rolls pins forward, `--locked`/`--frozen` enforce the lock without fetching
-- **`kst list`**: print a uv-style table of installed skills, MCPs, commands, and instructions from the lock file; `--type skills|mcps|commands|instructions` filters; `--json` for scripting
-- **`kst doctor`**: local diagnostics (version, paths, last sync status, broken skills)
-- **`kst clean`**: remove tracked skills, commands, MCP configs, and instructions for the given scope
-- **`kst self update`**: fetch latest release, verify SHA256, replace binary in place
-- **`kst self uninstall`**: remove installed assets, data, and the binary
-- **`kst completions <shell>`**: emit shell completion script (`bash`/`zsh`/`fish`/`powershell`)
+Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeat for stricter
+silence), and `--project | --global`. `--plain` is still accepted as a deprecated alias for `--color
+never`.
 
-Most commands accept `--json`, `--color <auto|always|never>`, `-q`/`--quiet` (repeat for stricter silence), and `--project | --global`. `--plain` is still accepted as a deprecated alias for `--color never`.
+Full flags and examples in the [commands reference](https://kasetto.dev/docs/commands).
 
 ## Configuration
 
@@ -304,11 +304,3 @@ Don't see your agent? Use the `destination` field to point at any path.
 Private GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances work via env-var tokens (`GITHUB_TOKEN`, `GITLAB_TOKEN`, `BITBUCKET_TOKEN`, `GITEA_TOKEN`, etc.). No login command, no credentials file. The same tokens apply to remote `--config` URLs.
 
 Full host table and auth resolution rules in the [authentication docs](https://kasetto.dev/docs/authentication).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
-
-## License
-
-Licensed under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
