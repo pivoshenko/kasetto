@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9.0] - 2026-09-20
+
+### Build
+
+- **site**: Update dependencies and realign biome schema
+- Update dependencies
+- Update dependencies
+
+### CI/CD
+
+- Drop label sync in favor of terraform
+- Publish to crates.io via trusted publishing instead of a token
+
+### Documentation
+
+- Use absolute raw urls for social preview images
+- **readme**: Condense commands into a table and trim sections
+- **skills**: Align kst-ai-assets-usage trigger phrases with new name
+- Rewrite CLAUDE.md from scratch
+- Regenerate CLAUDE.md and add AGENTS.md
+- **release**: Drop trusted publishing header comments
+- Add contributors list
+
+### Features
+
+- **skills**: Add kst-usage asset telemetry skill
+
+### Miscellaneous
+
+- **assets**: Rename social preview assets to kind-first names
+- Repository housekeeping
+- Symlink AGENTS.md to CLAUDE.md
+
+### Refactor
+
+- **skills**: Rename kst-usage to kst-ai-assets-usage
+- **justfile**: Standardize recipe names and ordering
+
 ## [3.8.0] - 2026-08-25
 
 ### Bug fixes
@@ -24,6 +62,10 @@ All notable changes to this project will be documented in this file.
 ### Testing
 
 - **mcps**: Cover pi-only cleanup transition
+
+### Release
+
+- V3.8.0
 
 ## [3.7.1] - 2026-08-21
 
@@ -72,6 +114,10 @@ All notable changes to this project will be documented in this file.
 - **site**: Use canonical www host in metadata and llms.txt
 - **ci**: Ignore unfixable image-size advisories in pnpm audit
 
+### Build
+
+- **site**: Override nanoid to a patched version
+
 ### Design
 
 - **cli**: Move sync status labels left of the asset name
@@ -111,25 +157,13 @@ All notable changes to this project will be documented in this file.
 - Update dependencies (cargo update, pnpm update)
 - Update dependencies and migrate biome config
 
-### Refactor
-
-- **site**: Drop the cassette etymology line from the hero
-
-### Testing
-
-- **commands**: Drop redundant cleanup comment
-
-### Build
-
-- **site**: Override nanoid to a patched version
-
-### Perf
+### Performance
 
 - **site**: Bundle subsetted fonts for the og image
 
-### Release
+### Refactor
 
-- V3.7.0
+- **site**: Drop the cassette etymology line from the hero
 
 ### Style
 
@@ -139,6 +173,14 @@ All notable changes to this project will be documented in this file.
 - **cli**: One space between a label and its trailing value
 - **cli**: Give every command the same section and row grammar
 - **site**: Drop explanatory comments from the seo changes
+
+### Testing
+
+- **commands**: Drop redundant cleanup comment
+
+### Release
+
+- V3.7.0
 
 ## [3.6.2] - 2026-08-04
 
@@ -168,15 +210,15 @@ All notable changes to this project will be documented in this file.
 - **site**: Add titles to svg assets for accessibility
 - **site**: Derive agents-grid preset count from list length
 
-### Miscellaneous
-
-- Add editorconfig
-
 ### Build
 
 - **deps**: Override sharp to >=0.35.0 for libvips advisory
 - **deps**: Update dependencies
 - **deps**: Update dependencies
+
+### Miscellaneous
+
+- Add editorconfig
 
 ### Release
 
@@ -184,13 +226,13 @@ All notable changes to this project will be documented in this file.
 
 ## [3.6.0] - 2026-07-17
 
-### Features
-
-- Add zcode agent preset
-
 ### Build
 
 - Bump crossbeam-epoch to 0.9.20 for RUSTSEC-2026-0204
+
+### Features
+
+- Add zcode agent preset
 
 ### Release
 
@@ -240,14 +282,14 @@ All notable changes to this project will be documented in this file.
 - **sync**: Extract classify_mcp_file from sync_mcps
 - **sync**: Bundle per-skill install args into SkillJob
 
-### Release
-
-- V3.5.0
-
 ### Style
 
 - Normalize unicode ellipsis to ASCII ... across docs, comments, and CLI help
 - Collapse single-line use import in sync/skills
+
+### Release
+
+- V3.5.0
 
 ## [3.4.0] - 2026-06-21
 
@@ -266,15 +308,15 @@ All notable changes to this project will be documented in this file.
 
 - **site**: Add security headers, Analytics and Speed Insights
 
-### Bench
-
-- Add hyperfine cold-sync benchmark
-
-### Perf
+### Performance
 
 - Sparse-extract sub-dir sources and stream archive bodies
 - Download source archives in parallel during skill sync
 - Cache extracted source trees for immutable refs
+
+### Bench
+
+- Add hyperfine cold-sync benchmark
 
 ### Release
 
@@ -366,6 +408,16 @@ All notable changes to this project will be documented in this file.
 - **ci**: Tag even when version already matches Cargo.toml
 - **branding**: Center ASCII logo within border
 - Correct Japanese branding to スキル
+
+### Build
+
+- Drop crossterm dependency and TUI scaffolding
+- **deps**: Update cargo lockfile
+- **deps**: Add next-themes
+- **deps**: Update dependencies
+- Update dev dependencies
+- Update dev dependencies
+- Update dependencies
 
 ### CI/CD
 
@@ -588,6 +640,13 @@ All notable changes to this project will be documented in this file.
 - Remove Go migration leftovers and keep Rust-only docs
 - Productionize repo with CI/CD, Homebrew formula, and governance docs
 
+### Performance
+
+- **sync**: Hash each skill destination once per run
+- Drop redundant clones and allocations
+- **tui**: Redraw home and list browser on events only
+- Use mimalloc, fat LTO, streaming I/O, and SQLite tuning
+
 ### Refactor
 
 - **sync**: Add skill_key helper for lock keys
@@ -637,28 +696,27 @@ All notable changes to this project will be documented in this file.
 - Migrate sukiro core from Go to Rust
 - Rename project and CLI to sukiro
 
+### Reverts
+
+- **readme**: Drop two-column demo layout, restore single column
+- Roll back to ab457a1 (before config presets and search features)
+
+### Style
+
+- **site**: Polish demo snippet, footer, and docs background
+- **site**: Swap Side B accent from rust to amber
+- **landing**: Apply formatter line wrap
+- Run formatters
+- Run formatters
+- Run formatters
+- Run formatters
+- **ci**: Capitalize step names in workflows
+
 ### Testing
 
 - Share one race-free temp_dir helper across modules
 - **config**: Add unit tests for config resolution priority logic
 - **core**: Expand coverage for fsops profile and ui
-
-### Build
-
-- Drop crossterm dependency and TUI scaffolding
-- **deps**: Update cargo lockfile
-- **deps**: Add next-themes
-- **deps**: Update dependencies
-- Update dev dependencies
-- Update dev dependencies
-- Update dependencies
-
-### Perf
-
-- **sync**: Hash each skill destination once per run
-- Drop redundant clones and allocations
-- **tui**: Redraw home and list browser on events only
-- Use mimalloc, fat LTO, streaming I/O, and SQLite tuning
 
 ### Release
 
@@ -685,20 +743,4 @@ All notable changes to this project will be documented in this file.
 - V1.2.1
 - V1.2.0
 - V1.1.0
-
-### Revert
-
-- **readme**: Drop two-column demo layout, restore single column
-- Roll back to ab457a1 (before config presets and search features)
-
-### Style
-
-- **site**: Polish demo snippet, footer, and docs background
-- **site**: Swap Side B accent from rust to amber
-- **landing**: Apply formatter line wrap
-- Run formatters
-- Run formatters
-- Run formatters
-- Run formatters
-- **ci**: Capitalize step names in workflows
 
