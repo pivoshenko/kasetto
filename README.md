@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://kasetto.dev/">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/pivoshenko/kasetto/main/assets/social-preview-dark.svg" />
-      <img alt="Kasetto - a declarative AI agent environment manager, written in Rust" src="https://raw.githubusercontent.com/pivoshenko/kasetto/main/assets/social-preview-light.svg" width="800" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/pivoshenko/kasetto/main/assets/preview_social_dark.svg" />
+      <img alt="Kasetto - a declarative AI agent environment manager, written in Rust" src="https://raw.githubusercontent.com/pivoshenko/kasetto/main/assets/preview_social_light.svg" width="800" />
     </picture>
   </a>
 </p>

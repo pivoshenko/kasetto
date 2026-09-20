@@ -20,7 +20,7 @@ const REMOVED = "#e87e6c"; // CLI ERROR
 const DIM = "#6e6759"; // CLI INFRA
 const JP_YELLOW = "#d4b070"; // popil yellow
 
-// Same six lines as `assets/social-preview-dark.svg`, so the shared card and the
+// Same six lines as `assets/preview_social_dark.svg`, so the shared card and the
 // GitHub social preview stay in sync. 58 columns; at 28px in JetBrains Mono
 // (0.6em advance) that is 974px, which clears the 1120px frame interior
 const WORDMARK = [
@@ -33,7 +33,7 @@ const WORDMARK = [
 ];
 
 // The wordmark draws as two layers over one grid so the letters read as stacked
-// tiles rather than a solid slab, matching `assets/social-preview-dark.svg`: the
+// tiles rather than a solid slab, matching `assets/preview_social_dark.svg`: the
 // box-drawing rules paint over the blocks, keeping the shadow outline
 // continuous, while BG-colored bars cut a 3px gap into every row seam
 const BLOCK = "\u2588";
