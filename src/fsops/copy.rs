@@ -56,7 +56,11 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
     // A propagated READONLY attribute would wedge every later re-sync on
     // Windows: remove_dir_all fails with PermissionDenied on read-only files
     // Unix is unaffected (unlink is governed by the parent dir)
+    // clippy warns that clearing readonly makes a file world-writable, which is
+    // a Unix concern; this block is Windows-only, where it clears the READONLY
+    // attribute and nothing more
     #[cfg(windows)]
+    #[allow(clippy::permissions_set_readonly_false)]
     {
         let mut perms = fs::metadata(dst)?.permissions();
         if perms.readonly() {
@@ -67,12 +71,13 @@ fn copy_file(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+// Every case here needs symlinks or Unix permission bits, so the module and its
+// imports are Unix-only rather than each test being gated individually
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::fsops::temp_dir;
 
-    #[cfg(unix)]
     #[test]
     fn copy_dir_preserves_executable_bit() {
         use std::os::unix::fs::PermissionsExt;
@@ -96,7 +101,6 @@ mod tests {
         let _ = fs::remove_dir_all(&dst);
     }
 
-    #[cfg(unix)]
     #[test]
     fn copy_dir_follows_symlinked_directories() {
         use std::os::unix::fs::symlink;
