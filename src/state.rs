@@ -120,11 +120,17 @@ pub(crate) fn save_runtime_state(
 ) -> Result<()> {
     let path = runtime_state_path(scope, project_root)?;
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).map_err(|e| {
+            err(format!(
+                "failed to create state directory {}: {e}",
+                parent.display()
+            ))
+        })?;
     }
     let json = serde_json::to_string_pretty(state)
         .map_err(|e| err(format!("failed to serialize state file: {e}")))?;
-    fs::write(&path, json)?;
+    fs::write(&path, json)
+        .map_err(|e| err(format!("failed to write state file {}: {e}", path.display())))?;
     Ok(())
 }
 

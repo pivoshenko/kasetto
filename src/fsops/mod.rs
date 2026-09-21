@@ -270,10 +270,21 @@ pub(crate) fn scope_root(scope: Scope, project_root: &Path) -> Result<PathBuf> {
 
 /// Make an absolute install path portable by storing it relative to `root`.
 /// Paths outside `root` (e.g. a custom absolute `destination`) are kept as-is.
+///
+/// Separators are normalized to `/` for the same reason `hash_dir` normalizes
+/// the bytes it digests: the lock is committed and read back on other machines,
+/// so a Windows-written `.claude/skills\alpha` must not be what a Unix checkout
+/// tries to resolve, where it would be one filename rather than a path. Windows
+/// accepts `/` natively, so `resolve_dest` round-trips either way.
 pub(crate) fn relativize_dest(abs: &Path, root: &Path) -> String {
-    match abs.strip_prefix(root) {
+    let stored = match abs.strip_prefix(root) {
         Ok(rel) => rel.to_string_lossy().to_string(),
         Err(_) => abs.to_string_lossy().to_string(),
+    };
+    if cfg!(windows) {
+        stored.replace('\\', "/")
+    } else {
+        stored
     }
 }
 

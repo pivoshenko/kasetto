@@ -74,7 +74,7 @@ This project uses [`just`](https://github.com/casey/just) as its task runner. Ru
 | `lint-rs` | Lints every Rust target with Clippy, failing on any warning |
 | `lint-site` | Lints the `site/` sources |
 | `test` | Runs `test-rs` and `test-site` |
-| `test-rs` | Runs the Rust test suite, skipped with a message if a `.no-tests` sentinel file exists |
+| `test-rs` | Runs the Rust test suite |
 | `test-site` | No-op; the site has no test suite |
 | `check` | Runs `lint`, `test`, and `build` |
 | `update` | Runs `update-rs` and `update-site` |
