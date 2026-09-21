@@ -15,7 +15,13 @@ permissions:
 
 jobs:
   ci-rs:
-    runs-on: ubuntu-24.04-arm
+    # Releases ship an x86_64-pc-windows-msvc binary, so the suite has to run
+    # there too: a Unix-only matrix let #63 reach a release unseen
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04-arm, macos-15, windows-2025]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
