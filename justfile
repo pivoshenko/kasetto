@@ -28,7 +28,7 @@ lint-site:
 test: test-rs test-site
 
 test-rs:
-    @[ -f .no-tests ] && echo "skipping (.no-tests sentinel)" || cargo test
+    cargo test
 
 test-site:
     @echo "no Next.js tests"

@@ -29,8 +29,6 @@ and its short alias `kst`, both calling `kasetto::run()`) plus the documentation
 
 ## Silent failure modes
 
-- `just test-rs` prints `skipping (.no-tests sentinel)` and exits 0 when a `.no-tests` file exists, so
-  `just check` can go green with zero tests run. Check the reported test count before saying tests passed
 - a new `site/content/docs/*.mdx` file is invisible in the site nav unless it is also added to the
   ordered `pages` array in `site/content/docs/meta.json`
 
