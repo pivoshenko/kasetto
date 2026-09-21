@@ -4,10 +4,27 @@ use std::path::PathBuf;
 
 use crate::error::{err, Result};
 
+/// Windows has no `HOME`: the native variable is `USERPROFILE`, and the `HOME`
+/// a Git Bash / MSYS shell exports points into that emulated tree, which a
+/// native msvc build cannot always resolve. Prefer `USERPROFILE` there and keep
+/// `HOME` only as the fallback.
 pub(crate) fn dirs_home() -> Result<PathBuf> {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .map_err(|_| err("HOME is not set"))
+    let vars: &[&str] = if cfg!(windows) {
+        &["USERPROFILE", "HOME"]
+    } else {
+        &["HOME"]
+    };
+    for var in vars {
+        if let Ok(value) = std::env::var(var) {
+            if !value.is_empty() {
+                return Ok(PathBuf::from(value));
+            }
+        }
+    }
+    Err(err(format!(
+        "no home directory: none of {} is set",
+        vars.join(", ")
+    )))
 }
 
 /// [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) config home:
