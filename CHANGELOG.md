@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9.1] - 2026-09-28
+
+### Bug fixes
+
+- **fsops**: Normalize lock destination separators to slashes
+- **fsops**: Satisfy windows clippy in the copy path
+- **fsops**: Resolve the home dir from USERPROFILE on windows
+- **fsops**: Hash symlinks the same way copy resolves them
+
+### CI/CD
+
+- **rs**: Run the suite on windows and macos
+
+### Miscellaneous
+
+- **justfile**: Drop the .no-tests sentinel from test-rs
+
 ## [3.9.0] - 2026-09-20
 
 ### Build
@@ -39,6 +56,10 @@ All notable changes to this project will be documented in this file.
 
 - **skills**: Rename kst-usage to kst-ai-assets-usage
 - **justfile**: Standardize recipe names and ordering
+
+### Release
+
+- V3.9.0
 
 ## [3.8.0] - 2026-08-25
 
