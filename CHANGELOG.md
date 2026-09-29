@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9.2] - 2026-09-29
+
+### Bug fixes
+
+- **sync**: Keep desired commands and instructions when a pack changes source
+- **sync**: Keep desired mcp servers when a pack changes source
+
+### Documentation
+
+- **readme**: Shrink teto artwork to an inline icon
+- **readme**: Add kasane teto as a second name origin
+- **contributors**: List both of xavier's handles
+- **contributors**: Use the handle linked to the commit author
+- **contributors**: Add xavier francisco
+
+### Features
+
+- **sync**: Add --update-local to re-resolve local-path sources
+
 ## [3.9.1] - 2026-09-28
 
 ### Bug fixes
@@ -18,6 +37,10 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous
 
 - **justfile**: Drop the .no-tests sentinel from test-rs
+
+### Release
+
+- V3.9.1
 
 ## [3.9.0] - 2026-09-20
 
