@@ -12,4 +12,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) if you would like to join them.
 
 - Aaron Florey ([@aaronflorey](https://github.com/aaronflorey))
 - Stefan Vatov ([@stefan-vatov](https://github.com/stefan-vatov))
-- Xavier Francisco ([@XF-FW](https://github.com/XF-FW))
+- Xavier Francisco ([@Qu4tro](https://github.com/Qu4tro))
