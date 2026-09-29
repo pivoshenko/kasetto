@@ -257,16 +257,22 @@ pub(super) fn sync_commands(
         }
     }
 
+    // Same hazard as `sync_skills`: a partial failure (e.g. `locked_error`)
+    // would have skipped extending `desired_ids` for the failed source. Defer
+    // stale removal until the next clean run. Every `summary.failed` bump happens
+    // above, so the count is already final
+    //
+    // Runs before the install because asset ids carry the source: a pack that
+    // moved to a different `source` retires its old id while keeping the same
+    // destination path, so pruning afterwards would delete the file the install
+    // just wrote
+    if summary.failed == 0 {
+        remove_stale(ctx, lock, summary, actions, &desired_ids);
+    }
+
     apply_pending(ctx, lock, summary, actions, &targets, &pending)?;
     for d in cleanup_dirs {
         let _ = fs::remove_dir_all(d);
-    }
-
-    // Same hazard as `sync_skills`: a partial failure (e.g. `locked_error`)
-    // would have skipped extending `desired_ids` for the failed source. Defer
-    // stale removal until the next clean run
-    if summary.failed == 0 {
-        remove_stale(ctx, lock, summary, actions, &desired_ids);
     }
     Ok(())
 }
@@ -623,6 +629,84 @@ mod tests {
         assert!(!project.join(".cursor/commands/git-commit.md").exists());
 
         let _ = fs::remove_dir_all(&src_root);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn moving_a_pack_to_another_source_keeps_its_command_installed() {
+        fn cfg_for(src: &std::path::Path) -> Config {
+            Config {
+                destination: None,
+                scope: Some(Scope::Project),
+                agent: Some(AgentField::Many(vec![Agent::ClaudeCode])),
+                skills: Vec::new(),
+                mcps: Vec::new(),
+                commands: vec![CommandSourceSpec {
+                    source: src.to_string_lossy().to_string(),
+                    branch: None,
+                    git_ref: None,
+                    sub_dir: None,
+                    commands: CommandsField::Wildcard("*".to_string()),
+                }],
+                instructions: Vec::new(),
+                secrets: None,
+            }
+        }
+
+        let old_src = temp_dir("kasetto-cmd-move-old");
+        write(
+            &old_src.join("commands/git/commit.md"),
+            "---\ndescription: commit\n---\nOLD\n",
+        );
+        let project = temp_dir("kasetto-cmd-move-project");
+        fs::create_dir_all(&project).unwrap();
+        let dest = project.join(".claude/commands/git/commit.md");
+
+        let mut lock = LockFile::default();
+        let cfg = cfg_for(&old_src);
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_commands(
+            &make_ctx(&cfg, &project, std::slice::from_ref(&project), false),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+        assert_eq!(summary.installed, 1);
+        assert!(dest.is_file());
+
+        // Same command name under a different `source`, with new content. The old
+        // source's asset id is retired, but its destination file is still wanted
+        let new_src = temp_dir("kasetto-cmd-move-new");
+        write(
+            &new_src.join("commands/git/commit.md"),
+            "---\ndescription: commit\n---\nNEW\n",
+        );
+        let cfg2 = cfg_for(&new_src);
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_commands(
+            &make_ctx(&cfg2, &project, std::slice::from_ref(&project), false),
+            &mut lock,
+            &mut summary2,
+            &mut actions2,
+        )
+        .unwrap();
+
+        assert_eq!(summary2.removed, 1, "the old source's lock entry is pruned");
+        assert!(dest.is_file(), "the command must survive the source move");
+        assert!(
+            fs::read_to_string(&dest).unwrap().contains("NEW"),
+            "the new source's content must land, not the retired source's"
+        );
+        assert_eq!(
+            lock.assets.values().filter(|a| a.kind == "command").count(),
+            1
+        );
+
+        let _ = fs::remove_dir_all(&old_src);
+        let _ = fs::remove_dir_all(&new_src);
         let _ = fs::remove_dir_all(&project);
     }
 

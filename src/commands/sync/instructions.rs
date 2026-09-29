@@ -260,13 +260,22 @@ pub(super) fn sync_instructions(
         }
     }
 
+    // Deferred on a partial failure: `desired_ids` would be missing the failed
+    // source's entries. Every `summary.failed` bump happens above, so the count is
+    // already final
+    //
+    // Runs before the install because asset ids carry the source: a pack that
+    // moved to a different `source` retires its old id while `file:` targets keep
+    // the same path, so pruning afterwards would delete the file the install just
+    // wrote. `agg:` targets are unaffected either way, since `block_id` is keyed
+    // on (source, name) and the retired block is a different block
+    if summary.failed == 0 {
+        remove_stale(ctx, lock, summary, actions, &desired_ids);
+    }
+
     apply_pending(ctx, lock, summary, actions, &targets, &pending)?;
     for d in cleanup_dirs {
         let _ = fs::remove_dir_all(d);
-    }
-
-    if summary.failed == 0 {
-        remove_stale(ctx, lock, summary, actions, &desired_ids);
     }
     Ok(())
 }
@@ -557,6 +566,79 @@ mod tests {
             locked,
             secrets: crate::secrets::SecretContext::empty(),
         }
+    }
+
+    #[test]
+    fn moving_a_pack_to_another_source_keeps_its_instruction_installed() {
+        let old_src = temp_dir("kasetto-instr-move-old");
+        write(
+            &old_src.join("instructions/style.mdc"),
+            "---\ndescription: house style\n---\nOLD\n",
+        );
+        let project = temp_dir("kasetto-instr-move-project");
+        fs::create_dir_all(&project).unwrap();
+
+        let agents = vec![Agent::ClaudeCode, Agent::Windsurf];
+        let cfg = base_cfg(&old_src, agents.clone(), InstructionsField::Wildcard("*".into()));
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_instructions(
+            &make_ctx(&cfg, &project, false),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+        assert_eq!(summary.installed, 1);
+        let dir_dest = project.join(".windsurf/rules/style.md");
+        assert!(dir_dest.is_file());
+
+        // Same instruction name under a different `source`, with new content
+        let new_src = temp_dir("kasetto-instr-move-new");
+        write(
+            &new_src.join("instructions/style.mdc"),
+            "---\ndescription: house style\n---\nNEW\n",
+        );
+        let cfg2 = base_cfg(&new_src, agents, InstructionsField::Wildcard("*".into()));
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_instructions(
+            &make_ctx(&cfg2, &project, false),
+            &mut lock,
+            &mut summary2,
+            &mut actions2,
+        )
+        .unwrap();
+
+        assert_eq!(summary2.removed, 1, "the old source's lock entry is pruned");
+
+        // Per-file (`file:`) targets share one path across sources, so the prune
+        // must not take the file the install just wrote
+        assert!(
+            dir_dest.is_file(),
+            "the dir-format instruction must survive the source move"
+        );
+        assert!(fs::read_to_string(&dir_dest).unwrap().contains("NEW"));
+
+        // Aggregate (`agg:`) targets key the managed block on (source, name), so
+        // the retired source's block is a different block: exactly one survives
+        let claude = fs::read_to_string(project.join("CLAUDE.md")).unwrap();
+        assert!(claude.contains("NEW"));
+        assert!(!claude.contains("OLD"));
+        assert_eq!(claude.matches("kasetto:instruction:style-").count(), 2);
+
+        assert_eq!(
+            lock.assets
+                .values()
+                .filter(|a| a.kind == "instructions")
+                .count(),
+            1
+        );
+
+        let _ = fs::remove_dir_all(&old_src);
+        let _ = fs::remove_dir_all(&new_src);
+        let _ = fs::remove_dir_all(&project);
     }
 
     #[test]
