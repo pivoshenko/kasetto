@@ -306,13 +306,15 @@ pub(super) fn sync_mcps(
         }
     }
 
-    // Phase 2: apply all pending installs and updates
-    apply_pending(ctx, lock, summary, actions, &mcp_settings_list, &pending)?;
-    cleanup_staged(&cleanup_dirs);
-
     // Remove MCP servers no longer in config. Skipped when any source failed
     // (locked_error et al.): `desired_mcp_ids` would be missing the failed
-    // source's existing entries and they'd be treated as orphans
+    // source's existing entries and they'd be treated as orphans. Every
+    // `summary.failed` bump happens in phase 1, so the count is already final
+    //
+    // Runs before the merge because asset ids carry the source: a pack that
+    // moved to a different `source` retires its old id and claims a new one for
+    // the same server names. Clearing the retired names first is what lets the
+    // new definitions land, since a merge skips a name that is already present
     if summary.failed == 0 {
         remove_stale(
             ctx,
@@ -323,6 +325,10 @@ pub(super) fn sync_mcps(
             &mcp_settings_list,
         );
     }
+
+    // Phase 2: apply all pending installs and updates
+    apply_pending(ctx, lock, summary, actions, &mcp_settings_list, &pending)?;
+    cleanup_staged(&cleanup_dirs);
 
     Ok(secrets_need_update)
 }
@@ -822,6 +828,75 @@ mod tests {
         assert!(settings["mcpServers"]["user-owned"].is_object());
         assert_eq!(lock.assets.values().filter(|a| a.kind == "mcp").count(), 0);
 
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn moving_a_pack_to_another_source_keeps_its_servers_installed() {
+        let old_src = temp_dir("kasetto-mcp-move-old");
+        fs::create_dir_all(old_src.join("mcps")).unwrap();
+        fs::write(
+            old_src.join("mcps/pack.json"),
+            r#"{"mcpServers":{"alpha":{"command":"a"},"bravo":{"command":"b"}}}"#,
+        )
+        .unwrap();
+        let project = temp_dir("kasetto-mcp-move-project");
+        fs::create_dir_all(&project).unwrap();
+
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_mcps(
+            &project_ctx(&mcp_cfg(&old_src, vec![Agent::ClaudeCode]), &project),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+        assert_eq!(summary.installed, 1);
+
+        // Same file name and server names under a different `source`, plus a new
+        // server. The old source's asset id is retired, but its servers are not
+        let new_src = temp_dir("kasetto-mcp-move-new");
+        fs::create_dir_all(new_src.join("mcps")).unwrap();
+        fs::write(
+            new_src.join("mcps/pack.json"),
+            r#"{"mcpServers":{"alpha":{"command":"NEW"},"bravo":{"command":"b"},"echo":{"command":"e"}}}"#,
+        )
+        .unwrap();
+
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_mcps(
+            &project_ctx(&mcp_cfg(&new_src, vec![Agent::ClaudeCode]), &project),
+            &mut lock,
+            &mut summary2,
+            &mut actions2,
+        )
+        .unwrap();
+
+        assert_eq!(summary2.removed, 1, "the old source's lock entry is pruned");
+        let settings = project_mcp_settings(&project);
+        for name in ["alpha", "bravo", "echo"] {
+            assert!(
+                settings["mcpServers"][name].is_object(),
+                "{name} must survive the source move"
+            );
+        }
+        // The new source redefines `alpha`, so the move must also carry the new
+        // definition over, not leave the retired source's copy in place
+        assert_eq!(settings["mcpServers"]["alpha"]["command"], "NEW");
+        let mcp_assets: Vec<&str> = lock
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "mcp")
+            .map(|(id, _)| id.as_str())
+            .collect();
+        assert_eq!(mcp_assets.len(), 1);
+        assert!(mcp_assets[0].contains(&new_src.to_string_lossy().to_string()));
+
+        let _ = fs::remove_dir_all(&old_src);
+        let _ = fs::remove_dir_all(&new_src);
         let _ = fs::remove_dir_all(&project);
     }
 
