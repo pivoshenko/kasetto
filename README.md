@@ -23,6 +23,10 @@
 
 Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands, and instructions as cassettes you plug in, swap out, and share across machines.
 
+<a href="https://twitter.com/yachima_tana/status/1647153787923234816"><img align="right" width="150" alt="Kasane Teto, artwork by yachima tana" src="https://static.zerochan.net/Kasane.Teto.1024.4077055.webp"></a> Someone commented under a Reddit post about Kasetto that the name also reminded them of **Kasane Teto** (重音テト), the virtual singer. That turns out to fit the project just as well, so both origins are canon and Teto is the patron saint of Kasetto.
+
+<br clear="all">
+
 ## Why Kasetto
 
 There are good tools in this space already. [Vercel Skills](https://github.com/vercel-labs/skills) installs skills from a curated catalog, and [Claude Plugins](https://claude.com/plugins) offer runtime integrations. Both work well for one-off installs, but neither gives you a declarative, version-controlled config. See [Kasetto vs the alternatives](https://kasetto.dev/docs/vs-alternatives) for the full comparison.
