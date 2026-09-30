@@ -24,7 +24,11 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   const faq = page.url === "/docs/faq" ? faqJsonLd(page) : null;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      article={{ className: "max-w-[1120px]" }}
+    >
       <JsonLd data={breadcrumbJsonLd(page)} />
       {faq && <JsonLd data={faq} />}
       <DocsTitle>{page.data.title}</DocsTitle>
