@@ -6,6 +6,8 @@ mod instructions;
 mod mcps;
 mod skills;
 
+pub(crate) use mcps::inline_mcp_lock_asset;
+
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

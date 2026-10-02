@@ -9,7 +9,7 @@ use crate::error::{err, Result};
 use crate::fsops::{
     dirs_home, dirs_kasetto_config, hash_file, now_unix, resolve_mcp_settings_targets,
 };
-use crate::lock::LockFile;
+use crate::lock::{AssetEntry, LockFile};
 use crate::mcps::{merge_mcp_config, remove_mcp_server, servers_present_in_settings};
 use crate::model::{
     all_mcp_project_targets, all_mcp_settings_targets, Action, InlineMcpSpec, McpSettingsTarget,
@@ -24,7 +24,6 @@ use super::{
 };
 
 /// An MCP entry ready to be installed or updated.
-#[derive(Default)]
 struct PendingMcp {
     source: String,
     file_name: String,
@@ -42,6 +41,41 @@ struct PendingMcp {
     /// destination after a plaintext secret is written.
     has_secrets: bool,
     source_revision: String,
+}
+
+impl PendingMcp {
+    fn new(
+        source: &str,
+        file_name: String,
+        servers: serde_json::Map<String, serde_json::Value>,
+        hash: String,
+        source_revision: &str,
+    ) -> Result<Self> {
+        Ok(Self {
+            asset_id: format!("mcp::{source}::{file_name}"),
+            server_names: servers.keys().cloned().collect(),
+            has_secrets: crate::secrets::has_placeholder(&serde_json::to_string(&servers)?),
+            source: source.into(),
+            file_name,
+            servers,
+            hash,
+            is_new: false,
+            overwrite: false,
+            source_revision: source_revision.into(),
+        })
+    }
+
+    fn lock_entry(&self) -> AssetEntry {
+        AssetEntry {
+            kind: "mcp".into(),
+            name: self.file_name.clone(),
+            hash: self.hash.clone(),
+            source: self.source.clone(),
+            destination: self.server_names.join(","),
+            source_revision: self.source_revision.clone(),
+            has_secrets: self.has_secrets,
+        }
+    }
 }
 
 /// Returns `true` when a secret-bearing pack was left unchanged without
@@ -92,11 +126,13 @@ pub(super) fn sync_mcps(
         let src = match spec {
             McpSpec::Source(src) => src,
             McpSpec::Inline(inline) => {
-                let hash = inline_hash(&inline.servers)?;
-                let asset_id = format!("mcp::{INLINE_SOURCE}::{}", inline.name);
-                desired_mcp_ids.insert(asset_id.clone());
+                let entry = inline_pending(inline)?;
+                desired_mcp_ids.insert(entry.asset_id.clone());
                 let (status, error) = if ctx.locked
-                    && lock.assets.get(&asset_id).is_none_or(|a| a.hash != hash)
+                    && lock
+                        .assets
+                        .get(&entry.asset_id)
+                        .is_none_or(|a| a.hash != entry.hash)
                 {
                     (
                         "locked_error",
@@ -106,14 +142,7 @@ pub(super) fn sync_mcps(
                         ),
                     )
                 } else {
-                    match classify_inline_mcp(
-                        ctx,
-                        lock,
-                        &mcp_settings_list,
-                        inline,
-                        asset_id,
-                        hash,
-                    )? {
+                    match classify_inline_mcp(ctx, lock, &mcp_settings_list, entry)? {
                         McpFileOutcome::Install(p) => {
                             pending.push(*p);
                             continue;
@@ -429,16 +458,8 @@ fn classify_mcp_file(
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
-    let asset_id = format!("mcp::{source}::{file_name}");
-    let entry = PendingMcp {
-        source: source.into(),
-        file_name,
-        servers,
-        hash,
-        asset_id: asset_id.clone(),
-        source_revision: source_revision.into(),
-        ..Default::default()
-    };
+    let entry = PendingMcp::new(source, file_name, servers, hash, source_revision)?;
+    let asset_id = entry.asset_id.clone();
     let outcome = classify_mcp_servers(ctx, lock, mcp_settings_list, entry, update_active)?;
     Ok((asset_id, outcome))
 }
@@ -447,22 +468,27 @@ fn classify_inline_mcp(
     ctx: &SyncContext,
     lock: &LockFile,
     mcp_settings_list: &[McpSettingsTarget],
-    inline: &InlineMcpSpec,
-    asset_id: String,
-    hash: String,
+    entry: PendingMcp,
 ) -> Result<McpFileOutcome> {
     let update_active =
-        ctx.update && (ctx.update_only.is_empty() || ctx.update_only.contains(&inline.name));
-    let entry = PendingMcp {
-        source: INLINE_SOURCE.into(),
-        file_name: inline.name.clone(),
-        servers: inline.servers.clone(),
-        hash,
-        asset_id,
-        source_revision: INLINE_SOURCE.into(),
-        ..Default::default()
-    };
+        ctx.update && (ctx.update_only.is_empty() || ctx.update_only.contains(&entry.file_name));
     classify_mcp_servers(ctx, lock, mcp_settings_list, entry, update_active)
+}
+
+fn inline_pending(inline: &InlineMcpSpec) -> Result<PendingMcp> {
+    PendingMcp::new(
+        INLINE_SOURCE,
+        inline.name.clone(),
+        inline.servers.clone(),
+        inline_hash(&inline.servers)?,
+        INLINE_SOURCE,
+    )
+}
+
+/// The lock entry a sync records for an inline MCP, so `kst lock` can pin it without syncing.
+pub(crate) fn inline_mcp_lock_asset(inline: &InlineMcpSpec) -> Result<(String, AssetEntry)> {
+    let pending = inline_pending(inline)?;
+    Ok((pending.asset_id.clone(), pending.lock_entry()))
 }
 
 fn inline_hash(servers: &serde_json::Map<String, serde_json::Value>) -> Result<String> {
@@ -477,9 +503,6 @@ fn classify_mcp_servers(
     mut pending: PendingMcp,
     update_active: bool,
 ) -> Result<McpFileOutcome> {
-    pending.server_names = pending.servers.keys().cloned().collect();
-    pending.has_secrets =
-        crate::secrets::has_placeholder(&serde_json::to_string(&pending.servers)?);
     let existing = lock.get_tracked_asset("mcp", &pending.asset_id);
     // A secret-bearing entry under `--update` is re-merged even when unchanged,
     // so a secret rotated only in env/credentials.yaml propagates
@@ -653,19 +676,7 @@ fn apply_pending(
                         crate::secrets::warn_if_world_readable(&target.path, ctx.plain);
                     }
                 }
-                let servers_csv = p.server_names.join(",");
-                lock.save_tracked_asset(
-                    &p.asset_id,
-                    crate::lock::AssetEntry {
-                        kind: "mcp".into(),
-                        name: p.file_name.clone(),
-                        hash: p.hash.clone(),
-                        source: p.source.clone(),
-                        destination: servers_csv,
-                        source_revision: p.source_revision.clone(),
-                        has_secrets: p.has_secrets,
-                    },
-                );
+                lock.save_tracked_asset(&p.asset_id, p.lock_entry());
             }
 
             if status.contains("install") {
@@ -947,6 +958,29 @@ mod tests {
             project_mcp_settings(&project)["mcpServers"]["gitea"]["url"],
             "https://example.com/mcp"
         );
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_lock_asset_matches_sync_and_satisfies_locked_without_a_prior_sync() {
+        let project = temp_dir("kasetto-inline-lock-asset");
+        let cfg = inline_cfg();
+        let McpSpec::Inline(inline) = &cfg.mcps[0] else {
+            unreachable!()
+        };
+        let (id, asset) = inline_mcp_lock_asset(inline).unwrap();
+        let mut lock = LockFile::default();
+        lock.save_tracked_asset(&id, asset);
+        let pinned = serde_json::to_value(&lock).unwrap();
+
+        let mut ctx = project_ctx(&cfg, &project);
+        ctx.locked = true;
+        let summary = run_sync(&ctx, &mut lock);
+        assert_eq!((summary.updated, summary.failed), (1, 0));
+        assert!(project_mcp_settings(&project)["mcpServers"]
+            .get("gitea")
+            .is_some());
+        assert_eq!(serde_json::to_value(&lock).unwrap(), pinned);
         fs::remove_dir_all(project).unwrap();
     }
 

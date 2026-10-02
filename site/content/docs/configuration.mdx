@@ -190,12 +190,12 @@ mcps:
 
 Inline and source-based entries can coexist; each entry uses exactly one shape, and a config with
 duplicate inline names fails to load. With `extends`, an inline entry replaces a parent entry with
-the same `name`.
-Inline definitions need no fetch: `sync --locked` only requires their placeholder hash to match the
-lock, so missing agent settings can be restored offline. Removing or renaming an inline entry
-prunes its servers. Secrets resolve only into agent settings, so use `kst sync --update
-laptop-extras` to rotate a secret while the definition is unchanged. Edit inline entries directly
-in YAML; `kst add` and `kst remove` manage source-based entries.
+the same `name`. Inline definitions need no fetch, so `kst lock` pins them fully. Under
+`sync --locked`, an inline entry's hash must match the lock (a changed definition is drift), and
+missing agent settings are restored offline. Removing or renaming an inline entry prunes its
+servers. Secrets resolve only into agent settings, so use `kst sync --update laptop-extras` to
+rotate a secret while the definition is unchanged. Edit inline entries directly in YAML; `kst add`
+and `kst remove` manage source-based entries.
 
 ### Instruction Source Fields
 
