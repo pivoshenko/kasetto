@@ -251,4 +251,35 @@ mod tests {
 
         let _ = fs::remove_dir_all(&root);
     }
+
+    #[test]
+    fn load_config_any_checks_inline_mcp_names_after_extends() {
+        let root = temp_dir("kasetto-extends-inline");
+        fs::create_dir_all(&root).unwrap();
+        let base = root.join("base.yaml");
+        let child = root.join("child.yaml");
+        fs::write(
+            &child,
+            "extends: ./base.yaml\nmcps:\n  - name: laptop\n    servers: {new: {}}\n",
+        )
+        .unwrap();
+        fs::write(&base, "mcps:\n  - name: laptop\n    servers: {old: {}}\n").unwrap();
+        let (cfg, _, _) = load_config_any(child.to_str().unwrap()).expect("load");
+        assert_eq!(cfg.mcps.len(), 1);
+
+        fs::write(
+            &base,
+            "mcps:\n  - name: laptop\n    servers: {}\n  - name: laptop\n    servers: {}\n",
+        )
+        .unwrap();
+        let error = load_config_any(child.to_str().unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("duplicate inline MCP name `laptop`"),
+            "{error}"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
 }

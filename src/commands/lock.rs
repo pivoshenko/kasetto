@@ -27,7 +27,7 @@ use crate::fsops::{
     select_targets,
 };
 use crate::lock::{load_lock, save_lock, LockFile};
-use crate::model::{resolve_scope, Config, Scope, SkillEntry};
+use crate::model::{resolve_scope, Config, McpSpec, Scope, SkillEntry};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
 use crate::ui::{eprint_error, print_json};
@@ -201,7 +201,12 @@ pub(crate) fn run(opts: &LockOptions) -> Result<Outcome> {
 fn configured_source_count(cfg: &Config) -> usize {
     let mut seen: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     seen.extend(cfg.skills.iter().map(|s| s.source.as_str()));
-    seen.extend(cfg.mcps.iter().map(|s| s.source.as_str()));
+    seen.extend(
+        cfg.mcps
+            .iter()
+            .filter_map(McpSpec::as_source)
+            .map(|s| s.source.as_str()),
+    );
     seen.extend(cfg.commands.iter().map(|s| s.source.as_str()));
     seen.extend(cfg.instructions.iter().map(|s| s.source.as_str()));
     seen.len()
@@ -212,7 +217,7 @@ fn configured_source_count(cfg: &Config) -> usize {
 /// recomputed (see module docs).
 fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     let mut rev_by_source: HashMap<String, String> = HashMap::new();
-    for m in &cfg.mcps {
+    for m in cfg.mcps.iter().filter_map(McpSpec::as_source) {
         rev_by_source.insert(m.source.clone(), m.as_source_spec().expected_revision());
     }
     for c in &cfg.commands {

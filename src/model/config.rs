@@ -23,8 +23,8 @@ pub(crate) struct Config {
     pub agent: Option<AgentField>,
     #[serde(default)]
     pub skills: Vec<SourceSpec>,
-    #[serde(default)]
-    pub mcps: Vec<McpSourceSpec>,
+    #[serde(default, deserialize_with = "unique_inline_names")]
+    pub mcps: Vec<McpSpec>,
     #[serde(default)]
     pub commands: Vec<CommandSourceSpec>,
     #[serde(default)]
@@ -105,6 +105,65 @@ pub(crate) fn resolve_scope(cli_override: Option<Scope>, cfg: Option<&Config>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn inline_and_source_mcps_parse_together() {
+        let cfg: Config = serde_yaml::from_str("mcps:\n  - name: laptop\n    servers: {gitea: {type: http, url: 'https://example.com/mcp'}}\n  - source: ./pack\n    mcps: '*'\n").unwrap();
+        let McpSpec::Inline(inline) = &cfg.mcps[0] else {
+            panic!("expected inline")
+        };
+        assert_eq!(inline.name, "laptop");
+        assert_eq!(inline.servers["gitea"]["type"], "http");
+        assert!(matches!(cfg.mcps[1], McpSpec::Source(_)));
+    }
+
+    #[test]
+    fn invalid_mcp_shapes_are_rejected() {
+        for entry in [
+            "{}",
+            "{source: ./pack, mcps: '*', name: laptop, servers: {}}",
+            "{name: laptop}",
+            "{servers: {}}",
+            "{name: laptop, servers: []}",
+            "{name: '', servers: {}}",
+            "{name: laptop, ref: v1, servers: {}}",
+        ] {
+            assert!(serde_yaml::from_str::<Config>(&format!("mcps: [{entry}]")).is_err());
+        }
+        let error = serde_yaml::from_str::<Config>("mcps: [{}]")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("either source and mcps, or name and servers"));
+    }
+
+    #[test]
+    fn duplicate_inline_mcp_names_are_rejected() {
+        let error = serde_yaml::from_str::<Config>(
+            "mcps:\n  - name: laptop\n    servers: {}\n  - name: laptop\n    servers: {}\n",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            error.contains("duplicate inline MCP name `laptop`"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn mcp_parse_errors_keep_the_entry_path() {
+        let yaml = "mcps:\n  - source: ./a\n    mcps: '*'\n  - source: ./b\n    mcps: 5\n";
+        let error = serde_yaml::from_str::<Config>(yaml)
+            .unwrap_err()
+            .to_string();
+        assert!(error.starts_with("mcps[1]"), "{error}");
+    }
+
+    #[test]
+    fn source_mcps_ignore_a_stray_name() {
+        let cfg: Config =
+            serde_yaml::from_str("mcps: [{source: ./p, mcps: '*', name: x}]").unwrap();
+        assert!(cfg.mcps[0].as_source().is_some());
+    }
 
     #[test]
     fn resolve_scope_prefers_cli_override() {
@@ -262,6 +321,82 @@ impl SourceSpec {
             GitPin::Default => "branch:main".into(),
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(try_from = "RawMcpSpec")]
+pub(crate) enum McpSpec {
+    Source(McpSourceSpec),
+    Inline(InlineMcpSpec),
+}
+
+impl McpSpec {
+    pub(crate) fn as_source(&self) -> Option<&McpSourceSpec> {
+        match self {
+            Self::Source(src) => Some(src),
+            Self::Inline(_) => None,
+        }
+    }
+}
+
+fn unique_inline_names<'de, D>(deserializer: D) -> std::result::Result<Vec<McpSpec>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mcps = Vec::<McpSpec>::deserialize(deserializer)?;
+    let mut names = std::collections::HashSet::new();
+    for spec in &mcps {
+        if let McpSpec::Inline(inline) = spec {
+            if !names.insert(&inline.name) {
+                return Err(serde::de::Error::custom(format!(
+                    "duplicate inline MCP name `{}`",
+                    inline.name
+                )));
+            }
+        }
+    }
+    Ok(mcps)
+}
+
+// Deserialized field by field, not through `serde_yaml::Value`, so errors keep their `mcps[i]` path
+#[derive(Deserialize)]
+struct RawMcpSpec {
+    source: Option<String>,
+    branch: Option<String>,
+    #[serde(rename = "ref")]
+    git_ref: Option<String>,
+    mcps: Option<McpsField>,
+    name: Option<String>,
+    servers: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+impl TryFrom<RawMcpSpec> for McpSpec {
+    type Error = &'static str;
+
+    fn try_from(raw: RawMcpSpec) -> std::result::Result<Self, Self::Error> {
+        match (raw.source, raw.mcps, raw.name, raw.servers) {
+            (Some(source), Some(mcps), _, None) => Ok(Self::Source(McpSourceSpec {
+                source,
+                branch: raw.branch,
+                git_ref: raw.git_ref,
+                mcps,
+            })),
+            (None, None, Some(name), Some(servers))
+                if !name.is_empty() && raw.branch.is_none() && raw.git_ref.is_none() =>
+            {
+                Ok(Self::Inline(InlineMcpSpec { name, servers }))
+            }
+            _ => Err("MCP entry must contain either source and mcps, or name and servers"),
+        }
+    }
+}
+
+pub(crate) const INLINE_SOURCE: &str = "<inline>";
+
+#[derive(Debug)]
+pub(crate) struct InlineMcpSpec {
+    pub name: String,
+    pub servers: serde_json::Map<String, serde_json::Value>,
 }
 
 /// An MCP source: where to fetch from and which MCP servers to install.

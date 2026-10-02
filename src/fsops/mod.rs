@@ -702,8 +702,9 @@ mcps:
     mcps: "*"
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert_eq!(cfg.mcps[0].git_ref.as_deref(), Some("v1.5"));
-        let as_spec = cfg.mcps[0].as_source_spec();
+        let src = cfg.mcps[0].as_source().unwrap();
+        assert_eq!(src.git_ref.as_deref(), Some("v1.5"));
+        let as_spec = src.as_source_spec();
         assert_eq!(as_spec.git_ref.as_deref(), Some("v1.5"));
     }
 
@@ -717,7 +718,10 @@ mcps:
     mcps: "*"
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        assert!(matches!(cfg.mcps[0].mcps, McpsField::Wildcard(_)));
+        assert!(matches!(
+            cfg.mcps[0].as_source().unwrap().mcps,
+            McpsField::Wildcard(_)
+        ));
     }
 
     #[test]
@@ -733,7 +737,7 @@ mcps:
       - linear
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        let McpsField::List(ref entries) = cfg.mcps[0].mcps else {
+        let McpsField::List(ref entries) = cfg.mcps[0].as_source().unwrap().mcps else {
             panic!("expected List");
         };
         assert_eq!(entries.len(), 2);
@@ -753,7 +757,7 @@ mcps:
         path: tools
 "#;
         let cfg: Config = serde_yaml::from_str(yaml).expect("parse");
-        let McpsField::List(ref entries) = cfg.mcps[0].mcps else {
+        let McpsField::List(ref entries) = cfg.mcps[0].as_source().unwrap().mcps else {
             panic!("expected List");
         };
         assert_eq!(entries.len(), 1);
