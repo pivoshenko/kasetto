@@ -6,9 +6,10 @@
 //! hash a later `sync` computes at the destination, so the lock is immediately
 //! offline-ready (`sync --locked` works with zero fetches afterward).
 //!
-//! MCP, command, and instruction assets cannot be hashed without applying their
-//! merge / transform, so `lock` only refreshes their resolved revision pins;
-//! their content hash fills in on the next real `sync`.
+//! Source-based MCP, command, and instruction assets cannot be hashed without
+//! applying their merge / transform, so `lock` only refreshes their resolved
+//! revision pins; their content hash fills in on the next real `sync`. Inline
+//! MCP entries need no fetch, so `lock` pins them fully.
 //!
 //! With `--upgrade-package <name>...` the re-resolve is restricted to sources
 //! providing those skills (mirrors `sync --update <name>...`). With `--check`
@@ -17,17 +18,19 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
+use std::path::Path;
 use std::time::Instant;
 
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY, SUCCESS};
+use crate::commands::sync::inline_mcp_lock_asset;
 use crate::commands::Outcome;
 use crate::error::{err, Result};
 use crate::fsops::{
-    hash_dir, join_dest_csv, load_config_any, now_unix, resolve_destinations, scope_root,
-    select_targets,
+    hash_dir, join_dest_csv, load_config_any, now_unix, resolve_destinations,
+    resolve_mcp_settings_targets, scope_root, select_targets,
 };
 use crate::lock::{load_lock, save_lock, LockFile};
-use crate::model::{resolve_scope, Config, Scope, SkillEntry};
+use crate::model::{resolve_scope, Config, McpSpec, Scope, SkillEntry};
 use crate::profile::read_skill_profile_from_dir;
 use crate::source::materialize_source;
 use crate::ui::{eprint_error, print_json};
@@ -121,6 +124,7 @@ pub(crate) fn run(opts: &LockOptions) -> Result<Outcome> {
     lock.skills = new_skills;
 
     refresh_asset_revisions(&mut lock, &cfg);
+    pin_inline_mcps(&mut lock, &cfg, scope, &cfg_dir)?;
 
     let skills_count = lock.skills.len();
     let asset_count = lock.assets.len();
@@ -201,7 +205,12 @@ pub(crate) fn run(opts: &LockOptions) -> Result<Outcome> {
 fn configured_source_count(cfg: &Config) -> usize {
     let mut seen: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     seen.extend(cfg.skills.iter().map(|s| s.source.as_str()));
-    seen.extend(cfg.mcps.iter().map(|s| s.source.as_str()));
+    seen.extend(
+        cfg.mcps
+            .iter()
+            .filter_map(McpSpec::as_source)
+            .map(|s| s.source.as_str()),
+    );
     seen.extend(cfg.commands.iter().map(|s| s.source.as_str()));
     seen.extend(cfg.instructions.iter().map(|s| s.source.as_str()));
     seen.len()
@@ -212,7 +221,7 @@ fn configured_source_count(cfg: &Config) -> usize {
 /// recomputed (see module docs).
 fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     let mut rev_by_source: HashMap<String, String> = HashMap::new();
-    for m in &cfg.mcps {
+    for m in cfg.mcps.iter().filter_map(McpSpec::as_source) {
         rev_by_source.insert(m.source.clone(), m.as_source_spec().expected_revision());
     }
     for c in &cfg.commands {
@@ -226,6 +235,21 @@ fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
             asset.source_revision = rev.clone();
         }
     }
+}
+
+/// Record inline MCP entries exactly as a sync would.
+fn pin_inline_mcps(lock: &mut LockFile, cfg: &Config, scope: Scope, cfg_dir: &Path) -> Result<()> {
+    // A sync with no MCP-capable agent prunes every MCP asset, so pinning one would only drift
+    if resolve_mcp_settings_targets(cfg, scope, cfg_dir)?.is_empty() {
+        return Ok(());
+    }
+    for spec in &cfg.mcps {
+        if let McpSpec::Inline(inline) = spec {
+            let (id, entry) = inline_mcp_lock_asset(inline)?;
+            lock.save_tracked_asset(&id, entry);
+        }
+    }
+    Ok(())
 }
 
 /// One change between the previous lock snapshot and the freshly resolved one.
@@ -305,12 +329,20 @@ fn diff_summary(
     }
     for (id, prev) in prev_assets {
         if let Some(now) = next.assets.get(id) {
-            if now.source_revision != prev.source_revision {
+            if now.hash != prev.hash || now.source_revision != prev.source_revision {
                 out.push(Drift {
                     status: DriftStatus::Updated,
                     id: id.clone(),
                 });
             }
+        }
+    }
+    for id in next.assets.keys() {
+        if !prev_assets.contains_key(id) {
+            out.push(Drift {
+                status: DriftStatus::Added,
+                id: id.clone(),
+            });
         }
     }
     out
@@ -374,6 +406,42 @@ instructions:
         .expect("config parses");
         // one, two, three, four: the repeated `one` counts once
         assert_eq!(configured_source_count(&cfg), 4);
+    }
+
+    #[test]
+    fn lock_pins_inline_mcps_and_check_reports_changed_definitions() {
+        let project = crate::fsops::temp_dir("kasetto-lock-inline");
+        fs::create_dir_all(&project).unwrap();
+        let config = project.join("kasetto.yaml");
+        let write_config = |url: &str| {
+            let yaml = format!(
+                "scope: project\nagent: claude-code\nmcps:\n\
+                 - name: laptop\n  servers: {{gitea: {{url: '{url}'}}}}\n"
+            );
+            fs::write(&config, yaml).unwrap();
+        };
+        let lock = |check| {
+            run(&LockOptions {
+                config: config.to_str(),
+                scope_override: None,
+                as_json: false,
+                quiet: 1,
+                check,
+                upgrade_only: Vec::new(),
+            })
+            .unwrap()
+        };
+
+        write_config("https://example.com/mcp");
+        assert_eq!(lock(true), Outcome::Failure);
+        assert_eq!(lock(false), Outcome::Success);
+        let pinned = &load_lock(Scope::Project, &project).unwrap().assets["mcp::<inline>::laptop"];
+        assert_eq!(pinned.destination, "gitea");
+        assert_eq!(lock(true), Outcome::Success);
+
+        write_config("https://example.com/v2");
+        assert_eq!(lock(true), Outcome::Failure);
+        fs::remove_dir_all(project).unwrap();
     }
 
     #[test]

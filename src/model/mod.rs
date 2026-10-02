@@ -19,7 +19,9 @@ pub(crate) use config::{
     resolve_scope, CommandEntry, CommandsField, Config, GitPin, InstructionEntry,
     InstructionsField, McpEntry, McpsField, Scope, SkillTarget, SkillsField, SourceSpec,
 };
-pub(crate) use config::{CommandSourceSpec, InstructionSourceSpec, McpSourceSpec};
+pub(crate) use config::{
+    CommandSourceSpec, InlineMcpSpec, InstructionSourceSpec, McpSourceSpec, McpSpec, INLINE_SOURCE,
+};
 pub(crate) use config::{OnMissing, SecretsConfig};
 pub(crate) use types::{
     Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure, LOCK_VERSION,

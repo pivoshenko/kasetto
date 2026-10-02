@@ -180,7 +180,7 @@ kst lock [OPTIONS]
 | `--project`              | Lock the project scope (`./kasetto.lock`)             |
 | `--global`               | Lock the global scope (default)                       |
 
-Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination, so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
+Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination, so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. Inline MCP entries need no fetch, so `lock` pins them fully. Source-based MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
 
 <Callout type="info">
 

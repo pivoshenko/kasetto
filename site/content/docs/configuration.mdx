@@ -101,7 +101,7 @@ mcps:
 | `destination` | no       | Explicit install path - overrides `agent` if both are set           |
 | `scope`       | no       | `"global"` (default) or `"project"` - where to install              |
 | `skills`      | **yes**  | List of skill sources                                               |
-| `mcps`        | no       | List of MCP server sources                                          |
+| `mcps`        | no       | List of MCP sources or inline definitions                           |
 | `commands`    | no       | List of slash-command sources                                       |
 | `instructions`       | no       | List of instruction sources (CLAUDE.md / .cursor/rules / AGENTS.md ...)      |
 | `secrets`     | no       | Secret-injection policy for `${kst_...}` placeholders (see [Secret Injection](/docs/secrets)) |
@@ -171,6 +171,31 @@ for Claude Code, `.cursor/mcp.json` for Cursor). Pi intentionally has no native 
 A pack can reference secrets with `${kst_<name>}` placeholders (tokens, passwords, API keys) instead
 of committing them. They're resolved at sync time from the environment or a credentials file. See
 [Secret Injection](/docs/secrets).
+
+### Inline MCP Definitions
+
+For machine-specific servers, omit `source` and provide `name` and `servers` directly.
+`servers` has the same shape as a pack file's `mcpServers` object:
+
+```yaml
+mcps:
+  - name: laptop-extras
+    servers:
+      gitea:
+        type: http
+        url: https://gitea.internal.example/mcp
+        headers:
+          Authorization: Bearer ${kst:pass:tokens/gitea-mcp}
+```
+
+Inline and source-based entries can coexist; each entry uses exactly one shape, and a config with
+duplicate inline names fails to load. With `extends`, an inline entry replaces a parent entry with
+the same `name`. Inline definitions need no fetch, so `kst lock` pins them fully. Under
+`sync --locked`, an inline entry's hash must match the lock (a changed definition is drift), and
+missing agent settings are restored offline. Removing or renaming an inline entry prunes its
+servers. Secrets resolve only into agent settings, so use `kst sync --update laptop-extras` to
+rotate a secret while the definition is unchanged. Edit inline entries directly in YAML; `kst add`
+and `kst remove` manage source-based entries.
 
 ### Instruction Source Fields
 

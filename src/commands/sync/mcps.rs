@@ -9,11 +9,11 @@ use crate::error::{err, Result};
 use crate::fsops::{
     dirs_home, dirs_kasetto_config, hash_file, now_unix, resolve_mcp_settings_targets,
 };
-use crate::lock::LockFile;
+use crate::lock::{AssetEntry, LockFile};
 use crate::mcps::{merge_mcp_config, remove_mcp_server, servers_present_in_settings};
 use crate::model::{
-    all_mcp_project_targets, all_mcp_settings_targets, Action, McpSettingsTarget, McpsField, Scope,
-    Summary,
+    all_mcp_project_targets, all_mcp_settings_targets, Action, InlineMcpSpec, McpSettingsTarget,
+    McpSpec, McpsField, Scope, Summary, INLINE_SOURCE,
 };
 use crate::source::{discover_mcps, materialize_source, resolve_mcp_entry};
 use crate::ui::with_spinner_transient;
@@ -41,6 +41,41 @@ struct PendingMcp {
     /// destination after a plaintext secret is written.
     has_secrets: bool,
     source_revision: String,
+}
+
+impl PendingMcp {
+    fn new(
+        source: &str,
+        file_name: String,
+        servers: serde_json::Map<String, serde_json::Value>,
+        hash: String,
+        source_revision: &str,
+    ) -> Result<Self> {
+        Ok(Self {
+            asset_id: format!("mcp::{source}::{file_name}"),
+            server_names: servers.keys().cloned().collect(),
+            has_secrets: crate::secrets::has_placeholder(&serde_json::to_string(&servers)?),
+            source: source.into(),
+            file_name,
+            servers,
+            hash,
+            is_new: false,
+            overwrite: false,
+            source_revision: source_revision.into(),
+        })
+    }
+
+    fn lock_entry(&self) -> AssetEntry {
+        AssetEntry {
+            kind: "mcp".into(),
+            name: self.file_name.clone(),
+            hash: self.hash.clone(),
+            source: self.source.clone(),
+            destination: self.server_names.join(","),
+            source_revision: self.source_revision.clone(),
+            has_secrets: self.has_secrets,
+        }
+    }
 }
 
 /// Returns `true` when a secret-bearing pack was left unchanged without
@@ -87,7 +122,52 @@ pub(super) fn sync_mcps(
     let mut pending: Vec<PendingMcp> = Vec::new();
     let mut cleanup_dirs: Vec<PathBuf> = Vec::new();
 
-    for (i, src) in ctx.cfg.mcps.iter().enumerate() {
+    for (i, spec) in ctx.cfg.mcps.iter().enumerate() {
+        let src = match spec {
+            McpSpec::Source(src) => src,
+            McpSpec::Inline(inline) => {
+                let entry = inline_pending(inline)?;
+                desired_mcp_ids.insert(entry.asset_id.clone());
+                let (status, error) = if ctx.locked
+                    && lock
+                        .assets
+                        .get(&entry.asset_id)
+                        .is_none_or(|a| a.hash != entry.hash)
+                {
+                    (
+                        "locked_error",
+                        Some(
+                            "inline MCP definition does not match the lock; run sync without --locked"
+                                .to_string(),
+                        ),
+                    )
+                } else {
+                    match classify_inline_mcp(ctx, lock, &mcp_settings_list, entry)? {
+                        McpFileOutcome::Install(p) => {
+                            pending.push(*p);
+                            continue;
+                        }
+                        McpFileOutcome::Unchanged { has_secrets } => {
+                            secrets_need_update |= has_secrets;
+                            ("unchanged", None)
+                        }
+                        McpFileOutcome::SecretError(e) => ("source_error", Some(e)),
+                    }
+                };
+                if error.is_some() {
+                    summary.failed += 1;
+                } else {
+                    summary.unchanged += 1;
+                }
+                actions.push(Action {
+                    source: Some(INLINE_SOURCE.into()),
+                    skill: Some(format!("mcp:{}", inline.name)),
+                    status: status.into(),
+                    error,
+                });
+                continue;
+            }
+        };
         // Desired MCP file names for this source, derived without any network:
         // predicted file names for a list, or the locked set for a wildcard
         let desired_file_names = desired_mcp_file_names(src, lock);
@@ -373,67 +453,83 @@ fn classify_mcp_file(
     let hash = hash_file(mcp_path)?;
     let mcp_text = fs::read_to_string(mcp_path)?;
     let mcp_val: serde_json::Value = serde_json::from_str(&mcp_text)?;
-    let mut servers: serde_json::Map<String, serde_json::Value> = mcp_val
+    let servers: serde_json::Map<String, serde_json::Value> = mcp_val
         .get("mcpServers")
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
-    let server_names: Vec<String> = servers.keys().cloned().collect();
-    // Only the `mcpServers` object is injected, so detect placeholders there,
-    // not anywhere in the file. A `${kst_...}` in some other key would otherwise
-    // raise a spurious world-readable warning and `--update` tip for a file that
-    // gets no secret written
-    let has_secrets = serde_json::to_string(&servers)
-        .map(|s| crate::secrets::has_placeholder(&s))
-        .unwrap_or(false);
+    let entry = PendingMcp::new(source, file_name, servers, hash, source_revision)?;
+    let asset_id = entry.asset_id.clone();
+    let outcome = classify_mcp_servers(ctx, lock, mcp_settings_list, entry, update_active)?;
+    Ok((asset_id, outcome))
+}
 
-    let asset_id = format!("mcp::{source}::{file_name}");
-    let existing = lock.get_tracked_asset("mcp", &asset_id);
+fn classify_inline_mcp(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    mcp_settings_list: &[McpSettingsTarget],
+    entry: PendingMcp,
+) -> Result<McpFileOutcome> {
+    let update_active =
+        ctx.update && (ctx.update_only.is_empty() || ctx.update_only.contains(&entry.file_name));
+    classify_mcp_servers(ctx, lock, mcp_settings_list, entry, update_active)
+}
 
-    // A secret-bearing pack under `--update` is re-merged even when the
-    // placeholder source is byte-identical, so a rotated secret (changed only in
-    // env/credentials.yaml) propagates
-    let force_remerge = update_active && has_secrets;
-    let is_unchanged = !force_remerge
-        && existing
-            .as_ref()
-            .map(|(h, _)| {
-                h == &hash
-                    && mcp_settings_list
-                        .iter()
-                        .all(|target| servers_present_in_settings(&server_names, target))
-            })
-            .unwrap_or(false);
+fn inline_pending(inline: &InlineMcpSpec) -> Result<PendingMcp> {
+    PendingMcp::new(
+        INLINE_SOURCE,
+        inline.name.clone(),
+        inline.servers.clone(),
+        inline_hash(&inline.servers)?,
+        INLINE_SOURCE,
+    )
+}
+
+/// The lock entry a sync records for an inline MCP, so `kst lock` can pin it without syncing.
+pub(crate) fn inline_mcp_lock_asset(inline: &InlineMcpSpec) -> Result<(String, AssetEntry)> {
+    let pending = inline_pending(inline)?;
+    Ok((pending.asset_id.clone(), pending.lock_entry()))
+}
+
+fn inline_hash(servers: &serde_json::Map<String, serde_json::Value>) -> Result<String> {
+    // Canonical because serde_json maps are key-sorted while `preserve_order` stays off
+    Ok(crate::fsops::hash_str(&serde_json::to_string(servers)?))
+}
+
+fn classify_mcp_servers(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    mcp_settings_list: &[McpSettingsTarget],
+    mut pending: PendingMcp,
+    update_active: bool,
+) -> Result<McpFileOutcome> {
+    let existing = lock.get_tracked_asset("mcp", &pending.asset_id);
+    // A secret-bearing entry under `--update` is re-merged even when unchanged,
+    // so a secret rotated only in env/credentials.yaml propagates
+    pending.overwrite = update_active && pending.has_secrets;
+    let is_unchanged = !pending.overwrite
+        && existing.as_ref().is_some_and(|(hash, _)| {
+            hash == &pending.hash
+                && mcp_settings_list
+                    .iter()
+                    .all(|target| servers_present_in_settings(&pending.server_names, target))
+        });
     if is_unchanged {
-        return Ok((asset_id, McpFileOutcome::Unchanged { has_secrets }));
+        return Ok(McpFileOutcome::Unchanged {
+            has_secrets: pending.has_secrets,
+        });
     }
-
-    // Inject secrets only on the merge path. A missing required secret is a hard
-    // failure (source_error → non-zero exit), distinct from a malformed file
-    if has_secrets {
-        let mut wrap = serde_json::Value::Object(std::mem::take(&mut servers));
+    if pending.has_secrets {
+        let mut wrap = serde_json::Value::Object(std::mem::take(&mut pending.servers));
         if let Err(e) = ctx.secrets.inject_value(&mut wrap) {
-            return Ok((asset_id, McpFileOutcome::SecretError(e.to_string())));
+            return Ok(McpFileOutcome::SecretError(e.to_string()));
         }
-        if let serde_json::Value::Object(m) = wrap {
-            servers = m;
+        if let serde_json::Value::Object(servers) = wrap {
+            pending.servers = servers;
         }
     }
-
-    let is_new = existing.is_none();
-    let pending = PendingMcp {
-        source: source.to_string(),
-        file_name,
-        servers,
-        hash,
-        server_names,
-        asset_id: asset_id.clone(),
-        is_new,
-        overwrite: force_remerge,
-        has_secrets,
-        source_revision: source_revision.to_string(),
-    };
-    Ok((asset_id, McpFileOutcome::Install(Box::new(pending))))
+    pending.is_new = existing.is_none();
+    Ok(McpFileOutcome::Install(Box::new(pending)))
 }
 
 /// Desired MCP file names for a source, derived without any network access.
@@ -580,19 +676,7 @@ fn apply_pending(
                         crate::secrets::warn_if_world_readable(&target.path, ctx.plain);
                     }
                 }
-                let servers_csv = p.server_names.join(",");
-                lock.save_tracked_asset(
-                    &p.asset_id,
-                    crate::lock::AssetEntry {
-                        kind: "mcp".into(),
-                        name: p.file_name.clone(),
-                        hash: p.hash.clone(),
-                        source: p.source.clone(),
-                        destination: servers_csv,
-                        source_revision: p.source_revision.clone(),
-                        has_secrets: p.has_secrets,
-                    },
-                );
+                lock.save_tracked_asset(&p.asset_id, p.lock_entry());
             }
 
             if status.contains("install") {
@@ -678,12 +762,12 @@ mod tests {
             scope: Some(Scope::Project),
             agent: Some(AgentField::Many(agents)),
             skills: Vec::new(),
-            mcps: vec![McpSourceSpec {
+            mcps: vec![McpSpec::Source(McpSourceSpec {
                 source: src_root.to_string_lossy().to_string(),
                 branch: None,
                 git_ref: None,
                 mcps: McpsField::Wildcard("*".into()),
-            }],
+            })],
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
@@ -710,6 +794,212 @@ mod tests {
 
     fn project_mcp_settings(project: &Path) -> serde_json::Value {
         serde_json::from_str(&fs::read_to_string(project.join(".mcp.json")).unwrap()).unwrap()
+    }
+
+    fn inline_cfg() -> Config {
+        serde_yaml::from_str("scope: project\nagent: claude-code\nmcps:\n  - name: laptop\n    servers: {gitea: {type: http, url: 'https://example.com/mcp'}}\n").unwrap()
+    }
+
+    fn run_sync(ctx: &SyncContext, lock: &mut LockFile) -> Summary {
+        let mut summary = Summary::default();
+        sync_mcps(ctx, lock, &mut summary, &mut Vec::new()).unwrap();
+        summary
+    }
+
+    #[test]
+    fn inline_targeted_update_rotates_secrets_without_changing_lock_hash() {
+        let project = temp_dir("kasetto-inline-secrets");
+        fs::create_dir_all(&project).unwrap();
+        let cfg: Config = serde_yaml::from_str(
+            "scope: project\nagent: claude-code\nsecrets:\n  files: [fixture.yaml]\nmcps:\n  - name: laptop\n    servers: {gitea: {url: 'https://example.com/mcp', headers: {Authorization: 'Bearer ${kst_inline_test_token}'}}}\n  - name: sibling\n    servers: {other: {command: original}}\n",
+        ).unwrap();
+        let creds = project.join("fixture.yaml");
+        let mut lock = LockFile::default();
+        let mut ctx = project_ctx(&cfg, &project);
+        let mut sync_with_token = |ctx: &mut SyncContext, token: &str| {
+            fs::write(&creds, format!("inline_test_token: {token}\n")).unwrap();
+            ctx.secrets = crate::secrets::SecretContext::from_config(
+                cfg.secrets.as_ref(),
+                &project,
+                false,
+                true,
+            )
+            .unwrap();
+            let mut summary = Summary::default();
+            let needs_update = sync_mcps(ctx, &mut lock, &mut summary, &mut Vec::new()).unwrap();
+            (needs_update, summary)
+        };
+        sync_with_token(&mut ctx, "fixture-first");
+        let mut settings = project_mcp_settings(&project);
+        settings["mcpServers"]["other"]["command"] = "hand-edited".into();
+        fs::write(
+            project.join(".mcp.json"),
+            serde_json::to_string(&settings).unwrap(),
+        )
+        .unwrap();
+
+        let (needs_update, summary) = sync_with_token(&mut ctx, "fixture-second");
+        assert!(needs_update);
+        assert_eq!(summary.unchanged, 2);
+        let auth = |project: &Path| {
+            project_mcp_settings(project)["mcpServers"]["gitea"]["headers"]["Authorization"].clone()
+        };
+        assert_eq!(auth(&project), "Bearer fixture-first");
+
+        ctx.update = true;
+        ctx.update_only = vec!["laptop".into()];
+        let (_, summary) = sync_with_token(&mut ctx, "fixture-second");
+        assert_eq!((summary.updated, summary.unchanged), (1, 1));
+        assert_eq!(auth(&project), "Bearer fixture-second");
+        assert_eq!(
+            project_mcp_settings(&project)["mcpServers"]["other"]["command"],
+            "hand-edited"
+        );
+        let McpSpec::Inline(inline) = &cfg.mcps[0] else {
+            unreachable!()
+        };
+        let asset = &lock.assets["mcp::<inline>::laptop"];
+        assert_eq!(asset.hash, inline_hash(&inline.servers).unwrap());
+        assert!(asset.has_secrets);
+        let lock_json = serde_json::to_string(&lock).unwrap();
+        assert!(!lock_json.contains("fixture-first") && !lock_json.contains("fixture-second"));
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_missing_secret_blocks_install_and_orphan_cleanup() {
+        let project = temp_dir("kasetto-inline-missing-secret");
+        let mut cfg = inline_cfg();
+        let mut lock = LockFile::default();
+        run_sync(&project_ctx(&cfg, &project), &mut lock);
+        let original_settings = fs::read(project.join(".mcp.json")).unwrap();
+        let McpSpec::Inline(inline) = &mut cfg.mcps[0] else {
+            unreachable!()
+        };
+        inline.name = "replacement".into();
+        inline.servers = serde_json::from_str(r#"{"new":{"command":"${kst_missing}"}}"#).unwrap();
+        assert_eq!(run_sync(&project_ctx(&cfg, &project), &mut lock).failed, 1);
+        assert!(lock.assets.contains_key("mcp::<inline>::laptop"));
+        assert!(!lock.assets.contains_key("mcp::<inline>::replacement"));
+        assert_eq!(
+            fs::read(project.join(".mcp.json")).unwrap(),
+            original_settings
+        );
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_hash_sorts_nested_objects_and_preserves_arrays() {
+        let hash = |json: &str| inline_hash(&serde_json::from_str(json).unwrap()).unwrap();
+        let a = hash(r#"{"z":{"b":2,"a":1},"a":[{"y":0,"x":"${kst_token}"},2]}"#);
+        assert_eq!(
+            a,
+            hash(r#"{"a":[{"x":"${kst_token}","y":0},2],"z":{"a":1,"b":2}}"#)
+        );
+        assert_ne!(
+            a,
+            hash(r#"{"a":[2,{"x":"${kst_token}","y":0}],"z":{"a":1,"b":2}}"#)
+        );
+    }
+
+    #[test]
+    fn inline_install_resync_locked_restore_rename_and_prune() {
+        let project = temp_dir("kasetto-inline-lifecycle");
+        let mut cfg = inline_cfg();
+        let mut lock = LockFile::default();
+        let has_gitea = |project: &Path| {
+            project_mcp_settings(project)["mcpServers"]
+                .get("gitea")
+                .is_some()
+        };
+        assert_eq!(
+            run_sync(&project_ctx(&cfg, &project), &mut lock).installed,
+            1
+        );
+        assert!(has_gitea(&project));
+        assert_eq!(
+            lock.assets["mcp::<inline>::laptop"].source_revision,
+            INLINE_SOURCE
+        );
+
+        let mut ctx = project_ctx(&cfg, &project);
+        ctx.locked = true;
+        assert_eq!(run_sync(&ctx, &mut lock).unchanged, 1);
+        fs::remove_file(project.join(".mcp.json")).unwrap();
+        assert_eq!(run_sync(&ctx, &mut lock).updated, 1);
+
+        let McpSpec::Inline(inline) = &mut cfg.mcps[0] else {
+            unreachable!()
+        };
+        inline.name = "renamed".into();
+        assert_eq!(run_sync(&project_ctx(&cfg, &project), &mut lock).removed, 1);
+        assert!(lock.assets.contains_key("mcp::<inline>::renamed"));
+        assert!(has_gitea(&project));
+
+        cfg.mcps.clear();
+        assert_eq!(run_sync(&project_ctx(&cfg, &project), &mut lock).removed, 1);
+        assert!(lock.assets.is_empty());
+        assert!(!has_gitea(&project));
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_edits_keep_an_installed_server_like_packs() {
+        let project = temp_dir("kasetto-inline-edit");
+        let mut cfg = inline_cfg();
+        let mut lock = LockFile::default();
+        run_sync(&project_ctx(&cfg, &project), &mut lock);
+        let McpSpec::Inline(inline) = &mut cfg.mcps[0] else {
+            unreachable!()
+        };
+        inline.servers["gitea"]["url"] = "https://example.com/v2".into();
+        assert_eq!(run_sync(&project_ctx(&cfg, &project), &mut lock).updated, 1);
+        assert_eq!(
+            project_mcp_settings(&project)["mcpServers"]["gitea"]["url"],
+            "https://example.com/mcp"
+        );
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_lock_asset_matches_sync_and_satisfies_locked_without_a_prior_sync() {
+        let project = temp_dir("kasetto-inline-lock-asset");
+        let cfg = inline_cfg();
+        let McpSpec::Inline(inline) = &cfg.mcps[0] else {
+            unreachable!()
+        };
+        let (id, asset) = inline_mcp_lock_asset(inline).unwrap();
+        let mut lock = LockFile::default();
+        lock.save_tracked_asset(&id, asset);
+        let pinned = serde_json::to_value(&lock).unwrap();
+
+        let mut ctx = project_ctx(&cfg, &project);
+        ctx.locked = true;
+        let summary = run_sync(&ctx, &mut lock);
+        assert_eq!((summary.updated, summary.failed), (1, 0));
+        assert!(project_mcp_settings(&project)["mcpServers"]
+            .get("gitea")
+            .is_some());
+        assert_eq!(serde_json::to_value(&lock).unwrap(), pinned);
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn inline_locked_rejects_missing_or_changed_hash_without_pruning() {
+        let project = temp_dir("kasetto-inline-locked");
+        let cfg = inline_cfg();
+        let mut lock = LockFile::default();
+        let mut ctx = project_ctx(&cfg, &project);
+        ctx.locked = true;
+        assert_eq!(run_sync(&ctx, &mut lock).failed, 1);
+        assert!(!project.join(".mcp.json").exists());
+        ctx.locked = false;
+        run_sync(&ctx, &mut lock);
+        lock.assets.get_mut("mcp::<inline>::laptop").unwrap().hash = "different".into();
+        ctx.locked = true;
+        assert_eq!(run_sync(&ctx, &mut lock).failed, 1);
+        assert!(lock.assets.contains_key("mcp::<inline>::laptop"));
+        fs::remove_dir_all(project).unwrap();
     }
 
     #[test]
