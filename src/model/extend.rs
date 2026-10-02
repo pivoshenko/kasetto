@@ -6,6 +6,8 @@
 
 use serde_yaml::{Mapping, Value};
 
+use super::INLINE_SOURCE;
+
 /// Strip and return the `extends` field from a config Value.
 /// Accepts a single string or a sequence of strings.
 pub(crate) fn extract_extends(v: &mut Value) -> Vec<String> {
@@ -73,7 +75,10 @@ fn identity_of(entry: &Value) -> (String, String, String) {
     let Value::Mapping(m) = entry else {
         return (String::new(), String::new(), String::new());
     };
-    let source = string_field(m, "source").unwrap_or_default();
+    let source = string_field(m, "source").unwrap_or_else(|| {
+        let name = string_field(m, "name").unwrap_or_default();
+        format!("{INLINE_SOURCE}::{name}")
+    });
     let pin = string_field(m, "ref")
         .or_else(|| string_field(m, "branch"))
         .unwrap_or_default();
@@ -93,6 +98,19 @@ mod tests {
 
     fn yaml(s: &str) -> Value {
         serde_yaml::from_str(s).expect("parse yaml")
+    }
+
+    #[test]
+    fn inline_mcps_merge_by_name() {
+        let base = yaml("mcps: [{name: laptop, servers: {old: {}}}, {name: other, servers: {}}]");
+        let overlay =
+            yaml("mcps: [{name: laptop, servers: {new: {}}}, {name: extra, servers: {}}]");
+        let merged = merge_yaml(base, overlay);
+        let seq = merged["mcps"].as_sequence().unwrap();
+        assert_eq!(seq.len(), 3);
+        assert!(seq[0]["servers"].get("new").is_some());
+        assert!(seq[0]["servers"].get("old").is_none());
+        assert_eq!(seq[1]["name"].as_str(), Some("other"));
     }
 
     #[test]
