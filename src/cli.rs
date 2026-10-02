@@ -369,7 +369,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Resolve the config and pin it into kasetto.lock",
-        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. MCP, command, and instruction entries get refreshed revision pins; their content hash fills in on the next sync.",
+        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. Inline MCP entries are pinned fully. Source-based MCP, command, and instruction entries get refreshed revision pins; their content hash fills in on the next sync.",
         after_help = crate::cli_examples!(
             "kst lock",
             "kst lock --check",
