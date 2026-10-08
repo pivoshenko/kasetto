@@ -303,6 +303,6 @@ Don't see your agent? Use the `destination` field to point at any path.
 
 ## Private Repositories & Enterprise
 
-Private GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances work via env-var tokens (`GITHUB_TOKEN`, `GITLAB_TOKEN`, `BITBUCKET_TOKEN`, `GITEA_TOKEN`, etc.). No login command, no credentials file. The same tokens apply to remote `--config` URLs.
+Private GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances work via env-var tokens (`GITHUB_TOKEN`, `GITLAB_TOKEN`, `BITBUCKET_TOKEN`, `GITEA_TOKEN`, etc.). No login command, no credentials file. The same tokens apply to remote `--config` and `extends` URLs. Self-hosted Gitea and Forgejo instances named `gitea.*` or `forgejo.*` use `GITEA_TOKEN`.
 
 Full host table and auth resolution rules in the [authentication docs](https://kasetto.dev/docs/authentication).

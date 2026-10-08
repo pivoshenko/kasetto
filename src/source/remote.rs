@@ -531,6 +531,18 @@ mod tests {
     }
 
     #[test]
+    fn rewrite_self_hosted_gitea_src_branch_to_raw() {
+        let out = rewrite_browse_to_raw_url(
+            "https://gitea.example.org/owner/repo/src/branch/main/kasetto.yml",
+        )
+        .expect("rewritten");
+        assert_eq!(
+            out,
+            "https://gitea.example.org/owner/repo/raw/branch/main/kasetto.yml"
+        );
+    }
+
+    #[test]
     fn rewrite_gitea_src_tag_to_raw() {
         let out = rewrite_browse_to_raw_url(
             "https://codeberg.org/owner/repo/src/tag/v1.0.0/configs/kasetto.yml",
