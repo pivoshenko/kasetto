@@ -328,6 +328,47 @@ mod tests {
     }
 
     #[test]
+    fn self_hosted_gitea_archive_and_config_auth() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let previous = std::env::var_os("GITEA_TOKEN");
+        std::env::set_var("GITEA_TOKEN", "test-gitea-token");
+        for host in ["gitea.example.org", "forgejo.example.org"] {
+            let parsed = super::super::parse::parse_repo_url(&format!("https://{host}/owner/repo"))
+                .expect("parse");
+            for git_ref in ["main", "v1.0"] {
+                let (url, auth) = remote_repo_archive_branch(&parsed, git_ref);
+                assert_eq!(
+                    url,
+                    format!("https://{host}/owner/repo/archive/{git_ref}.tar.gz")
+                );
+                assert!(auth.basic.is_none());
+                assert!(
+                    auth.headers == vec![("Authorization".into(), "token test-gitea-token".into())]
+                );
+            }
+            let raw = rewrite_browse_to_raw_url(&format!(
+                "https://{host}/owner/repo/src/branch/main/kasetto.yaml"
+            ))
+            .expect("rewrite");
+            assert_eq!(
+                raw,
+                format!("https://{host}/owner/repo/raw/branch/main/kasetto.yaml")
+            );
+            let auth = super::super::auth::auth_for_request_url(&raw);
+            assert!(auth.basic.is_none());
+            assert!(
+                auth.headers == vec![("Authorization".into(), "token test-gitea-token".into())]
+            );
+            let hint = http_fetch_auth_hint(&raw, 401);
+            assert!(hint.contains("GITEA_TOKEN") && !hint.contains("GITHUB_TOKEN"));
+        }
+        match previous {
+            Some(value) => std::env::set_var("GITEA_TOKEN", value),
+            None => std::env::remove_var("GITEA_TOKEN"),
+        }
+    }
+
+    #[test]
     fn extract_tar_full_writes_everything_stripping_top_dir() {
         let gz = make_targz(&[
             ("repo-main/SKILL.md", b"# root"),

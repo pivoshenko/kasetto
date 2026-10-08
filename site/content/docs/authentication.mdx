@@ -28,7 +28,8 @@ Kasetto identifies the git host from the URL hostname:
   hostname starting with `gitlab.` (e.g., `gitlab.example.com`)
 - **Bitbucket** - `bitbucket.org` or `www.bitbucket.org`
 - **Codeberg / Gitea / Forgejo** - `codeberg.org`, `gitea.com`, `forgejo.org` (and their `www.`
-  variants)
+  variants), plus hostnames starting with `gitea.` or `forgejo.` (e.g.,
+  `gitea.example.org`), unless they already match the GitLab rule
 - **GitHub** - `github.com` and any other hostname not matching the rules above
 
 <Callout type="info">
@@ -43,11 +44,9 @@ Enterprise**. This means `ghe.example.com/acme/skills` works automatically with
 <Callout type="warn">
 
 
-Self-hosted Gitea or Forgejo instances (e.g., `gitea.mycompany.com`) are **not**
-auto-detected. They will be treated as GitHub Enterprise. If your self-hosted instance
-uses the GitHub-compatible API layout this may still work, but the `GITEA_TOKEN` variable
-will not be applied. Use `GITHUB_TOKEN` instead, or open an issue if you need explicit
-support for a custom Gitea domain.
+Self-hosted Gitea or Forgejo instances with arbitrary hostnames (e.g., `git.example.com`)
+are not auto-detected. Use a hostname starting with `gitea.` or `forgejo.` to select
+Gitea-family archive URLs and authentication.
 
 </Callout>
 ## Environment Variables
@@ -108,15 +107,19 @@ Method 1 is tried first; if those variables aren't set, Method 2 is used.
 | `CODEBERG_TOKEN` | Fallback if `GITEA_TOKEN` is not set    |
 | `FORGEJO_TOKEN`  | Fallback if neither of the above is set |
 
-All three are checked in order. The first one found is used for any Gitea-family host.
+All three are checked in order. The first one found is used for any Gitea-family host,
+including self-hosted instances whose hostnames start with `gitea.` or `forgejo.`.
 
 ## Remote Configs
 
-Authentication also applies when you fetch a config via `--config <url>`. The token is chosen based on the URL hostname, using the same detection rules above.
+Authentication also applies when you fetch a config via `--config <url>` or `extends`. The token is chosen based on the URL hostname, using the same detection rules above.
 
 ```bash
 export GITHUB_TOKEN=ghp_...
 kst sync --config https://github.com/org/private-repo/blob/main/kasetto.yaml
 ```
+
+Browser URLs containing `/src/branch/` on recognized Gitea-family hosts are rewritten
+to `/raw/branch/` before fetching the config.
 
 If the URL points to a private resource and no matching token is set, Kasetto reports an HTTP error with a hint about which variable to set.
