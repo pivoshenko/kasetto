@@ -210,6 +210,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_repo_url_self_hosted_gitea() {
+        for host in ["gitea.example.org", "forgejo.example.org"] {
+            let url = parse_repo_url(&format!("https://{host}/owner/repo")).expect("parse");
+            assert!(
+                matches!(url, RepoUrl::Gitea { host: parsed_host, owner, repo }
+                if parsed_host == host && owner == "owner" && repo == "repo")
+            );
+        }
+    }
+
+    #[test]
     fn parse_repo_url_github() {
         let url = parse_repo_url("https://github.com/openai/skills").expect("parse");
         assert!(

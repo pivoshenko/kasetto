@@ -25,5 +25,39 @@ pub(crate) fn is_gitea_style_host(host: &str) -> bool {
             | "www.gitea.com"
             | "forgejo.org"
             | "www.forgejo.org"
-    )
+    ) || ((host.starts_with("gitea.") || host.starts_with("forgejo.")) && !is_gitlab_host(host))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gitea_family_hosts() {
+        for host in [
+            "codeberg.org",
+            "www.codeberg.org",
+            "gitea.com",
+            "www.gitea.com",
+            "forgejo.org",
+            "www.forgejo.org",
+            "gitea.example.org",
+            "forgejo.example.org",
+        ] {
+            assert!(is_gitea_style_host(host), "{host}");
+        }
+        for host in [
+            "github.com",
+            "ghe.example.org",
+            "gitlab.example.org",
+            "bitbucket.org",
+            "git.example.org",
+            "gitea-example.org",
+            "forgejo-example.org",
+            "gitea.gitlab.com",
+            "forgejo.gitlab.com",
+        ] {
+            assert!(!is_gitea_style_host(host), "{host}");
+        }
+    }
 }
