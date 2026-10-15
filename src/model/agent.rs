@@ -361,9 +361,9 @@ impl Agent {
                 format: McpSettingsFormat::OpenCode,
             },
             Agent::OpenHands => mcp_servers_target(home, ".openhands/mcp.json"),
-            // Pi intentionally has no native MCP support. Third-party extensions
-            // own their configuration, so Kasetto must not invent a target
-            Agent::Pi => return None,
+            // Pi reads the generic `mcpServers` shape from its agent root, which
+            // honors `PI_CODING_AGENT_DIR` like its skills and prompts
+            Agent::Pi => mcp_servers_target(&pi_agent_dir(home), "mcp.json"),
             Agent::Trae => mcp_servers_target(home, ".trae/mcp.json"),
             Agent::ZCode => McpSettingsTarget {
                 path: home.join(".zcode/cli/config.json"),
@@ -433,7 +433,7 @@ impl Agent {
                 path: project_root.join(".zcode/config.json"),
                 format: McpSettingsFormat::ZCode,
             },
-            Agent::Pi => return None,
+            Agent::Pi => mcp_servers_target(project_root, ".pi/mcp.json"),
             Agent::Antigravity
             | Agent::Augment
             | Agent::Goose
@@ -850,9 +850,12 @@ mod tests {
             Agent::Pi.instructions_project_path(pr).unwrap().path,
             pr.join("AGENTS.md")
         );
-        assert!(Agent::Pi.mcp_settings_target(home, Path::new("")).is_none());
-        assert!(Agent::Pi.mcp_project_target(pr).is_none());
-        assert!(mcp_settings_targets(home, &[Agent::Pi]).is_empty());
+        let global_mcp = Agent::Pi.mcp_settings_target(home, Path::new("")).unwrap();
+        assert_eq!(global_mcp.path, global_root.join("mcp.json"));
+        assert_eq!(global_mcp.format, McpSettingsFormat::McpServers);
+        let project_mcp = Agent::Pi.mcp_project_target(pr).unwrap();
+        assert_eq!(project_mcp.path, pr.join(".pi/mcp.json"));
+        assert_eq!(project_mcp.format, McpSettingsFormat::McpServers);
         assert_eq!(serde_yaml::from_str::<Agent>("pi").unwrap(), Agent::Pi);
     }
 

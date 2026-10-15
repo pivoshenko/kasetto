@@ -93,7 +93,7 @@ pub(super) fn sync_mcps(
     let mut secrets_need_update = false;
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
 
-    // No configured agent has a native MCP target (e.g. no `agent:` or Pi only).
+    // No configured agent has a native MCP target (e.g. no `agent:`).
     // Config is source of truth, so scrub any previously locked MCPs from every
     // known target as best-effort, prune the lock, and return without fetching
     if mcp_settings_list.is_empty() {
@@ -1064,15 +1064,15 @@ mod tests {
     }
 
     #[test]
-    fn reconfig_from_mixed_pi_to_pi_only_prunes_installed_mcp() {
-        let src_root = temp_dir("kasetto-mcp-pi-src");
+    fn reconfig_to_no_mcp_agent_prunes_installed_mcp() {
+        let src_root = temp_dir("kasetto-mcp-prune-src");
         fs::create_dir_all(&src_root).unwrap();
         fs::write(
             src_root.join("mcp.json"),
             r#"{"mcpServers":{"managed":{"command":"echo"}}}"#,
         )
         .unwrap();
-        let project = temp_dir("kasetto-mcp-pi-project");
+        let project = temp_dir("kasetto-mcp-prune-project");
         fs::create_dir_all(&project).unwrap();
         fs::write(
             project.join(".mcp.json"),
@@ -1080,12 +1080,12 @@ mod tests {
         )
         .unwrap();
 
-        let mixed_cfg = mcp_cfg(&src_root, vec![Agent::Pi, Agent::ClaudeCode]);
+        let claude_cfg = mcp_cfg(&src_root, vec![Agent::ClaudeCode]);
         let mut lock = LockFile::default();
         let mut summary = Summary::default();
         let mut actions = Vec::new();
         sync_mcps(
-            &project_ctx(&mixed_cfg, &project),
+            &project_ctx(&claude_cfg, &project),
             &mut lock,
             &mut summary,
             &mut actions,
@@ -1098,14 +1098,14 @@ mod tests {
         assert!(settings["mcpServers"]["user-owned"].is_object());
         assert_eq!(lock.assets.values().filter(|a| a.kind == "mcp").count(), 1);
 
-        // Pi has no MCP target, so this transition must prune the prior managed
+        // With no MCP-capable agent left, this transition must prune the prior managed
         // server without reading the still-configured source or touching user data
         fs::remove_dir_all(&src_root).unwrap();
-        let pi_cfg = mcp_cfg(&src_root, vec![Agent::Pi]);
+        let no_mcp_cfg = mcp_cfg(&src_root, Vec::new());
         let mut summary2 = Summary::default();
         let mut actions2 = Vec::new();
         sync_mcps(
-            &project_ctx(&pi_cfg, &project),
+            &project_ctx(&no_mcp_cfg, &project),
             &mut lock,
             &mut summary2,
             &mut actions2,
