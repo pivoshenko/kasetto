@@ -133,10 +133,7 @@ export async function readStats(): Promise<Stats> {
   const entries = await Promise.all(
     kinds.map(async (kind) => {
       // UNIQUE_WINDOW_DAYS is a positive constant, so the tuple is never empty
-      const uniqueKeys = days.map((day) => `kasetto:${kind}:uniq:${day}`) as [
-        string,
-        ...string[],
-      ];
+      const uniqueKeys = days.map((day) => `kasetto:${kind}:uniq:${day}`) as [string, ...string[]];
       const [total, todayCount, unique] = await Promise.all([
         db.get<number>(`kasetto:${kind}:total`),
         db.get<number>(`kasetto:${kind}:day:${today()}`),
