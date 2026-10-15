@@ -20,10 +20,11 @@ format-site:
 lint: lint-rs lint-site
 
 lint-rs:
+    cargo fmt --check
     cargo clippy --all-targets -- -D warnings
 
 lint-site:
-    cd site && pnpm lint
+    cd site && pnpm check:ci
 
 test: test-rs test-site
 
