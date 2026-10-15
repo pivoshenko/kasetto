@@ -296,8 +296,8 @@ Set the `agent` field and Kasetto figures out where to put things.
 
 </details>
 
-Pi's preset syncs skills, prompt templates, and `AGENTS.md`. Pi intentionally has no native MCP
-support, so MCP sources are skipped for Pi and still sync to other selected agents that support MCP.
+Pi's preset syncs skills, prompt templates, `AGENTS.md`, and MCP servers (`~/.pi/agent/mcp.json`
+globally, `.pi/mcp.json` per project).
 
 Don't see your agent? Use the `destination` field to point at any path.
 
