@@ -7,7 +7,8 @@
 //! The check goes to `kasetto.dev/latest` rather than the GitHub API, so the
 //! once-per-24h request doubles as the project's only active-install signal.
 //! `self_update` still resolves release assets straight from GitHub. Set
-//! `KASETTO_NO_UPDATE_CHECK` to opt out of the request entirely.
+//! `KASETTO_NO_UPDATE_CHECK` to opt out: no request is made, and an existing
+//! cache is ignored rather than resurfacing as a notice.
 //!
 //! Best-effort: any failure (offline, rate-limit, IO) is silent.
 
@@ -153,7 +154,13 @@ pub(crate) fn wait_for_check(handle: Option<UpdateCheckHandle>, timeout: Duratio
 }
 
 /// Read the cached "latest version" for diagnostic display (e.g. `doctor`).
+///
+/// Returns `None` when the check is opted out, so a cache left over from before
+/// the opt-out cannot resurface as a notice or a `doctor` verdict.
 pub(crate) fn read_cached_entry() -> Option<CacheEntry> {
+    if update_check_disabled() {
+        return None;
+    }
     let path = cache_path()?;
     read_cache(&path)
 }
@@ -168,7 +175,7 @@ pub(crate) fn now_unix_secs() -> u64 {
 /// Suppressed when stdout is not a TTY, or when `suppress` is true (e.g.
 /// `--plain`/`--quiet`/`--json`, or commands that emit machine-readable output).
 pub(crate) fn print_notice_if_available(suppress: bool) {
-    if suppress {
+    if suppress || update_check_disabled() {
         return;
     }
     if !std::io::stdout().is_terminal() {
@@ -269,6 +276,28 @@ mod tests {
 
         std::env::remove_var("KASETTO_NO_UPDATE_CHECK");
         assert!(!update_check_disabled());
+    }
+
+    #[test]
+    fn opt_out_ignores_a_populated_cache() {
+        let dir = temp_dir("kasetto-notifier-optout");
+        fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("KASETTO_CACHE_DIR", &dir);
+        let entry = CacheEntry {
+            checked_at: now_secs(),
+            latest_version: "99.0.0".into(),
+        };
+        write_cache(&dir.join(CACHE_FILE), &entry).unwrap();
+
+        std::env::remove_var("KASETTO_NO_UPDATE_CHECK");
+        assert!(read_cached_entry().is_some());
+
+        std::env::set_var("KASETTO_NO_UPDATE_CHECK", "1");
+        assert!(read_cached_entry().is_none());
+
+        std::env::remove_var("KASETTO_NO_UPDATE_CHECK");
+        std::env::remove_var("KASETTO_CACHE_DIR");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
