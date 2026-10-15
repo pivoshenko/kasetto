@@ -2,8 +2,8 @@ import type { IconType } from "react-icons";
 import { FaApple, FaAws, FaFileShield, FaMicrosoft, FaTerminal } from "react-icons/fa6";
 import {
   Si1Password,
-  SiGooglecloud,
   SiGnuprivacyguard,
+  SiGooglecloud,
   SiKeepassxc,
   SiVault,
 } from "react-icons/si";
