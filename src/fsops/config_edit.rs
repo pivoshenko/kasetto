@@ -133,7 +133,6 @@ pub(crate) fn insert_item(text: &str, section: Section, item: &SourceItem) -> Re
             splice(&mut lines, insert_at, block);
         }
         None => {
-            // Append a fresh section at the end of the file
             if let Some(last) = lines.last() {
                 if !last.trim().is_empty() {
                     lines.push(String::new());
@@ -237,7 +236,6 @@ pub(crate) fn remove_names(
     };
     let (istart, iend) = (it.start, it.end);
 
-    // Locate the selector field line (`skills:` / `mcps:` / `commands:`)
     let mut field = None;
     #[allow(clippy::needless_range_loop)]
     for i in istart..iend {
@@ -259,7 +257,6 @@ pub(crate) fn remove_names(
         )));
     }
 
-    // Collect the scalar name lines under the selector field
     let mut name_lines: Vec<(usize, String)> = Vec::new();
     let mut has_object = false;
     #[allow(clippy::needless_range_loop)]

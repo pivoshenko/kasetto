@@ -279,7 +279,6 @@ pub(crate) fn run(
         }
     }
 
-    // Failures detail (only when present)
     if !output.failures.is_empty() {
         print_section_header(
             "Failures",
@@ -513,7 +512,6 @@ fn collect_unmanaged(
     out
 }
 
-/// Base file/dir name of `p` as a display string.
 fn base_name(p: &Path) -> String {
     p.file_name()
         .map(|s| s.to_string_lossy().to_string())

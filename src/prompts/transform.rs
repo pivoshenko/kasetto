@@ -39,7 +39,7 @@ fn flatten_name(name: &str) -> String {
     name.replace(':', "-")
 }
 
-/// Render `parsed` to bytes for the given `format`.
+/// Render `parsed` to a string for the given `format`.
 pub(crate) fn render(parsed: &Parsed, format: CommandFormat) -> String {
     match format {
         CommandFormat::MarkdownFrontmatter
@@ -111,7 +111,6 @@ pub(crate) fn destination_path(target: &CommandTarget, name: &str) -> PathBuf {
     target.path.join(derive_relpath(name, target.format))
 }
 
-/// Ensure parent directories of `path` exist.
 pub(crate) fn ensure_parent_dirs(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
