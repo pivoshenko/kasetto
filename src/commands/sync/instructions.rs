@@ -579,7 +579,11 @@ mod tests {
         fs::create_dir_all(&project).unwrap();
 
         let agents = vec![Agent::ClaudeCode, Agent::Windsurf];
-        let cfg = base_cfg(&old_src, agents.clone(), InstructionsField::Wildcard("*".into()));
+        let cfg = base_cfg(
+            &old_src,
+            agents.clone(),
+            InstructionsField::Wildcard("*".into()),
+        );
         let mut lock = LockFile::default();
         let mut summary = Summary::default();
         let mut actions = Vec::new();
