@@ -71,8 +71,8 @@ This project uses [`just`](https://github.com/casey/just) as its task runner. Ru
 | `format-rs` | Reformats the Rust sources in place |
 | `format-site` | Reformats the `site/` sources in place |
 | `lint` | Runs `lint-rs` and `lint-site` |
-| `lint-rs` | Lints every Rust target with Clippy, failing on any warning |
-| `lint-site` | Lints the `site/` sources |
+| `lint-rs` | Checks Rust formatting, then lints every target with Clippy, failing on any warning |
+| `lint-site` | Checks the `site/` sources for formatting, lint, and import order without writing |
 | `test` | Runs `test-rs` and `test-site` |
 | `test-rs` | Runs the Rust test suite |
 | `test-site` | No-op; the site has no test suite |

@@ -13,7 +13,8 @@
     "start": "next start",
     "format": "biome format --write .",
     "lint": "biome lint --write .",
-    "check": "biome check --write ."
+    "check": "biome check --write .",
+    "check:ci": "biome check ."
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
