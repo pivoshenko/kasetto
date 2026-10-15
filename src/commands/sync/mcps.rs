@@ -81,90 +81,48 @@ impl PendingMcp {
 /// Returns `true` when a secret-bearing pack was left unchanged without
 /// `--update`, so the caller can hint (after the summary) that a rotated secret
 /// won't propagate on a plain sync.
+/// The accumulators and output sinks phase 1 threads across every MCP entry.
+///
+/// Bundles `summary` and `actions` the way [`super::SyncMut`] does for skills,
+/// so each phase helper takes one handle instead of re-threading both.
+struct McpRun<'a> {
+    pending: Vec<PendingMcp>,
+    cleanup_dirs: Vec<PathBuf>,
+    desired_ids: HashSet<String>,
+    /// Set when a secret-bearing pack is left unchanged without `--update`, so
+    /// the caller can hint that a rotated secret won't propagate on a plain sync.
+    secrets_need_update: bool,
+    summary: &'a mut Summary,
+    actions: &'a mut Vec<Action>,
+}
+
 pub(super) fn sync_mcps(
     ctx: &SyncContext,
     lock: &mut LockFile,
     summary: &mut Summary,
     actions: &mut Vec<Action>,
 ) -> Result<bool> {
-    let mut desired_mcp_ids = HashSet::new();
-    // Set when a secret-bearing pack is left unchanged without `--update`, so we
-    // can hint that a rotated secret won't propagate on a plain sync
-    let mut secrets_need_update = false;
     let mcp_settings_list = resolve_mcp_settings_targets(ctx.cfg, ctx.scope, ctx.cfg_dir)?;
-
-    // No configured agent has a native MCP target (e.g. no `agent:`).
-    // Config is source of truth, so scrub any previously locked MCPs from every
-    // known target as best-effort, prune the lock, and return without fetching
     if mcp_settings_list.is_empty() {
-        let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
-        if has_orphans {
-            let fallback_targets: Vec<McpSettingsTarget> = match ctx.scope {
-                Scope::Project => all_mcp_project_targets(&ctx.scope_root),
-                Scope::Global => match (dirs_home(), dirs_kasetto_config()) {
-                    (Ok(home), Ok(cfg_dir)) => all_mcp_settings_targets(&home, &cfg_dir),
-                    _ => Vec::new(),
-                },
-            };
-            remove_stale(
-                ctx,
-                lock,
-                summary,
-                actions,
-                &desired_mcp_ids,
-                &fallback_targets,
-            );
-        }
+        prune_without_targets(ctx, lock, summary, actions);
         return Ok(false);
     }
 
-    // Phase 1: discover and classify all MCP entries
-    let mut pending: Vec<PendingMcp> = Vec::new();
-    let mut cleanup_dirs: Vec<PathBuf> = Vec::new();
+    let mut run = McpRun {
+        pending: Vec::new(),
+        cleanup_dirs: Vec::new(),
+        desired_ids: HashSet::new(),
+        secrets_need_update: false,
+        summary,
+        actions,
+    };
 
+    // Phase 1: discover and classify all MCP entries
     for (i, spec) in ctx.cfg.mcps.iter().enumerate() {
         let src = match spec {
             McpSpec::Source(src) => src,
             McpSpec::Inline(inline) => {
-                let entry = inline_pending(inline)?;
-                desired_mcp_ids.insert(entry.asset_id.clone());
-                let (status, error) = if ctx.locked
-                    && lock
-                        .assets
-                        .get(&entry.asset_id)
-                        .is_none_or(|a| a.hash != entry.hash)
-                {
-                    (
-                        "locked_error",
-                        Some(
-                            "inline MCP definition does not match the lock; run sync without --locked"
-                                .to_string(),
-                        ),
-                    )
-                } else {
-                    match classify_inline_mcp(ctx, lock, &mcp_settings_list, entry)? {
-                        McpFileOutcome::Install(p) => {
-                            pending.push(*p);
-                            continue;
-                        }
-                        McpFileOutcome::Unchanged { has_secrets } => {
-                            secrets_need_update |= has_secrets;
-                            ("unchanged", None)
-                        }
-                        McpFileOutcome::SecretError(e) => ("source_error", Some(e)),
-                    }
-                };
-                if error.is_some() {
-                    summary.failed += 1;
-                } else {
-                    summary.unchanged += 1;
-                }
-                actions.push(Action {
-                    source: Some(INLINE_SOURCE.into()),
-                    skill: Some(format!("mcp:{}", inline.name)),
-                    status: status.into(),
-                    error,
-                });
+                process_inline(ctx, lock, &mcp_settings_list, inline, &mut run)?;
                 continue;
             }
         };
@@ -175,8 +133,8 @@ pub(super) fn sync_mcps(
         // `--locked`/`--frozen`: the lock must be able to satisfy the config
         if ctx.locked {
             if let Err(e) = ensure_locked_satisfiable_mcps(src, &desired_file_names, lock) {
-                summary.failed += 1;
-                actions.push(Action {
+                run.summary.failed += 1;
+                run.actions.push(Action {
                     source: Some(src.source.clone()),
                     skill: None,
                     status: "locked_error".into(),
@@ -197,8 +155,8 @@ pub(super) fn sync_mcps(
             || needs_fetch_mcps(ctx, src, &desired_file_names, lock, &mcp_settings_list);
 
         if fetch && ctx.locked {
-            summary.failed += 1;
-            actions.push(Action {
+            run.summary.failed += 1;
+            run.actions.push(Action {
                 source: Some(src.source.clone()),
                 skill: None,
                 status: "locked_error".into(),
@@ -211,27 +169,7 @@ pub(super) fn sync_mcps(
         }
 
         if !fetch {
-            // Skip path: no network. Honor each desired MCP file from the lock
-            let mut first_in_run = true;
-            for file_name in &desired_file_names {
-                let asset_id = format!("mcp::{}::{}", src.source, file_name);
-                if lock.assets.get(&asset_id).is_some_and(|a| a.has_secrets) {
-                    secrets_need_update = true;
-                }
-                desired_mcp_ids.insert(asset_id);
-                let label = sync_label_with(file_name, &src.source, ctx.plain, first_in_run);
-                first_in_run = false;
-                with_spinner_transient(ctx.animate, ctx.plain, &label, || {
-                    summary.unchanged += 1;
-                    actions.push(Action {
-                        source: Some(src.source.clone()),
-                        skill: Some(format!("mcp:{file_name}")),
-                        status: "unchanged".into(),
-                        error: None,
-                    });
-                    Ok(())
-                })?;
-            }
+            honor_from_lock(ctx, lock, src, &desired_file_names, &mut run)?;
             continue;
         }
 
@@ -239,8 +177,8 @@ pub(super) fn sync_mcps(
         let materialized = match materialize_source(&src.as_source_spec(), ctx.cfg_dir, &stage) {
             Ok(m) => m,
             Err(e) => {
-                summary.failed += 1;
-                actions.push(Action {
+                run.summary.failed += 1;
+                run.actions.push(Action {
                     source: Some(src.source.clone()),
                     skill: None,
                     status: "source_error".into(),
@@ -254,185 +192,342 @@ pub(super) fn sync_mcps(
         // a cache-served `ref:` source (which has no stage dir, so `cleanup_dir`
         // is `None`). `cleanup_dir` is only a teardown handle, never the root
         let root = materialized.source_root.as_path();
-        let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
-            McpsField::Wildcard(s) if s == "*" => discover_mcps(root),
-            McpsField::Wildcard(s) => Err(err(format!(
-                "invalid mcps value \"{s}\": expected \"*\" or a list"
-            ))),
-            McpsField::List(entries) => {
-                let mut paths = Vec::new();
-                for entry in entries {
-                    let name = match entry {
-                        crate::model::McpEntry::Name(n) => n.clone(),
-                        crate::model::McpEntry::Obj { name, .. } => name.clone(),
-                    };
-                    match resolve_mcp_entry(root, entry) {
-                        Ok(p) => paths.push(p),
-                        Err(e) => {
-                            summary.broken += 1;
-                            actions.push(Action {
-                                source: Some(src.source.clone()),
-                                skill: Some(name),
-                                status: "broken".into(),
-                                error: Some(e.to_string()),
-                            });
-                        }
-                    }
-                }
-                Ok(paths)
-            }
-        };
-        let mcps = match resolve_result {
-            Ok(paths) => paths,
-            Err(e) => {
-                summary.broken += 1;
-                actions.push(Action {
-                    source: Some(src.source.clone()),
-                    skill: Some("mcp".into()),
-                    status: "broken".into(),
-                    error: Some(e.to_string()),
-                });
+        let mcps = match resolve_source_mcps(root, src, &mut run) {
+            Some(mcps) => mcps,
+            None => {
                 if let Some(d) = materialized.cleanup_dir {
                     let _ = fs::remove_dir_all(d);
                 }
                 continue;
             }
         };
-        if mcps.is_empty() {
-            summary.broken += 1;
-            actions.push(Action {
-                source: Some(src.source.clone()),
-                skill: Some("mcp".into()),
-                status: "broken".into(),
-                error: Some(
-                    "no MCP JSON files found in source (expected .mcp.json, mcp.json, or mcps/*.json)"
-                        .into(),
-                ),
-            });
-            if let Some(d) = materialized.cleanup_dir {
-                let _ = fs::remove_dir_all(d);
-            }
-            continue;
-        }
-        let mut first_in_run = true;
-        for mcp_path in &mcps {
-            let file_name = file_name_str(mcp_path);
-            let row_first = first_in_run;
-            first_in_run = false;
-            // Scope `--update <name>` to the file actually named. A source can
-            // hold several MCP files; rotating one (force-remerge with overwrite)
-            // must not clobber hand-edited servers from the source's other files
-            let file_update =
-                update_active_for_source(ctx, &src.source, &update_aliases(&file_name));
-            let classified = classify_mcp_file(
-                ctx,
-                lock,
-                &mcp_settings_list,
-                &src.source,
-                mcp_path,
-                file_update,
-                &materialized.source_revision,
-            );
-            let (asset_id, outcome) = match classified {
-                Ok(c) => c,
-                Err(e) => {
-                    // A malformed/unreadable file is `broken` (exit 0), distinct
-                    // from an unresolved secret below
-                    summary.broken += 1;
-                    actions.push(Action {
-                        source: Some(src.source.clone()),
-                        skill: Some(format!("mcp:{file_name}")),
-                        status: "broken".into(),
-                        error: Some(e.to_string()),
-                    });
-                    continue;
-                }
-            };
-            desired_mcp_ids.insert(asset_id);
-            match outcome {
-                McpFileOutcome::Unchanged { has_secrets } => {
-                    if has_secrets {
-                        secrets_need_update = true;
-                    }
-                    let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
-                    with_spinner_transient(ctx.animate, ctx.plain, &label, || {
-                        summary.unchanged += 1;
-                        actions.push(Action {
-                            source: Some(src.source.clone()),
-                            skill: Some(format!("mcp:{file_name}")),
-                            status: "unchanged".into(),
-                            error: None,
-                        });
-                        Ok(())
-                    })?;
-                }
-                McpFileOutcome::SecretError(e) => {
-                    // Missing required secret: hard failure (non-zero exit),
-                    // nothing written, never to a destination, cache, or lock
-                    summary.failed += 1;
-                    actions.push(Action {
-                        source: Some(src.source.clone()),
-                        skill: Some(format!("mcp:{file_name}")),
-                        status: "source_error".into(),
-                        error: Some(e),
-                    });
-                }
-                McpFileOutcome::Install(pmcp) => pending.push(*pmcp),
-            }
-        }
+
+        process_source_files(
+            ctx,
+            lock,
+            &mcp_settings_list,
+            src,
+            &mcps,
+            &materialized.source_revision,
+            &mut run,
+        )?;
+
         // Defer cleanup so mcp_path references remain valid
         if let Some(d) = materialized.cleanup_dir {
-            cleanup_dirs.push(d);
+            run.cleanup_dirs.push(d);
         }
     }
 
     // Remove MCP servers no longer in config. Skipped when any source failed
-    // (locked_error et al.): `desired_mcp_ids` would be missing the failed
+    // (locked_error et al.): `desired_ids` would be missing the failed
     // source's existing entries and they'd be treated as orphans. Every
-    // `summary.failed` bump happens in phase 1, so the count is already final
+    // `run.summary.failed` bump happens in phase 1, so the count is already final
     //
     // Runs before the merge because asset ids carry the source: a pack that
     // moved to a different `source` retires its old id and claims a new one for
     // the same server names. Clearing the retired names first is what lets the
     // new definitions land, since a merge skips a name that is already present
-    if summary.failed == 0 {
+    if run.summary.failed == 0 {
         remove_stale(
             ctx,
             lock,
-            summary,
-            actions,
-            &desired_mcp_ids,
+            run.summary,
+            run.actions,
+            &run.desired_ids,
             &mcp_settings_list,
         );
     }
 
-    // A name that left one pack must survive when another configured pack still
-    // declares it. An unchanged pack is absent from `pending` and so never
-    // re-merges, and pruning the name here would drop a still-locked server
-    // until some later sync happened to touch that pack
-    let mut still_declared: HashSet<String> = HashSet::new();
-    for p in &pending {
-        still_declared.extend(p.server_names.iter().cloned());
-    }
-    for (id, dest) in lock.list_tracked_asset_ids("mcp") {
-        if desired_mcp_ids.contains(id) && !pending.iter().any(|p| p.asset_id == id) {
-            still_declared.extend(dest.split(',').filter(|n| !n.is_empty()).map(str::to_owned));
-        }
-    }
+    let still_declared = collect_still_declared(lock, &run);
 
     // Phase 2: apply all pending installs and updates
     apply_pending(
         ctx,
         lock,
-        summary,
-        actions,
+        run.summary,
+        run.actions,
         &mcp_settings_list,
-        &pending,
+        &run.pending,
         &still_declared,
     )?;
-    cleanup_staged(&cleanup_dirs);
+    cleanup_staged(&run.cleanup_dirs);
 
-    Ok(secrets_need_update)
+    Ok(run.secrets_need_update)
+}
+
+/// Scrub previously locked MCPs when no configured agent has a native MCP target.
+///
+/// Config is source of truth, so this prunes the lock and clears the managed
+/// servers from every known target as best-effort, without fetching anything.
+fn prune_without_targets(
+    ctx: &SyncContext,
+    lock: &mut LockFile,
+    summary: &mut Summary,
+    actions: &mut Vec<Action>,
+) {
+    let has_orphans = lock.assets.values().any(|a| a.kind == "mcp");
+    if !has_orphans {
+        return;
+    }
+    let fallback_targets: Vec<McpSettingsTarget> = match ctx.scope {
+        Scope::Project => all_mcp_project_targets(&ctx.scope_root),
+        Scope::Global => match (dirs_home(), dirs_kasetto_config()) {
+            (Ok(home), Ok(cfg_dir)) => all_mcp_settings_targets(&home, &cfg_dir),
+            _ => Vec::new(),
+        },
+    };
+    remove_stale(
+        ctx,
+        lock,
+        summary,
+        actions,
+        &HashSet::new(),
+        &fallback_targets,
+    );
+}
+
+/// Classify one inline `mcps[]` definition, which never touches the network.
+fn process_inline(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    mcp_settings_list: &[McpSettingsTarget],
+    inline: &InlineMcpSpec,
+    run: &mut McpRun<'_>,
+) -> Result<()> {
+    let entry = inline_pending(inline)?;
+    run.desired_ids.insert(entry.asset_id.clone());
+    let (status, error) = if ctx.locked
+        && lock
+            .assets
+            .get(&entry.asset_id)
+            .is_none_or(|a| a.hash != entry.hash)
+    {
+        (
+            "locked_error",
+            Some(
+                "inline MCP definition does not match the lock; run sync without --locked"
+                    .to_string(),
+            ),
+        )
+    } else {
+        match classify_inline_mcp(ctx, lock, mcp_settings_list, entry)? {
+            McpFileOutcome::Install(p) => {
+                run.pending.push(*p);
+                return Ok(());
+            }
+            McpFileOutcome::Unchanged { has_secrets } => {
+                run.secrets_need_update |= has_secrets;
+                ("unchanged", None)
+            }
+            McpFileOutcome::SecretError(e) => ("source_error", Some(e)),
+        }
+    };
+    if error.is_some() {
+        run.summary.failed += 1;
+    } else {
+        run.summary.unchanged += 1;
+    }
+    run.actions.push(Action {
+        source: Some(INLINE_SOURCE.into()),
+        skill: Some(format!("mcp:{}", inline.name)),
+        status: status.into(),
+        error,
+    });
+    Ok(())
+}
+
+/// Skip path: honor each desired MCP file straight from the lock, no network.
+fn honor_from_lock(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    src: &crate::model::McpSourceSpec,
+    desired_file_names: &[String],
+    run: &mut McpRun<'_>,
+) -> Result<()> {
+    let mut first_in_run = true;
+    for file_name in desired_file_names {
+        let asset_id = format!("mcp::{}::{}", src.source, file_name);
+        if lock.assets.get(&asset_id).is_some_and(|a| a.has_secrets) {
+            run.secrets_need_update = true;
+        }
+        run.desired_ids.insert(asset_id);
+        let label = sync_label_with(file_name, &src.source, ctx.plain, first_in_run);
+        first_in_run = false;
+        with_spinner_transient(ctx.animate, ctx.plain, &label, || {
+            run.summary.unchanged += 1;
+            run.actions.push(Action {
+                source: Some(src.source.clone()),
+                skill: Some(format!("mcp:{file_name}")),
+                status: "unchanged".into(),
+                error: None,
+            });
+            Ok(())
+        })?;
+    }
+    Ok(())
+}
+
+/// Resolve the MCP file paths a source contributes, or `None` when the whole
+/// source is broken (an unresolvable `mcps:` value, or no MCP files at all).
+///
+/// A single unresolvable entry inside a `List` is reported as broken on its own
+/// and skipped, leaving the rest of the source to sync.
+fn resolve_source_mcps(
+    root: &Path,
+    src: &crate::model::McpSourceSpec,
+    run: &mut McpRun<'_>,
+) -> Option<Vec<PathBuf>> {
+    let resolve_result: Result<Vec<PathBuf>> = match &src.mcps {
+        McpsField::Wildcard(s) if s == "*" => discover_mcps(root),
+        McpsField::Wildcard(s) => Err(err(format!(
+            "invalid mcps value \"{s}\": expected \"*\" or a list"
+        ))),
+        McpsField::List(entries) => {
+            let mut paths = Vec::new();
+            for entry in entries {
+                let name = match entry {
+                    crate::model::McpEntry::Name(n) => n.clone(),
+                    crate::model::McpEntry::Obj { name, .. } => name.clone(),
+                };
+                match resolve_mcp_entry(root, entry) {
+                    Ok(p) => paths.push(p),
+                    Err(e) => {
+                        run.summary.broken += 1;
+                        run.actions.push(Action {
+                            source: Some(src.source.clone()),
+                            skill: Some(name),
+                            status: "broken".into(),
+                            error: Some(e.to_string()),
+                        });
+                    }
+                }
+            }
+            Ok(paths)
+        }
+    };
+    let mcps = match resolve_result {
+        Ok(paths) => paths,
+        Err(e) => {
+            run.summary.broken += 1;
+            run.actions.push(Action {
+                source: Some(src.source.clone()),
+                skill: Some("mcp".into()),
+                status: "broken".into(),
+                error: Some(e.to_string()),
+            });
+            return None;
+        }
+    };
+    if mcps.is_empty() {
+        run.summary.broken += 1;
+        run.actions.push(Action {
+            source: Some(src.source.clone()),
+            skill: Some("mcp".into()),
+            status: "broken".into(),
+            error: Some(
+                "no MCP JSON files found in source (expected .mcp.json, mcp.json, or mcps/*.json)"
+                    .into(),
+            ),
+        });
+        return None;
+    }
+    Some(mcps)
+}
+
+/// Classify every MCP file a fetched source contributes.
+fn process_source_files(
+    ctx: &SyncContext,
+    lock: &LockFile,
+    mcp_settings_list: &[McpSettingsTarget],
+    src: &crate::model::McpSourceSpec,
+    mcps: &[PathBuf],
+    source_revision: &str,
+    run: &mut McpRun<'_>,
+) -> Result<()> {
+    let mut first_in_run = true;
+    for mcp_path in mcps {
+        let file_name = file_name_str(mcp_path);
+        let row_first = first_in_run;
+        first_in_run = false;
+        // Scope `--update <name>` to the file actually named. A source can
+        // hold several MCP files; rotating one (force-remerge with overwrite)
+        // must not clobber hand-edited servers from the source's other files
+        let file_update = update_active_for_source(ctx, &src.source, &update_aliases(&file_name));
+        let classified = classify_mcp_file(
+            ctx,
+            lock,
+            mcp_settings_list,
+            &src.source,
+            mcp_path,
+            file_update,
+            source_revision,
+        );
+        let (asset_id, outcome) = match classified {
+            Ok(c) => c,
+            Err(e) => {
+                // A malformed/unreadable file is `broken` (exit 0), distinct
+                // from an unresolved secret below
+                run.summary.broken += 1;
+                run.actions.push(Action {
+                    source: Some(src.source.clone()),
+                    skill: Some(format!("mcp:{file_name}")),
+                    status: "broken".into(),
+                    error: Some(e.to_string()),
+                });
+                continue;
+            }
+        };
+        run.desired_ids.insert(asset_id);
+        match outcome {
+            McpFileOutcome::Unchanged { has_secrets } => {
+                if has_secrets {
+                    run.secrets_need_update = true;
+                }
+                let label = sync_label_with(&file_name, &src.source, ctx.plain, row_first);
+                with_spinner_transient(ctx.animate, ctx.plain, &label, || {
+                    run.summary.unchanged += 1;
+                    run.actions.push(Action {
+                        source: Some(src.source.clone()),
+                        skill: Some(format!("mcp:{file_name}")),
+                        status: "unchanged".into(),
+                        error: None,
+                    });
+                    Ok(())
+                })?;
+            }
+            McpFileOutcome::SecretError(e) => {
+                // Missing required secret: hard failure (non-zero exit),
+                // nothing written, never to a destination, cache, or lock
+                run.summary.failed += 1;
+                run.actions.push(Action {
+                    source: Some(src.source.clone()),
+                    skill: Some(format!("mcp:{file_name}")),
+                    status: "source_error".into(),
+                    error: Some(e),
+                });
+            }
+            McpFileOutcome::Install(pmcp) => run.pending.push(*pmcp),
+        }
+    }
+    Ok(())
+}
+
+/// Server names that must survive the prune because some pack still declares them.
+///
+/// An unchanged pack is absent from `pending` and so never re-merges; pruning
+/// its names here would drop a still-locked server until some later sync
+/// happened to touch that pack.
+fn collect_still_declared(lock: &LockFile, run: &McpRun<'_>) -> HashSet<String> {
+    let mut still_declared: HashSet<String> = HashSet::new();
+    for p in &run.pending {
+        still_declared.extend(p.server_names.iter().cloned());
+    }
+    for (id, dest) in lock.list_tracked_asset_ids("mcp") {
+        if run.desired_ids.contains(id) && !run.pending.iter().any(|p| p.asset_id == id) {
+            still_declared.extend(dest.split(',').filter(|n| !n.is_empty()).map(str::to_owned));
+        }
+    }
+    still_declared
 }
 
 /// Names a `--update <name>` accepts for an MCP file: the file name itself
@@ -732,7 +827,11 @@ fn apply_pending(
                 status: status.into(),
                 error: None,
             });
-            let removed_status = if ctx.dry_run { "would_remove" } else { "removed" };
+            let removed_status = if ctx.dry_run {
+                "would_remove"
+            } else {
+                "removed"
+            };
             for name in &departed {
                 summary.removed += 1;
                 actions.push(Action {
@@ -1285,7 +1384,10 @@ mod tests {
         sync_mcps(&update_ctx, &mut lock, &mut summary2, &mut actions2).unwrap();
 
         assert_eq!(summary2.updated, 1);
-        assert_eq!(summary2.removed, 1, "the dropped server counts as a removal");
+        assert_eq!(
+            summary2.removed, 1,
+            "the dropped server counts as a removal"
+        );
         let settings = project_mcp_settings(&project);
         assert!(
             settings["mcpServers"]["one"].is_null(),
