@@ -1,8 +1,13 @@
 //! Module that contains the background "new version available" notice.
 //!
-//! On startup, spawn a detached thread that fetches the latest GitHub release
+//! On startup, spawn a detached thread that fetches the latest released version
 //! and writes it to a cache file. On the next run, if the cache says a newer
 //! version exists, print a single yellow line at the end of the command.
+//!
+//! The check goes to `kasetto.dev/latest` rather than the GitHub API, so the
+//! once-per-24h request doubles as the project's only active-install signal.
+//! `self_update` still resolves release assets straight from GitHub. Set
+//! `KASETTO_NO_UPDATE_CHECK` to opt out of the request entirely.
 //!
 //! Best-effort: any failure (offline, rate-limit, IO) is silent.
 
@@ -13,13 +18,40 @@ use std::sync::mpsc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::colors::{ACCENT, ATTENTION, RESET, SECONDARY};
-use crate::commands::self_update::{fetch_latest_release, is_newer};
-use crate::fsops::dirs_kasetto_cache;
+use crate::commands::self_update::is_newer;
+use crate::error::{err, Result};
+use crate::fsops::{dirs_kasetto_cache, http_client};
 use crate::profile::list_color_enabled;
 
 const CACHE_FILE: &str = "update-check.json";
+const LATEST_URL: &str = "https://kasetto.dev/latest";
 /// Refresh cache at most once per 24h (matches npm/brew defaults).
 const TTL_SECS: u64 = 24 * 60 * 60;
+
+#[derive(serde::Deserialize)]
+struct LatestVersion {
+    tag_name: String,
+}
+
+/// Fetch the latest released version from `kasetto.dev`.
+///
+/// Deliberately separate from [`crate::commands::self_update::fetch_latest_release`]:
+/// that one needs GitHub's asset list to download a binary, this one needs only
+/// a version string.
+fn fetch_latest_version() -> Result<String> {
+    let text = http_client()?
+        .get(LATEST_URL)
+        .header("Accept", "application/json")
+        .send()
+        .map_err(|e| err(format!("failed to fetch latest version: {e}")))?
+        .error_for_status()
+        .map_err(|e| err(format!("update check error: {e}")))?
+        .text()
+        .map_err(|e| err(format!("failed to read update check response: {e}")))?;
+    let latest: LatestVersion = serde_json::from_str(&text)
+        .map_err(|e| err(format!("failed to parse update check response: {e}")))?;
+    Ok(latest.tag_name)
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct CacheEntry {
@@ -32,6 +64,10 @@ pub(crate) struct CacheEntry {
 /// the main thread exits, so without this fast commands never persist results.
 pub(crate) struct UpdateCheckHandle {
     rx: mpsc::Receiver<()>,
+}
+
+fn update_check_disabled() -> bool {
+    std::env::var("KASETTO_NO_UPDATE_CHECK").is_ok_and(|v| !v.is_empty() && v != "0")
 }
 
 fn cache_path() -> Option<PathBuf> {
@@ -78,6 +114,9 @@ fn cache_is_fresh(entry: &CacheEntry, now: u64) -> bool {
 /// path can't be resolved. Otherwise returns a handle so the main thread can
 /// optionally [`wait_for_check`] before rendering the notice.
 pub(crate) fn spawn_background_check() -> Option<UpdateCheckHandle> {
+    if update_check_disabled() {
+        return None;
+    }
     let path = cache_path()?;
     let now = now_secs();
     if let Some(entry) = read_cache(&path) {
@@ -90,10 +129,10 @@ pub(crate) fn spawn_background_check() -> Option<UpdateCheckHandle> {
     // Best-effort: this detached thread only refreshes a cosmetic update-check cache, so any
     // panic here is intentionally isolated to the thread and never aborts the real command
     std::thread::spawn(move || {
-        if let Ok(release) = fetch_latest_release() {
+        if let Ok(tag) = fetch_latest_version() {
             let entry = CacheEntry {
                 checked_at: now_secs(),
-                latest_version: release.tag_name.trim_start_matches('v').to_string(),
+                latest_version: tag.trim_start_matches('v').to_string(),
             };
             let _ = write_cache(&path, &entry);
         }
@@ -216,6 +255,20 @@ mod tests {
         assert_eq!(back.checked_at, 1_700_000_000);
         assert_eq!(back.latest_version, "9.9.9");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn opt_out_env_var_skips_the_check() {
+        std::env::set_var("KASETTO_NO_UPDATE_CHECK", "1");
+        assert!(update_check_disabled());
+        // no network: the opt-out short-circuits before the thread is spawned
+        assert!(spawn_background_check().is_none());
+
+        std::env::set_var("KASETTO_NO_UPDATE_CHECK", "0");
+        assert!(!update_check_disabled());
+
+        std::env::remove_var("KASETTO_NO_UPDATE_CHECK");
+        assert!(!update_check_disabled());
     }
 
     #[test]
