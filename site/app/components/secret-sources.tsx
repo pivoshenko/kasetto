@@ -25,21 +25,23 @@ const SOURCES: { icon: IconType; name: string; usage: string }[] = [
 
 export function SecretSources() {
   return (
-    <div className="grid-box">
-      <div className="src-grid">
+    <figure className="lp-pane">
+      <figcaption className="lp-pane-bar">
+        <span>secret sources</span>
+        <span className="lp-pane-tag">{SOURCES.length} backends</span>
+      </figcaption>
+      <ul className="lp-secrets">
         {SOURCES.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.name} className="src-cell">
-              <div className="src-head">
-                <Icon className="src-icon" aria-hidden />
-                <span className="src-name">{s.name}</span>
-              </div>
-              <code className="src-usage">{`\${${s.usage}}`}</code>
-            </div>
+            <li key={s.name} className="lp-secret">
+              <Icon className="lp-secret-icon" aria-hidden />
+              <span className="lp-secret-name">{s.name}</span>
+              <code className="lp-secret-usage">{`\${${s.usage}}`}</code>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </figure>
   );
 }

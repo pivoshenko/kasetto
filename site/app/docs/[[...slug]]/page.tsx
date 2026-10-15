@@ -27,14 +27,16 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
     <DocsPage toc={page.data.toc} full={page.data.full} article={{ className: "max-w-[1120px]" }}>
       <JsonLd data={breadcrumbJsonLd(page)} />
       {faq && <JsonLd data={faq} />}
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription className="docs-page-description">{page.data.description}</DocsDescription>
-      <div className="docs-page-actions">
-        <CopyButton text={getPageMarkdown(page)} label="Copy page" />
-        <a className="action-link" href={`${page.url}.md`}>
-          View as Markdown
-        </a>
-      </div>
+      <header className="docs-page-header">
+        <DocsTitle className="docs-page-title">{page.data.title}</DocsTitle>
+        <DocsDescription className="docs-page-description">{page.data.description}</DocsDescription>
+        <div className="docs-page-actions">
+          <CopyButton text={getPageMarkdown(page)} label="Copy page" />
+          <a className="action-link" href={`${page.url}.md`}>
+            View as Markdown
+          </a>
+        </div>
+      </header>
       <DocsBody>
         <MDX components={getMDXComponents()} />
       </DocsBody>

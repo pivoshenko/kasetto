@@ -1,0 +1,95 @@
+/* Lime Ice: dark-only. Raw hex mirrors lib/palette.ts, which the off-DOM next/og renderers read
+   because they cannot resolve CSS variables. Change a color in both places */
+:root {
+  /* == Surfaces == */
+  --bg: #08090b;
+  --bg-elevated: #111317;
+  --bg-raise: #171a1f;
+  --border: #22262d;
+  --border-strong: #2e333b;
+
+  /* == Text == */
+  --fg: #e7ebef;
+  --fg-muted: #8a919b;
+  --fg-subtle: #596069;
+
+  /* == Brand == */
+  --accent: #c6ff3d;
+  --accent-2: #3fd7ff;
+  --accent-3: #2a7fd4;
+  --accent-deep: #173a7a;
+  --on-accent: #08090b;
+
+  /* == Status: Mirrors the CLI Roles in src/colors.rs == */
+  --success: #5fe3a1;
+  --danger: #ff6b6b;
+  --warning: #c6ff3d;
+  --info: #3fd7ff;
+
+  /* == Type == */
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
+  /* Archivo's wdth axis: display copy runs expanded, body copy stays at normal width */
+  --display-stretch: 125%;
+  --display-weight: 500;
+  --display-tracking: -0.02em;
+
+  --fs-xs: 11px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-base: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+
+  /* == Spacing (4px Base) == */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-18: 72px;
+
+  --tracking-tight: 0.02em;
+  --tracking-normal: 0.04em;
+  --tracking-wide: 0.14em;
+  --tracking-wider: 0.22em;
+  --tracking-widest: 0.32em;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Film grain, the analog texture cue shared by the hero art and tiles */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-opacity: 0.03;
+}
+
+/* == Fumadocs Theme Bridge == */
+/* Fumadocs reads bare HSL triples */
+:root {
+  --fd-background: 220 16% 4%; /* --bg #08090b */
+  --fd-foreground: 210 20% 92%; /* --fg #e7ebef */
+  --fd-card: 220 15% 8%; /* --bg-elevated #111317 */
+  --fd-card-foreground: 210 20% 92%;
+  --fd-popover: 220 15% 8%;
+  --fd-popover-foreground: 210 20% 92%;
+  --fd-primary: 78 100% 62%; /* --accent #c6ff3d */
+  --fd-primary-foreground: 220 16% 4%;
+  --fd-secondary: 218 15% 11%; /* --bg-raise #171a1f */
+  --fd-secondary-foreground: 210 20% 92%;
+  --fd-muted: 220 15% 8%;
+  --fd-muted-foreground: 215 8% 57%; /* --fg-muted #8a919b */
+  --fd-accent: 218 15% 11%;
+  --fd-accent-foreground: 210 20% 92%;
+  --fd-border: 218 14% 15%; /* --border #22262d */
+  --fd-ring: 78 100% 62%;
+}
