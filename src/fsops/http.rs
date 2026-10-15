@@ -11,6 +11,8 @@ static HTTP_CLIENT: OnceLock<std::result::Result<Client, String>> = OnceLock::ne
 /// Shared client: avoids TLS/session setup on every asset or config fetch.
 pub(crate) fn http_client() -> Result<Client> {
     let built = HTTP_CLIENT.get_or_init(|| {
+        // trust roots come from reqwest's rustls-tls + rustls-tls-native-roots features:
+        // bundled webpki roots plus the platform store, so TLS-intercepting proxies work
         Client::builder()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))

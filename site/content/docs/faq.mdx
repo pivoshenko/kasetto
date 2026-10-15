@@ -63,3 +63,11 @@ See [How Sync Works](/docs/how-sync-works#edge-cases) (corrupted settings file b
 ## How Do Remote Configs (`--config https://...`) Authenticate?
 
 Kasetto selects tokens by the URL hostname using the same rules as skill/MCP sources. See [Authentication](/docs/authentication#remote-configs).
+
+## Why Does `kst sync` Fail Behind a Corporate Proxy?
+
+Kasetto honors the standard proxy environment variables (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, and `NO_PROXY`) and trusts both its own bundled root certificates and your operating system's certificate store. A proxy that re-signs TLS therefore works as long as its CA is installed system-wide. This covers corporate TLS-intercepting proxies and sandboxed environments such as Claude Code cloud sessions.
+
+To point Kasetto at a CA bundle explicitly, set `SSL_CERT_FILE` to a PEM file or `SSL_CERT_DIR` to a list of directories. Setting either one **replaces** the platform store rather than adding to it; the bundled roots stay active, so public certificate authorities keep working either way.
+
+One consequence worth knowing: because the platform store is trusted, Kasetto accepts any certificate authority your operating system accepts, including an interception CA that can read sync traffic.
