@@ -1,4 +1,4 @@
-import { readStats } from "@/lib/stats";
+import { readStats, type Stats } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,17 @@ export const dynamic = "force-dynamic";
  * Ungated on purpose: these are vanity counters, not private data.
  */
 export async function GET() {
-  const stats = await readStats();
+  // `readStats` propagates rather than swallowing, unlike the write helpers:
+  // those ride on a request that must succeed regardless, while reporting is
+  // this route's whole job, so a dead store has to be distinguishable here
+  // from a store that was never configured
+  let stats: Stats;
+  try {
+    stats = await readStats();
+  } catch (error) {
+    console.error("[stats] failed to read counters", error);
+    return Response.json({ error: "stats store unavailable" }, { status: 503 });
+  }
   if (!stats) {
     return Response.json({ error: "no stats store configured" }, { status: 503 });
   }
