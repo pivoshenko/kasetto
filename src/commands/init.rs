@@ -105,7 +105,7 @@ pub(crate) fn run(force: bool, global: bool) -> Result<()> {
     }
     print_section_header("Next steps", None, true, plain);
     // The step number is a marker, not content: grey, so the eye lands on the
-    // instruction. Amber stays for the things you act on (paths, env vars,
+    // instruction. Lime stays for the things you act on (paths, env vars,
     // the command to run)
     let step = |n: u8| {
         if plain {
