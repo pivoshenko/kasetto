@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.11.0] - 2026-10-15
+
+### Bug fixes
+
+- **stats**: Count weekly uniques with a week-stamped digest
+- **update-check**: Honor the opt-out for an already-cached notice
+- **stats**: Report an unreachable store as 503 instead of 500
+
+### CI/CD
+
+- Fail the lint gate on formatting and import-order drift
+
+### Documentation
+
+- Drop comments that restate the code
+
+### Features
+
+- **stats**: Count script installs and active installs
+
+### Refactor
+
+- **mcps**: Extract sync_mcps phases into named helpers
+
+### Style
+
+- **site**: Sort imports
+- Apply just format
+
 ## [3.10.2] - 2026-10-15
 
 ### Bug fixes
@@ -9,6 +38,10 @@ All notable changes to this project will be documented in this file.
 - **sync**: Keep a dropped server another mcp pack still declares
 - **sync**: Prune servers dropped from an mcp pack
 - **http**: Trust the system CA store for TLS-intercepting proxies
+
+### Release
+
+- V3.10.2
 
 ## [3.10.1] - 2026-10-15
 
