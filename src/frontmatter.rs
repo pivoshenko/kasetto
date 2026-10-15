@@ -40,7 +40,6 @@ pub(crate) fn parse(text: &str) -> Result<Parsed> {
             body: normalized,
         });
     };
-    // Find a line that is exactly "---" or "---\n" inside rest
     let mut idx = 0usize;
     let bytes = rest.as_bytes();
     let mut found: Option<(usize, usize)> = None;

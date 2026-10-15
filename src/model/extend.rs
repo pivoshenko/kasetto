@@ -117,7 +117,6 @@ mod tests {
     fn extract_extends_string() {
         let mut v = yaml("extends: ../base.yaml\nskills: []\n");
         assert_eq!(extract_extends(&mut v), vec!["../base.yaml".to_string()]);
-        // Field is removed from the value
         assert!(
             matches!(&v, Value::Mapping(m) if !m.contains_key(Value::String("extends".into())))
         );

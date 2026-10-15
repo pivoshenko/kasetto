@@ -240,7 +240,7 @@ fn discover_skills_in_subdir(base: &Path, out: &mut HashMap<String, PathBuf>) ->
 pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
 
-    // Check well-known root-level MCP files (.mcp.json is the Claude Code convention)
+    // .mcp.json is the Claude Code convention
     for name in [".mcp.json", "mcp.json"] {
         let p = root.join(name);
         if p.is_file() {
@@ -248,7 +248,6 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         }
     }
 
-    // Warn if the old mcp/ layout is present but mcps/ is not
     if root.join("mcp").exists() && !root.join("mcps").exists() {
         eprintln!(
             "warning: found a `mcp/` directory but Kasetto now scans `mcps/`; \
@@ -256,7 +255,6 @@ pub(crate) fn discover_mcps(root: &Path) -> Result<Vec<PathBuf>> {
         );
     }
 
-    // Check mcps/ subdirectory for additional pack JSON files
     let mcp_dir = root.join("mcps");
     if mcp_dir.exists() {
         for e in fs::read_dir(mcp_dir)? {
