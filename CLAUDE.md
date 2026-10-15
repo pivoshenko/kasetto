@@ -24,7 +24,9 @@ and its short alias `kst`, both calling `kasetto::run()`) plus the documentation
 - never make `fsops/config_edit.rs` round-trip serde. It edits `kasetto.yaml` at the raw-line level
   because `add`/`remove` must preserve the user's comments and key order byte-for-byte. Keep it that way
 - never store a raw IP or a stable per-machine id in the site counters. `site/lib/stats.ts` hashes IP +
-  user agent with the date inside the digest, so it rotates daily and cannot be correlated over time
+  user agent with the counted period inside the digest, so it rotates with that period. A distinct
+  count needs a digest stable across the period it reports: unioning daily HyperLogLogs over a week
+  counts one machine seven times, which is why the weekly figure has its own week-stamped key
 - never cache a mutable ref. `fsops/cache.rs` caches extracted trees **only** for immutable refs (explicit
   tag or SHA); a branch or default ref can change upstream without the URL changing. Its `.complete`
   marker is written last and kept beside `tree/`, never inside it, so it cannot leak into hashed content
