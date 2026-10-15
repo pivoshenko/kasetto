@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.10.2] - 2026-10-15
+
+### Bug fixes
+
+- **sync**: Keep a dropped server another mcp pack still declares
+- **sync**: Prune servers dropped from an mcp pack
+- **http**: Trust the system CA store for TLS-intercepting proxies
+
 ## [3.10.1] - 2026-10-15
 
 ### Features
@@ -12,6 +20,10 @@ All notable changes to this project will be documented in this file.
 ### Testing
 
 - **source**: Trim self-hosted gitea coverage to what the prefix rule changes
+
+### Release
+
+- V3.10.1
 
 ## [3.10.0] - 2026-10-07
 
