@@ -362,4 +362,28 @@ These environment variables affect Kasetto's behavior:
 | `CLICOLOR_FORCE`  | Forces color even when stdout is not a TTY. Set automatically by `--color always`.              |
 | `KASETTO_CONFIG`  | Overrides config discovery to use the exact path or URL (see [Configuration](#configuration)).  |
 | `KASETTO_NO_CACHE`| Disables the on-disk source cache, forcing a fresh download + extract on every fetch. Set to any value. |
+| `KASETTO_NO_UPDATE_CHECK` | Disables the daily update check (see [Update Check](#update-check)). Set to any value other than `0`. |
 | `PI_CODING_AGENT_DIR` | Overrides Pi's global resource root (default `~/.pi/agent`), matching Pi's native environment variable. |
+
+## Update Check
+
+Once every 24 hours, Kasetto asks `https://kasetto.dev/latest` for the newest
+released version and caches the answer next to its other cache files. If a newer
+version exists, the next command ends with a single yellow notice. The request
+runs on a background thread and any failure is silent, so being offline or
+behind a proxy never slows a command down or breaks it.
+
+The endpoint records the hit as an anonymous counter, which is how the project
+measures how many installs are actively in use. What is stored is a daily
+rotating digest of the request IP and user agent, never the IP itself, so no
+digest can be correlated across days and nothing identifies a machine over time.
+Binary downloads for `kst self-update` still go straight to GitHub.
+
+To opt out, set `KASETTO_NO_UPDATE_CHECK` to any value other than `0`:
+
+```bash
+export KASETTO_NO_UPDATE_CHECK=1
+```
+
+No request is made and no notice is printed. `kst doctor` then reports the
+update check as `not yet checked`.

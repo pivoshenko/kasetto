@@ -23,6 +23,8 @@ and its short alias `kst`, both calling `kasetto::run()`) plus the documentation
   `resolve_mcp_settings_targets`, which always use the agent presets
 - never make `fsops/config_edit.rs` round-trip serde. It edits `kasetto.yaml` at the raw-line level
   because `add`/`remove` must preserve the user's comments and key order byte-for-byte. Keep it that way
+- never store a raw IP or a stable per-machine id in the site counters. `site/lib/stats.ts` hashes IP +
+  user agent with the date inside the digest, so it rotates daily and cannot be correlated over time
 - never cache a mutable ref. `fsops/cache.rs` caches extracted trees **only** for immutable refs (explicit
   tag or SHA); a branch or default ref can change upstream without the URL changing. Its `.complete`
   marker is written last and kept beside `tree/`, never inside it, so it cannot leak into hashed content
@@ -123,3 +125,12 @@ targets are written as managed `<!-- kasetto:instruction:ID ... -->` blocks so u
 the block survive a sync. `secrets/` resolves `${kst_...}` and tagged `${kst:<source>:<ref>}` placeholders
 at sync time from env vars, a `credentials.yaml`, or an external secret manager, by shelling out to the
 user's existing CLI session.
+
+**Update check and site counters.** `update_notifier.rs` asks `kasetto.dev/latest` (not the GitHub
+API) for the newest version once per 24h, which is also the project's only active-install metric.
+`self_update.rs` keeps its own `fetch_latest_release` against GitHub because it needs the release
+asset list - the two are deliberately separate, so never collapse them. `KASETTO_NO_UPDATE_CHECK`
+opts out. On the site, `site/lib/stats.ts` holds every counter (Upstash Redis via `KV_REST_API_*` or
+`UPSTASH_REDIS_REST_*`), `/install` and `/install.ps1` count script downloads through
+`site/lib/install-script.ts`, `/latest` counts CLI pings, and `/stats` reads them back. All of it
+no-ops when no credentials are present, so previews and local dev still work.
