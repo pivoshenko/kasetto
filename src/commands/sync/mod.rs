@@ -441,7 +441,6 @@ fn print_resolution_header(report: &Report, plain: bool) {
 /// tail. Order: actions stay in the order the sync emitted them (already
 /// grouped by source per the underlying sync flow).
 fn print_sync_tree(report: &Report, plain: bool) {
-    // Group actions by source, preserving first-seen order
     let mut groups: Vec<(String, Vec<&crate::model::Action>)> = Vec::new();
     for a in &report.actions {
         let src = a.source.as_deref().unwrap_or("-");

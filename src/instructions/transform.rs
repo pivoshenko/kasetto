@@ -252,7 +252,6 @@ pub(crate) fn dest_present(target: &InstructionTarget, name: &str, source: &str)
         .unwrap_or(false)
 }
 
-/// Ensure parent directories of `path` exist.
 pub(crate) fn ensure_parent_dirs(path: &Path) -> crate::error::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -339,7 +338,6 @@ mod tests {
         assert!(updated.contains("user text."));
         assert!(updated.contains("v2"));
         assert!(!updated.contains("v1"));
-        // Exactly one block
         assert_eq!(updated.matches("style-abc START").count(), 1);
     }
 
