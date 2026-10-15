@@ -1,5 +1,10 @@
 import { FaGithub } from "react-icons/fa";
-import { GoStar, GoTag } from "react-icons/go";
+import { GoArrowUpRight, GoStarFill } from "react-icons/go";
+import { IoMenuOutline } from "react-icons/io5";
+import { BrandLogo } from "./brand-mark";
+
+const REPO_URL = "https://github.com/pivoshenko/kasetto";
+const CHANGELOG_URL = `${REPO_URL}/releases`;
 
 async function getRepoMeta(): Promise<{ stars: string | null; version: string | null }> {
   const [stars, version] = await Promise.all([getStars(), getLatestRelease()]);
@@ -35,43 +40,90 @@ async function getLatestRelease(): Promise<string | null> {
 
 export async function TopNav() {
   const { stars, version } = await getRepoMeta();
+  const repoLabel = [
+    "Kasetto on GitHub",
+    stars && `${stars} stars`,
+    version && `latest release ${version}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
-    <nav className="top-nav">
-      <div className="top-nav-inner">
+    <header className="top-nav">
+      <nav className="top-nav-inner" aria-label="Main">
         <a href="/" className="top-nav-brand" aria-label="Kasetto home">
-          <img src="/favicon.svg" alt="" className="top-nav-logo-img" aria-hidden />
-          <span className="top-nav-name">KASETTO</span>
+          <BrandLogo className="brand-logo" />
+          <span className="top-nav-wordmark">kasetto</span>
         </a>
-        <div className="top-nav-links">
-          <a href="/docs" className="top-nav-link">
-            DOCS{" "}
-            <span className="top-nav-arrow" aria-hidden>
-              ↗
+
+        <ul className="top-nav-links">
+          <li>
+            <a href="/docs" className="top-nav-link">
+              Docs
+            </a>
+          </li>
+          <li>
+            <a href="/docs/agents" className="top-nav-link">
+              Agents
+            </a>
+          </li>
+          <li>
+            <a
+              href={CHANGELOG_URL}
+              className="top-nav-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Changelog
+              <GoArrowUpRight className="top-nav-ext" aria-hidden />
+            </a>
+          </li>
+        </ul>
+
+        <a
+          href={REPO_URL}
+          className="top-nav-repo"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={repoLabel}
+        >
+          <FaGithub className="top-nav-repo-icon" aria-hidden />
+          {stars && (
+            <span className="top-nav-repo-stat">
+              <GoStarFill className="top-nav-star" aria-hidden />
+              {stars}
             </span>
-          </a>
-          <a
-            href="https://github.com/pivoshenko/kasetto"
-            className="top-nav-repo"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub repository"
-          >
-            <FaGithub className="top-nav-repo-icon" aria-hidden />
-            <span className="top-nav-repo-name">pivoshenko/kasetto</span>
-            {stars && (
-              <span className="top-nav-stars">
-                <GoStar aria-hidden /> {stars}
-              </span>
-            )}
-            {version && (
-              <span className="top-nav-version">
-                <GoTag aria-hidden /> {version}
-              </span>
-            )}
-          </a>
-        </div>
-      </div>
-    </nav>
+          )}
+          {version && <span className="top-nav-repo-stat top-nav-version">{version}</span>}
+        </a>
+
+        {/* A native disclosure keeps the mobile menu usable without client JS */}
+        <details className="top-nav-menu">
+          <summary className="top-nav-menu-toggle" aria-label="Menu">
+            <IoMenuOutline aria-hidden />
+          </summary>
+          <ul className="top-nav-menu-panel">
+            <li>
+              <a href="/docs">Docs</a>
+            </li>
+            <li>
+              <a href="/docs/agents">Agents</a>
+            </li>
+            <li>
+              <a href={CHANGELOG_URL} target="_blank" rel="noopener noreferrer">
+                Changelog
+                <GoArrowUpRight className="top-nav-ext" aria-hidden />
+              </a>
+            </li>
+            <li>
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+                GitHub
+                {version && <span className="top-nav-menu-meta">{version}</span>}
+              </a>
+            </li>
+          </ul>
+        </details>
+      </nav>
+    </header>
   );
 }

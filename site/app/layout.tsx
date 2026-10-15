@@ -2,12 +2,25 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RootProvider } from "fumadocs-ui/provider";
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Archivo, JetBrains_Mono } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
+import { BackToTop } from "./components/back-to-top";
 import { TopNav } from "./components/top-nav";
 import "./globals.css";
+import "./styles/tokens.css";
+import "./styles/base.css";
+import "./styles/nav.css";
+import "./styles/docs.css";
+import "./styles/landing.css";
 
-// Variable axis covers wght 100-800; see SKILL.md for the brand weight ladder
+// The wdth axis carries the brand: display copy runs at 125%, body copy at 100%
+const archivo = Archivo({
+  subsets: ["latin"],
+  display: "swap",
+  axes: ["wdth"],
+  variable: "--font-archivo",
+});
+
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
@@ -15,7 +28,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const DESCRIPTION =
-  "Sync skills, MCP servers, slash-commands, and instructions from Git into Claude Code, Cursor, Codex, Copilot, and 18 more agents. One YAML file, lock-pinned, in Rust.";
+  "Declare the skills, slash commands, MCP servers, and instructions you and your team use in one YAML file, pin every install in a lock file, and get the same AI environment on every machine. Written in Rust.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -46,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`dark ${jetbrainsMono.className}`}
+      className={`dark ${archivo.variable} ${jetbrainsMono.variable}`}
       data-theme="dark"
       suppressHydrationWarning
     >
@@ -59,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div id="main" tabIndex={-1}>
             {children}
           </div>
+          <BackToTop />
         </RootProvider>
         <Analytics />
         <SpeedInsights />
