@@ -406,8 +406,30 @@ pub(super) fn sync_mcps(
         );
     }
 
+    // A name that left one pack must survive when another configured pack still
+    // declares it. An unchanged pack is absent from `pending` and so never
+    // re-merges, and pruning the name here would drop a still-locked server
+    // until some later sync happened to touch that pack
+    let mut still_declared: HashSet<String> = HashSet::new();
+    for p in &pending {
+        still_declared.extend(p.server_names.iter().cloned());
+    }
+    for (id, dest) in lock.list_tracked_asset_ids("mcp") {
+        if desired_mcp_ids.contains(id) && !pending.iter().any(|p| p.asset_id == id) {
+            still_declared.extend(dest.split(',').filter(|n| !n.is_empty()).map(str::to_owned));
+        }
+    }
+
     // Phase 2: apply all pending installs and updates
-    apply_pending(ctx, lock, summary, actions, &mcp_settings_list, &pending)?;
+    apply_pending(
+        ctx,
+        lock,
+        summary,
+        actions,
+        &mcp_settings_list,
+        &pending,
+        &still_declared,
+    )?;
     cleanup_staged(&cleanup_dirs);
 
     Ok(secrets_need_update)
@@ -648,6 +670,7 @@ fn apply_pending(
     actions: &mut Vec<Action>,
     mcp_settings_list: &[crate::model::McpSettingsTarget],
     pending: &[PendingMcp],
+    still_declared: &HashSet<String>,
 ) -> Result<()> {
     let mut last_source = String::new();
     for p in pending {
@@ -663,6 +686,7 @@ fn apply_pending(
                 dest.split(',')
                     .filter(|name| !name.is_empty())
                     .filter(|name| !p.server_names.iter().any(|kept| kept == name))
+                    .filter(|name| !still_declared.contains(*name))
                     .map(str::to_owned)
                     .collect()
             })
@@ -1279,6 +1303,76 @@ mod tests {
         assert_eq!(dests, vec!["two"]);
 
         let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn a_server_dropped_from_one_pack_survives_when_another_still_declares_it() {
+        let src_a = temp_dir("kasetto-mcp-share-a");
+        fs::create_dir_all(src_a.join("mcps")).unwrap();
+        fs::write(
+            src_a.join("mcps/a.json"),
+            r#"{"mcpServers":{"shared":{"command":"from-a"},"only-a":{"command":"a"}}}"#,
+        )
+        .unwrap();
+        let src_b = temp_dir("kasetto-mcp-share-b");
+        fs::create_dir_all(src_b.join("mcps")).unwrap();
+        fs::write(
+            src_b.join("mcps/b.json"),
+            r#"{"mcpServers":{"shared":{"command":"from-b"},"only-b":{"command":"b"}}}"#,
+        )
+        .unwrap();
+        let project = temp_dir("kasetto-mcp-share-project");
+        fs::create_dir_all(&project).unwrap();
+
+        let source_spec = |root: &Path| {
+            McpSpec::Source(McpSourceSpec {
+                source: root.to_string_lossy().to_string(),
+                branch: None,
+                git_ref: None,
+                mcps: McpsField::Wildcard("*".into()),
+            })
+        };
+        let mut cfg = mcp_cfg(&src_a, vec![Agent::ClaudeCode]);
+        cfg.mcps = vec![source_spec(&src_a), source_spec(&src_b)];
+
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_mcps(
+            &project_ctx(&cfg, &project),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+        assert_eq!(summary.installed, 2);
+
+        // `shared` leaves pack A only. Pack B is byte-identical, so phase 1
+        // classifies it unchanged and it never re-merges
+        fs::write(
+            src_a.join("mcps/a.json"),
+            r#"{"mcpServers":{"only-a":{"command":"a"}}}"#,
+        )
+        .unwrap();
+        let update_ctx = SyncContext {
+            update: true,
+            ..project_ctx(&cfg, &project)
+        };
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_mcps(&update_ctx, &mut lock, &mut summary2, &mut actions2).unwrap();
+
+        let settings = project_mcp_settings(&project);
+        assert!(
+            settings["mcpServers"]["shared"].is_object(),
+            "pack B still declares `shared`, so it must stay installed"
+        );
+        assert!(settings["mcpServers"]["only-a"].is_object());
+        assert!(settings["mcpServers"]["only-b"].is_object());
+
+        let _ = fs::remove_dir_all(&src_a);
+        let _ = fs::remove_dir_all(&src_b);
         let _ = fs::remove_dir_all(&project);
     }
 
