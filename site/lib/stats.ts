@@ -11,7 +11,6 @@ import { Redis } from "@upstash/redis";
 export type HitKind = "install" | "install-ps1" | "ping";
 
 const RETENTION_SECS = 90 * 24 * 60 * 60;
-const UNIQUE_WINDOW_DAYS = 7;
 
 let client: Redis | null | undefined;
 
@@ -35,30 +34,38 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function lastDays(count: number): string[] {
-  const now = Date.now();
-  return Array.from({ length: count }, (_, i) =>
-    new Date(now - i * 86_400_000).toISOString().slice(0, 10)
-  );
+/** ISO-8601 week stamp, e.g. `2026-W42`. */
+function isoWeek(): string {
+  const now = new Date();
+  const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const weekday = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - weekday);
+  const year = t.getUTCFullYear();
+  const week = Math.ceil(((t.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7);
+  return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
 /**
- * Digest identifying a machine for one day only.
+ * Digest identifying a machine for the lifetime of one `stamp`.
  *
- * `day` is inside the hash, so the digest rotates daily and cannot be used to
- * follow a machine over time. `cf-connecting-ip` is read first so the digest
- * stays correct if the domain is ever put behind Cloudflare's proxy, where
- * `x-forwarded-for` becomes the edge IP and would collapse every visitor in a
- * region onto one digest.
+ * `stamp` is inside the hash, so the digest rotates with it and cannot follow a
+ * machine beyond it: a day stamp gives daily uniques, a week stamp gives weekly
+ * uniques. Counting distinct machines over a period requires a digest stable
+ * across that period, so the period is chosen here rather than by unioning
+ * shorter buckets, which would count one machine once per bucket.
+ *
+ * `cf-connecting-ip` is read first so the digest stays correct if the domain is
+ * ever put behind Cloudflare's proxy, where `x-forwarded-for` becomes the edge
+ * IP and would collapse every visitor in a region onto one digest.
  */
-async function visitorDigest(request: Request, day: string): Promise<string> {
+async function visitorDigest(request: Request, stamp: string): Promise<string> {
   const ip =
     request.headers.get("cf-connecting-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "unknown";
   const ua = request.headers.get("user-agent") ?? "unknown";
   const salt = process.env.STATS_SALT ?? "";
-  const bytes = new TextEncoder().encode(`${day}:${ip}:${ua}:${salt}`);
+  const bytes = new TextEncoder().encode(`${stamp}:${ip}:${ua}:${salt}`);
   const hash = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hash).slice(0, 16))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -73,15 +80,19 @@ export async function recordHit(kind: HitKind, request: Request): Promise<void> 
   }
   try {
     const day = today();
+    const week = isoWeek();
     const dayKey = `kasetto:${kind}:day:${day}`;
-    const uniqKey = `kasetto:${kind}:uniq:${day}`;
+    const dayUniqKey = `kasetto:${kind}:uniq:${day}`;
+    const weekUniqKey = `kasetto:${kind}:uniq:week:${week}`;
     await db
       .pipeline()
       .incr(`kasetto:${kind}:total`)
       .incr(dayKey)
       .expire(dayKey, RETENTION_SECS)
-      .pfadd(uniqKey, await visitorDigest(request, day))
-      .expire(uniqKey, RETENTION_SECS)
+      .pfadd(dayUniqKey, await visitorDigest(request, day))
+      .expire(dayUniqKey, RETENTION_SECS)
+      .pfadd(weekUniqKey, await visitorDigest(request, week))
+      .expire(weekUniqKey, RETENTION_SECS)
       .exec();
   } catch (error) {
     console.error("[stats] failed to record hit", error);
@@ -116,8 +127,11 @@ export async function lastKnownTag(): Promise<string | null> {
 
 export type KindStats = {
   total: number;
-  today: number;
-  uniqueLast7Days: number;
+  /** Distinct machines today. */
+  uniqueToday: number;
+  /** Distinct machines this ISO week, not a rolling 7-day window. */
+  uniqueThisWeek: number;
+  hitsToday: number;
 };
 
 export type Stats = Record<HitKind, KindStats> | null;
@@ -129,19 +143,24 @@ export async function readStats(): Promise<Stats> {
     return null;
   }
   const kinds: HitKind[] = ["install", "install-ps1", "ping"];
-  const days = lastDays(UNIQUE_WINDOW_DAYS);
+  const day = today();
+  const week = isoWeek();
   const entries = await Promise.all(
     kinds.map(async (kind) => {
-      // UNIQUE_WINDOW_DAYS is a positive constant, so the tuple is never empty
-      const uniqueKeys = days.map((day) => `kasetto:${kind}:uniq:${day}`) as [string, ...string[]];
-      const [total, todayCount, unique] = await Promise.all([
+      const [total, hitsToday, uniqueToday, uniqueThisWeek] = await Promise.all([
         db.get<number>(`kasetto:${kind}:total`),
-        db.get<number>(`kasetto:${kind}:day:${today()}`),
-        db.pfcount(...uniqueKeys),
+        db.get<number>(`kasetto:${kind}:day:${day}`),
+        db.pfcount(`kasetto:${kind}:uniq:${day}`),
+        db.pfcount(`kasetto:${kind}:uniq:week:${week}`),
       ]);
       return [
         kind,
-        { total: total ?? 0, today: todayCount ?? 0, uniqueLast7Days: unique ?? 0 },
+        {
+          total: total ?? 0,
+          hitsToday: hitsToday ?? 0,
+          uniqueToday: uniqueToday ?? 0,
+          uniqueThisWeek: uniqueThisWeek ?? 0,
+        },
       ] as const;
     })
   );

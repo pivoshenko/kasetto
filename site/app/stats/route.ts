@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
  * `install` and `install-ps1` count script downloads, so they see only the
  * `curl`/`irm` path and not Homebrew, Scoop or `cargo install`. `ping` counts
  * the CLI's daily update check, so it sees every install channel, and its
- * `uniqueLast7Days` is the closest thing to a weekly active-install figure.
+ * `uniqueThisWeek` is the active-install figure.
+ *
+ * `uniqueThisWeek` buckets by ISO week rather than a rolling 7 days, because a
+ * machine only counts once per period the digest is stable across.
  *
  * Ungated on purpose: these are vanity counters, not private data.
  */
