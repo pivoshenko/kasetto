@@ -16,8 +16,8 @@ use crate::error::Result;
 /// Braille spinner frames shared across all TUI surfaces.
 pub(crate) const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/// Cassette brand mark: diamond. Used in the doctor header, the `self update`
-/// finalizer (amber), and the `self uninstall` farewell (violet).
+/// Brand mark: diamond. Used in the doctor header, the `self update`
+/// finalizer (`ATTENTION`), and the `self uninstall` farewell (`BRAND`).
 pub(crate) const BRAND_GLYPH: &str = "◆";
 
 /// Brand flourish star, trails the `self uninstall` farewell.
@@ -54,7 +54,7 @@ pub(crate) fn print_json<T: serde::Serialize>(val: &T) -> Result<()> {
     Ok(())
 }
 
-/// Print a uv-style `tip: <msg>` line in popil sky (`INFO`), preceded by a
+/// Print a uv-style `tip: <msg>` line in cyan (`INFO`), preceded by a
 /// blank line. Plain mode omits color but keeps the prefix and the blank.
 ///
 /// A tip is an aside about the run, not part of the report it follows, so it
@@ -221,7 +221,7 @@ pub(crate) fn short_source(source: &str) -> String {
 }
 
 /// Single-glyph prefix for a per-asset sync action. The cassette design
-/// dialect: `+` install (green), `↑` update (amber), `−` remove (red),
+/// dialect: `+` install (mint), `↑` update (lime), `−` remove (coral red),
 /// `✓` unchanged (faint), `!` broken/failed (red). Plain colored (no bold)
 /// per terminal.jsx Row glyph styling.
 pub(crate) fn action_glyph(status: &str, plain: bool) -> String {
@@ -289,7 +289,7 @@ pub(crate) fn status_detail(
     }
 }
 
-/// Amber, uppercase, letter-spaced section header per design: `SKILLS 23 installed`.
+/// Lime, uppercase, letter-spaced section header per design: `SKILLS 23 installed`.
 /// `count_unit` is `(count, "installed")` for inline metadata, one space after
 /// the label. Body content follows immediately, no trailing blank.
 ///
@@ -411,7 +411,7 @@ pub(crate) fn print_tree_leaf(is_last: bool, name: &str, plain: bool) {
 
 /// Render the per-action summary chips shown beneath a sync's lead verb line:
 /// `● N updated  ● N added  ● N removed  ● N unchanged`. The dot inherits the
-/// role color (amber/green/red/dim) and the count is bold.
+/// role color (lime/mint/coral red/dim) and the count is bold.
 ///
 /// `broken` covers everything that did not land (missing assets plus source
 /// resolution failures), matching the single `broken` word the tree labels both
@@ -449,7 +449,7 @@ pub(crate) fn print_sync_chips(
     );
 }
 
-/// `◆ kasetto vX.Y.Z ✓ healthy`. Doctor head per design: amber diamond + bold
+/// `◆ kasetto vX.Y.Z ✓ healthy`. Doctor head per design: lime diamond + bold
 /// `kasetto`, dim version, then the verdict badge one space later.
 pub(crate) fn print_doctor_head(version: &str, healthy: bool, plain: bool) {
     if plain {
@@ -526,7 +526,7 @@ pub(crate) fn print_dir_row(path: &str, writable: bool, plain: bool) {
     );
 }
 
-/// `◆ Updated to vNEW was vOLD`. Self update finalizer (amber diamond).
+/// `◆ Updated to vNEW was vOLD`. Self update finalizer (lime diamond).
 pub(crate) fn print_update_closer(new: &str, old: &str, plain: bool) {
     if plain {
         println!("Updated to v{new} was v{old}");
@@ -537,7 +537,7 @@ pub(crate) fn print_update_closer(new: &str, old: &str, plain: bool) {
     );
 }
 
-/// Violet `◆ kasetto vX uninstalled` + amber `またね` farewell. Self uninstall closer.
+/// Brand lime `◆ kasetto vX uninstalled` + lime `またね` farewell. Self uninstall closer.
 pub(crate) fn print_uninstall_closer(version: &str, plain: bool) {
     if plain {
         println!("kasetto v{version} uninstalled");
