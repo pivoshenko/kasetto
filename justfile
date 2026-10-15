@@ -66,7 +66,7 @@ generate-config-docs:
     cd site && pnpm exec biome format --write app/components/feature-tabs.tsx
 
 generate-social-preview:
-    rsvg-convert -b '#1f1f1e' --page-width 1280 --page-height 640 --top 41 \
+    rsvg-convert -b '#08090b' --page-width 1280 --page-height 640 --top 41 \
       -w 1280 -h 558 assets/preview_social_dark.svg -o assets/preview_social_dark.png
 
 benchmark-sync:
