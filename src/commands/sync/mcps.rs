@@ -654,6 +654,19 @@ fn apply_pending(
         let first_in_run = p.source != last_source;
         last_source = p.source.clone();
         let label = sync_label_with(&p.file_name, &p.source, ctx.plain, first_in_run);
+        // `lock_entry` overwrites `destination` below, so read the names installed
+        // last run first. A server that left the pack is unreachable afterwards:
+        // `remove_stale` prunes by asset id, and this asset is still desired
+        let departed: Vec<String> = lock
+            .get_tracked_asset("mcp", &p.asset_id)
+            .map(|(_, dest)| {
+                dest.split(',')
+                    .filter(|name| !name.is_empty())
+                    .filter(|name| !p.server_names.iter().any(|kept| kept == name))
+                    .map(str::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default();
         with_spinner_transient(ctx.animate, ctx.plain, &label, || {
             let status = if !p.is_new {
                 if ctx.dry_run {
@@ -676,6 +689,11 @@ fn apply_pending(
                         crate::secrets::warn_if_world_readable(&target.path, ctx.plain);
                     }
                 }
+                for name in &departed {
+                    for target in mcp_settings_list {
+                        let _ = remove_mcp_server(name, target);
+                    }
+                }
                 lock.save_tracked_asset(&p.asset_id, p.lock_entry());
             }
 
@@ -690,6 +708,16 @@ fn apply_pending(
                 status: status.into(),
                 error: None,
             });
+            let removed_status = if ctx.dry_run { "would_remove" } else { "removed" };
+            for name in &departed {
+                summary.removed += 1;
+                actions.push(Action {
+                    source: Some(p.source.clone()),
+                    skill: Some(format!("mcp:{name}")),
+                    status: removed_status.into(),
+                    error: None,
+                });
+            }
             Ok(())
         })?;
     }
@@ -1187,6 +1215,70 @@ mod tests {
 
         let _ = fs::remove_dir_all(&old_src);
         let _ = fs::remove_dir_all(&new_src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn dropping_a_server_from_a_pack_prunes_it_from_settings() {
+        let src = temp_dir("kasetto-mcp-drop-src");
+        fs::create_dir_all(src.join("mcps")).unwrap();
+        fs::write(
+            src.join("mcps/demo.json"),
+            r#"{"mcpServers":{"one":{"command":"one"},"two":{"command":"two"}}}"#,
+        )
+        .unwrap();
+        let project = temp_dir("kasetto-mcp-drop-project");
+        fs::create_dir_all(&project).unwrap();
+
+        let cfg = mcp_cfg(&src, vec![Agent::ClaudeCode]);
+        let mut lock = LockFile::default();
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_mcps(
+            &project_ctx(&cfg, &project),
+            &mut lock,
+            &mut summary,
+            &mut actions,
+        )
+        .unwrap();
+        assert_eq!(summary.installed, 1);
+
+        // `one` leaves the pack while the asset id stays the same, so the
+        // asset-keyed prune in `remove_stale` never considers it
+        fs::write(
+            src.join("mcps/demo.json"),
+            r#"{"mcpServers":{"two":{"command":"two"}}}"#,
+        )
+        .unwrap();
+        // `--update`, as in the report: a plain sync honors the lock and would
+        // not re-read the pack at all
+        let update_ctx = SyncContext {
+            update: true,
+            ..project_ctx(&cfg, &project)
+        };
+        let mut summary2 = Summary::default();
+        let mut actions2 = Vec::new();
+        sync_mcps(&update_ctx, &mut lock, &mut summary2, &mut actions2).unwrap();
+
+        assert_eq!(summary2.updated, 1);
+        assert_eq!(summary2.removed, 1, "the dropped server counts as a removal");
+        let settings = project_mcp_settings(&project);
+        assert!(
+            settings["mcpServers"]["one"].is_null(),
+            "a server dropped from the pack must leave the settings file"
+        );
+        assert!(
+            settings["mcpServers"]["two"].is_object(),
+            "a server still in the pack must survive"
+        );
+        let dests: Vec<&str> = lock
+            .list_tracked_asset_ids("mcp")
+            .into_iter()
+            .map(|(_, dest)| dest)
+            .collect();
+        assert_eq!(dests, vec!["two"]);
+
+        let _ = fs::remove_dir_all(&src);
         let _ = fs::remove_dir_all(&project);
     }
 
