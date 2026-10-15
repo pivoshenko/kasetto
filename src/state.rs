@@ -129,8 +129,12 @@ pub(crate) fn save_runtime_state(
     }
     let json = serde_json::to_string_pretty(state)
         .map_err(|e| err(format!("failed to serialize state file: {e}")))?;
-    fs::write(&path, json)
-        .map_err(|e| err(format!("failed to write state file {}: {e}", path.display())))?;
+    fs::write(&path, json).map_err(|e| {
+        err(format!(
+            "failed to write state file {}: {e}",
+            path.display()
+        ))
+    })?;
     Ok(())
 }
 
