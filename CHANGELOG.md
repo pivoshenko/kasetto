@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.10.1] - 2026-10-15
+
+### Features
+
+- **agent**: Add MCP for Pi
+- **source**: Detect self-hosted gitea.* and forgejo.* hosts
+
+### Testing
+
+- **source**: Trim self-hosted gitea coverage to what the prefix rule changes
+
 ## [3.10.0] - 2026-10-07
 
 ### Documentation
@@ -16,6 +27,10 @@ All notable changes to this project will be documented in this file.
 ### Style
 
 - **site**: Widen docs article column to 1120px
+
+### Release
+
+- V3.10.0
 
 ## [3.9.2] - 2026-09-29
 
