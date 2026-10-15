@@ -3,11 +3,11 @@ import { GoStar } from "react-icons/go";
 import { softwareApplicationJsonLd } from "@/lib/structured-data";
 import { AgentsGrid } from "./components/agents-grid";
 import { CopyButton } from "./components/copy-button";
-import { JsonLd } from "./components/json-ld";
 import { ConfigExample, FeatureList } from "./components/feature-tabs";
-import { SecretSources } from "./components/secret-sources";
 import { HeroTerminal } from "./components/hero-terminal";
+import { JsonLd } from "./components/json-ld";
 import { ScrollCue } from "./components/scroll-cue";
+import { SecretSources } from "./components/secret-sources";
 
 const INSTALL = [
   {
