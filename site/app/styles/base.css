@@ -58,6 +58,7 @@ samp {
 
 /* == Shared Controls (Landing + Docs) == */
 .copy-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -81,6 +82,17 @@ samp {
 .copy-btn.copied {
   color: var(--success);
   border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+}
+
+/* The confirmation is the checkmark and the colour shift; this carries it to screen readers,
+   which the old visible "Copied" text used to do */
+.copy-btn-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .action-link {

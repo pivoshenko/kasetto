@@ -44,7 +44,11 @@ export function CopyButton({ text, label }: { text: string; label?: string }) {
       aria-label={label ?? "Copy to clipboard"}
     >
       {copied ? <IoCheckmarkOutline size={15} /> : <IoCopyOutline size={15} />}
-      {label ? <span>{copied ? "Copied" : label}</span> : null}
+      {/* The label never changes: swapping it for "Copied" resizes the button and shifts the row */}
+      {label ? <span>{label}</span> : null}
+      <span className="copy-btn-status" role="status">
+        {copied ? "Copied" : ""}
+      </span>
     </button>
   );
 }
