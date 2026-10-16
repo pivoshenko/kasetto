@@ -37,6 +37,13 @@
   width: 40px;
   height: auto;
   flex: none;
+  transition: transform 0.2s ease;
+}
+
+/* The shapes carry the transition because custom properties do not interpolate;
+   transform stays on the svg, where it cannot replace a shape's ISO matrix */
+.brand-logo :is(rect, circle, path) {
+  transition: fill 0.2s ease;
 }
 
 .top-nav-wordmark {
@@ -51,6 +58,18 @@
 
 .top-nav-brand:hover .top-nav-wordmark {
   color: var(--accent);
+}
+
+/* The cassette lifts off the bar and its side catches the light, echoing the
+   hero cassette's float */
+.top-nav-brand:hover .brand-logo,
+.top-nav-brand:focus-visible .brand-logo {
+  transform: translateY(-3px);
+  --accent-3: var(--accent-2);
+}
+
+.top-nav-brand:active .brand-logo {
+  transform: translateY(0);
 }
 
 /* == Links == */
@@ -81,39 +100,35 @@
   background: var(--bg-raise);
 }
 
-.top-nav-ext {
+.top-nav-arrow {
   width: 13px;
   height: 13px;
   color: var(--fg-subtle);
-  transition: color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.top-nav-link:hover .top-nav-ext {
+.top-nav-link:hover .top-nav-arrow {
   color: var(--accent);
+  transform: translate(2px, -2px);
 }
 
-/* == GitHub Pill == */
+/* == GitHub Meta == */
 .top-nav-repo {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
   height: 34px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
   font-family: var(--font-mono);
   font-size: 12.5px;
-  color: var(--fg);
+  color: var(--fg-muted);
   white-space: nowrap;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .top-nav-repo:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-raise);
+  color: var(--fg);
 }
 
 .top-nav-repo-icon {
@@ -128,10 +143,16 @@
   gap: 5px;
 }
 
-.top-nav-star {
+.top-nav-star,
+.top-nav-tag {
   width: 12px;
   height: 12px;
   color: var(--accent);
+}
+
+.top-nav-repo-name {
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--border);
 }
 
 .top-nav-version {
@@ -219,6 +240,7 @@
   }
 
   .top-nav-links,
+  .top-nav-repo-name,
   .top-nav-version {
     display: none;
   }

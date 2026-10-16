@@ -200,11 +200,6 @@ export default async function Page() {
             <code className="lp-cmd-text">{CURL}</code>
             <CopyButton text={CURL} label="Copy" />
           </div>
-          <ul className="lp-hero-meta">
-            {version ? <li>Latest {version}</li> : null}
-            <li>macOS, Linux, Windows</li>
-            <li>MIT / Apache 2.0</li>
-          </ul>
         </div>
         <div className="lp-hero-art">
           <HeroCassette className="lp-cassette" />
@@ -452,12 +447,9 @@ export default async function Page() {
       <footer className="lp-footer">
         <div className="lp-footer-grid">
           <div className="lp-footer-brand">
-            <span className="lp-footer-name display">
+            <a href="/" className="lp-footer-name display" aria-label="Kasetto home">
               <BrandLogo className="brand-logo" /> kasetto
-            </span>
-            <p className="lp-footer-tagline">
-              Declarative AI agent environment manager. Written in Rust.
-            </p>
+            </a>
             <div className="lp-footer-social">
               <External href="https://pivoshenko.dev" label="Author's blog">
                 <FaGlobe aria-hidden />

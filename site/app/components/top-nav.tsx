@@ -1,10 +1,9 @@
 import { FaGithub } from "react-icons/fa";
-import { GoArrowUpRight, GoStarFill } from "react-icons/go";
+import { GoArrowUpRight, GoStarFill, GoTag } from "react-icons/go";
 import { IoMenuOutline } from "react-icons/io5";
 import { BrandLogo } from "./brand-mark";
 
 const REPO_URL = "https://github.com/pivoshenko/kasetto";
-const CHANGELOG_URL = `${REPO_URL}/releases`;
 
 async function getRepoMeta(): Promise<{ stars: string | null; version: string | null }> {
   const [stars, version] = await Promise.all([getStars(), getLatestRelease()]);
@@ -60,22 +59,7 @@ export async function TopNav() {
           <li>
             <a href="/docs" className="top-nav-link">
               Docs
-            </a>
-          </li>
-          <li>
-            <a href="/docs/agents" className="top-nav-link">
-              Agents
-            </a>
-          </li>
-          <li>
-            <a
-              href={CHANGELOG_URL}
-              className="top-nav-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Changelog
-              <GoArrowUpRight className="top-nav-ext" aria-hidden />
+              <GoArrowUpRight className="top-nav-arrow" aria-hidden />
             </a>
           </li>
         </ul>
@@ -88,13 +72,19 @@ export async function TopNav() {
           aria-label={repoLabel}
         >
           <FaGithub className="top-nav-repo-icon" aria-hidden />
+          <span className="top-nav-repo-name">pivoshenko/kasetto</span>
           {stars && (
             <span className="top-nav-repo-stat">
               <GoStarFill className="top-nav-star" aria-hidden />
               {stars}
             </span>
           )}
-          {version && <span className="top-nav-repo-stat top-nav-version">{version}</span>}
+          {version && (
+            <span className="top-nav-repo-stat top-nav-version">
+              <GoTag className="top-nav-tag" aria-hidden />
+              {version}
+            </span>
+          )}
         </a>
 
         {/* A native disclosure keeps the mobile menu usable without client JS */}
@@ -105,15 +95,6 @@ export async function TopNav() {
           <ul className="top-nav-menu-panel">
             <li>
               <a href="/docs">Docs</a>
-            </li>
-            <li>
-              <a href="/docs/agents">Agents</a>
-            </li>
-            <li>
-              <a href={CHANGELOG_URL} target="_blank" rel="noopener noreferrer">
-                Changelog
-                <GoArrowUpRight className="top-nav-ext" aria-hidden />
-              </a>
             </li>
             <li>
               <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
