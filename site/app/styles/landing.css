@@ -6,7 +6,21 @@
   --lp-max: 1200px;
   --lp-gutter: clamp(16px, 4vw, 40px);
   --lp-section-pad: clamp(72px, 10vw, 128px);
+  /* Section dividers fade out before the gutter instead of stopping square against it */
+  --lp-rule: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
+  /* Top-edge catch-light; a dark surface reads as a raised object rather than a hole */
+  --lp-lift: inset 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent);
   overflow-x: clip;
+}
+
+/* Hosts for the fading dividers below */
+.lp-hero,
+.lp-strip,
+.lp-feature,
+.lp-section,
+.lp-cta,
+.lp-footer {
+  position: relative;
 }
 
 .lp-hero,
@@ -62,8 +76,9 @@
 }
 
 .lp-h1 {
-  font-size: clamp(38px, 4.7vw, 68px);
-  line-height: 1.02;
+  font-size: clamp(40px, 5vw, 74px);
+  line-height: 0.99;
+  letter-spacing: -0.03em;
   color: var(--fg);
 }
 
@@ -122,6 +137,7 @@
   font-weight: 500;
   color: var(--fg);
   background: var(--bg);
+  box-shadow: var(--lp-lift);
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
@@ -136,11 +152,13 @@
   color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
+  box-shadow: 0 8px 28px -12px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .lp-btn--primary:hover {
   background: color-mix(in srgb, var(--accent) 86%, var(--fg));
   border-color: transparent;
+  box-shadow: 0 10px 32px -10px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 .lp-btn svg {
@@ -160,18 +178,61 @@
 }
 
 /* == Hero == */
+/* Three layers behind the hero, all mixed from existing tokens: a cool glow where the
+   cassette sits, a surveyor's grid masked to an oval, and the dark ground showing through */
+.lp-hero::before,
+.lp-hero::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 -45%;
+  pointer-events: none;
+}
+
+.lp-hero::before {
+  background:
+    radial-gradient(
+      48% 52% at 70% 40%,
+      color-mix(in srgb, var(--accent-3) 24%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34% 38% at 78% 32%,
+      color-mix(in srgb, var(--accent) 8%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      56% 64% at 28% 88%,
+      color-mix(in srgb, var(--accent-deep) 26%, transparent),
+      transparent 72%
+    );
+  /* The glow is clipped at the hero's bottom edge, so fade it before the strip's rule */
+  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+}
+
+.lp-hero::after {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px);
+  background-size: 68px 68px;
+  mask-image: radial-gradient(62% 68% at 50% 42%, #000, transparent 76%);
+}
+
 .lp-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
   align-items: center;
   gap: var(--space-8);
-  min-height: min(680px, calc(100svh - 160px));
-  padding-block: clamp(48px, 7vw, 96px) clamp(16px, 2.5vw, 40px);
+  /* The cassette is the tallest thing in the row, so the box is sized just under it; a larger
+     min-height is split by align-items and lands as dead space under the nav */
+  min-height: min(520px, calc(100svh - 160px));
+  padding-block: clamp(14px, 2.2vw, 28px) clamp(16px, 2.5vw, 40px);
 }
 
 .lp-hero-copy {
   position: relative;
   z-index: 1;
+  align-self: start;
 }
 
 .lp-hero-copy .lp-actions {
@@ -189,6 +250,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
+  box-shadow: var(--lp-lift);
   font-size: 14px;
 }
 
@@ -206,24 +268,9 @@
   scrollbar-width: none;
 }
 
-.lp-hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  margin-top: var(--space-6);
-  list-style: none;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--fg-subtle);
-}
-
-.lp-hero-meta li + li::before {
-  content: "/";
-  margin: 0 10px;
-  color: var(--border-strong);
-}
-
 .lp-hero-art {
   position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
 }
@@ -389,8 +436,21 @@
   font-size: 12px;
 }
 
-.lp-hero + .lp-strip {
-  border-block: 1px solid var(--border);
+.lp-hero + .lp-strip::before,
+.lp-hero + .lp-strip::after {
+  content: "";
+  position: absolute;
+  inset-inline: var(--lp-gutter);
+  height: 1px;
+  background: var(--lp-rule);
+}
+
+.lp-hero + .lp-strip::before {
+  top: 0;
+}
+
+.lp-hero + .lp-strip::after {
+  bottom: 0;
 }
 
 /* == Feature Rows == */
@@ -408,10 +468,17 @@
   grid-template-areas: "art copy";
 }
 
-.lp-feature + .lp-feature,
-.lp-feature + .lp-section,
-.lp-section + .lp-section {
-  border-top: 1px solid var(--border);
+.lp-feature + .lp-feature::before,
+.lp-feature + .lp-section::before,
+.lp-section + .lp-section::before,
+.lp-cta::before,
+.lp-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: var(--lp-gutter);
+  height: 1px;
+  background: var(--lp-rule);
 }
 
 .lp-feature-copy {
@@ -462,6 +529,7 @@
   background: var(--bg-elevated);
   overflow: hidden;
   box-shadow:
+    var(--lp-lift),
     0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
     0 32px 64px -32px rgba(0, 0, 0, 0.8);
 }
@@ -759,11 +827,34 @@
 }
 
 .lp-grid-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: clamp(24px, 3vw, 36px);
   background: var(--bg);
+  transition: background-color 0.18s ease;
+}
+
+.lp-grid-cell:hover {
+  background: var(--bg-elevated);
+}
+
+/* Accent edge on hover, so the hairline grid reads as operable rather than static */
+.lp-grid-cell::after,
+.lp-wall-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.lp-grid-cell:hover::after,
+.lp-wall-cell:hover::after {
+  opacity: 0.8;
 }
 
 .lp-grid-index {
@@ -796,6 +887,7 @@
 }
 
 .lp-wall-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -927,7 +1019,6 @@
 /* == Closing CTA == */
 .lp-cta {
   padding-block: var(--lp-section-pad);
-  border-top: 1px solid var(--border);
 }
 
 .lp-cta-inner {
@@ -970,14 +1061,13 @@
 
 /* == Footer == */
 .lp-footer {
-  padding-top: var(--space-16);
+  padding-top: var(--space-14);
   padding-bottom: var(--space-10);
-  border-top: 1px solid var(--border);
 }
 
 .lp-footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
   gap: var(--space-10);
 }
 
@@ -987,20 +1077,28 @@
   gap: 12px;
   font-size: 22px;
   color: var(--fg);
+  transition: color 0.15s ease;
 }
 
-.lp-footer-tagline {
-  max-width: 34ch;
-  margin-top: var(--space-4);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  color: var(--fg-muted);
+.lp-footer-name:hover,
+.lp-footer-name:focus-visible {
+  color: var(--accent);
+}
+
+.lp-footer-name:hover .brand-logo,
+.lp-footer-name:focus-visible .brand-logo {
+  transform: translateY(-3px);
+  --accent-3: var(--accent-2);
+}
+
+.lp-footer-name:active .brand-logo {
+  transform: translateY(0);
 }
 
 .lp-footer-social {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 .lp-footer-social a {
@@ -1023,7 +1121,14 @@
 
 .lp-footer-badge {
   display: inline-block;
+  flex: none;
   margin-top: var(--space-5);
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.lp-footer-badge:hover {
+  opacity: 1;
 }
 
 .lp-footer-badge img {
@@ -1056,14 +1161,14 @@
   color: var(--fg);
 }
 
+/* No rule and no big gap above this line: a divider plus 80px of air read as a second footer */
 .lp-footer-bottom {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-6);
-  margin-top: var(--space-14);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--border);
+  gap: var(--space-4) var(--space-6);
+  margin-top: var(--space-12);
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--fg-subtle);
@@ -1191,14 +1296,6 @@
 
   .lp-cmd .copy-btn span {
     display: none;
-  }
-
-  .lp-hero-meta {
-    gap: 4px 16px;
-  }
-
-  .lp-hero-meta li + li::before {
-    content: none;
   }
 
   .lp-pane--scroll .lp-pane-body {
