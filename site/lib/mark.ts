@@ -139,8 +139,8 @@ export function markSvg(variant: MarkVariant, hole: string = palette.bg): string
  */
 export const TILE = {
   radius: 0.24,
-  inset: 0.2,
-  smallInset: 0.12,
+  inset: 0.12,
+  smallInset: 0.06,
   cropViewBox: "4 15 92 72",
 } as const;
 
