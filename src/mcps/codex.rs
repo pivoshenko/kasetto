@@ -60,6 +60,14 @@ pub(super) fn list_server_names(target_path: &Path) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// One `[mcp_servers.<name>]` table converted to JSON. Read-only; `None` when
+/// the file or the server is absent.
+pub(super) fn read_server(server_name: &str, target_path: &Path) -> Option<serde_json::Value> {
+    let val = fs::read_to_string(target_path).ok()?.parse::<Toml>().ok()?;
+    let server = val.get("mcp_servers")?.get(server_name)?;
+    serde_json::to_value(server).ok()
+}
+
 pub(super) fn servers_present(server_names: &[String], target_path: &Path) -> bool {
     let Ok(text) = fs::read_to_string(target_path) else {
         return false;

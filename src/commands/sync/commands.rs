@@ -545,6 +545,7 @@ mod tests {
             }],
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
 
         let mut lock = LockFile::default();
@@ -597,6 +598,7 @@ mod tests {
                 commands: Vec::new(),
                 instructions: Vec::new(),
                 secrets: None,
+                audit: None,
             }
         };
         let mut summary2 = Summary::default();
@@ -650,6 +652,7 @@ mod tests {
                 }],
                 instructions: Vec::new(),
                 secrets: None,
+                audit: None,
             }
         }
 
@@ -749,6 +752,7 @@ mod tests {
             }],
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         }
     }
 

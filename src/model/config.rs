@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{Agent, AgentField};
+use crate::audit::RiskLevel;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum Scope {
@@ -33,6 +34,23 @@ pub(crate) struct Config {
     /// committed), only policy and extra credential-file paths.
     #[serde(default)]
     pub secrets: Option<SecretsConfig>,
+    /// Optional security-audit policy for the `sync` gate. Absent means the
+    /// audit stays advisory (`kasetto audit` only).
+    #[serde(default)]
+    pub audit: Option<AuditConfig>,
+}
+
+/// `audit:` config block, the opt-in `sync` security gate.
+///
+/// ```yaml
+/// audit:
+///   fail-on: high   # low | medium | high | critical
+/// ```
+#[derive(Debug, Deserialize, Default)]
+pub(crate) struct AuditConfig {
+    /// Minimum severity that fails a `sync`. `None` reports nothing during sync.
+    #[serde(default, rename = "fail-on", alias = "fail_on")]
+    pub fail_on: Option<RiskLevel>,
 }
 
 /// `secrets:` config block. Values live in `credentials.yaml` / env, never here.
@@ -71,6 +89,11 @@ pub(crate) enum OnMissing {
 }
 
 impl Config {
+    /// The configured `audit.fail-on` threshold, if any.
+    pub(crate) fn audit_fail_on(&self) -> Option<RiskLevel> {
+        self.audit.as_ref().and_then(|a| a.fail_on)
+    }
+
     pub(crate) fn agents(&self) -> Vec<Agent> {
         match &self.agent {
             Some(AgentField::One(a)) => vec![*a],
@@ -105,6 +128,22 @@ pub(crate) fn resolve_scope(cli_override: Option<Scope>, cfg: Option<&Config>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_parses_audit_fail_on() {
+        let cfg: Config = serde_yaml::from_str("audit:\n  fail-on: high\n").expect("parse");
+        assert_eq!(cfg.audit_fail_on(), Some(RiskLevel::High));
+        let snake: Config = serde_yaml::from_str("audit:\n  fail_on: critical\n").expect("parse");
+        assert_eq!(snake.audit_fail_on(), Some(RiskLevel::Critical));
+    }
+
+    #[test]
+    fn config_without_a_threshold_keeps_the_gate_off() {
+        let cfg: Config = serde_yaml::from_str("skills: []\n").expect("parse");
+        assert_eq!(cfg.audit_fail_on(), None);
+        let empty: Config = serde_yaml::from_str("audit: {}\n").expect("parse");
+        assert_eq!(empty.audit_fail_on(), None);
+    }
 
     #[test]
     fn inline_and_source_mcps_parse_together() {

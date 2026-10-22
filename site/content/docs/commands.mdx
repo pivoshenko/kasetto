@@ -147,6 +147,8 @@ kst sync [OPTIONS]
 | `--json`                 | Print the sync report as JSON                                |
 | `--color <when>`         | `auto` (default), `always`, or `never`                       |
 | `-v`, `--verbose`        | Increase detail (`-v`, `-vv`, `-vvv`); per-skill action list at `-v` |
+| `--audit [level]`        | After installing, fail the run if a skill or MCP server is at or above `level` (`low`, `medium`, `high`, `critical`; default `high`). Overrides `audit.fail-on` |
+| `--no-audit`             | Skip the security gate even when `audit.fail-on` is configured |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
@@ -208,6 +210,47 @@ kst list [OPTIONS]
 | `--global`          | Only read the global lock (under XDG data)                             |
 
 With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
+## `kst audit`
+
+Reports a security verdict for every installed skill and MCP server in the scope's lock. It is read-only: nothing on disk or in the lock changes.
+
+```bash
+kst audit [NAME...] [OPTIONS]
+```
+
+- **Skills** take the verdicts [skills.sh](https://skills.sh) publishes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, and others). They often disagree, so the row shows the worst one and `--verbose` lists each. These verdicts describe the source repository, not the commit your lock pins, and only `github.com` sources are indexed; anything else shows as `not on skills.sh`.
+- **MCP servers** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages.
+
+| MCP check | Severity | Flags |
+| --------- | -------- | ----- |
+| `pipe-to-shell` | critical | A shell `-c` script that downloads a script and pipes it into a shell |
+| `docker-socket`, `host-root-mount` | critical | A container that mounts the Docker socket or the host's `/` |
+| `insecure-transport` | high | A remote server reached over plain `http://` (loopback is exempt) |
+| `tls-verification-disabled` | high | `NODE_TLS_REJECT_UNAUTHORIZED=0` or `PYTHONHTTPSVERIFY=0` in its environment |
+| `privileged-container`, `host-namespace`, `added-capability` | high | `--privileged`, `--network`/`--pid`/`--ipc host`, or `--cap-add ALL`/`SYS_ADMIN` |
+| `inline-shell` | medium | Any other inline shell script as the launch command |
+| `unpinned-package`, `unpinned-image` | low | `npx`/`uvx`/`pnpm dlx`/... without an exact version, or an image without a tag or digest |
+| OSV advisory | from the advisory | A known vulnerability in the pinned package version |
+| OSV `MAL-` entry | critical | A known malicious package, pinned or not |
+
+Verdict summaries never echo env values, headers, URL paths, or scripts, because the installed definition already has its secrets resolved.
+
+### Options
+
+| Flag               | Description                                                           |
+| ------------------ | --------------------------------------------------------------------- |
+| `NAME...`          | Only audit these skills, MCP servers, or MCP packs (default: all)     |
+| `-v`, `--verbose`  | Show every provider's verdict, not only the worst                     |
+| `--fail-on <level>`| Exit non-zero if any asset is at or above `low`, `medium`, `high`, or `critical` |
+| `--refresh`        | Bypass the 24h cache and re-fetch every verdict                       |
+| `--json`           | Output as JSON                                                        |
+| `-q`, `--quiet`    | Do not print anything (unless `--json`); `--fail-on` still sets the exit code |
+| `--color <when>`   | `auto` (default), `always`, or `never`                                |
+| `--project`        | Audit the project lock (`./kasetto.lock`)                             |
+| `--global`         | Audit the global lock (default)                                       |
+
+An asset that cannot be judged (no audit yet, a non-`github.com` skill source, a lookup that failed) is listed as unaudited and never trips `--fail-on`. The same holds for the gate that `kst sync --audit` and `audit.fail-on` run after installing; see [Configuration](/docs/configuration#audit). Lookups are cached for 24h under `$XDG_CACHE_HOME/kasetto/audits/`; `KASETTO_NO_CACHE` bypasses the cache.
+
 ## `kst doctor`
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed. It exits non-zero when it reports issues (failed assets, or locked skills missing on disk), so `kst doctor` works as a CI gate; `-q` runs the same checks and sets the same exit code without printing.

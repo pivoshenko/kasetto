@@ -45,6 +45,7 @@ mod outcome_tests {
 }
 
 pub(crate) mod add;
+pub(crate) mod audit;
 pub(crate) mod clean;
 pub(crate) mod completions;
 pub(crate) mod doctor;
