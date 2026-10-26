@@ -547,6 +547,7 @@ mod tests {
                 instructions,
             }],
             secrets: None,
+            audit: None,
         }
     }
 

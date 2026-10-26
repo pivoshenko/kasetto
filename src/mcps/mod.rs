@@ -107,6 +107,24 @@ pub(crate) fn list_server_names(target: &crate::model::McpSettingsTarget) -> Vec
     }
 }
 
+/// One server's definition as installed in an agent-native settings file, in
+/// that agent's shape (Codex TOML read back as JSON). Read-only; `None` when the
+/// file or the server is absent. Secret placeholders are already resolved here,
+/// so callers must never print the value wholesale.
+pub(crate) fn read_server_definition(
+    server_name: &str,
+    target: &crate::model::McpSettingsTarget,
+) -> Option<serde_json::Value> {
+    let keys: &[&str] = match target.format {
+        McpSettingsFormat::CodexToml => return codex::read_server(server_name, &target.path),
+        McpSettingsFormat::McpServers => &["mcpServers"],
+        McpSettingsFormat::VsCodeServers => &["servers"],
+        McpSettingsFormat::OpenCode => &["mcp"],
+        McpSettingsFormat::ZCode => &["mcp", "servers"],
+    };
+    json_object(&target.path, keys)?.remove(server_name)
+}
+
 /// Parse `path` as JSON and return the object at the nested `keys` path. `None`
 /// when the file is absent, unparseable, or has no object at that path.
 fn json_object(path: &Path, keys: &[&str]) -> Option<serde_json::Map<String, serde_json::Value>> {
@@ -447,6 +465,35 @@ command = "b"
         assert!(val["mcpServers"]["a"].is_null());
         assert_eq!(val["mcpServers"]["b"]["cmd"], "2");
 
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_server_definition_reads_json_and_codex_shapes() {
+        let dir = temp_dir("kasetto-mcp-read");
+        fs::create_dir_all(&dir).unwrap();
+        let json_target = mcp_target(dir.join("mcp.json"));
+        fs::write(
+            &json_target.path,
+            r#"{"mcpServers":{"gh":{"command":"npx","args":["-y","pkg"]}}}"#,
+        )
+        .unwrap();
+        let def = read_server_definition("gh", &json_target).unwrap();
+        assert_eq!(def["command"], "npx");
+        assert!(read_server_definition("missing", &json_target).is_none());
+
+        let codex = McpSettingsTarget {
+            path: dir.join("config.toml"),
+            format: McpSettingsFormat::CodexToml,
+        };
+        fs::write(
+            &codex.path,
+            "[mcp_servers.gh]\ncommand = \"uvx\"\nargs = [\"tool\"]\n",
+        )
+        .unwrap();
+        let def = read_server_definition("gh", &codex).unwrap();
+        assert_eq!(def["command"], "uvx");
+        assert_eq!(def["args"][0], "tool");
         let _ = fs::remove_dir_all(&dir);
     }
 

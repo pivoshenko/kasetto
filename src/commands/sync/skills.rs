@@ -731,6 +731,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let ctx = SyncContext {
             cfg: &cfg,
@@ -784,6 +785,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let ctx = SyncContext {
             cfg: &cfg,
@@ -1121,6 +1123,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let dests = vec![dest.clone()];
         let ctx = SyncContext {

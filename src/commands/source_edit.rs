@@ -68,6 +68,10 @@ pub(super) fn sync_after(
         update_local: false,
         locked,
         allow_missing_secrets: false,
+        // No gate flags on add/remove; a configured `audit.fail-on` still
+        // applies, so adding a risky asset is still caught
+        audit: None,
+        no_audit: false,
     })
 }
 

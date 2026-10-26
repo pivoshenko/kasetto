@@ -2,6 +2,7 @@
 //! assets so destinations match the config.
 
 mod commands;
+mod gate;
 mod instructions;
 mod mcps;
 mod skills;
@@ -114,6 +115,10 @@ pub(crate) struct SyncOptions<'a> {
     pub update_local: bool,
     pub locked: bool,
     pub allow_missing_secrets: bool,
+    /// `--audit [LEVEL]`: gate threshold, overriding `audit.fail-on`.
+    pub audit: Option<crate::audit::RiskLevel>,
+    /// `--no-audit`: skip the gate even when the config sets a threshold.
+    pub no_audit: bool,
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
@@ -234,12 +239,19 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         }
     }
 
+    // Dry runs install nothing, so there is nothing new to judge
+    let gate_failed =
+        match gate::effective_threshold(cfg.audit_fail_on(), opts.audit, opts.no_audit) {
+            Some(threshold) if !opts.dry_run => gate::enforce(&ctx, &lock, threshold)?,
+            _ => false,
+        };
+
     // A broken asset is a failure the caller should be able to gate on, same as
     // a hard `failed`: the sync ran, but the environment it produced is not the
     // one the config asked for. Returned rather than `process::exit`ed so the
     // single exit path in `app::run` stays single
     Ok(Outcome::from_failed(
-        report.summary.failed > 0 || report.summary.broken > 0,
+        report.summary.failed > 0 || report.summary.broken > 0 || gate_failed,
     ))
 }
 

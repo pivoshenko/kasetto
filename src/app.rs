@@ -69,6 +69,8 @@ fn dispatch() -> Result<ExitCode> {
                     update_local: sync.update_local,
                     locked: sync.locked,
                     allow_missing_secrets: sync.allow_missing_secrets,
+                    audit: sync.audit.map(|t| t.level()),
+                    no_audit: sync.no_audit,
                 })
             }
             Commands::Add {
@@ -173,6 +175,24 @@ fn dispatch() -> Result<ExitCode> {
                 output.is_quiet(),
                 scope.scope_override(),
             )),
+            Commands::Audit {
+                names,
+                json,
+                refresh,
+                verbose,
+                fail_on,
+                output,
+                scope,
+            } => crate::commands::audit::run(&crate::commands::audit::AuditOptions {
+                names: &names,
+                as_json: json,
+                plain: output.resolve_plain(),
+                quiet: output.is_quiet(),
+                refresh,
+                verbose,
+                fail_on: fail_on.map(|t| t.level()),
+                scope_override: scope.scope_override(),
+            }),
             Commands::Doctor {
                 json,
                 output,
@@ -227,6 +247,7 @@ fn should_suppress_notice(command: &Option<Commands>) -> bool {
         Some(Commands::Remove { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Lock { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::List { json, output, .. }) => *json || output.plain || output.is_quiet(),
+        Some(Commands::Audit { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Doctor { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Clean { json, output, .. }) => *json || output.plain || output.is_quiet(),
         Some(Commands::Completions { .. }) => true,

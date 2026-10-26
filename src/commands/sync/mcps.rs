@@ -922,6 +922,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         }
     }
 
@@ -1504,6 +1505,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let root = PathBuf::from("/tmp");
         let ctx = SyncContext {
@@ -1560,6 +1562,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let root = PathBuf::from("/tmp");
         let ctx = SyncContext {
@@ -1610,6 +1613,7 @@ mod tests {
             commands: Vec::new(),
             instructions: Vec::new(),
             secrets: None,
+            audit: None,
         };
         let root = PathBuf::from("/tmp");
         let ctx = SyncContext {

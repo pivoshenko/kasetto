@@ -138,6 +138,7 @@ kst doctor                  # version, paths, last sync status
 | `kst lock`                | Re-resolve every source and pin it into `kasetto.lock` without installing           |
 | `kst sync`                | Install skills, MCPs, commands, and instructions into agent dirs, honoring the lock |
 | `kst list`                | Print a table of installed assets from the lock file                                |
+| `kst audit`               | Report security verdicts for installed skills (skills.sh) and MCP servers (OSV)     |
 | `kst doctor`              | Local diagnostics: version, paths, last sync status, broken skills                  |
 | `kst clean`               | Remove tracked skills, commands, MCP configs, and instructions for the given scope  |
 | `kst self update`         | Fetch the latest release, verify SHA256, replace the binary in place                |
