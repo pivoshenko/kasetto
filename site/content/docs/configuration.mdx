@@ -106,6 +106,7 @@ mcps:
 | `instructions`       | no       | List of instruction sources (CLAUDE.md / .cursor/rules / AGENTS.md ...)      |
 | `secrets`     | no       | Secret-injection policy for `${kst_...}` placeholders (see [Secret Injection](/docs/secrets)) |
 | `extends`     | no       | Path or URL of a parent config to inherit from (string or list)     |
+| `audit`       | no       | Security gate for `sync` (see [Audit](#audit))                      |
 
 ### Skill Source Fields
 
@@ -239,6 +240,27 @@ Each instruction is transformed into the target agent's native format. Two desti
 `globs`/`alwaysApply` are only meaningful for Cursor; they are dropped for agents that don't scope
 instructions. See [supported agents](/docs/agents) for the per-agent destinations.
 
+## Audit
+
+The `audit` block turns on the security gate that runs after every `kst sync`. Without it, `kst audit` still reports verdicts on demand; the block only adds enforcement.
+
+```yaml
+audit:
+  fail-on: high # low | medium | high | critical
+```
+
+| Key       | Required | Description                                                                  |
+| --------- | -------- | ---------------------------------------------------------------------------- |
+| `fail-on` | no       | Minimum severity that fails a sync. Omit it and sync never audits.          |
+
+After installing, the gate audits every skill and MCP server in the lock, exactly as [`kst audit`](/docs/commands#kst-audit) does, and the run exits non-zero if any is at or above the threshold. The files stay installed: the exit code is what stops a CI job before the environment is used. `kst sync --audit [level]` turns the gate on for one run (or overrides the configured level), and `--no-audit` skips it. `kst add` and `kst remove` honor the configured threshold in their follow-up sync. Dry runs skip the gate, since they install nothing.
+
+<Callout type="info">
+
+The gate never fails on missing data: an asset it cannot verify (skills.sh or OSV unreachable, a non-`github.com` skill source, no audit yet) only adds a warning. Skill verdicts are repo-level on skills.sh, not pinned to your locked commit.
+
+</Callout>
+
 ## Extending Another Config
 
 Use `extends` to inherit from a parent config. Local relative paths resolve against the extending file's directory; HTTPS URLs are fetched with the same auth env vars as `--config`.
@@ -361,7 +383,7 @@ These environment variables affect Kasetto's behavior:
 | `NO_COLOR`        | Disables colored output. Set to any value.                                                      |
 | `CLICOLOR_FORCE`  | Forces color even when stdout is not a TTY. Set automatically by `--color always`.              |
 | `KASETTO_CONFIG`  | Overrides config discovery to use the exact path or URL (see [Configuration](#configuration)).  |
-| `KASETTO_NO_CACHE`| Disables the on-disk source cache, forcing a fresh download + extract on every fetch. Set to any value. |
+| `KASETTO_NO_CACHE`| Disables the on-disk source and audit caches, forcing a fresh download + extract on every fetch and a fresh lookup on every audit. Set to any value. |
 | `KASETTO_NO_UPDATE_CHECK` | Disables the daily update check (see [Update Check](#update-check)). Set to any value other than `0`. |
 | `PI_CODING_AGENT_DIR` | Overrides Pi's global resource root (default `~/.pi/agent`), matching Pi's native environment variable. |
 

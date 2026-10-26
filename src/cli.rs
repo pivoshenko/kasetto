@@ -3,6 +3,7 @@
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
+use crate::audit::RiskLevel;
 use crate::model::Scope;
 
 #[derive(Parser)]
@@ -89,6 +90,27 @@ pub(crate) enum ListKind {
     Instructions,
 }
 
+/// Severity threshold for `audit --fail-on` and `sync --audit`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+#[clap(rename_all = "lowercase")]
+pub(crate) enum AuditThreshold {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+impl AuditThreshold {
+    pub(crate) fn level(self) -> RiskLevel {
+        match self {
+            AuditThreshold::Low => RiskLevel::Low,
+            AuditThreshold::Medium => RiskLevel::Medium,
+            AuditThreshold::High => RiskLevel::High,
+            AuditThreshold::Critical => RiskLevel::Critical,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
 #[clap(rename_all = "lowercase")]
 pub(crate) enum ColorMode {
@@ -155,6 +177,16 @@ pub(crate) struct SyncArgs {
         long_help = "By default an unresolved `${kst_name}` placeholder in an MCP config marks that entry broken and exits non-zero. With this flag, kasetto warns and writes the literal placeholder instead."
     )]
     pub allow_missing_secrets: bool,
+    #[arg(long, value_name = "LEVEL", num_args = 0..=1, default_missing_value = "high")]
+    #[arg(conflicts_with = "no_audit")]
+    #[arg(
+        help = "fail the run if an installed skill or MCP server is at or above LEVEL (default: high)",
+        long_help = "Audit the synced skills and MCP servers after installing them and exit non-zero if any meets or exceeds LEVEL (low, medium, high, critical; `--audit` alone means high). Overrides `audit.fail-on` from the config.\n\nAn asset that cannot be verified (skills.sh unreachable, a non-github.com skill source, no audit yet) only warns and never fails the gate. See `kst audit` for the full report."
+    )]
+    pub audit: Option<AuditThreshold>,
+    #[arg(long = "no-audit", conflicts_with = "audit")]
+    #[arg(help = "skip the security gate even if audit.fail-on is configured")]
+    pub no_audit: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
 }
@@ -420,6 +452,37 @@ pub(crate) enum Commands {
         #[arg(long = "type", value_enum, default_value_t = ListKind::All)]
         #[arg(help = "limit output to one asset kind")]
         kind: ListKind,
+        #[command(flatten)]
+        output: OutputArgs,
+        #[command(flatten)]
+        scope: ScopeArgs,
+    },
+    #[command(
+        about = "Check installed skills and MCP servers for security risks",
+        long_about = "Report a severity for every installed skill and MCP server in the scope's lock. Read-only: it never changes files or the lock.\n\nSkills take the verdicts skills.sh publishes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, ...); the headline is the worst one and --verbose shows each. These verdicts are repo-level, not pinned to your locked commit, and only github.com sources are indexed.\n\nMCP servers are checked offline for risky launch options (plain-http remotes, disabled TLS checks, piped install scripts, privileged containers, unpinned packages) and the npm or PyPI package they run is looked up on OSV, which includes known malicious packages.\n\nLookups are cached for 24h; pass --refresh to re-fetch, or set KASETTO_NO_CACHE to bypass the cache.",
+        after_help = crate::cli_examples!(
+            "kst audit",
+            "kst audit --verbose",
+            "kst audit --fail-on high",
+            "kst audit pdf github --json",
+        )
+    )]
+    Audit {
+        #[arg(value_name = "NAME")]
+        #[arg(help = "limit the audit to these skills, MCP servers, or MCP packs (default: all)")]
+        names: Vec<String>,
+        #[arg(long)]
+        #[arg(help = "print the audit as JSON")]
+        json: bool,
+        #[arg(long)]
+        #[arg(help = "bypass the 24h cache and re-fetch every verdict")]
+        refresh: bool,
+        #[arg(short = 'v', long)]
+        #[arg(help = "show every provider's verdict, not only the worst")]
+        verbose: bool,
+        #[arg(long, value_name = "LEVEL")]
+        #[arg(help = "exit non-zero if any asset is at or above LEVEL")]
+        fail_on: Option<AuditThreshold>,
         #[command(flatten)]
         output: OutputArgs,
         #[command(flatten)]

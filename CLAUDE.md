@@ -27,6 +27,9 @@ and its short alias `kst`, both calling `kasetto::run()`) plus the documentation
   user agent with the counted period inside the digest, so it rotates with that period. A distinct
   count needs a digest stable across the period it reports: unioning daily HyperLogLogs over a week
   counts one machine seven times, which is why the weekly figure has its own week-stamped key
+- never echo an installed MCP definition in an audit verdict. `audit/mcp.rs` reads it back from the agent
+  config with secrets already resolved, so a summary names the rule and at most a host or package name,
+  never an env value, header, URL path or query, or shell script
 - never cache a mutable ref. `fsops/cache.rs` caches extracted trees **only** for immutable refs (explicit
   tag or SHA); a branch or default ref can change upstream without the URL changing. Its `.complete`
   marker is written last and kept beside `tree/`, never inside it, so it cannot leak into hashed content
@@ -127,6 +130,14 @@ targets are written as managed `<!-- kasetto:instruction:ID ... -->` blocks so u
 the block survive a sync. `secrets/` resolves `${kst_...}` and tagged `${kst:<source>:<ref>}` placeholders
 at sync time from env vars, a `credentials.yaml`, or an external secret manager, by shelling out to the
 user's existing CLI session.
+
+**Security audit.** `audit/` backs both `kst audit` and the post-install gate in `commands/sync/gate.rs`
+(off unless `--audit [level]` or `audit.fail-on`; `--no-audit` wins). Targets come from the lock: skills
+are looked up on skills.sh (`audit/skills_sh.rs`, `github.com` sources only, repo-level verdicts), and
+each MCP server's definition is read back from the agent config and judged by the offline rules in
+`audit/mcp.rs` plus an OSV query for the npm/PyPI package it launches (`audit/osv.rs`). An asset that
+cannot be judged warns and never fails the gate. Lookups go through a 24h TTL cache in `audit/cache.rs`.
+The gate is the one network call `--locked` still makes, because the user opted into it.
 
 **Update check and site counters.** `update_notifier.rs` asks `kasetto.dev/latest` (not the GitHub
 API) for the newest version once per 24h, which is also the project's only active-install metric.

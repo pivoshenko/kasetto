@@ -184,6 +184,7 @@ mod tests {
 }
 
 mod app;
+mod audit;
 mod banner;
 mod cli;
 mod colors;
