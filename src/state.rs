@@ -46,7 +46,8 @@ impl RuntimeState {
         self.latest_report = Some(report_json.to_string());
     }
 
-    /// Extract failed actions from the cached report for `doctor`.
+    /// Extract failed actions, and a failed security gate, from the cached
+    /// report for `doctor`.
     pub(crate) fn load_latest_failures(&self) -> Vec<SyncFailure> {
         let Some(report_json) = &self.latest_report else {
             return Vec::new();
@@ -80,8 +81,48 @@ impl RuntimeState {
                 });
             }
         }
+        failed.extend(gate_failures(value.get("audit")));
         failed
     }
+}
+
+/// One `SyncFailure` per gate violation, plus one for a fail-closed gate that
+/// tripped on unverified assets alone. Reads the sanitised `audit` block the
+/// sync report carries, so nothing here can echo a definition.
+fn gate_failures(audit: Option<&serde_json::Value>) -> Vec<SyncFailure> {
+    let Some(gate) = audit.filter(|a| a.get("passed").and_then(|v| v.as_bool()) == Some(false))
+    else {
+        return Vec::new();
+    };
+    let str_of = |v: &serde_json::Value, key: &str| {
+        v.get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or("-")
+            .to_string()
+    };
+    let threshold = str_of(gate, "threshold");
+    let mut out: Vec<SyncFailure> = gate
+        .get("violations")
+        .and_then(|v| v.as_array())
+        .map(|rows| {
+            rows.iter()
+                .map(|v| SyncFailure {
+                    name: str_of(v, "name"),
+                    source: str_of(v, "source"),
+                    reason: format!("audit gate: {} (fail-on: {threshold})", str_of(v, "level")),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let unverified = gate.get("unverified").and_then(|v| v.as_u64()).unwrap_or(0);
+    if gate.get("fail_on_unverified").and_then(|v| v.as_bool()) == Some(true) && unverified > 0 {
+        out.push(SyncFailure {
+            name: "audit gate".to_string(),
+            source: "-".to_string(),
+            reason: format!("{unverified} asset(s) could not be verified (fail-on-unverified)"),
+        });
+    }
+    out
 }
 
 /// Machine-local state file path, keyed by the lock file location so project
@@ -209,5 +250,34 @@ mod tests {
         assert_eq!(failures.len(), 2);
         assert_eq!(failures[0].name, "bad");
         assert_eq!(failures[1].reason, "timeout");
+    }
+
+    #[test]
+    fn load_latest_failures_includes_a_failed_audit_gate() {
+        let mut state = RuntimeState::default();
+        state.save_report_json(
+            r#"{"actions":[],"audit":{"threshold":"high","fail_on_unverified":true,
+                "violations":[{"kind":"mcp","name":"srv","source":"<inline>","level":"critical","provider":"OSV"}],
+                "unverified":2,"passed":false}}"#,
+        );
+        let failures = state.load_latest_failures();
+        assert_eq!(failures.len(), 2);
+        assert_eq!(failures[0].name, "srv");
+        assert_eq!(failures[0].source, "<inline>");
+        assert_eq!(failures[0].reason, "audit gate: critical (fail-on: high)");
+        assert_eq!(failures[1].name, "audit gate");
+        assert!(failures[1]
+            .reason
+            .contains("2 asset(s) could not be verified"));
+
+        let mut passed = RuntimeState::default();
+        passed.save_report_json(
+            r#"{"actions":[],"audit":{"threshold":"high","fail_on_unverified":false,
+                "violations":[],"unverified":3,"passed":true}}"#,
+        );
+        assert!(passed.load_latest_failures().is_empty());
+        let mut none = RuntimeState::default();
+        none.save_report_json(r#"{"actions":[],"audit":null}"#);
+        assert!(none.load_latest_failures().is_empty());
     }
 }

@@ -72,6 +72,7 @@ pub(super) fn sync_after(
         // applies, so adding a risky asset is still caught
         audit: None,
         no_audit: false,
+        fail_on_unverified: false,
     })
 }
 

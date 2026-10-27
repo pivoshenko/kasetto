@@ -144,15 +144,18 @@ kst sync [OPTIONS]
 | `--config <path-or-url>` | Path or HTTPS URL to a YAML config (default order: `$KASETTO_CONFIG`, `./kasetto.yaml`, `source:` in `config.yaml`, `$XDG_CONFIG_HOME/kasetto/kasetto.yaml`) |
 | `--dry-run`              | Preview what would change without writing anything           |
 | `-q`, `--quiet`          | Suppress non-error output (repeat for stricter silence)      |
-| `--json`                 | Print the sync report as JSON                                |
+| `--json`                 | Print the sync report as JSON; its `audit` key carries the gate's verdict, or `null` when the gate did not run |
 | `--color <when>`         | `auto` (default), `always`, or `never`                       |
 | `-v`, `--verbose`        | Increase detail (`-v`, `-vv`, `-vvv`); per-skill action list at `-v` |
 | `--audit [level]`        | After installing, fail the run if a skill or MCP server is at or above `level` (`low`, `medium`, `high`, `critical`; default `high`). Overrides `audit.fail-on` |
 | `--no-audit`             | Skip the security gate even when `audit.fail-on` is configured |
+| `--fail-on-unverified`   | Fail closed: when the gate runs, an asset it cannot verify fails the run instead of only warning. Needs `--audit` or `audit.fail-on`; `--no-audit` still wins |
 | `--project`              | Install into the current project directory                   |
 | `--global`               | Install globally (default)                                   |
 
 Missing skills are reported as broken but won't stop the rest of the run: every other asset still syncs. The exit code is non-zero if anything ended up broken, so a partial sync fails CI rather than passing quietly.
+
+When the security gate runs, the `--json` report gains an `audit` object: `threshold`, `fail_on_unverified`, `violations` (one `{kind, name, source, level, provider}` row per asset at or above the threshold, worst first), `unverified` (how many assets could not be fully verified), and `passed`. The gate's verdicts still print on stderr, and `kst doctor` lists a failed gate under failed assets until the next sync.
 
 <Callout type="tip">
 
@@ -245,6 +248,7 @@ Verdict summaries never echo env values, headers, URL paths, or scripts, because
 | `NAME...`          | Only audit these skills, MCP servers, or MCP packs (default: all)     |
 | `-v`, `--verbose`  | Show every provider's verdict, not only the worst                     |
 | `--fail-on <level>`| Exit non-zero if any asset is at or above `low`, `medium`, `high`, or `critical` |
+| `--fail-on-unverified` | Exit non-zero if any asset could not be verified; works with or without `--fail-on` |
 | `--refresh`        | Bypass the 24h cache and re-fetch every verdict                       |
 | `--json`           | Output as JSON                                                        |
 | `-q`, `--quiet`    | Do not print anything (unless `--json`); `--fail-on` still sets the exit code |
@@ -252,7 +256,7 @@ Verdict summaries never echo env values, headers, URL paths, or scripts, because
 | `--project`        | Audit the project lock (`./kasetto.lock`)                             |
 | `--global`         | Audit the global lock (default)                                       |
 
-An asset that cannot be judged (no audit yet, a non-`github.com` skill source, a lookup that failed) is listed as unaudited and never trips `--fail-on`. The same holds for the gate that `kst sync --audit` and `audit.fail-on` run after installing; see [Configuration](/docs/configuration#audit). Lookups are cached for 24h under `$XDG_CACHE_HOME/kasetto/audits/`; `KASETTO_NO_CACHE` bypasses the cache.
+The summary line sorts every asset into exactly one of three buckets. `flagged` is any asset with a verdict at `medium` or above, even if another lookup for it failed, `safe` is a fully verified asset whose worst verdict is `safe` or `low`, and `unverified` is everything else the audit could not fully judge: no audit yet, a non-`github.com` skill source, a lookup that failed, or an audited asset with a `lookup unavailable` tail or no usable verdict. An unverified asset never counts as safe. It also never trips `--fail-on` on its own; `--fail-on-unverified` is the opt-in that makes it fail the run, and it also counts a flagged asset with a failed lookup, since the missing verdict could be worse (`kst audit` reads only the flag, not the config). The same two switches drive the gate that `kst sync --audit` and `audit.fail-on` run after installing; see [Configuration](/docs/configuration#audit). The `--json` summary carries the three buckets plus `unaudited` and `errors`, which break `unverified` down by outcome. Lookups are cached for 24h under `$XDG_CACHE_HOME/kasetto/audits/`; `KASETTO_NO_CACHE` bypasses the cache and `kst clean` clears it.
 
 ## `kst doctor`
 
@@ -282,7 +286,7 @@ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes everything Kasetto installed for the given scope: skills, commands, MCP configs, instructions, and lock file entries.
+Removes everything Kasetto installed for the given scope: skills, commands, MCP configs, instructions, and lock file entries. It also drops the machine-local runtime state and the cached audit lookups, so the next `kst audit` asks every provider again.
 
 ```bash
 kst clean [OPTIONS]

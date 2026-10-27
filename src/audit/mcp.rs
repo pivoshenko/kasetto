@@ -6,6 +6,7 @@
 //! header, a URL path or query, or a shell script: rules name the problem and at
 //! most a host or package name.
 
+use std::net::IpAddr;
 use std::path::Path;
 
 use super::{RiskLevel, Verdict};
@@ -109,10 +110,15 @@ pub(super) fn check(spec: &ServerSpec) -> Vec<Verdict> {
             out.push(finding(
                 RiskLevel::Low,
                 "unpinned-package",
-                format!(
-                    "runs {} without an exact version, so each launch may fetch new code",
-                    pkg.name
-                ),
+                if looks_like_a_secret(&pkg.name) {
+                    "runs a package without an exact version, so each launch may fetch new code"
+                        .to_string()
+                } else {
+                    format!(
+                        "runs {} without an exact version, so each launch may fetch new code",
+                        pkg.name
+                    )
+                },
             ));
         }
     }
@@ -143,9 +149,9 @@ fn check_transport(spec: &ServerSpec, out: &mut Vec<Verdict>) {
         host_port.split(':').next().unwrap_or("")
     };
     let loopback = host.eq_ignore_ascii_case("localhost")
-        || host.starts_with("127.")
-        || host == "::1"
-        || host == "0.0.0.0";
+        || host
+            .parse::<IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback() || ip.is_unspecified());
     if !loopback {
         out.push(finding(
             RiskLevel::High,
@@ -268,16 +274,47 @@ fn check_container(spec: &ServerSpec, out: &mut Vec<Verdict>) {
         let tag = image.rsplit('/').next().unwrap_or(image).split_once(':');
         let pinned = image.contains("@sha256:") || matches!(tag, Some((_, t)) if t != "latest");
         if !pinned {
-            out.push(finding(
-                RiskLevel::Low,
-                "unpinned-image",
-                format!(
-                    "runs image {} without a fixed tag or digest",
-                    image.split('@').next().unwrap_or(image)
-                ),
-            ));
+            let summary = match image_name(image) {
+                Some(name) => format!("runs image {name} without a fixed tag or digest"),
+                None => "runs an image without a fixed tag or digest".to_string(),
+            };
+            out.push(finding(RiskLevel::Low, "unpinned-image", summary));
         }
     }
+}
+
+/// The image reference without its digest, when `image` looks like one. A
+/// token after an unrecognized value-taking flag lands in the image slot, so
+/// anything that is not shaped like a reference is never echoed.
+fn image_name(image: &str) -> Option<&str> {
+    let (base, digest) = match image.split_once('@') {
+        Some((base, digest)) => (base, Some(digest)),
+        None => (image, None),
+    };
+    if let Some(digest) = digest {
+        let hex = digest.strip_prefix("sha256:")?;
+        if hex.len() != 64
+            || !hex
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
+            return None;
+        }
+    }
+    let (repo, tag) = match base.rsplit_once(':') {
+        Some((repo, tag)) if !tag.contains('/') => (repo, Some(tag)),
+        _ => (base, None),
+    };
+    let repo_ok = repo.starts_with(|c: char| c.is_ascii_lowercase() || c.is_ascii_digit())
+        && repo.chars().all(|c| {
+            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '.' | '_' | '/' | '-' | ':')
+        });
+    let tag_ok = tag.is_none_or(|t| {
+        !t.is_empty()
+            && t.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    });
+    (repo_ok && tag_ok && !looks_like_a_secret(repo)).then_some(base)
 }
 
 /// `docker run` flags that consume the next argument, so it is not mistaken
@@ -316,6 +353,48 @@ const DOCKER_VALUE_FLAGS: &[&str] = &[
     "--pull",
     "--restart",
     "--device",
+    "--log-driver",
+    "--log-opt",
+    "--health-cmd",
+    "--health-interval",
+    "--health-retries",
+    "--health-timeout",
+    "--health-start-period",
+    "--tmpfs",
+    "--ulimit",
+    "--sysctl",
+    "--dns",
+    "--dns-search",
+    "--dns-option",
+    "--shm-size",
+    "--gpus",
+    "--cidfile",
+    "--storage-opt",
+    "--userns",
+    "--uts",
+    "--volumes-from",
+    "--annotation",
+    "--group-add",
+    "--cgroup-parent",
+    "--cgroupns",
+    "--runtime",
+    "--stop-signal",
+    "--stop-timeout",
+    "--ip",
+    "--ip6",
+    "--mac-address",
+    "--expose",
+    "--link",
+    "--label-file",
+    "--cpu-shares",
+    "--cpuset-cpus",
+    "--memory-swap",
+    "--pids-limit",
+    "--detach-keys",
+    "--network-alias",
+    "--domainname",
+    "--isolation",
+    "--init-path",
 ];
 
 fn container_flag(flag: &str, value: Option<&str>, out: &mut Vec<Verdict>) {
@@ -436,7 +515,11 @@ fn package_arg<'a>(ecosystem: Ecosystem, args: &[&'a str]) -> Option<&'a str> {
 
 fn parse_npm_spec(spec: &str) -> Option<Package> {
     let spec = spec.strip_prefix("npm:").unwrap_or(spec);
-    if spec.is_empty() || spec.starts_with(['.', '/', '~']) || spec.contains("://") {
+    if !spec.is_ascii()
+        || spec.is_empty()
+        || spec.starts_with(['.', '/', '~'])
+        || spec.contains("://")
+    {
         return None;
     }
     if spec.contains(':') || spec.ends_with(".tgz") {
@@ -517,6 +600,7 @@ fn looks_like_a_secret(name: &str) -> bool {
 /// A concrete release (`1.2.3`, `0.4.0-beta.1`), not a dist-tag or a range.
 fn is_exact_version(v: &str) -> bool {
     v.starts_with(|c: char| c.is_ascii_digit())
+        && !looks_like_a_secret(v)
         && !v.contains(['^', '~', '>', '<', '*', '|', ' ', ','])
         && !v.split('.').any(|p| p.eq_ignore_ascii_case("x"))
 }
@@ -718,6 +802,86 @@ mod tests {
         .is_empty());
         assert!(pkg(json!({"command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]})).is_some());
         assert!(pkg(json!({"command": "uvx", "args": ["Mcp_Server.Fetch"]})).is_some());
+    }
+
+    #[test]
+    fn a_non_ascii_package_arg_is_not_a_package_and_does_not_panic() {
+        for arg in ["é", "日本語@1.0.0", "@scope/пакет", "pkg@é", "ü/x"] {
+            assert_eq!(parse_npm_spec(arg), None, "{arg}");
+            assert_eq!(
+                launched_package(&spec(json!({"command": "npx", "args": [arg]}))),
+                None,
+                "{arg}"
+            );
+            let _ = parse_pypi_spec(arg);
+            let _ = launched_package(&spec(json!({"command": "uvx", "args": [arg]})));
+        }
+    }
+
+    #[test]
+    fn an_unknown_flag_value_is_never_echoed_as_the_image() {
+        let summary = |args: serde_json::Value| {
+            let found = check(&spec(json!({"command": "docker", "args": args})));
+            found
+                .into_iter()
+                .find(|v| v.categories[0] == "unpinned-image")
+                .map(|v| v.summary)
+        };
+        let leaked = summary(json!([
+            "run",
+            "--frobnicate",
+            "Bearer s3cr3t-Token_value",
+            "acme/mcp"
+        ]))
+        .unwrap();
+        assert_eq!(leaked, "runs an image without a fixed tag or digest");
+        assert_eq!(
+            summary(json!([
+                "run",
+                "--health-cmd",
+                "curl -H 'Authorization: Bearer x'",
+                "acme/mcp"
+            ])),
+            Some("runs image acme/mcp without a fixed tag or digest".to_string())
+        );
+        assert_eq!(
+            summary(json!(["run", "ghcr.io/acme/mcp"])),
+            Some("runs image ghcr.io/acme/mcp without a fixed tag or digest".to_string())
+        );
+        assert_eq!(
+            summary(json!(["run", "localhost:5000/acme/mcp"])),
+            Some("runs image localhost:5000/acme/mcp without a fixed tag or digest".to_string())
+        );
+    }
+
+    #[test]
+    fn a_hex_token_is_not_a_pinned_version() {
+        let token = "3f9a1c0e7b2d4a6f8e1c3b5d7f9a0c2e4b6d8f0a";
+        for def in [
+            json!({"command": "npx", "args": [format!("pkg@{token}")]}),
+            json!({"command": "uvx", "args": [format!("pkg=={token}")]}),
+        ] {
+            let pkg = launched_package(&spec(def)).unwrap();
+            assert_eq!(pkg.version, None);
+        }
+    }
+
+    #[test]
+    fn a_lookalike_hostname_is_not_loopback() {
+        for host in ["127.evil.com", "127.0.0.1.evil.com", "localhost.evil.com"] {
+            assert_eq!(
+                rules(json!({ "url": format!("http://{host}/mcp") })),
+                vec![("insecure-transport".into(), RiskLevel::High)],
+                "{host}"
+            );
+        }
+        for local in [
+            "http://127.1.2.3/mcp",
+            "http://0.0.0.0:80",
+            "http://[::1]/x",
+        ] {
+            assert!(rules(json!({ "url": local })).is_empty(), "{local}");
+        }
     }
 
     #[test]

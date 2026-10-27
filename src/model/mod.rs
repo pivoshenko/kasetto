@@ -24,7 +24,8 @@ pub(crate) use config::{
 };
 pub(crate) use config::{OnMissing, SecretsConfig};
 pub(crate) use types::{
-    Action, InstalledSkill, Report, SkillEntry, State, Summary, SyncFailure, LOCK_VERSION,
+    Action, AuditGate, AuditViolation, InstalledSkill, Report, SkillEntry, State, Summary,
+    SyncFailure, LOCK_VERSION,
 };
 
 /// How Kasetto merges pack `mcpServers` into an agent config file.

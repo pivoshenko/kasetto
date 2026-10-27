@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use crate::audit::RiskLevel;
 use crate::colors::{
     ACCENT, ATTENTION, BRAND, CLEAR_LINE, ERROR, INFO, INFRA, RESET, SECONDARY, STRIKE,
     STRIKE_RESET, SUCCESS,
@@ -261,6 +262,25 @@ pub(crate) fn status_label(status: &str, plain: bool) -> String {
         label.to_string()
     } else {
         format!("{color}{label}{RESET}")
+    }
+}
+
+/// Audit severity word colored per role; `high` and `critical` are also bold.
+/// Shared by `audit` rows and the `sync` gate's stderr verdicts.
+pub(crate) fn risk_badge(level: RiskLevel, plain: bool) -> String {
+    if plain {
+        return level.label().to_string();
+    }
+    let color = match level {
+        RiskLevel::Safe => SUCCESS,
+        RiskLevel::Low => INFO,
+        RiskLevel::Medium => ATTENTION,
+        RiskLevel::High | RiskLevel::Critical => ERROR,
+    };
+    if matches!(level, RiskLevel::High | RiskLevel::Critical) {
+        format!("{ACCENT}{color}{}{RESET}", level.label())
+    } else {
+        format!("{color}{}{RESET}", level.label())
     }
 }
 

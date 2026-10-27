@@ -4,14 +4,16 @@
 //! Read-only: it never changes files or the lock. Skills are looked up on
 //! skills.sh; MCP servers are checked offline and against OSV (see
 //! [`crate::audit`]). It exits non-zero only when `--fail-on` is given and an
-//! asset meets the threshold, so it doubles as a CI gate.
+//! asset meets the threshold, or `--fail-on-unverified` is given and an asset
+//! could not be verified, so it doubles as a CI gate.
 
 use serde::Serialize;
 
 use crate::audit::{
     audit_all, collect_targets, source_label, AssetKind, AuditOutcome, AuditResult, RiskLevel,
+    MCP_PROVIDERS, REPO_LEVEL_NOTE,
 };
-use crate::colors::{ACCENT, ATTENTION, ERROR, INFO, INFRA, RESET, SECONDARY, SUCCESS};
+use crate::colors::{ACCENT, ATTENTION, ERROR, INFRA, RESET, SECONDARY, SUCCESS};
 use crate::commands::Outcome;
 use crate::error::Result;
 use crate::fsops::scope_root;
@@ -19,13 +21,8 @@ use crate::lock::load_lock;
 use crate::model::{resolve_scope, Scope};
 use crate::ui::{
     animations_enabled, color_stdout_enabled, pluralize, print_json, print_section_header,
-    print_source_header, print_tip, print_tree_leaf, with_spinner_transient,
+    print_source_header, print_tip, print_tree_leaf, risk_badge, with_spinner_transient,
 };
-
-/// Shown with every skill report: skills.sh audits a repo, not the commit the
-/// lock pins, so a verdict can describe code newer or older than what's installed.
-pub(crate) const REPO_LEVEL_NOTE: &str =
-    "skill verdicts are repo-level on skills.sh, not pinned to your locked commit";
 
 pub(crate) struct AuditOptions<'a> {
     pub names: &'a [String],
@@ -35,6 +32,9 @@ pub(crate) struct AuditOptions<'a> {
     pub refresh: bool,
     pub verbose: bool,
     pub fail_on: Option<RiskLevel>,
+    /// `--fail-on-unverified`: an asset that could not be verified sets the
+    /// exit code too, with or without `--fail-on`.
+    pub fail_on_unverified: bool,
     pub scope_override: Option<Scope>,
 }
 
@@ -52,10 +52,14 @@ struct Row {
     audit: Option<crate::audit::AssetAudit>,
 }
 
+/// Every asset lands in exactly one of `safe`, `flagged`, or `unverified`.
+/// `unaudited` and `errors` break `unverified` down by outcome; the rest of it
+/// is assets audited with a lookup warning or no usable verdict.
 #[derive(Serialize, Default, Debug, PartialEq, Eq)]
 struct Summary {
     safe: usize,
     flagged: usize,
+    unverified: usize,
     unaudited: usize,
     errors: usize,
 }
@@ -77,9 +81,7 @@ pub(crate) fn run(opts: &AuditOptions) -> Result<Outcome> {
     let results =
         with_spinner_transient(animate, !color, label, || Ok(audit_all(targets, refresh)))?;
 
-    let breached = opts
-        .fail_on
-        .is_some_and(|t| results.iter().any(|r| r.worst().is_some_and(|w| w >= t)));
+    let breached = breached(&results, opts.fail_on, opts.fail_on_unverified);
     let outcome = Outcome::from_failed(breached);
 
     if opts.as_json {
@@ -95,15 +97,42 @@ pub(crate) fn run(opts: &AuditOptions) -> Result<Outcome> {
             "mcps": mcps.into_iter().map(row).collect::<Vec<_>>(),
             "summary": summarize(&results),
             "fail_on": opts.fail_on,
+            "fail_on_unverified": opts.fail_on_unverified,
             "failed": breached,
             "note": REPO_LEVEL_NOTE,
         }))?;
         return Ok(outcome);
     }
     if !opts.quiet {
-        render(&results, opts.verbose, opts.fail_on, !color);
+        render(
+            &results,
+            opts.verbose,
+            opts.fail_on,
+            opts.fail_on_unverified,
+            !color,
+        );
     }
     Ok(outcome)
+}
+
+/// Whether the run exits non-zero: an asset at or above `fail_on`, or, with
+/// `fail_on_unverified`, one that could not be fully verified.
+fn breached(results: &[AuditResult], fail_on: Option<RiskLevel>, fail_on_unverified: bool) -> bool {
+    at_or_above(results, fail_on) > 0 || fail_on_unverified && unverified(results) > 0
+}
+
+fn at_or_above(results: &[AuditResult], fail_on: Option<RiskLevel>) -> usize {
+    let Some(t) = fail_on else {
+        return 0;
+    };
+    results
+        .iter()
+        .filter(|r| r.worst().is_some_and(|w| w >= t))
+        .count()
+}
+
+fn unverified(results: &[AuditResult]) -> usize {
+    results.iter().filter(|r| r.is_unverified()).count()
 }
 
 fn row(r: &AuditResult) -> Row {
@@ -123,23 +152,39 @@ fn row(r: &AuditResult) -> Row {
 }
 
 /// `low` counts as safe: it is the level of hygiene findings (an unpinned
-/// package) that the default `high` gate lets through.
+/// package) that the default `high` gate lets through. Anything not fully
+/// verified is `unverified` whatever its verdicts say, so a lookup that failed
+/// can never read as safe.
 fn summarize(results: &[AuditResult]) -> Summary {
     let mut s = Summary::default();
     for r in results {
-        match &r.outcome {
-            AuditOutcome::Audited(a) => match a.worst() {
-                Some(RiskLevel::Safe | RiskLevel::Low) => s.safe += 1,
-                _ => s.flagged += 1,
-            },
-            AuditOutcome::Unaudited(_) => s.unaudited += 1,
-            AuditOutcome::Error(_) => s.errors += 1,
+        // A known problem outranks a missing lookup: the asset is flagged even
+        // when another provider could not be reached
+        if r.worst() > Some(RiskLevel::Low) {
+            s.flagged += 1;
+            continue;
         }
+        if r.is_unverified() {
+            s.unverified += 1;
+            match &r.outcome {
+                AuditOutcome::Unaudited(_) => s.unaudited += 1,
+                AuditOutcome::Error(_) => s.errors += 1,
+                AuditOutcome::Audited(_) => {}
+            }
+            continue;
+        }
+        s.safe += 1;
     }
     s
 }
 
-fn render(results: &[AuditResult], verbose: bool, fail_on: Option<RiskLevel>, plain: bool) {
+fn render(
+    results: &[AuditResult],
+    verbose: bool,
+    fail_on: Option<RiskLevel>,
+    fail_on_unverified: bool,
+    plain: bool,
+) {
     if results.is_empty() {
         println!("No skills or MCP servers installed to audit.");
         print_tip("run `kst sync` to install assets first", plain);
@@ -147,13 +192,10 @@ fn render(results: &[AuditResult], verbose: bool, fail_on: Option<RiskLevel>, pl
     }
 
     let mut printed = false;
+    let mcp_via = format!("via {}", MCP_PROVIDERS.join(" + "));
     for (kind, label, via) in [
         (AssetKind::Skill, "Skills", "via skills.sh"),
-        (
-            AssetKind::Mcp,
-            "MCP servers",
-            "via kasetto + OSV + deps.dev",
-        ),
+        (AssetKind::Mcp, "MCP servers", mcp_via.as_str()),
     ] {
         let rows: Vec<&AuditResult> = results.iter().filter(|r| r.target.kind == kind).collect();
         if rows.is_empty() {
@@ -167,22 +209,31 @@ fn render(results: &[AuditResult], verbose: bool, fail_on: Option<RiskLevel>, pl
     let summary = summarize(results);
     println!();
     print_summary_line(results.len(), &summary, plain);
+    let mut errors = Vec::new();
     if let Some(t) = fail_on {
-        let n = results
-            .iter()
-            .filter(|r| r.worst().is_some_and(|w| w >= t))
-            .count();
+        let n = at_or_above(results, fail_on);
         if n > 0 {
-            let msg = format!(
+            errors.push(format!(
                 "{n} {} at or above the threshold (fail-on: {})",
                 pluralize(n, "asset is", "assets are"),
                 t.label()
-            );
-            if plain {
-                println!("error: {msg}");
-            } else {
-                println!("{ACCENT}{ERROR}error:{RESET} {msg}");
-            }
+            ));
+        }
+    }
+    if fail_on_unverified {
+        let n = unverified(results);
+        if n > 0 {
+            errors.push(format!(
+                "{n} {} could not be verified (fail-on-unverified)",
+                pluralize(n, "asset", "assets")
+            ));
+        }
+    }
+    for msg in errors {
+        if plain {
+            println!("error: {msg}");
+        } else {
+            println!("{ACCENT}{ERROR}error:{RESET} {msg}");
         }
     }
     if results.iter().any(|r| r.target.kind == AssetKind::Skill) {
@@ -229,7 +280,9 @@ fn render_group(rows: &[&AuditResult], verbose: bool, plain: bool) {
 fn headline(r: &AuditResult, plain: bool) -> (String, usize, String) {
     match &r.outcome {
         AuditOutcome::Audited(a) => {
-            let worst = a.worst().unwrap_or(RiskLevel::Unknown);
+            let Some(worst) = a.worst() else {
+                return (dim("-", plain), 1, dim("no usable verdict", plain));
+            };
             let mut tail = match r.target.kind {
                 AssetKind::Skill => {
                     let n = a.verdicts.len();
@@ -303,8 +356,8 @@ fn print_summary_line(total: usize, s: &Summary, plain: bool) {
     let noun = pluralize(total, "asset", "assets");
     if plain {
         println!(
-            "Audited {total} {noun}: {} safe, {} flagged, {} unaudited{errors}",
-            s.safe, s.flagged, s.unaudited
+            "Audited {total} {noun}: {} safe, {} flagged, {} unverified{errors}",
+            s.safe, s.flagged, s.unverified
         );
         return;
     }
@@ -316,26 +369,9 @@ fn print_summary_line(total: usize, s: &Summary, plain: bool) {
     println!(
         "{ACCENT}{SUCCESS}Audited{RESET} {total} {noun}{SECONDARY}:{RESET} \
          {SUCCESS}{} safe{RESET}{SECONDARY},{RESET} {ATTENTION}{} flagged{RESET}\
-         {SECONDARY}, {} unaudited{RESET}{errors}",
-        s.safe, s.flagged, s.unaudited
+         {SECONDARY}, {} unverified{RESET}{errors}",
+        s.safe, s.flagged, s.unverified
     );
-}
-
-pub(crate) fn risk_badge(level: RiskLevel, plain: bool) -> String {
-    if plain {
-        return level.label().to_string();
-    }
-    let color = match level {
-        RiskLevel::Safe => SUCCESS,
-        RiskLevel::Low => INFO,
-        RiskLevel::Medium | RiskLevel::Unknown => ATTENTION,
-        RiskLevel::High | RiskLevel::Critical => ERROR,
-    };
-    if matches!(level, RiskLevel::High | RiskLevel::Critical) {
-        format!("{ACCENT}{color}{}{RESET}", level.label())
-    } else {
-        format!("{color}{}{RESET}", level.label())
-    }
 }
 
 fn dim(s: &str, plain: bool) -> String {
@@ -362,12 +398,7 @@ mod tests {
 
     fn result(kind: AssetKind, outcome: AuditOutcome) -> AuditResult {
         AuditResult {
-            target: AuditTarget {
-                kind,
-                name: "x".into(),
-                source: "https://github.com/o/r".into(),
-                definition: None,
-            },
+            target: AuditTarget::new(kind, "x", "https://github.com/o/r"),
             outcome,
         }
     }
@@ -385,13 +416,25 @@ mod tests {
         })
     }
 
+    /// An audited result whose lookup partly failed, or that kept no verdict.
+    fn partial(level: Option<RiskLevel>) -> AuditOutcome {
+        let AuditOutcome::Audited(mut a) = audited(level.unwrap_or(RiskLevel::Safe)) else {
+            unreachable!()
+        };
+        if level.is_none() {
+            a.verdicts.clear();
+        }
+        a.warnings.push("OSV lookup failed: timeout".into());
+        AuditOutcome::Audited(a)
+    }
+
     #[test]
     fn summary_counts_low_as_safe_and_keeps_failures_apart() {
         let results = vec![
             result(AssetKind::Skill, audited(RiskLevel::Safe)),
             result(AssetKind::Mcp, audited(RiskLevel::Low)),
             result(AssetKind::Skill, audited(RiskLevel::High)),
-            result(AssetKind::Mcp, audited(RiskLevel::Unknown)),
+            result(AssetKind::Mcp, audited(RiskLevel::Medium)),
             result(AssetKind::Skill, AuditOutcome::Unaudited("no audit yet")),
             result(AssetKind::Skill, AuditOutcome::Error("timeout".into())),
         ];
@@ -400,10 +443,51 @@ mod tests {
             Summary {
                 safe: 2,
                 flagged: 2,
+                unverified: 2,
                 unaudited: 1,
                 errors: 1,
             }
         );
+    }
+
+    #[test]
+    fn summary_never_counts_a_partial_audit_as_safe_but_flags_known_problems() {
+        let results = vec![
+            result(AssetKind::Mcp, partial(Some(RiskLevel::Safe))),
+            result(AssetKind::Mcp, partial(Some(RiskLevel::High))),
+            result(AssetKind::Skill, partial(None)),
+            result(AssetKind::Mcp, audited(RiskLevel::Safe)),
+        ];
+        let s = summarize(&results);
+        assert_eq!(
+            s,
+            Summary {
+                safe: 1,
+                flagged: 1,
+                unverified: 2,
+                unaudited: 0,
+                errors: 0,
+            }
+        );
+        assert_eq!(s.safe + s.flagged + s.unverified, results.len());
+    }
+
+    #[test]
+    fn fail_on_unverified_sets_the_exit_code_with_or_without_fail_on() {
+        let results = vec![
+            result(AssetKind::Mcp, partial(Some(RiskLevel::High))),
+            result(AssetKind::Skill, AuditOutcome::Unaudited("no audit yet")),
+            result(AssetKind::Mcp, audited(RiskLevel::Safe)),
+        ];
+        assert!(!breached(&results, None, false));
+        assert!(breached(&results, None, true));
+        assert!(breached(&results, Some(RiskLevel::High), false));
+        assert!(!breached(&results, Some(RiskLevel::Critical), false));
+        assert!(breached(&results, Some(RiskLevel::Critical), true));
+        assert_eq!(unverified(&results), 2);
+
+        let verified = vec![result(AssetKind::Mcp, audited(RiskLevel::Low))];
+        assert!(!breached(&verified, Some(RiskLevel::High), true));
     }
 
     #[test]

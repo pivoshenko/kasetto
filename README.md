@@ -140,7 +140,7 @@ kst doctor                  # version, paths, last sync status
 | `kst list`                | Print a table of installed assets from the lock file                                |
 | `kst audit`               | Security verdicts for installed skills (skills.sh) and MCPs (OSV, deps.dev)         |
 | `kst doctor`              | Local diagnostics: version, paths, last sync status, broken skills                  |
-| `kst clean`               | Remove tracked skills, commands, MCP configs, and instructions for the given scope  |
+| `kst clean`               | Remove tracked skills, commands, MCPs, and instructions for a scope; clear caches   |
 | `kst self update`         | Fetch the latest release, verify SHA256, replace the binary in place                |
 | `kst self uninstall`      | Remove installed assets, data, and the binary                                       |
 | `kst completions <shell>` | Emit a shell completion script (`bash`/`zsh`/`fish`/`powershell`)                   |
