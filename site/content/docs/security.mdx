@@ -36,9 +36,9 @@ New MCPs are merged into agent settings files automatically on `kst sync`, with 
 `kst audit` reports a severity for every installed skill and MCP server, and the opt-in gate (`audit.fail-on`, or `kst sync --audit`) fails a sync when one is at or above a threshold. See [`kst audit`](/docs/commands#kst-audit) and [Configuration](/docs/configuration#audit).
 
 - **Skills** use the verdicts [skills.sh](https://skills.sh) publishes from independent partners. They disagree often, so the headline is the worst one and `--verbose` shows them all. The verdicts are repo-level, not tied to the commit you locked, and only `github.com` sources are indexed.
-- **MCP servers** are checked offline for risky launch options, and the npm or PyPI package they run is looked up on [OSV](https://osv.dev), including its malicious-packages feed.
+- **MCP servers** are checked offline for risky launch options, and the npm or PyPI package they run is looked up on [OSV](https://osv.dev), including its malicious-packages feed, and on [deps.dev](https://deps.dev) for deprecation and its source repo's OpenSSF Scorecard.
 
-Treat a clean audit as a signal, not a guarantee. The audit only reads public endpoints: it sends skills.sh the `owner/repo/skill` of each skill and OSV the name and version of each launched package, never a credential or a server definition. Nothing is sent unless you run `kst audit` or turn the gate on.
+Treat a clean audit as a signal, not a guarantee. The audit only reads public endpoints: it sends skills.sh the `owner/repo/skill` of each skill and OSV and deps.dev the name and version of each launched package, never a credential or a server definition. Nothing is sent unless you run `kst audit` or turn the gate on.
 
 ## Self-Update Integrity
 

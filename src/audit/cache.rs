@@ -2,7 +2,7 @@
 //!
 //! Upstream verdicts are regenerated over time, so unlike the source cache this
 //! one expires: each entry is trusted for 24h. A "no data" answer (skills.sh
-//! 404, OSV with no advisories) is cached too, so an unaudited asset is not
+//! 404, OSV with no advisories, deps.dev 404) is cached too, so an unaudited asset is not
 //! re-probed on every run. `KASETTO_NO_CACHE` bypasses reads and writes.
 
 use std::fs;
