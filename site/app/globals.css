@@ -535,6 +535,10 @@ article:has(> .docs-page-actions) {
 .feat-cell:nth-child(3n + 1) {
   border-left: none;
 }
+/* A lone cell on the last row spans it instead of leaving empty columns */
+.feat-cell:last-child:nth-child(3n + 1) {
+  grid-column: 1 / -1;
+}
 
 .feat-cell-title {
   font-size: var(--fs-sm);
@@ -809,6 +813,12 @@ article:has(> .docs-page-actions) {
   }
   .feat-cell:nth-child(2n + 1) {
     border-left: none;
+  }
+  .feat-cell:last-child:nth-child(3n + 1) {
+    grid-column: auto;
+  }
+  .feat-cell:last-child:nth-child(2n + 1) {
+    grid-column: 1 / -1;
   }
 
   .install-row {
