@@ -219,7 +219,7 @@ kst audit [NAME...] [OPTIONS]
 ```
 
 - **Skills** take the verdicts [skills.sh](https://skills.sh) publishes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, and others). They often disagree, so the row shows the worst one and `--verbose` lists each. These verdicts describe the source repository, not the commit your lock pins, and only `github.com` sources are indexed; anything else shows as `not on skills.sh`.
-- **MCP servers** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages.
+- **MCP servers** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages, and on [deps.dev](https://deps.dev) for whether it is deprecated and how its source repo scores on the OpenSSF Scorecard.
 
 | MCP check | Severity | Flags |
 | --------- | -------- | ----- |
@@ -232,6 +232,9 @@ kst audit [NAME...] [OPTIONS]
 | `unpinned-package`, `unpinned-image` | low | `npx`/`uvx`/`pnpm dlx`/... without an exact version, or an image without a tag or digest |
 | OSV advisory | from the advisory | A known vulnerability in the pinned package version |
 | OSV `MAL-` entry | critical | A known malicious package, pinned or not |
+| `deprecated` | low / medium | The pinned version is deprecated (low), or the latest version is, so the package is abandoned (medium) |
+| `low-scorecard` | low / medium | The source repo scores below 5 (low) or below 3 (medium) on the OpenSSF Scorecard |
+| `unmaintained` | low | The source repo fails the Scorecard `Maintained` check |
 
 Verdict summaries never echo env values, headers, URL paths, or scripts, because the installed definition already has its secrets resolved.
 

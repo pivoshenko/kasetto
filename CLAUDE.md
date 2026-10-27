@@ -135,8 +135,9 @@ user's existing CLI session.
 (off unless `--audit [level]` or `audit.fail-on`; `--no-audit` wins). Targets come from the lock: skills
 are looked up on skills.sh (`audit/skills_sh.rs`, `github.com` sources only, repo-level verdicts), and
 each MCP server's definition is read back from the agent config and judged by the offline rules in
-`audit/mcp.rs` plus an OSV query for the npm/PyPI package it launches (`audit/osv.rs`). An asset that
-cannot be judged warns and never fails the gate. Lookups go through a 24h TTL cache in `audit/cache.rs`.
+`audit/mcp.rs` plus an OSV query (`audit/osv.rs`) and a deps.dev deprecation/Scorecard lookup
+(`audit/deps_dev.rs`) for the npm/PyPI package it launches. An asset that cannot be judged warns and
+never fails the gate. Lookups go through a 24h TTL cache in `audit/cache.rs`.
 The gate is the one network call `--locked` still makes, because the user opted into it.
 
 **Update check and site counters.** `update_notifier.rs` asks `kasetto.dev/latest` (not the GitHub

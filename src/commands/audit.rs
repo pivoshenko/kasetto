@@ -149,7 +149,11 @@ fn render(results: &[AuditResult], verbose: bool, fail_on: Option<RiskLevel>, pl
     let mut printed = false;
     for (kind, label, via) in [
         (AssetKind::Skill, "Skills", "via skills.sh"),
-        (AssetKind::Mcp, "MCP servers", "via kasetto + OSV"),
+        (
+            AssetKind::Mcp,
+            "MCP servers",
+            "via kasetto + OSV + deps.dev",
+        ),
     ] {
         let rows: Vec<&AuditResult> = results.iter().filter(|r| r.target.kind == kind).collect();
         if rows.is_empty() {
@@ -237,7 +241,7 @@ fn headline(r: &AuditResult, plain: bool) -> (String, usize, String) {
                 }
             };
             if !a.warnings.is_empty() {
-                tail.push_str(" · OSV unavailable");
+                tail.push_str(" · lookup unavailable");
             }
             (
                 risk_badge(worst, plain),

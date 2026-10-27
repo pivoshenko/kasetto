@@ -11,13 +11,15 @@
 //! - **MCP servers** are judged from their installed definition: offline rules
 //!   for risky launch shapes (see [`mcp`]), plus an [OSV](https://osv.dev) lookup
 //!   for the npm / PyPI package a server runs, which also carries the OpenSSF
-//!   malicious-packages feed.
+//!   malicious-packages feed, and a [deps.dev](https://deps.dev) lookup for its
+//!   deprecation status and its source repo's OpenSSF Scorecard.
 //!
 //! An asset that cannot be judged (no audit yet, not indexed, lookup failed) is
 //! reported as such and never counts as a breach, so a flaky network can't
 //! block a sync.
 
 mod cache;
+mod deps_dev;
 mod mcp;
 mod osv;
 mod skills_sh;
@@ -252,8 +254,8 @@ fn audit_target(target: &AuditTarget, refresh: bool) -> AuditOutcome {
 }
 
 /// Audit one installed MCP server definition: the offline rules always run;
-/// the package it launches is then checked against OSV. An OSV failure leaves
-/// the rule verdicts standing and adds a warning instead of discarding them.
+/// the package it launches is then checked against OSV and deps.dev. A failed
+/// lookup leaves the other verdicts standing and adds a warning instead.
 fn audit_mcp_server(def: &serde_json::Value, refresh: bool) -> AuditOutcome {
     let spec = mcp::ServerSpec::from_definition(def);
     let mut audit = AssetAudit {
@@ -264,6 +266,10 @@ fn audit_mcp_server(def: &serde_json::Value, refresh: bool) -> AuditOutcome {
         match osv::vulnerabilities(&pkg, refresh) {
             Ok(found) => audit.verdicts.extend(found),
             Err(e) => audit.warnings.push(format!("OSV lookup failed: {e}")),
+        }
+        match deps_dev::signals(&pkg, refresh) {
+            Ok(found) => audit.verdicts.extend(found),
+            Err(e) => audit.warnings.push(format!("deps.dev lookup failed: {e}")),
         }
     }
     if audit.verdicts.is_empty() {
