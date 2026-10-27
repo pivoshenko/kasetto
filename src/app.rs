@@ -71,6 +71,7 @@ fn dispatch() -> Result<ExitCode> {
                     allow_missing_secrets: sync.allow_missing_secrets,
                     audit: sync.audit.map(|t| t.level()),
                     no_audit: sync.no_audit,
+                    fail_on_unverified: sync.fail_on_unverified,
                 })
             }
             Commands::Add {
@@ -181,6 +182,7 @@ fn dispatch() -> Result<ExitCode> {
                 refresh,
                 verbose,
                 fail_on,
+                fail_on_unverified,
                 output,
                 scope,
             } => crate::commands::audit::run(&crate::commands::audit::AuditOptions {
@@ -191,6 +193,7 @@ fn dispatch() -> Result<ExitCode> {
                 refresh,
                 verbose,
                 fail_on: fail_on.map(|t| t.level()),
+                fail_on_unverified,
                 scope_override: scope.scope_override(),
             }),
             Commands::Doctor {

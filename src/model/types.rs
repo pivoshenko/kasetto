@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::Scope;
+use crate::audit::{AssetKind, RiskLevel};
 
 /// Schema version of `kasetto.lock`. Bumped to 2 for the portable format
 /// (relative `destination` paths, no machine-/run-specific fields), then to 3
@@ -69,6 +70,34 @@ pub(crate) struct Report {
     pub dry_run: bool,
     pub summary: Summary,
     pub actions: Vec<Action>,
+    /// The security gate's result; `None` (serialized `null`) when the gate did
+    /// not run, so a JSON consumer can tell "passed" from "never judged".
+    pub audit: Option<AuditGate>,
+}
+
+/// What the `sync` security gate decided, carried in the report and the runtime
+/// state. Holds only what a verdict already sanitises (kind, name, source,
+/// level, provider), never a summary or anything from an MCP definition.
+#[derive(Debug, Serialize)]
+pub(crate) struct AuditGate {
+    pub threshold: RiskLevel,
+    pub fail_on_unverified: bool,
+    /// Assets at or above the threshold, worst first.
+    pub violations: Vec<AuditViolation>,
+    /// Assets that could not be fully verified; they fail the gate only when
+    /// `fail_on_unverified` is set.
+    pub unverified: usize,
+    pub passed: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct AuditViolation {
+    pub kind: AssetKind,
+    pub name: String,
+    pub source: String,
+    pub level: RiskLevel,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -3,7 +3,7 @@
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
-use crate::audit::RiskLevel;
+use crate::audit::AuditThreshold;
 use crate::model::Scope;
 
 #[derive(Parser)]
@@ -90,27 +90,6 @@ pub(crate) enum ListKind {
     Instructions,
 }
 
-/// Severity threshold for `audit --fail-on` and `sync --audit`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-#[clap(rename_all = "lowercase")]
-pub(crate) enum AuditThreshold {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-impl AuditThreshold {
-    pub(crate) fn level(self) -> RiskLevel {
-        match self {
-            AuditThreshold::Low => RiskLevel::Low,
-            AuditThreshold::Medium => RiskLevel::Medium,
-            AuditThreshold::High => RiskLevel::High,
-            AuditThreshold::Critical => RiskLevel::Critical,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
 #[clap(rename_all = "lowercase")]
 pub(crate) enum ColorMode {
@@ -181,12 +160,18 @@ pub(crate) struct SyncArgs {
     #[arg(conflicts_with = "no_audit")]
     #[arg(
         help = "fail the run if an installed skill or MCP server is at or above LEVEL (default: high)",
-        long_help = "Audit the synced skills and MCP servers after installing them and exit non-zero if any meets or exceeds LEVEL (low, medium, high, critical; `--audit` alone means high). Overrides `audit.fail-on` from the config.\n\nAn asset that cannot be verified (skills.sh unreachable, a non-github.com skill source, no audit yet) only warns and never fails the gate. See `kst audit` for the full report."
+        long_help = "Audit the synced skills and MCP servers after installing them and exit non-zero if any meets or exceeds LEVEL (low, medium, high, critical; `--audit` alone means high). Overrides `audit.fail-on` from the config.\n\nAn asset that cannot be verified (skills.sh unreachable, a non-github.com skill source, no audit yet) only warns unless `--fail-on-unverified` or `audit.fail-on-unverified` is set. See `kst audit` for the full report."
     )]
     pub audit: Option<AuditThreshold>,
     #[arg(long = "no-audit", conflicts_with = "audit")]
     #[arg(help = "skip the security gate even if audit.fail-on is configured")]
     pub no_audit: bool,
+    #[arg(long = "fail-on-unverified")]
+    #[arg(
+        help = "also fail the gate when an asset could not be verified (needs --audit or audit.fail-on)",
+        long_help = "Make the security gate fail closed: an asset whose verdict could not be fetched or classified fails the run instead of only warning. Only acts when the gate runs, so pair it with `--audit` or a configured `audit.fail-on`; `--no-audit` still skips everything."
+    )]
+    pub fail_on_unverified: bool,
     #[command(flatten)]
     pub scope: ScopeArgs,
 }
@@ -464,6 +449,7 @@ pub(crate) enum Commands {
             "kst audit",
             "kst audit --verbose",
             "kst audit --fail-on high",
+            "kst audit --fail-on high --fail-on-unverified",
             "kst audit pdf github --json",
         )
     )]
@@ -483,6 +469,11 @@ pub(crate) enum Commands {
         #[arg(long, value_name = "LEVEL")]
         #[arg(help = "exit non-zero if any asset is at or above LEVEL")]
         fail_on: Option<AuditThreshold>,
+        #[arg(long = "fail-on-unverified")]
+        #[arg(
+            help = "exit non-zero if any asset could not be verified (works with or without --fail-on)"
+        )]
+        fail_on_unverified: bool,
         #[command(flatten)]
         output: OutputArgs,
         #[command(flatten)]

@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::time::{Duration, Instant};
 
+use crate::audit::clear_cache as clear_audit_cache;
 use crate::colors::{ACCENT, ATTENTION, ERROR, RESET, SECONDARY};
 use crate::error::Result;
 use crate::fsops::{dirs_home, dirs_kasetto_config, resolve_dest, scope_root};
@@ -90,6 +91,9 @@ pub(crate) fn run(
         lock.clear_all();
         save_lock(&mut lock, scope, &project_root)?;
         clear_runtime_state(scope, &project_root)?;
+        // Cached audit verdicts describe assets that no longer exist here;
+        // a later sync starts from fresh lookups
+        clear_audit_cache()?;
     }
 
     let output = CleanOutput {

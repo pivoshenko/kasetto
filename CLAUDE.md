@@ -132,13 +132,18 @@ at sync time from env vars, a `credentials.yaml`, or an external secret manager,
 user's existing CLI session.
 
 **Security audit.** `audit/` backs both `kst audit` and the post-install gate in `commands/sync/gate.rs`
-(off unless `--audit [level]` or `audit.fail-on`; `--no-audit` wins). Targets come from the lock: skills
-are looked up on skills.sh (`audit/skills_sh.rs`, `github.com` sources only, repo-level verdicts), and
-each MCP server's definition is read back from the agent config and judged by the offline rules in
-`audit/mcp.rs` plus an OSV query (`audit/osv.rs`) and a deps.dev deprecation/Scorecard lookup
-(`audit/deps_dev.rs`) for the npm/PyPI package it launches. An asset that cannot be judged warns and
-never fails the gate. Lookups go through a 24h TTL cache in `audit/cache.rs`.
-The gate is the one network call `--locked` still makes, because the user opted into it.
+(off unless `--audit [level]` or `audit.fail-on`; `--no-audit` wins). `audit::AuditThreshold` is the one
+threshold type the CLI flags and `audit.fail-on` share, so `safe` is never a threshold. Targets come from
+the lock: skills are looked up on skills.sh (`audit/skills_sh.rs`, `github.com` sources only, repo-level
+verdicts), and each MCP server's definition is read back from the agent config and judged by the offline
+rules in `audit/mcp.rs`; for the npm/PyPI package it launches, deps.dev (`audit/deps_dev.rs`) first
+resolves the version a floating launch runs, then OSV (`audit/osv.rs`) is queried for that version and
+deps.dev for deprecation and the source repo's Scorecard. Lookups run on a dedicated I/O pool, deduped
+per package and per repo within a run, through a 24h TTL cache in `audit/cache.rs` that `kst clean`
+clears. An asset that cannot be judged is unverified: it warns and never fails the gate unless
+`fail-on-unverified` (config or flag) opts into failing closed. The gate runs before the sync report is
+rendered, so `sync --json` carries its verdict under `audit` and `doctor` sees a failed gate. It is the
+one network call `--locked` still makes, because the user opted into it.
 
 **Update check and site counters.** `update_notifier.rs` asks `kasetto.dev/latest` (not the GitHub
 API) for the newest version once per 24h, which is also the project's only active-install metric.

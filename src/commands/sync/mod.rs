@@ -119,6 +119,9 @@ pub(crate) struct SyncOptions<'a> {
     pub audit: Option<crate::audit::RiskLevel>,
     /// `--no-audit`: skip the gate even when the config sets a threshold.
     pub no_audit: bool,
+    /// `--fail-on-unverified`: when the gate runs, an unverifiable asset fails
+    /// it instead of only warning. Also set by `audit.fail-on-unverified`.
+    pub fail_on_unverified: bool,
 }
 
 pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
@@ -199,6 +202,18 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         lock.apply_state(&state);
     }
 
+    // The gate judges the files just written, so it runs before the report is
+    // rendered or saved: `--json` and `doctor` then see its verdict, not a
+    // report that says everything succeeded next to a non-zero exit. Dry runs
+    // install nothing, so there is nothing new to judge
+    let audit = match gate::effective_threshold(cfg.audit_fail_on(), opts.audit, opts.no_audit) {
+        Some(threshold) if !opts.dry_run => {
+            let fail_on_unverified = opts.fail_on_unverified || cfg.audit_fail_on_unverified();
+            Some(gate::enforce(&ctx, &lock, threshold, fail_on_unverified)?)
+        }
+        _ => None,
+    };
+
     let report = Report {
         run_id: format!("{}", now_unix()),
         config: cfg_label,
@@ -206,6 +221,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         dry_run: opts.dry_run,
         summary,
         actions,
+        audit,
     };
 
     if !opts.dry_run {
@@ -239,12 +255,13 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         }
     }
 
-    // Dry runs install nothing, so there is nothing new to judge
-    let gate_failed =
-        match gate::effective_threshold(cfg.audit_fail_on(), opts.audit, opts.no_audit) {
-            Some(threshold) if !opts.dry_run => gate::enforce(&ctx, &lock, threshold)?,
-            _ => false,
-        };
+    // Verdicts go to stderr after the sync output, even under `--json`, where
+    // stdout already carries them in the report
+    if let Some(gate) = &report.audit {
+        // stderr may be piped while stdout is a terminal, so gate color on stderr
+        gate::report(gate, opts.plain || !crate::ui::color_stderr_enabled());
+    }
+    let gate_failed = report.audit.as_ref().is_some_and(|g| !g.passed);
 
     // A broken asset is a failure the caller should be able to gate on, same as
     // a hard `failed`: the sync ran, but the environment it produced is not the
@@ -541,6 +558,7 @@ mod tests {
             dry_run: false,
             summary: Summary::default(),
             actions,
+            audit: None,
         }
     }
 
@@ -559,6 +577,15 @@ mod tests {
         ]);
         let statuses: Vec<&str> = failed_actions(&report).map(|a| a.status.as_str()).collect();
         assert_eq!(statuses, ["broken", "source_error", "locked_error"]);
+    }
+
+    /// The `audit` key is always present so a JSON consumer can tell a gate
+    /// that passed from one that never ran.
+    #[test]
+    fn report_json_carries_a_null_audit_when_the_gate_did_not_run() {
+        let v = serde_json::to_value(report_with(Vec::new())).unwrap();
+        assert!(v.as_object().unwrap().contains_key("audit"));
+        assert!(v["audit"].is_null());
     }
 
     /// A successful sync must not emit any failure line.

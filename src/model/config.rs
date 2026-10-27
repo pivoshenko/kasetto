@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{Agent, AgentField};
-use crate::audit::RiskLevel;
+use crate::audit::{AuditThreshold, RiskLevel};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum Scope {
@@ -44,13 +44,19 @@ pub(crate) struct Config {
 ///
 /// ```yaml
 /// audit:
-///   fail-on: high   # low | medium | high | critical
+///   fail-on: high             # low | medium | high | critical
+///   fail-on-unverified: false # also fail when an asset could not be verified
 /// ```
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct AuditConfig {
     /// Minimum severity that fails a `sync`. `None` reports nothing during sync.
+    /// Shares the CLI's type, so `safe` (or anything else) is a load error.
     #[serde(default, rename = "fail-on", alias = "fail_on")]
-    pub fail_on: Option<RiskLevel>,
+    pub fail_on: Option<AuditThreshold>,
+    /// Fail closed: an asset the gate cannot verify fails the run instead of
+    /// only warning. Only acts when `fail-on` (or `--audit`) turns the gate on.
+    #[serde(default, rename = "fail-on-unverified", alias = "fail_on_unverified")]
+    pub fail_on_unverified: bool,
 }
 
 /// `secrets:` config block. Values live in `credentials.yaml` / env, never here.
@@ -91,7 +97,15 @@ pub(crate) enum OnMissing {
 impl Config {
     /// The configured `audit.fail-on` threshold, if any.
     pub(crate) fn audit_fail_on(&self) -> Option<RiskLevel> {
-        self.audit.as_ref().and_then(|a| a.fail_on)
+        self.audit
+            .as_ref()
+            .and_then(|a| a.fail_on)
+            .map(AuditThreshold::level)
+    }
+
+    /// Whether `audit.fail-on-unverified` is set.
+    pub(crate) fn audit_fail_on_unverified(&self) -> bool {
+        self.audit.as_ref().is_some_and(|a| a.fail_on_unverified)
     }
 
     pub(crate) fn agents(&self) -> Vec<Agent> {
@@ -135,6 +149,36 @@ mod tests {
         assert_eq!(cfg.audit_fail_on(), Some(RiskLevel::High));
         let snake: Config = serde_yaml::from_str("audit:\n  fail_on: critical\n").expect("parse");
         assert_eq!(snake.audit_fail_on(), Some(RiskLevel::Critical));
+    }
+
+    #[test]
+    fn config_rejects_a_threshold_that_is_not_one() {
+        for bad in ["safe", "unknown", "none"] {
+            let e = serde_yaml::from_str::<Config>(&format!("audit:\n  fail-on: {bad}\n"))
+                .expect_err("a non-threshold must not load")
+                .to_string();
+            assert!(e.contains(&format!("unknown variant `{bad}`")), "{e}");
+            assert!(
+                e.contains("expected one of `low`, `medium`, `high`, `critical`"),
+                "{e}"
+            );
+        }
+    }
+
+    #[test]
+    fn config_parses_fail_on_unverified_and_defaults_it_off() {
+        let cfg: Config =
+            serde_yaml::from_str("audit:\n  fail-on: high\n  fail-on-unverified: true\n")
+                .expect("parse");
+        assert!(cfg.audit_fail_on_unverified());
+        let snake: Config =
+            serde_yaml::from_str("audit:\n  fail_on_unverified: true\n").expect("parse");
+        assert!(snake.audit_fail_on_unverified());
+        assert_eq!(snake.audit_fail_on(), None);
+        let off: Config = serde_yaml::from_str("audit:\n  fail-on: high\n").expect("parse");
+        assert!(!off.audit_fail_on_unverified());
+        let none: Config = serde_yaml::from_str("skills: []\n").expect("parse");
+        assert!(!none.audit_fail_on_unverified());
     }
 
     #[test]
