@@ -23,6 +23,10 @@ const FEATURES = [
     title: "UNIVERSAL",
     desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes. Same behavior on your laptop or in CI.",
   },
+  {
+    title: "SECURITY AUDIT",
+    desc: "Know what you installed. Skills take skills.sh partner verdicts; MCP servers get offline launch checks plus OSV and deps.dev lookups. `kst audit` reports, `--audit` turns any sync into a gate.",
+  },
 ];
 
 type Token = { t: string; v?: string };
