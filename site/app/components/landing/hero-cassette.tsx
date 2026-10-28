@@ -71,9 +71,9 @@ export function HeroCassette({ className }: { className?: string }) {
           width="64"
           height="40"
           rx="3"
-          transform={`translate(0 20) ${ISO}`}
+          transform={`translate(0 10) ${ISO}`}
           fill="var(--accent-3)"
-          opacity=".35"
+          opacity=".3"
           filter={`url(#${id}-soft)`}
           className="lp-cassette-shadow"
         />

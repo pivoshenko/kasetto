@@ -53,10 +53,12 @@
 }
 
 /* == Type == */
+/* A monospace space is a whole cell, which at display size reads as a hole between words */
 .lp-h1 {
   font-size: clamp(40px, 5vw, 74px);
   line-height: 0.99;
   letter-spacing: -0.03em;
+  word-spacing: -0.3em;
   color: var(--fg);
 }
 
@@ -67,6 +69,7 @@
 .lp-h2 {
   font-size: clamp(30px, 3.4vw, 46px);
   line-height: 1.08;
+  word-spacing: -0.25em;
   color: var(--fg);
 }
 
