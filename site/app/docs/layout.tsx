@@ -3,9 +3,8 @@ import type { ReactNode } from "react";
 import { FaGithub } from "react-icons/fa";
 import { GoTag } from "react-icons/go";
 import { BrandLogo } from "@/app/components/brand-mark";
+import { REPO_URL } from "@/lib/site";
 import { source } from "@/lib/source";
-
-const REPO_URL = "https://github.com/pivoshenko/kasetto";
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (

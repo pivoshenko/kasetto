@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { FaGithub, FaGlobe, FaLinkedinIn } from "react-icons/fa";
 import { GoArrowRight, GoArrowUpRight } from "react-icons/go";
+import { getLatestRelease } from "@/lib/github";
+import { REPO_URL as REPO } from "@/lib/site";
 import { softwareApplicationJsonLd } from "@/lib/structured-data";
 import { AGENTS, AgentsGrid } from "./components/agents-grid";
 import { BrandLogo } from "./components/brand-mark";
@@ -16,7 +19,6 @@ import { LockDiff, LockExample } from "./components/landing/lock-example";
 import { VaultList } from "./components/landing/secret-providers";
 import { SecretSources } from "./components/secret-sources";
 
-const REPO = "https://github.com/pivoshenko/kasetto";
 const CURL = "curl -fsSL kasetto.dev/install | sh";
 const PLACEHOLDER = `\${kst_...}`;
 
@@ -74,18 +76,6 @@ const FOOTER = [
   },
 ];
 
-async function getLatestVersion(): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/pivoshenko/kasetto/releases/latest", {
-      next: { revalidate: 3600 },
-    });
-    const release = res.ok ? ((await res.json()) as { tag_name: string }) : null;
-    return release?.tag_name ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function External({
   href,
   className,
@@ -115,7 +105,6 @@ function Feature({
   title,
   body,
   link,
-  flip,
   split,
   aside,
   children,
@@ -124,27 +113,20 @@ function Feature({
   title: React.ReactNode;
   body: React.ReactNode;
   link: { href: string; label: string };
-  flip?: boolean;
   split?: "5-7" | "7-5";
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className="lp-feature"
-      data-flip={flip ? "" : undefined}
-      data-split={split}
-      aria-labelledby={`${id}-title`}
-    >
+    <section id={id} className="lp-feature" data-split={split} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className="lp-h2 lp-feature-title display">
         {title}
       </h2>
       <div className="lp-feature-intro">
         <p className="lp-lede">{body}</p>
-        <a href={link.href} className="lp-textlink">
+        <Link href={link.href} className="lp-textlink">
           {link.label} <GoArrowRight aria-hidden />
-        </a>
+        </Link>
       </div>
       <div className="lp-feature-art">{children}</div>
       {aside ? <div className="lp-feature-aside">{aside}</div> : null}
@@ -153,7 +135,7 @@ function Feature({
 }
 
 export default async function Page() {
-  const version = await getLatestVersion();
+  const version = await getLatestRelease();
 
   return (
     <div className="lp">
@@ -172,9 +154,9 @@ export default async function Page() {
             Declarative AI agent environment manager, written in Rust.
           </p>
           <div className="lp-actions">
-            <a href="/docs" className="lp-btn lp-btn--primary">
+            <Link href="/docs" className="lp-btn lp-btn--primary">
               Read the docs <GoArrowRight aria-hidden />
-            </a>
+            </Link>
             <External href={REPO} className="lp-btn">
               <FaGithub aria-hidden /> Star on GitHub
             </External>
@@ -348,9 +330,9 @@ export default async function Page() {
             <code>kst</code>.
           </p>
           <div className="lp-install-links">
-            <a href="/docs/installation" className="lp-textlink">
+            <Link href="/docs/installation" className="lp-textlink">
               Installation guide <GoArrowRight aria-hidden />
-            </a>
+            </Link>
             <External href={`${REPO}/releases`} className="lp-textlink">
               {version ? `Release ${version}` : "Releases"} <GoArrowUpRight aria-hidden />
             </External>
@@ -373,9 +355,9 @@ export default async function Page() {
       <footer className="lp-footer">
         <div className="lp-footer-grid">
           <div className="lp-footer-brand">
-            <a href="/" className="lp-footer-name display" aria-label="Kasetto home">
+            <Link href="/" className="lp-footer-name display" aria-label="Kasetto home">
               <BrandLogo className="brand-logo" /> kasetto
-            </a>
+            </Link>
             <div className="lp-footer-social">
               <External href="https://pivoshenko.dev" label="Author's blog">
                 <FaGlobe aria-hidden />
@@ -409,7 +391,7 @@ export default async function Page() {
                     {l.href.startsWith("http") ? (
                       <External href={l.href}>{l.label}</External>
                     ) : (
-                      <a href={l.href}>{l.label}</a>
+                      <Link href={l.href}>{l.label}</Link>
                     )}
                   </li>
                 ))}
