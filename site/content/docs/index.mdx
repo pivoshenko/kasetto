@@ -1,6 +1,6 @@
 ---
 title: "What is Kasetto?"
-description: "Kasetto keeps AI agent skills, MCP servers, slash-commands, and instructions in one version-controlled YAML file and syncs them to 23 agents."
+description: "Kasetto keeps AI agent skills, MCPs, slash-commands, and instructions in one version-controlled YAML file and syncs them to 23 agents."
 ---
 
 **When you need this:** You want a quick, predictable path to "working sync" and you're not sure what Kasetto will modify.
@@ -104,9 +104,9 @@ Would remove: old-skill
 
 See [CI & automation](/docs/ci) for recommended CI patterns.
 
-## MCP Servers
+## MCPs
 
-Kasetto can also manage MCP server configs. Add an `mcps` section to your config:
+Kasetto can also manage MCP configs. Add an `mcps` section to your config:
 
 ```yaml
 agent: claude-code
@@ -122,7 +122,7 @@ mcps:
 
 Kasetto merges them into each agent's native settings file during sync. Nothing extra to do.
 
-If you want the exact merge rules and conflict behavior, see [How Sync Works](/docs/how-sync-works#mcp-servers-discovery-and-additive-merge).
+If you want the exact merge rules and conflict behavior, see [How Sync Works](/docs/how-sync-works#mcps-discovery-and-additive-merge).
 
 ## Exploring What's Installed
 

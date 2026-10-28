@@ -1,6 +1,6 @@
 ---
 title: "Configuring kasetto.yaml"
-description: "Declare skills, commands, MCP servers, and instructions in one kasetto.yaml - sources, agents, scope, and composing configs with extends."
+description: "Declare skills, commands, MCPs, and instructions in one kasetto.yaml - sources, agents, scope, and composing configs with extends."
 ---
 
 When `--config` is omitted, Kasetto looks for config in this order:
@@ -136,7 +136,7 @@ Each entry in the `skills` list can be a string (the skill name) or an object:
 
 | Key      | Required | Description                                                          |
 | -------- | -------- | -------------------------------------------------------------------- |
-| `source` | **yes**  | Git host URL or local path containing MCP server config              |
+| `source` | **yes**  | Git host URL or local path containing MCP config              |
 | `branch` | no       | Branch for remote sources (default: `main`, falls back to `master`)  |
 | `ref`    | no       | Git tag, commit SHA, or ref - takes priority over `branch`           |
 | `mcps`   | **yes**  | `"*"` to discover all, or a list of names / `{ name, path }` objects |
@@ -253,7 +253,7 @@ audit:
 | `fail-on`            | no       | Minimum severity that fails a sync: `low`, `medium`, `high`, or `critical`. Any other value (including `safe`) is a config error. Omit it and sync never audits. |
 | `fail-on-unverified` | no       | `true` makes the gate fail closed: an asset it cannot verify fails the sync instead of only warning. Defaults to `false`, and only acts when `fail-on` (or `--audit`) turns the gate on. |
 
-After installing, the gate audits every skill and MCP server in the lock, exactly as [`kst audit`](/docs/commands#kst-audit) does, and the run exits non-zero if any is at or above the threshold. The files stay installed: the exit code is what stops a CI job before the environment is used. `kst sync --audit [level]` turns the gate on for one run (or overrides the configured level), `--fail-on-unverified` is the flag form of `fail-on-unverified`, and `--no-audit` skips the gate whatever else is set. `kst add` and `kst remove` honor the configured policy in their follow-up sync. Dry runs skip the gate, since they install nothing. The verdict is recorded in the sync report (`audit` in `kst sync --json`) and surfaces in `kst doctor` as a failed asset until the next sync.
+After installing, the gate audits every skill and MCP in the lock, exactly as [`kst audit`](/docs/commands#kst-audit) does, and the run exits non-zero if any is at or above the threshold. The files stay installed: the exit code is what stops a CI job before the environment is used. `kst sync --audit [level]` turns the gate on for one run (or overrides the configured level), `--fail-on-unverified` is the flag form of `fail-on-unverified`, and `--no-audit` skips the gate whatever else is set. `kst add` and `kst remove` honor the configured policy in their follow-up sync. Dry runs skip the gate, since they install nothing. The verdict is recorded in the sync report (`audit` in `kst sync --json`) and surfaces in `kst doctor` as a failed asset until the next sync.
 
 <Callout type="info">
 

@@ -48,7 +48,7 @@ Skills are plain directories with a `SKILL.md` file (see [writing skills](/docs/
 
 Skills are fully replaced on update. There are no partial merges.
 
-## MCP Servers: Discovery and Additive Merge
+## MCPs: Discovery and Additive Merge
 
 Kasetto auto-discovers MCP pack files in the source:
 
@@ -175,7 +175,7 @@ Remove a source from `kasetto.yaml` and re-sync:
 Removes everything tracked in the lock file for the given scope:
 
 - Deletes all tracked skill directories
-- Removes all tracked MCP server entries from every agent's settings file
+- Removes all tracked MCP entries from every agent's settings file
 - Clears the lock file
 
 `--dry-run` prints what would be removed (skill destinations and MCP pack lines) without changing disk.
