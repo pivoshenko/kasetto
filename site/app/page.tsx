@@ -36,9 +36,9 @@ const INSTALL = [
 const JUMP = [
   { href: "#declare", label: "Config" },
   { href: "#sources", label: "Assets and sources" },
+  { href: "#secrets", label: "Secrets" },
   { href: "#lock", label: "Lock file" },
   { href: "#audit", label: "Audit" },
-  { href: "#secrets", label: "Secrets" },
   { href: "#agents", label: "Agents" },
   { href: "#install", label: "Install" },
 ];
@@ -258,6 +258,28 @@ export default async function Page() {
         <ForgeWall />
       </section>
 
+      {/* == Secrets == */}
+      <Feature
+        id="secrets"
+        title={
+          <>
+            Tokens <em>never touch git</em>
+          </>
+        }
+        body={
+          <>
+            Write a <code>{PLACEHOLDER}</code> placeholder instead of a token. Kasetto resolves it
+            at sync time from your environment, a credentials file, or the vault you already use,
+            through the CLI session you are signed in to, and writes the value only to the
+            agent&apos;s config. Never to the lock.
+          </>
+        }
+        link={{ href: "/docs/secrets", label: "Secrets guide" }}
+        aside={<VaultList />}
+      >
+        <SecretSources />
+      </Feature>
+
       {/* == Lock == */}
       <Feature
         id="lock"
@@ -302,28 +324,6 @@ export default async function Page() {
         aside={<AuditPolicy />}
       >
         <AuditGate />
-      </Feature>
-
-      {/* == Secrets == */}
-      <Feature
-        id="secrets"
-        title={
-          <>
-            Tokens <em>never touch git</em>
-          </>
-        }
-        body={
-          <>
-            Write a <code>{PLACEHOLDER}</code> placeholder instead of a token. Kasetto resolves it
-            at sync time from your environment, a credentials file, or the vault you already use,
-            through the CLI session you are signed in to, and writes the value only to the
-            agent&apos;s config. Never to the lock.
-          </>
-        }
-        link={{ href: "/docs/secrets", label: "Secrets guide" }}
-        aside={<VaultList />}
-      >
-        <SecretSources />
       </Feature>
 
       {/* == Agent Wall == */}
