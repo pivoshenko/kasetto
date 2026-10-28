@@ -123,7 +123,9 @@
   align-items: center;
   gap: var(--space-3);
   height: 34px;
-  padding-left: var(--space-6);
+  /* The rule sits centred: the flex gap is pulled back so both sides of it measure 20px */
+  margin-left: calc(var(--space-5) - var(--space-8));
+  padding-left: var(--space-5);
   border-left: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: 12.5px;
