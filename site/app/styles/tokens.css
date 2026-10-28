@@ -30,8 +30,6 @@
   --font-display: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
   --font-sans: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
-  /* Archivo's wdth axis: display copy runs expanded, body copy stays at normal width */
-  --display-stretch: 125%;
   --display-weight: 500;
   --display-tracking: -0.02em;
 
