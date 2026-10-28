@@ -21,8 +21,7 @@ export function SecretSources() {
   return (
     <figure className="lp-pane lp-inject" aria-label="How a secret placeholder is resolved">
       <figcaption className="lp-pane-bar">
-        <span>secret injection</span>
-        <span className="lp-pane-tag">at sync time</span>
+        <span>Secrets injection</span>
       </figcaption>
 
       <div className="lp-inject-body">
