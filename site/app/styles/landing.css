@@ -595,13 +595,6 @@
   white-space: nowrap;
 }
 
-.lp-roster-note {
-  flex: none;
-  margin-left: auto;
-  font-size: var(--fs-sm);
-  color: var(--fg-subtle);
-}
-
 /* == Panes: Config, Lock, Secrets, Terminal == */
 .lp-pane,
 .hero-terminal {
