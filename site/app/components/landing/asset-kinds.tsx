@@ -11,14 +11,16 @@ const KINDS: { icon: IconType; name: string; desc: string }[] = [
 
 export function AssetKinds() {
   return (
-    <ul className="lp-wall lp-wall--kinds">
+    <ul className="lp-kinds">
       {KINDS.map((k) => {
         const Icon = k.icon;
         return (
-          <li key={k.name} className="lp-wall-cell">
-            <Icon className="lp-wall-icon" aria-hidden />
-            <span className="lp-wall-name">{k.name}</span>
-            <span className="lp-wall-note">{k.desc}</span>
+          <li key={k.name} className="lp-kind">
+            <span className="lp-kind-head">
+              <Icon aria-hidden />
+              <span className="lp-kind-name display">{k.name}</span>
+            </span>
+            <span className="lp-kind-desc">{k.desc}</span>
           </li>
         );
       })}
