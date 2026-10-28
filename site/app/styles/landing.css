@@ -15,7 +15,6 @@
 
 /* Hosts for the fading dividers below */
 .lp-hero,
-.lp-strip,
 .lp-feature,
 .lp-section,
 .lp-footer {
@@ -23,7 +22,6 @@
 }
 
 .lp-hero,
-.lp-strip,
 .lp-feature,
 .lp-section,
 .lp-footer {
@@ -38,7 +36,7 @@
 }
 
 /* Inline code inside running copy */
-:is(.lp-lede, .lp-points) code {
+.lp-lede code {
   font-size: 0.86em;
   color: var(--fg);
   background: var(--bg-raise);
@@ -140,14 +138,18 @@
 }
 
 /* == Hero == */
-/* One layer behind the hero, mixed from existing tokens: a cool glow where the cassette sits
-   over the dark ground */
-.lp-hero::before {
+/* Three layers behind the hero, all mixed from existing tokens: a cool glow where the
+   cassette sits, a surveyor's grid masked to an oval, and the dark ground showing through */
+.lp-hero::before,
+.lp-hero::after {
   content: "";
   position: absolute;
   z-index: 0;
   inset: 0 -45%;
   pointer-events: none;
+}
+
+.lp-hero::before {
   background:
     radial-gradient(
       48% 52% at 70% 40%,
@@ -166,6 +168,14 @@
     );
   /* The glow is clipped at the hero's bottom edge, so fade it before the strip's rule */
   mask-image: linear-gradient(to bottom, #000 72%, transparent);
+}
+
+.lp-hero::after {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px);
+  background-size: 68px 68px;
+  mask-image: radial-gradient(62% 68% at 50% 42%, #000, transparent 76%);
 }
 
 .lp-hero {
@@ -273,166 +283,37 @@
   }
 }
 
-/* == Agent Strip == */
-.lp-strip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.lp-strip > * {
-  padding-block: var(--space-6);
-}
-
-.lp-marquee {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-}
-
-.lp-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: lp-marquee 70s linear infinite;
-}
-
-/* Hovering or tabbing into the ribbon stops it so a name can be read */
-.lp-strip:hover .lp-marquee-track,
-.lp-strip:focus-within .lp-marquee-track {
-  animation-play-state: paused;
-}
-
-@keyframes lp-marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-/* padding-right equals the gap, so both copies are the same width and -50% lands on the seam */
-.lp-strip-list {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 40px;
-  padding-right: 40px;
-  list-style: none;
-}
-
-.lp-strip-list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--fg-subtle);
-  white-space: nowrap;
-  transition: color 0.15s ease;
-}
-
-.lp-strip-list li:hover {
-  color: var(--fg);
-}
-
-.lp-strip-name {
-  font-size: var(--fs-md);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lp-marquee {
-    mask-image: none;
-  }
-
-  .lp-marquee-track {
-    width: auto;
-    animation: none;
-  }
-
-  .lp-strip-list {
-    flex-shrink: 1;
-    flex-wrap: wrap;
-    gap: 14px 28px;
-    padding-right: 0;
-  }
-
-  .lp-strip-list[aria-hidden="true"] {
-    display: none;
-  }
-}
-
-.lp-strip-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.lp-strip-more {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-sm);
-  color: var(--fg-muted);
-  transition: color 0.15s ease;
-}
-
-.lp-strip-more:hover {
-  color: var(--accent);
-}
-
-.lp-monogram {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  border: 1.5px solid currentColor;
-  border-radius: 22%;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.lp-strip-icon.lp-monogram {
-  font-size: 12px;
-}
-
-.lp-hero + .lp-strip::before,
-.lp-hero + .lp-strip::after {
-  content: "";
-  position: absolute;
-  inset-inline: var(--lp-gutter);
-  height: 1px;
-  background: var(--lp-rule);
-}
-
-.lp-hero + .lp-strip::before {
-  top: 0;
-}
-
-.lp-hero + .lp-strip::after {
-  bottom: 0;
-}
-
 /* == Feature Rows == */
-/* The title spans both columns on one line; copy and art then start on the same row */
+/* Title and intro span the row; below them the main visual and a second, smaller one sit
+   side by side */
 .lp-feature {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     "title title"
-    "copy art";
+    "intro intro"
+    "art aside";
   align-items: start;
-  gap: clamp(24px, 3vw, 40px) clamp(40px, 6vw, 88px);
+  column-gap: clamp(24px, 3vw, 40px);
   padding-block: var(--lp-section-pad);
 }
 
 .lp-feature[data-flip] {
   grid-template-areas:
     "title title"
-    "art copy";
+    "intro intro"
+    "aside art";
 }
 
-.lp-feature-title {
-  grid-area: title;
-  white-space: nowrap;
+.lp-feature[data-split="5-7"] {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
 
+.lp-feature[data-split="7-5"] {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+
+.lp-hero + .lp-feature::before,
 .lp-feature + .lp-feature::before,
 .lp-feature + .lp-section::before,
 .lp-section + .lp-feature::before,
@@ -446,8 +327,23 @@
   background: var(--lp-rule);
 }
 
-.lp-feature-copy {
-  grid-area: copy;
+.lp-feature-title {
+  grid-area: title;
+  white-space: nowrap;
+}
+
+.lp-feature-intro {
+  grid-area: intro;
+  margin-top: var(--space-5);
+  margin-bottom: clamp(28px, 3.5vw, 44px);
+}
+
+.lp-feature-intro .lp-lede {
+  max-width: 76ch;
+}
+
+.lp-feature-intro .lp-textlink {
+  margin-top: var(--space-4);
 }
 
 .lp-feature-art {
@@ -455,30 +351,54 @@
   min-width: 0;
 }
 
-.lp-points {
-  margin: var(--space-6) 0;
+.lp-feature-aside {
+  grid-area: aside;
+  min-width: 0;
+}
+
+/* == Rosters: Forges, Vaults == */
+.lp-roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-6);
   list-style: none;
   border-top: 1px solid var(--border);
 }
 
-.lp-points li {
-  position: relative;
-  padding: 13px 0 13px 24px;
+.lp-roster[data-cols="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lp-roster li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
   font-size: var(--fs-md);
-  line-height: 1.55;
   color: var(--fg);
 }
 
-.lp-points li::before {
-  content: "";
-  position: absolute;
-  top: 21px;
-  left: 2px;
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--accent);
-  transform: rotate(45deg);
+.lp-roster svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  color: var(--fg-muted);
+}
+
+.lp-roster-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-roster-note {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--fg-subtle);
 }
 
 /* == Panes: Config, Lock, Secrets, Terminal == */
@@ -598,6 +518,35 @@
 
 .sy-punct {
   color: var(--fg-muted);
+}
+
+/* == Lock Diff == */
+.lp-diff-line {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  padding-right: 16px;
+  white-space: pre;
+}
+
+.lp-diff-sign {
+  padding-left: 14px;
+  color: var(--fg-subtle);
+  user-select: none;
+}
+
+.lp-diff-line[data-sign="-"] {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+}
+
+.lp-diff-line[data-sign="+"] {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+}
+
+.lp-diff-line[data-sign="-"] .lp-diff-sign,
+.lp-diff-line[data-sign="+"] .lp-diff-sign {
+  color: inherit;
 }
 
 /* == Audit Gate == */
@@ -1253,19 +1202,10 @@
   margin-bottom: clamp(28px, 4vw, 44px);
 }
 
-/* Continues the feature row above it, so it shares that row's divider instead of drawing one */
-.lp-section--tight {
-  padding-top: 0;
-}
-
-.lp-feature + .lp-section--tight::before {
-  display: none;
-}
-
 /* == Asset Kinds == */
 .lp-kinds {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   list-style: none;
   background: var(--border);
@@ -1376,14 +1316,6 @@
   border: 1px solid var(--border);
 }
 
-.lp-wall.lp-wall--vaults {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.lp-wall.lp-wall--forges {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
 .lp-wall-cell {
   position: relative;
   display: flex;
@@ -1410,6 +1342,17 @@
   color: var(--accent);
 }
 
+.lp-monogram {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border: 1.5px solid currentColor;
+  border-radius: 22%;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  line-height: 1;
+}
+
 .lp-wall-icon.lp-monogram {
   font-size: 15px;
 }
@@ -1418,14 +1361,6 @@
   font-size: var(--fs-md);
   font-weight: 500;
   color: var(--fg);
-}
-
-.lp-wall-note {
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--fg-subtle);
-  overflow-wrap: anywhere;
 }
 
 .lp-wall-cell--ask {
@@ -1714,12 +1649,18 @@
   }
 
   .lp-feature,
-  .lp-feature[data-flip] {
+  .lp-feature[data-flip],
+  .lp-feature[data-split] {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "title"
-      "copy"
-      "art";
+      "intro"
+      "art"
+      "aside";
+  }
+
+  .lp-feature-aside {
+    margin-top: var(--space-6);
   }
 
   .lp-feature-title {
@@ -1732,28 +1673,6 @@
       "title"
       "copy"
       "art";
-  }
-
-  .lp-kinds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lp-strip {
-    flex-wrap: wrap;
-    gap: 0 var(--space-6);
-  }
-
-  .lp-marquee {
-    flex-basis: 100%;
-  }
-
-  .lp-marquee + .lp-strip-more {
-    padding-top: 0;
-  }
-
-  .lp-strip-more {
-    margin-left: auto;
-    padding-bottom: 0;
   }
 
   .lp-footer-grid {
@@ -1769,11 +1688,6 @@
   .lp-wall {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-
-  .lp-wall.lp-wall--vaults,
-  .lp-wall.lp-wall--forges {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 600px) {
@@ -1785,7 +1699,8 @@
     display: none;
   }
 
-  .lp-kinds {
+  .lp-kinds,
+  .lp-roster {
     grid-template-columns: minmax(0, 1fr);
   }
 

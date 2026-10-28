@@ -15,16 +15,17 @@ const FORGES: { icon: IconType; name: string; note: string }[] = [
   { icon: FaFolderOpen, name: "Local path", note: "no network at all" },
 ];
 
-export function ForgeWall() {
+/** Every forge as a compact two-column list: the name and the env var a private one reads. */
+export function ForgeList() {
   return (
-    <ul className="lp-wall lp-wall--forges">
+    <ul className="lp-roster" data-cols="1">
       {FORGES.map((f) => {
         const Icon = f.icon;
         return (
-          <li key={f.name} className="lp-wall-cell">
-            <Icon className="lp-wall-icon" aria-hidden />
-            <span className="lp-wall-name">{f.name}</span>
-            <span className="lp-wall-note">{f.note}</span>
+          <li key={f.name}>
+            <Icon aria-hidden />
+            <span className="lp-roster-name">{f.name}</span>
+            <code className="lp-roster-note">{f.note}</code>
           </li>
         );
       })}
