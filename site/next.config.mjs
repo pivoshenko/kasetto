@@ -1,23 +1,10 @@
 import { createMDX } from "fumadocs-mdx/next";
+import meta from "./content/docs/meta.json" with { type: "json" };
 
 const withMDX = createMDX();
 
-const DOC_SLUGS = [
-  "agents",
-  "authentication",
-  "ci",
-  "commands",
-  "configuration",
-  "cookbook",
-  "faq",
-  "how-sync-works",
-  "installation",
-  "security",
-  "sharing-instructions",
-  "sync-flow",
-  "vs-alternatives",
-  "writing-skills",
-];
+// Every docs page gets an old-domain redirect; separators in meta.json are not pages
+const DOC_SLUGS = meta.pages.filter((slug) => slug !== "index" && !slug.startsWith("---"));
 
 const docsHost = [{ type: "host", value: "docs.kasetto.dev" }];
 
