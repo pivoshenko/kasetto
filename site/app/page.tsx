@@ -1,12 +1,13 @@
 import { FaGithub, FaGlobe, FaLinkedinIn } from "react-icons/fa";
 import { GoArrowRight, GoArrowUpRight } from "react-icons/go";
 import { softwareApplicationJsonLd } from "@/lib/structured-data";
-import { AgentsGrid } from "./components/agents-grid";
+import { AGENTS, AgentsGrid } from "./components/agents-grid";
 import { BrandLogo } from "./components/brand-mark";
 import { CopyButton } from "./components/copy-button";
 import { ConfigExample } from "./components/feature-tabs";
 import { HeroTerminal } from "./components/hero-terminal";
 import { JsonLd } from "./components/json-ld";
+import { AgentIcon } from "./components/landing/agent-icon";
 import { AssetKinds } from "./components/landing/asset-kinds";
 import { AuditGate, AuditPolicy } from "./components/landing/audit-gate";
 import { ForgeWall } from "./components/landing/forge-wall";
@@ -30,6 +31,16 @@ const INSTALL = [
     cmd: "brew tap pivoshenko/tap\nbrew trust pivoshenko/tap\nbrew install kasetto",
   },
   { label: "Cargo", cmd: "cargo install kasetto" },
+];
+
+const JUMP = [
+  { href: "#declare", label: "Config" },
+  { href: "#sources", label: "Assets and sources" },
+  { href: "#lock", label: "Lock file" },
+  { href: "#audit", label: "Audit" },
+  { href: "#secrets", label: "Secrets" },
+  { href: "#agents", label: "Agents" },
+  { href: "#install", label: "Install" },
 ];
 
 const FOOTER = [
@@ -180,6 +191,39 @@ export default async function Page() {
           <HeroCassette className="lp-cassette" />
         </div>
       </header>
+
+      {/* == Agent Strip == */}
+      <section className="lp-strip" aria-label="Supported agents">
+        <div className="lp-marquee">
+          {/* Two identical lists side by side; the track slides by exactly one list width, so the loop has no seam */}
+          <div className="lp-marquee-track">
+            {[false, true].map((copy) => (
+              <ul key={String(copy)} className="lp-strip-list" aria-hidden={copy || undefined}>
+                {AGENTS.map((a) => (
+                  <li key={a.value}>
+                    <AgentIcon preset={a.value} name={a.name} className="lp-strip-icon" />
+                    <span className="lp-strip-name">{a.name}</span>
+                  </li>
+                ))}
+              </ul>
+            ))}
+          </div>
+        </div>
+        <a href="#agents" className="lp-strip-more">
+          See all <GoArrowRight aria-hidden />
+        </a>
+      </section>
+
+      {/* == Section Jump Links == */}
+      <nav className="lp-jump" aria-label="Sections">
+        <ul>
+          {JUMP.map((j) => (
+            <li key={j.href}>
+              <a href={j.href}>{j.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       {/* == Declare == */}
       <Feature
