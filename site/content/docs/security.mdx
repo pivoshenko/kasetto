@@ -27,16 +27,16 @@ Kasetto is designed around a "tracked-only" principle:
 
 See [How Sync Works](/docs/how-sync-works) for details.
 
-## MCP Server Installation
+## MCP Installation
 
 New MCPs are merged into agent settings files automatically on `kst sync`, with no confirmation prompt. Use `--dry-run` to preview what would be written before committing.
 
 ## Security Audits
 
-`kst audit` reports a severity for every installed skill and MCP server, and the opt-in gate (`audit.fail-on`, or `kst sync --audit`) fails a sync when one is at or above a threshold. See [`kst audit`](/docs/commands#kst-audit) and [Configuration](/docs/configuration#audit).
+`kst audit` reports a severity for every installed skill and MCP, and the opt-in gate (`audit.fail-on`, or `kst sync --audit`) fails a sync when one is at or above a threshold. See [`kst audit`](/docs/commands#kst-audit) and [Configuration](/docs/configuration#audit).
 
 - **Skills** use the verdicts [skills.sh](https://skills.sh) publishes from independent partners. They disagree often, so the headline is the worst one and `--verbose` shows them all. The verdicts are repo-level, not tied to the commit you locked, and only `github.com` sources are indexed.
-- **MCP servers** are checked offline for risky launch options. The npm or PyPI package they run is resolved on [deps.dev](https://deps.dev) to the version a floating launch runs today, then looked up on [OSV](https://osv.dev) for the advisories affecting that version, including its malicious-packages feed, and on deps.dev for deprecation and its source repo's OpenSSF Scorecard.
+- **MCPs** are checked offline for risky launch options. The npm or PyPI package they run is resolved on [deps.dev](https://deps.dev) to the version a floating launch runs today, then looked up on [OSV](https://osv.dev) for the advisories affecting that version, including its malicious-packages feed, and on deps.dev for deprecation and its source repo's OpenSSF Scorecard.
 - An asset that cannot be verified is reported as **unverified**, never as safe. It only warns unless you opt into failing closed with `fail-on-unverified`.
 
 Treat a clean audit as a signal, not a guarantee. The audit only reads public endpoints: it sends skills.sh the `owner/repo/skill` of each skill and OSV and deps.dev the name and version of each launched package, never a credential or a server definition. Nothing is sent unless you run `kst audit` or turn the gate on.
@@ -48,7 +48,7 @@ Treat a clean audit as a signal, not a guarantee. The audit only reads public en
 ## What Kasetto Does Not Do
 
 - It does not run skill code
-- It does not overwrite MCP server entries it didn't install (only a Kasetto-managed server is replaced, and only under `--update`)
+- It does not overwrite MCP entries it didn't install (only a Kasetto-managed server is replaced, and only under `--update`)
 - It does not write a credentials file. It can optionally *read* one for [secret injection](/docs/secrets)
 
 ## Secret Injection
@@ -80,4 +80,4 @@ This means a private config hosted on a git provider can be accessed by setting 
 
 - Prefer pinning remote sources to immutable refs (`ref: v1.2.3` or a commit SHA) for stable rollouts
 - In CI, use `--dry-run` (and ideally `--json`) to validate without writing changes
-- In CI, `kst sync --locked --audit` installs exactly the locked set and fails the job if any skill or MCP server is rated high or worse. Add `--fail-on-unverified` to also fail when a verdict could not be fetched; on an air-gapped runner every lookup fails, so that flag fails every asset there
+- In CI, `kst sync --locked --audit` installs exactly the locked set and fails the job if any skill or MCP is rated high or worse. Add `--fail-on-unverified` to also fail when a verdict could not be fetched; on an air-gapped runner every lookup fails, so that flag fails every asset there

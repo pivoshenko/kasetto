@@ -28,7 +28,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const DESCRIPTION =
-  "Declare the skills, slash commands, MCP servers, and instructions you and your team use in one YAML file, pin every install in a lock file, and get the same AI environment on every machine. Written in Rust.";
+  "Declare the skills, slash commands, MCPs, and instructions you and your team use in one YAML file, pin every install in a lock file, and get the same AI environment on every machine. Written in Rust.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
