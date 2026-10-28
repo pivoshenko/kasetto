@@ -134,8 +134,7 @@ export default function OpengraphImage() {
               maxWidth: 600,
             }}
           >
-            Skills, commands, MCP servers, and instructions declared in one file, pinned in one
-            lock.
+            Skills, commands, MCPs, and instructions declared in one file, pinned in one lock.
           </div>
         </div>
 

@@ -61,7 +61,7 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | Flag                  | Description                                                            |
 | --------------------- | --------------------------------------------------------------------- |
 | `--skill <name>`      | Skill to add (repeatable; `*` for all). Default kind when none given  |
-| `--mcp <name>`        | MCP server to add (repeatable; `*` for all)                           |
+| `--mcp <name>`        | MCP to add (repeatable; `*` for all)                           |
 | `--command <name>`    | Command to add (repeatable; `*` for all)                              |
 | `--instruction <name>`| Instruction to add (repeatable; `*` for all)                          |
 | `--ref <ref>`         | Pin to a git tag, commit SHA, or ref (conflicts with `--branch`)      |
@@ -145,7 +145,7 @@ kst sync [OPTIONS]
 | `--json`                 | Print the sync report as JSON; its `audit` key carries the gate's verdict, or `null` when the gate did not run |
 | `--color <when>`         | `auto` (default), `always`, or `never`                       |
 | `-v`, `--verbose`        | Increase detail (`-v`, `-vv`, `-vvv`); per-skill action list at `-v` |
-| `--audit [level]`        | After installing, fail the run if a skill or MCP server is at or above `level` (`low`, `medium`, `high`, `critical`; default `high`). Overrides `audit.fail-on` |
+| `--audit [level]`        | After installing, fail the run if a skill or MCP is at or above `level` (`low`, `medium`, `high`, `critical`; default `high`). Overrides `audit.fail-on` |
 | `--no-audit`             | Skip the security gate even when `audit.fail-on` is configured |
 | `--fail-on-unverified`   | Fail closed: when the gate runs, an asset it cannot verify fails the run instead of only warning. Needs `--audit` or `audit.fail-on`; `--no-audit` still wins |
 | `--project`              | Install into the current project directory                   |
@@ -213,14 +213,14 @@ kst list [OPTIONS]
 With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
 ## `kst audit`
 
-Reports a security verdict for every installed skill and MCP server in the scope's lock. It is read-only: nothing on disk or in the lock changes.
+Reports a security verdict for every installed skill and MCP in the scope's lock. It is read-only: nothing on disk or in the lock changes.
 
 ```bash
 kst audit [NAME...] [OPTIONS]
 ```
 
 - **Skills** take the verdicts [skills.sh](https://skills.sh) publishes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, and others). They often disagree, so the row shows the worst one and `--verbose` lists each. These verdicts describe the source repository, not the commit your lock pins, and only `github.com` sources are indexed; anything else shows as `not on skills.sh`.
-- **MCP servers** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages, and on [deps.dev](https://deps.dev) for whether it is deprecated and how its source repo scores on the OpenSSF Scorecard.
+- **MCPs** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages, and on [deps.dev](https://deps.dev) for whether it is deprecated and how its source repo scores on the OpenSSF Scorecard.
 
 | MCP check | Severity | Flags |
 | --------- | -------- | ----- |
@@ -243,7 +243,7 @@ Verdict summaries never echo env values, headers, URL paths, or scripts, because
 
 | Flag               | Description                                                           |
 | ------------------ | --------------------------------------------------------------------- |
-| `NAME...`          | Only audit these skills, MCP servers, or MCP packs (default: all)     |
+| `NAME...`          | Only audit these skills, MCPs, or MCP packs (default: all)     |
 | `-v`, `--verbose`  | Show every provider's verdict, not only the worst                     |
 | `--fail-on <level>`| Exit non-zero if any asset is at or above `low`, `medium`, `high`, or `critical` |
 | `--fail-on-unverified` | Exit non-zero if any asset could not be verified; works with or without `--fail-on` |
@@ -260,7 +260,7 @@ The summary line sorts every asset into exactly one of three buckets. `flagged` 
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed. It exits non-zero when it reports issues (failed assets, or locked skills missing on disk), so `kst doctor` works as a CI gate; `-q` runs the same checks and sets the same exit code without printing.
 
-It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCP servers in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
+It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCPs in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
 
 <Callout type="info">
 
