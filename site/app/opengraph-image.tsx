@@ -1,65 +1,89 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import {
-  gradientDefs,
-  gradientFills,
-  MARK_DISPLAY,
-  markBody,
-  markSvg,
-  svgDataUri,
-} from "@/lib/mark";
-import { palette } from "@/lib/palette";
+import type { CSSProperties } from "react";
 
-export const alt = "Kasetto: your AI environment, under control";
+export const alt = "Kasetto: Declarative AI agent environment manager";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Tight box around the display mark inside its 0 0 100 100 viewBox (shell plus
-// extrusion), so the art can be sized and placed by its visible edges
-const MARK_BOX = { x: 4, y: 17, w: 92, h: 63 };
-const ART_W = 560;
-const ART_H = Math.round((ART_W * MARK_BOX.h) / MARK_BOX.w);
+// Brand tokens mirror the canonical palette in `src/colors.rs` (CLI is the
+// source of truth) and the popil surfaces in `app/globals.css`. Update both
+// when this changes
+const BG = "#1f1f1e"; // popil base
+const FG = "#e4e2de"; // popil text
+const MUTED = "#a8a195"; // CLI SECONDARY
+const LAVENDER = "#b89cdc"; // CLI BRAND
+const ACCENT_WARM = "#e8a94d"; // CLI ATTENTION
+const ADDED = "#84c578"; // CLI SUCCESS
+const REMOVED = "#e87e6c"; // CLI ERROR
+const DIM = "#6e6759"; // CLI INFRA
+const JP_YELLOW = "#d4b070"; // popil yellow
 
-// Satori has no soft radial fade, so the glow behind the art is its own SVG
-const GLOW_W = 900;
-const GLOW_H = 640;
-const GLOW =
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${GLOW_W}" height="${GLOW_H}">` +
-  `<defs><radialGradient id="glow" cx=".5" cy=".5" r=".5">` +
-  `<stop offset="0" stop-color="${palette.accent}" stop-opacity=".15"/>` +
-  `<stop offset="1" stop-color="${palette.accent}" stop-opacity="0"/></radialGradient></defs>` +
-  `<ellipse cx="${GLOW_W / 2}" cy="${GLOW_H / 2}" rx="${GLOW_W / 2}" ry="${GLOW_H / 2}" fill="url(#glow)"/></svg>`;
+// Same six lines as `assets/preview_social_dark.svg`, so the shared card and the
+// GitHub social preview stay in sync. 58 columns; at 28px in JetBrains Mono
+// (0.6em advance) that is 974px, which clears the 1120px frame interior
+const WORDMARK = [
+  "██╗  ██╗ █████╗ ███████╗███████╗████████╗████████╗ ██████╗",
+  "██║ ██╔╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝╚══██╔══╝██╔═══██╗",
+  "█████╔╝ ███████║███████╗█████╗     ██║      ██║   ██║   ██║",
+  "██╔═██╗ ██╔══██║╚════██║██╔══╝     ██║      ██║   ██║   ██║",
+  "██║  ██╗██║  ██║███████║███████╗   ██║      ██║   ╚██████╔╝",
+  "╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝",
+];
 
-// Film grain multiplied into the gradient faces; resvg rasterizes the filter
-const GRAIN =
-  '<filter id="grain" x="0" y="0" width="100%" height="100%">' +
-  '<feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch" result="n"/>' +
-  '<feColorMatrix in="n" type="saturate" values="0" result="g"/>' +
-  '<feComponentTransfer in="g" result="a"><feFuncA type="linear" slope=".5"/></feComponentTransfer>' +
-  '<feComposite in="a" in2="SourceGraphic" operator="in" result="m"/>' +
-  '<feBlend in="SourceGraphic" in2="m" mode="multiply"/></filter>';
+// The wordmark draws as two layers over one grid so the letters read as stacked
+// tiles rather than a solid slab, matching `assets/preview_social_dark.svg`: the
+// box-drawing rules paint over the blocks, keeping the shadow outline
+// continuous, while BG-colored bars cut a 3px gap into every row seam
+const BLOCK = "\u2588";
+const splitLayer = (keepBlocks: boolean) =>
+  WORDMARK.map((line) =>
+    Array.from(line, (ch) => ((ch === BLOCK) === keepBlocks ? ch : " ")).join("")
+  );
+const WORDMARK_BLOCKS = splitLayer(true);
+const WORDMARK_RULES = splitLayer(false);
 
-const ART =
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${ART_W}" height="${ART_H}" viewBox="${MARK_BOX.x} ${MARK_BOX.y} ${MARK_BOX.w} ${MARK_BOX.h}">` +
-  `<defs>${gradientDefs("og")}${GRAIN}</defs>` +
-  `<g filter="url(#grain)">${markBody(MARK_DISPLAY, gradientFills("og"))}</g></svg>`;
+// U+2588 renders exactly 40px tall at font-size 28, so a 40px line box butts the
+// rows together with no overlap and the seams land on clean 40px multiples
+const WORDMARK_FONT_SIZE = 28;
+const WORDMARK_LINE_H = 40;
+const WORDMARK_SEAM_W = 3;
+const WORDMARK_SEAMS = WORDMARK.slice(1).map(
+  (_, i) => WORDMARK_LINE_H * (i + 1) - WORDMARK_SEAM_W / 2
+);
+// Satori resolves a percentage width on the seam bars against more than the
+// wordmark, and the overhang notches the J-card border - so pin the bars to the
+// longest line at the 0.6em advance instead
+const WORDMARK_W = Math.max(...WORDMARK.map((line) => line.length)) * WORDMARK_FONT_SIZE * 0.6;
+const WORDMARK_ROW: CSSProperties = {
+  fontSize: WORDMARK_FONT_SIZE,
+  fontWeight: 700,
+  lineHeight: `${WORDMARK_LINE_H}px`,
+  whiteSpace: "pre",
+};
 
-// Satori ignores font-stretch, so the expanded cut is its own family; the TTFs
-// are static Google Fonts instances of Archivo (wdth 125 wght 500, wdth 100 wght
-// 400). The JetBrains Mono file is a Latin subset; widen it before adding glyphs
-// outside Basic Latin or they render as tofu
+const CHIPS = [
+  { dot: ACCENT_WARM, count: "4", label: "updated", labelColor: ACCENT_WARM },
+  { dot: ADDED, count: "2", label: "added", labelColor: ADDED },
+  { dot: REMOVED, count: "1", label: "removed", labelColor: REMOVED },
+  { dot: DIM, count: "11", label: "unchanged", labelColor: MUTED },
+];
+
+// The bundled fonts are subsets, unhinted and stripped of layout tables:
+// JetBrains Mono 2.304 (Latin + U+25CF/U+276F, plus U+2500-257F box drawing and
+// U+2580-259F block elements at 700 for the wordmark) and Noto Sans JP,
+// instanced at wght 700 and cut to the kana in the subtitle. Widen the ranges
+// before adding glyphs the subsets do not carry, or they render as tofu
 function loadFont(file: string) {
   return readFileSync(join(process.cwd(), "app/fonts", file));
 }
 
-const DISPLAY = "Archivo Expanded";
-const TRACKING = "-0.02em";
-
 export default function OpengraphImage() {
-  const expanded = loadFont("archivo-expanded-500.ttf");
-  const regular = loadFont("archivo-400.ttf");
-  const mono = loadFont("jetbrains-mono-400.ttf");
+  const regular = loadFont("jetbrains-mono-400.ttf");
+  const semibold = loadFont("jetbrains-mono-600.ttf");
+  const bold = loadFont("jetbrains-mono-700.ttf");
+  const jp = loadFont("noto-sans-jp-700.ttf");
 
   return new ImageResponse(
     <div
@@ -67,98 +91,119 @@ export default function OpengraphImage() {
         width: "100%",
         height: "100%",
         display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: BG,
+        color: FG,
+        fontFamily: "JetBrains Mono, monospace",
         position: "relative",
-        background: palette.bg,
-        color: palette.fg,
-        fontFamily: "Archivo",
       }}
     >
-      <img
-        src={svgDataUri(GLOW)}
-        width={GLOW_W}
-        height={GLOW_H}
-        alt=""
-        style={{
-          position: "absolute",
-          left: 1000 - GLOW_W / 2,
-          top: (size.height - GLOW_H) / 2 + 20,
-        }}
-      />
-      <img
-        src={svgDataUri(ART)}
-        width={ART_W}
-        height={ART_H}
-        alt=""
-        style={{ position: "absolute", left: 724, top: (size.height - ART_H) / 2 + 20 }}
-      />
-
+      {/* J-card border - Satori ignores the `inset` shorthand, so size it explicitly */}
       <div
         style={{
+          position: "absolute",
+          top: 38,
+          left: 38,
+          width: size.width - 76,
+          height: size.height - 76,
+          border: `4px solid ${LAVENDER}`,
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "64px 72px",
-          width: "100%",
-          height: "100%",
         }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <img src={svgDataUri(markSvg(MARK_DISPLAY))} width={56} height={56} alt="" />
-          <div
-            style={{ fontFamily: DISPLAY, fontSize: 32, letterSpacing: TRACKING, marginTop: -4 }}
-          >
-            kasetto
-          </div>
+      />
+
+      {/* ASCII wordmark */}
+      <div style={{ display: "flex", position: "relative", marginTop: 24, color: LAVENDER }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {WORDMARK_BLOCKS.map((line, i) => (
+            <div key={`block-${i}`} style={WORDMARK_ROW}>
+              {line}
+            </div>
+          ))}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {WORDMARK_SEAMS.map((top) => (
           <div
+            key={top}
             style={{
+              position: "absolute",
               display: "flex",
-              flexDirection: "column",
-              fontFamily: DISPLAY,
-              fontSize: 56,
-              lineHeight: 1.04,
-              letterSpacing: TRACKING,
+              left: 0,
+              top,
+              width: WORDMARK_W,
+              height: WORDMARK_SEAM_W,
+              background: BG,
             }}
-          >
-            <div>Your AI environment,</div>
-            <div style={{ color: palette.accent }}>under control</div>
-          </div>
-          <div
-            style={{
-              marginTop: 26,
-              fontSize: 26,
-              lineHeight: 1.4,
-              color: palette.fgMuted,
-              maxWidth: 600,
-            }}
-          >
-            Skills, commands, MCPs, and instructions declared in one file, pinned in one lock.
-          </div>
-        </div>
+          />
+        ))}
 
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 14,
-            fontFamily: "JetBrains Mono",
-            fontSize: 22,
-            color: palette.fgMuted,
+            flexDirection: "column",
+            position: "absolute",
+            top: 0,
+            left: 0,
           }}
         >
-          <div style={{ width: 10, height: 10, borderRadius: 5, background: palette.accent }} />
-          kasetto.dev
+          {WORDMARK_RULES.map((line, i) => (
+            <div key={`rule-${i}`} style={WORDMARK_ROW}>
+              {line}
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* Tagline */}
+      <div style={{ display: "flex", fontSize: 24, marginTop: 46, whiteSpace: "pre" }}>
+        <span style={{ color: MUTED }}>A declarative </span>
+        <span style={{ color: FG }}>AI agent environment manager</span>
+        <span style={{ color: MUTED }}>, written in </span>
+        <span style={{ color: ACCENT_WARM }}>Rust</span>
+        <span style={{ color: MUTED }}>.</span>
+      </div>
+
+      {/* Prompt + command */}
+      <div style={{ display: "flex", fontSize: 22, marginTop: 20, whiteSpace: "pre" }}>
+        <span style={{ color: ACCENT_WARM }}>❯</span>
+        <span style={{ color: FG }}> kst </span>
+        <span style={{ color: ACCENT_WARM }}>sync</span>
+      </div>
+
+      {/* Chip strip totals */}
+      <div style={{ display: "flex", fontSize: 19, marginTop: 18, gap: 34, whiteSpace: "pre" }}>
+        {CHIPS.map((chip) => (
+          <div key={chip.label} style={{ display: "flex" }}>
+            <span style={{ color: chip.dot }}>●</span>
+            <span style={{ color: FG }}>{` ${chip.count} `}</span>
+            <span style={{ color: chip.labelColor }}>{chip.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Japanese subtitle */}
+      <div
+        style={{
+          display: "flex",
+          marginTop: 24,
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 5.2,
+          color: JP_YELLOW,
+          fontFamily: "Noto Sans JP",
+        }}
+      >
+        スキル・パッケージ・マネージャー
       </div>
     </div>,
     {
       ...size,
       fonts: [
-        { name: DISPLAY, data: expanded, weight: 500, style: "normal" },
-        { name: "Archivo", data: regular, weight: 400, style: "normal" },
-        { name: "JetBrains Mono", data: mono, weight: 400, style: "normal" },
+        { name: "JetBrains Mono", data: regular, weight: 400, style: "normal" },
+        { name: "JetBrains Mono", data: semibold, weight: 600, style: "normal" },
+        { name: "JetBrains Mono", data: bold, weight: 700, style: "normal" },
+        { name: "Noto Sans JP", data: jp, weight: 700, style: "normal" },
       ],
     }
   );
