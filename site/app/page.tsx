@@ -309,7 +309,7 @@ export default async function Page() {
         split="7-5"
         title={
           <>
-            Know exactly <em>what is installed</em>
+            Pin once, <em>reproduce anywhere</em>
           </>
         }
         body={
