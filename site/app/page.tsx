@@ -141,7 +141,6 @@ export default async function Page() {
     <div className="lp">
       <JsonLd data={softwareApplicationJsonLd()} />
 
-      {/* == Hero == */}
       <header className="lp-hero">
         <div className="lp-hero-copy">
           <h1 className="lp-h1 display">
@@ -174,7 +173,6 @@ export default async function Page() {
         </div>
       </header>
 
-      {/* == Agent Strip == */}
       <section className="lp-strip" aria-label="Supported agents">
         <div className="lp-marquee">
           {/* Two identical lists side by side; the track slides by exactly one list width, so the loop has no seam */}
@@ -196,7 +194,6 @@ export default async function Page() {
         </a>
       </section>
 
-      {/* == Section Jump Links == */}
       <nav className="lp-jump" aria-label="Sections">
         <ul>
           {JUMP.map((j) => (
@@ -207,7 +204,6 @@ export default async function Page() {
         </ul>
       </nav>
 
-      {/* == Declare == */}
       <Feature
         id="declare"
         title={
@@ -230,7 +226,6 @@ export default async function Page() {
         <ConfigExample />
       </Feature>
 
-      {/* == Assets and Sources == */}
       <section id="sources" className="lp-section" aria-labelledby="sources-title">
         <div className="lp-section-head">
           <h2 id="sources-title" className="lp-h2 display">
@@ -241,7 +236,6 @@ export default async function Page() {
         <ForgeWall />
       </section>
 
-      {/* == Secrets == */}
       <Feature
         id="secrets"
         title={
@@ -263,7 +257,6 @@ export default async function Page() {
         <SecretSources />
       </Feature>
 
-      {/* == Audit == */}
       <Feature
         id="audit"
         split="7-5"
@@ -287,7 +280,6 @@ export default async function Page() {
         <AuditGate />
       </Feature>
 
-      {/* == Lock == */}
       <Feature
         id="lock"
         split="7-5"
@@ -310,7 +302,6 @@ export default async function Page() {
         <LockExample />
       </Feature>
 
-      {/* == Agent Wall == */}
       <section id="agents" className="lp-section" aria-labelledby="agents-title">
         <div className="lp-section-head">
           <h2 id="agents-title" className="lp-h2 display">
@@ -320,7 +311,6 @@ export default async function Page() {
         <AgentsGrid />
       </section>
 
-      {/* == Install == */}
       <section id="install" className="lp-feature" aria-labelledby="install-title">
         <h2 id="install-title" className="lp-h2 lp-feature-title display">
           One binary, <em>any machine</em>
@@ -353,7 +343,6 @@ export default async function Page() {
         </ul>
       </section>
 
-      {/* == Footer == */}
       <footer className="lp-footer">
         <div className="lp-footer-grid">
           <div className="lp-footer-brand">
