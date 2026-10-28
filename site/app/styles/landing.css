@@ -440,6 +440,7 @@
 .lp-jump ul {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px 28px;
   list-style: none;
 }
