@@ -476,7 +476,6 @@ export function HeroTerminal() {
     >
       <div className="hero-terminal-bar">
         <span className="hero-terminal-title">~/dev/kasetto</span>
-        <span className="hero-terminal-tag">terminal</span>
       </div>
       <div className="hero-terminal-body">
         <div className="t-stage">
