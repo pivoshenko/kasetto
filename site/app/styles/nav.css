@@ -117,11 +117,14 @@
 }
 
 /* == GitHub Meta == */
+/* The same hairline the repository block uses between its own parts */
 .top-nav-repo {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
   height: 34px;
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--fg-muted);
