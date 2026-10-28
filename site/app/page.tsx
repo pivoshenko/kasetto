@@ -1,15 +1,19 @@
 import { FaGithub, FaGlobe, FaLinkedinIn } from "react-icons/fa";
-import { GoArrowRight, GoArrowUpRight, GoStar } from "react-icons/go";
+import { GoArrowRight, GoArrowUpRight } from "react-icons/go";
 import { softwareApplicationJsonLd } from "@/lib/structured-data";
 import { AGENTS, AgentsGrid } from "./components/agents-grid";
-import { BrandLogo, BrandMark } from "./components/brand-mark";
+import { BrandLogo } from "./components/brand-mark";
 import { CopyButton } from "./components/copy-button";
-import { ConfigExample, FeatureList } from "./components/feature-tabs";
+import { ConfigExample } from "./components/feature-tabs";
 import { HeroTerminal } from "./components/hero-terminal";
 import { JsonLd } from "./components/json-ld";
 import { AgentIcon } from "./components/landing/agent-icon";
+import { AssetKinds } from "./components/landing/asset-kinds";
+import { AuditGate } from "./components/landing/audit-gate";
+import { ForgeWall } from "./components/landing/forge-wall";
 import { HeroCassette } from "./components/landing/hero-cassette";
 import { LockExample } from "./components/landing/lock-example";
+import { SecretWall } from "./components/landing/secret-providers";
 import { SecretSources } from "./components/secret-sources";
 
 const REPO = "https://github.com/pivoshenko/kasetto";
@@ -60,25 +64,15 @@ const FOOTER = [
   },
 ];
 
-async function getRepoData(): Promise<{ stars: string | null; version: string | null }> {
+async function getLatestVersion(): Promise<string | null> {
   try {
-    const [repoRes, releaseRes] = await Promise.all([
-      fetch("https://api.github.com/repos/pivoshenko/kasetto", {
-        next: { revalidate: 3600 },
-      }),
-      fetch("https://api.github.com/repos/pivoshenko/kasetto/releases/latest", {
-        next: { revalidate: 3600 },
-      }),
-    ]);
-    const repo = repoRes.ok ? ((await repoRes.json()) as { stargazers_count: number }) : null;
-    const release = releaseRes.ok ? ((await releaseRes.json()) as { tag_name: string }) : null;
-    const n = repo?.stargazers_count ?? 0;
-    return {
-      stars: repo ? (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n)) : null,
-      version: release?.tag_name ?? null,
-    };
+    const res = await fetch("https://api.github.com/repos/pivoshenko/kasetto/releases/latest", {
+      next: { revalidate: 3600 },
+    });
+    const release = res.ok ? ((await res.json()) as { tag_name: string }) : null;
+    return release?.tag_name ?? null;
   } catch {
-    return { stars: null, version: null };
+    return null;
   }
 }
 
@@ -106,19 +100,8 @@ function External({
   );
 }
 
-function Eyebrow({ index, children }: { index?: string; children: React.ReactNode }) {
-  return (
-    <p className="lp-eyebrow">
-      {index ? <span className="lp-eyebrow-index">{index}</span> : null}
-      {children}
-    </p>
-  );
-}
-
 function Feature({
   id,
-  index,
-  eyebrow,
   title,
   body,
   points,
@@ -127,8 +110,6 @@ function Feature({
   children,
 }: {
   id: string;
-  index: string;
-  eyebrow: string;
   title: React.ReactNode;
   body: React.ReactNode;
   points: React.ReactNode[];
@@ -143,11 +124,10 @@ function Feature({
       data-flip={flip ? "" : undefined}
       aria-labelledby={`${id}-title`}
     >
+      <h2 id={`${id}-title`} className="lp-h2 lp-feature-title display">
+        {title}
+      </h2>
       <div className="lp-feature-copy">
-        <Eyebrow index={index}>{eyebrow}</Eyebrow>
-        <h2 id={`${id}-title`} className="lp-h2 display">
-          {title}
-        </h2>
         <p className="lp-lede">{body}</p>
         <ul className="lp-points">
           {points.map((p, i) => (
@@ -164,7 +144,7 @@ function Feature({
 }
 
 export default async function Page() {
-  const { stars, version } = await getRepoData();
+  const version = await getLatestVersion();
 
   return (
     <div className="lp">
@@ -173,24 +153,21 @@ export default async function Page() {
       {/* == Hero == */}
       <header className="lp-hero">
         <div className="lp-hero-copy">
-          <Eyebrow>Declarative AI environment manager</Eyebrow>
           <h1 className="lp-h1 display">
             <span className="lp-h1-line">Your AI environment,</span>{" "}
             <span className="lp-h1-line">
               <em>under control</em>
             </span>
           </h1>
+          <p className="lp-lede lp-hero-lede">
+            Declarative AI agent environment manager, written in Rust.
+          </p>
           <div className="lp-actions">
             <a href="/docs" className="lp-btn lp-btn--primary">
               Read the docs <GoArrowRight aria-hidden />
             </a>
             <External href={REPO} className="lp-btn">
               <FaGithub aria-hidden /> Star on GitHub
-              {stars ? (
-                <span className="lp-btn-count">
-                  <GoStar aria-hidden /> {stars}
-                </span>
-              ) : null}
             </External>
           </div>
           <div className="lp-cmd">
@@ -231,25 +208,18 @@ export default async function Page() {
       {/* == How It Works == */}
       <Feature
         id="declare"
-        index="01"
-        eyebrow="Declare"
         title={
           <>
-            See everything in <em>one</em> file
+            See everything in <em>one file</em>
           </>
         }
         body={
           <>
             <code>kasetto.yaml</code> is the full inventory of your AI environment: every skill,
-            slash command, MCP server, and instruction, and the GitHub, GitLab, Bitbucket, or
-            self-hosted repo it comes from.
+            slash command, MCP, and instruction, and the repo each one comes from.
           </>
         }
         points={[
-          <>
-            Four asset kinds, one list each: <code>skills</code>, <code>commands</code>,{" "}
-            <code>mcps</code>, <code>instructions</code>
-          </>,
           <>
             Pin a tag or commit with <code>ref:</code>, or follow a <code>branch:</code>
           </>,
@@ -265,21 +235,29 @@ export default async function Page() {
         <ConfigExample />
       </Feature>
 
+      {/* == Asset Kinds == */}
+      <section id="kinds" className="lp-section lp-section--tight" aria-labelledby="kinds-title">
+        <div className="lp-section-head">
+          <h2 id="kinds-title" className="lp-h2 display">
+            Four kinds of asset, <em>each in native format</em>
+          </h2>
+        </div>
+        <AssetKinds />
+      </section>
+
       <Feature
         id="lock"
-        index="02"
-        eyebrow="Lock"
         flip
         title={
           <>
-            Know exactly what is <em>installed</em>
+            Know exactly <em>what is installed</em>
           </>
         }
         body={
           <>
-            Every sync records what it installed in <code>kasetto.lock</code>: the source, the
-            resolved revision, where it landed, and a content hash. Commit it next to the config,
-            and every change to your AI environment shows up in code review.
+            Every sync records what it installed in <code>kasetto.lock</code>: source, resolved
+            revision, destination, content hash. Commit it, and every change to your AI environment
+            shows up in code review.
           </>
         }
         points={[
@@ -300,24 +278,19 @@ export default async function Page() {
 
       <Feature
         id="sync"
-        index="03"
-        eyebrow="Sync"
         title={
           <>
-            The same setup on <em>every</em> machine
+            The same setup on <em>every machine</em>
           </>
         }
         body={
           <>
-            <code>kst sync</code> makes a machine match the lock: it fetches each source, writes
-            every asset where your agent expects it, and changes only what differs. New teammates
-            run one command and get the environment the rest of the team already has.
+            <code>kst sync</code> makes a machine match the lock: fetch each source, write every
+            asset where the agent expects it, change only what differs. A new teammate runs one
+            command and has the environment everyone else already has.
           </>
         }
         points={[
-          <>
-            Skills, commands, MCP settings, and instructions land where each agent looks for them
-          </>,
           <>Content is hashed and diffed against the lock, so unchanged assets are never touched</>,
           <>Anything you drop from the config is pruned on the next sync, so nothing lingers</>,
           <>
@@ -330,21 +303,63 @@ export default async function Page() {
         <HeroTerminal />
       </Feature>
 
+      {/* == Forge Wall == */}
+      <section
+        id="sources"
+        className="lp-section lp-section--tight"
+        aria-labelledby="sources-title"
+      >
+        <div className="lp-section-head">
+          <h2 id="sources-title" className="lp-h2 display">
+            Pull from any forge, <em>public or private</em>
+          </h2>
+        </div>
+        <ForgeWall />
+      </section>
+
       <Feature
-        id="secrets"
-        index="04"
-        eyebrow="Secrets"
+        id="audit"
         flip
         title={
           <>
-            Tokens never <em>touch</em> git
+            Catch a bad install <em>before it ships</em>
           </>
         }
         body={
           <>
-            MCP servers need API keys. Write a <code>{PLACEHOLDER}</code> placeholder instead, and
-            Kasetto resolves it at sync time from your environment, a credentials file, or the
-            secret manager you already use.
+            <code>kst audit</code> grades every installed skill and MCP. Add <code>--audit</code> to
+            a sync and it becomes a gate: anything at or above your threshold fails the run, so CI
+            goes red instead of your agent picking it up.
+          </>
+        }
+        points={[
+          <>Skills take the verdicts skills.sh partners publish, worst one first</>,
+          <>
+            MCPs get offline launch checks, then OSV advisories and deps.dev health for the package
+            they run
+          </>,
+          <>
+            An asset nothing can judge is unverified, never safe: it warns, or fails with{" "}
+            <code>--fail-on-unverified</code>
+          </>,
+        ]}
+        link={{ href: "/docs/security", label: "Security model" }}
+      >
+        <AuditGate />
+      </Feature>
+
+      <Feature
+        id="secrets"
+        title={
+          <>
+            Tokens <em>never touch git</em>
+          </>
+        }
+        body={
+          <>
+            MCPs need API keys. Write a <code>{PLACEHOLDER}</code> placeholder instead, and Kasetto
+            resolves it at sync time from your environment, a credentials file, or the secret
+            manager you already use.
           </>
         }
         points={[
@@ -357,42 +372,32 @@ export default async function Page() {
         <SecretSources />
       </Feature>
 
-      {/* == Feature Grid == */}
-      <section className="lp-section" aria-labelledby="more-title">
+      {/* == Vault Wall == */}
+      <section id="vaults" className="lp-section lp-section--tight" aria-labelledby="vaults-title">
         <div className="lp-section-head">
-          <Eyebrow>Built for teams and CI</Eyebrow>
-          <h2 id="more-title" className="lp-h2 display">
-            The rest of the <em>spec</em> sheet
+          <h2 id="vaults-title" className="lp-h2 display">
+            Any vault, <em>one placeholder</em>
           </h2>
         </div>
-        <FeatureList />
+        <SecretWall />
       </section>
 
       {/* == Agent Wall == */}
       <section id="agents" className="lp-section" aria-labelledby="agents-title">
-        <div className="lp-section-head lp-section-head--split">
-          <div>
-            <Eyebrow>Agents</Eyebrow>
-            <h2 id="agents-title" className="lp-h2 display">
-              Works with the agent <em>you</em> use
-            </h2>
-          </div>
-          <p className="lp-lede">
-            Presets for {AGENTS.length} agents know where each keeps skills, commands, MCP servers,
-            and instructions, globally and per project. Name yours under <code>agent:</code> and
-            switch whenever you like: the environment comes with you.
-          </p>
+        <div className="lp-section-head">
+          <h2 id="agents-title" className="lp-h2 display">
+            Works with <em>the agent you use</em>
+          </h2>
         </div>
         <AgentsGrid />
       </section>
 
       {/* == Install == */}
       <section id="install" className="lp-section lp-install" aria-labelledby="install-title">
+        <h2 id="install-title" className="lp-h2 lp-feature-title display">
+          One binary, <em>any machine</em>
+        </h2>
         <div className="lp-install-copy">
-          <Eyebrow>Install</Eyebrow>
-          <h2 id="install-title" className="lp-h2 display">
-            One binary. <em>Any</em> machine
-          </h2>
           <p className="lp-lede">
             A single static binary for macOS, Linux, and Windows, with JSON output and real exit
             codes for CI. It installs as both <code>kasetto</code> and the short alias{" "}
@@ -418,29 +423,6 @@ export default async function Page() {
             </li>
           ))}
         </ul>
-      </section>
-
-      {/* == Closing CTA == */}
-      <section className="lp-cta" aria-labelledby="cta-title">
-        <div className="lp-cta-inner">
-          <BrandMark className="lp-cta-mark" />
-          <div className="lp-cta-copy">
-            <h2 id="cta-title" className="lp-h2 display">
-              Put your AI environment <em>on tape</em>
-            </h2>
-            <p className="lp-lede">
-              Declare it once, review every change, and run the same setup across your whole team.
-            </p>
-          </div>
-          <div className="lp-actions lp-cta-actions">
-            <a href="/docs" className="lp-btn lp-btn--primary">
-              Get started <GoArrowRight aria-hidden />
-            </a>
-            <External href={REPO} className="lp-btn">
-              <FaGithub aria-hidden /> View on GitHub
-            </External>
-          </div>
-        </div>
       </section>
 
       {/* == Footer == */}

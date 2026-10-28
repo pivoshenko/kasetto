@@ -27,8 +27,8 @@
   --info: #6cbfd3;
 
   /* == Type == */
-  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
-  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
   /* Archivo's wdth axis: display copy runs expanded, body copy stays at normal width */
   --display-stretch: 125%;
