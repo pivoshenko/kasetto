@@ -34,12 +34,12 @@ const INSTALL = [
 ];
 
 const JUMP = [
-  { href: "#declare", label: "Config and sync" },
-  { href: "#sources", label: "Assets and sources" },
-  { href: "#secrets", label: "Secrets management" },
-  { href: "#audit", label: "Audit and security" },
-  { href: "#lock", label: "Lock and reproducibility" },
-  { href: "#agents", label: "Agents support" },
+  { href: "#declare", label: "Config & Sync" },
+  { href: "#sources", label: "Assets & Sources" },
+  { href: "#secrets", label: "Secrets Management" },
+  { href: "#audit", label: "Audit & Security" },
+  { href: "#lock", label: "Lock & Reproducibility" },
+  { href: "#agents", label: "Agents Support" },
   { href: "#install", label: "Installation" },
 ];
 
