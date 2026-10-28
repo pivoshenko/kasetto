@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const DESCRIPTION =
-  "Declare the skills, slash commands, MCPs, and instructions you and your team use in one YAML file, pin every install in a lock file, and get the same AI environment on every machine. Written in Rust.";
+  "One YAML file for the skills, commands, MCPs, and instructions your AI agents use. Kasetto installs them on any machine and pins every install in a lock file.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
