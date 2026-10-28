@@ -251,7 +251,7 @@ export default async function Page() {
       <section id="sources" className="lp-section" aria-labelledby="sources-title">
         <div className="lp-section-head">
           <h2 id="sources-title" className="lp-h2 display">
-            From any forge <em>to every agent</em>
+            From any source <em>to your agent</em>
           </h2>
         </div>
         <AssetKinds />
