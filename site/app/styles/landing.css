@@ -1404,95 +1404,7 @@
   margin-bottom: clamp(28px, 4vw, 44px);
 }
 
-/* == Asset Kinds == */
-.lp-kinds {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  list-style: none;
-  background: var(--border);
-  border: 1px solid var(--border);
-}
-
-.lp-kind {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding: 22px 20px 20px;
-  background: var(--bg);
-  transition: background-color 0.15s ease;
-}
-
-.lp-kind:hover {
-  background: var(--bg-elevated);
-}
-
-.lp-kind-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.lp-kind-head svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
-}
-
-.lp-kind-title {
-  font-size: 19px;
-  line-height: 1.2;
-  color: var(--fg);
-}
-
-.lp-kind-desc {
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--fg-muted);
-}
-
-/* Source path on top, the agent paths it becomes below, as one column of mono chips */
-.lp-kind-flow {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.lp-kind-label {
-  font-size: 10.5px;
-  letter-spacing: var(--tracking-normal);
-  text-transform: uppercase;
-  color: var(--fg-subtle);
-}
-
-.lp-kind-path {
-  display: block;
-  padding: 6px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  color: var(--fg);
-  overflow-wrap: anywhere;
-}
-
-.lp-kind-path[data-out] {
-  color: var(--accent-2);
-}
-
-.lp-kind-arrow {
-  width: 14px;
-  height: 14px;
-  margin: 2px 0 2px 9px;
-  color: var(--fg-subtle);
-}
-
 /* Accent edge on hover, so the hairline grid reads as operable rather than static */
-.lp-kind::after,
 .lp-wall-cell::after {
   content: "";
   position: absolute;
@@ -1503,7 +1415,6 @@
   transition: opacity 0.18s ease;
 }
 
-.lp-kind:hover::after,
 .lp-wall-cell:hover::after {
   opacity: 0.8;
 }
@@ -1559,8 +1470,12 @@
   font-size: 15px;
 }
 
+.lp-wall.lp-wall--kinds,
 .lp-wall.lp-wall--forges {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lp-wall.lp-wall--forges {
   margin-top: var(--space-8);
 }
 
@@ -1894,10 +1809,6 @@
     max-height: 560px;
   }
 
-  .lp-kinds {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .lp-feature-title {
     white-space: normal;
   }
@@ -1916,6 +1827,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .lp-wall.lp-wall--kinds,
   .lp-wall.lp-wall--forges {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1930,7 +1842,6 @@
     display: none;
   }
 
-  .lp-kinds,
   .lp-roster {
     grid-template-columns: minmax(0, 1fr);
   }
