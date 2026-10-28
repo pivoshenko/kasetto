@@ -3,10 +3,18 @@ import { GoBook, GoNote, GoPlug, GoTerminal } from "react-icons/go";
 
 // Discovery conventions mirror src/source/mod.rs
 const KINDS: { icon: IconType; name: string; desc: string }[] = [
-  { icon: GoBook, name: "Skills", desc: "A directory with a SKILL.md, copied whole" },
-  { icon: GoTerminal, name: "Commands", desc: "Markdown, rewritten to each agent's format" },
-  { icon: GoPlug, name: "MCPs", desc: "A server definition, merged into agent settings" },
-  { icon: GoNote, name: "Instructions", desc: "Rules, as files or managed blocks in shared ones" },
+  { icon: GoBook, name: "Skills", desc: "A directory with a SKILL.md, copied as is" },
+  {
+    icon: GoTerminal,
+    name: "Commands",
+    desc: "Markdown files, rewritten into each agent's format",
+  },
+  { icon: GoPlug, name: "MCPs", desc: "Server definitions merged into the agent's settings" },
+  {
+    icon: GoNote,
+    name: "Instructions",
+    desc: "Rules written as files, or as managed blocks in shared ones",
+  },
 ];
 
 export function AssetKinds() {

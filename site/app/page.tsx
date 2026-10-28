@@ -217,10 +217,11 @@ export default async function Page() {
         }
         body={
           <>
-            <code>kasetto.yaml</code> is the full inventory of your AI environment: every skill,
-            slash command, MCP, and instruction, and the repository each one comes from.{" "}
-            <code>kst sync</code> makes any machine match it: fetch each source, write every asset
-            where the agent expects it, change only what differs.
+            <code>kasetto.yaml</code> lists every skill, slash command, MCP, and instruction you
+            use, and the repository each one comes from. <code>kst sync</code> fetches those
+            repositories and writes each asset where your agent looks for it. Run it again on
+            another machine and you get the same setup; run it after a change and only that change
+            is touched.
           </>
         }
         link={{ href: "/docs/configuration", label: "Configuration reference" }}
@@ -250,10 +251,10 @@ export default async function Page() {
         }
         body={
           <>
-            Write a <code>{PLACEHOLDER}</code> placeholder instead of a token. Kasetto resolves it
-            at sync time from your environment, a credentials file, or the vault you already use,
-            through the CLI session you are signed in to, and writes the value only to the
-            agent&apos;s config. Never to the lock.
+            Put a <code>{PLACEHOLDER}</code> placeholder where the token would go. When you sync,
+            Kasetto reads the real value from your environment, a credentials file, or the vault CLI
+            you are already signed in to, and writes it into the agent&apos;s config. The lock file
+            only ever sees the placeholder.
           </>
         }
         link={{ href: "/docs/secrets", label: "Secrets guide" }}
@@ -273,10 +274,11 @@ export default async function Page() {
         }
         body={
           <>
-            <code>kst audit</code> grades every installed skill and MCP: skills.sh verdicts for
-            skills, launch checks plus OSV and deps.dev for the package an MCP runs. As a gate on
-            sync, anything at or above your threshold fails the run, so CI goes red instead of your
-            agent picking it up.
+            <code>kst audit</code> checks every installed skill and MCP. Skills get the verdicts
+            skills.sh partners publish. MCPs get an offline look at how they launch, then OSV
+            advisories and deps.dev health for the package they run. Turn it on as a sync gate and
+            anything at or above your threshold fails the run, so the problem stops in CI rather
+            than in your agent.
           </>
         }
         link={{ href: "/docs/security", label: "Security model" }}
@@ -296,10 +298,10 @@ export default async function Page() {
         }
         body={
           <>
-            Every sync records source, resolved revision, destination, and content hash in{" "}
-            <code>kasetto.lock</code>. Commit it, and every change to your AI environment shows up
-            in code review. <code>--locked</code> never touches the network and fails if the lock
-            cannot satisfy the config.
+            Each sync writes the source, resolved revision, destination, and content hash of what it
+            installed to <code>kasetto.lock</code>. Commit the file and changes to your setup show
+            up in code review like any other diff. <code>--locked</code> installs from the lock
+            alone, without the network, and fails if the config has drifted from it.
           </>
         }
         link={{ href: "/docs/how-sync-works", label: "How sync works" }}
@@ -325,9 +327,9 @@ export default async function Page() {
         </h2>
         <div className="lp-feature-intro">
           <p className="lp-lede">
-            A single static binary for macOS, Linux, and Windows, with JSON output and real exit
-            codes for CI. It installs as both <code>kasetto</code> and the short alias{" "}
-            <code>kst</code>.
+            One static binary for macOS, Linux, and Windows, with JSON output and exit codes you can
+            build CI on. It installs as <code>kasetto</code> and as the short alias <code>kst</code>
+            .
           </p>
           <div className="lp-install-links">
             <Link href="/docs/installation" className="lp-textlink">
