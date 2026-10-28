@@ -565,8 +565,7 @@
 /* == Rosters: Forges, Vaults == */
 .lp-roster {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr);
   list-style: none;
   border-top: 1px solid var(--border);
 }
@@ -574,18 +573,18 @@
 .lp-roster li {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 11px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
-  font-size: var(--fs-md);
+  font-size: var(--fs-base);
   color: var(--fg);
 }
 
 .lp-roster svg {
   flex: none;
-  width: 17px;
-  height: 17px;
+  width: 20px;
+  height: 20px;
   color: var(--fg-muted);
 }
 
@@ -599,7 +598,7 @@
 .lp-roster-note {
   flex: none;
   margin-left: auto;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--fg-subtle);
 }
 
@@ -1896,7 +1895,6 @@
     display: none;
   }
 
-  .lp-roster,
   .lp-kinds {
     grid-template-columns: minmax(0, 1fr);
   }
