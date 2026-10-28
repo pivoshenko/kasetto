@@ -1,7 +1,6 @@
 import type { IconType } from "react-icons";
 import { GoBook, GoNote, GoPlug, GoTerminal } from "react-icons/go";
 
-// Discovery conventions mirror src/source/mod.rs
 const KINDS: { icon: IconType; name: string; desc: string }[] = [
   { icon: GoBook, name: "Skills", desc: "A directory with a SKILL.md, copied as is" },
   {

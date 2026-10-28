@@ -55,21 +55,21 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // /docs/<slug>.md → raw Markdown source, served by app/docs-md
+      // /docs/<slug>.md -> raw Markdown source, served by app/docs-md
       { source: "/docs/:path*.md", destination: "/docs-md/:path*" },
       { source: "/docs.md", destination: "/docs-md" },
     ];
   },
   async redirects() {
     return [
-      // docs.kasetto.dev/ → kasetto.dev/docs
+      // docs.kasetto.dev/ -> kasetto.dev/docs
       {
         source: "/",
         has: docsHost,
         destination: "https://kasetto.dev/docs",
         permanent: true,
       },
-      // docs.kasetto.dev/<slug>(/) → kasetto.dev/docs/<slug>
+      // docs.kasetto.dev/<slug>(/) -> kasetto.dev/docs/<slug>
       ...DOC_SLUGS.flatMap((slug) => [
         {
           source: `/${slug}`,
