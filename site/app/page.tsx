@@ -9,7 +9,7 @@ import { HeroTerminal } from "./components/hero-terminal";
 import { JsonLd } from "./components/json-ld";
 import { AssetKinds } from "./components/landing/asset-kinds";
 import { AuditGate, AuditPolicy } from "./components/landing/audit-gate";
-import { ForgeList } from "./components/landing/forge-wall";
+import { ForgeWall } from "./components/landing/forge-wall";
 import { HeroCassette } from "./components/landing/hero-cassette";
 import { LockDiff, LockExample } from "./components/landing/lock-example";
 import { VaultList } from "./components/landing/secret-providers";
@@ -184,7 +184,6 @@ export default async function Page() {
       {/* == Declare == */}
       <Feature
         id="declare"
-        split="5-7"
         title={
           <>
             See everything in <em>one file</em>
@@ -193,38 +192,27 @@ export default async function Page() {
         body={
           <>
             <code>kasetto.yaml</code> is the full inventory of your AI environment: every skill,
-            slash command, MCP, and instruction, and the repo each one comes from. Four kinds of
-            asset, each written where the agent looks for it, in the agent&apos;s own format.
+            slash command, MCP, and instruction, and the repo each one comes from.{" "}
+            <code>kst sync</code> makes any machine match it: fetch each source, write every asset
+            where the agent expects it, change only what differs.
           </>
         }
         link={{ href: "/docs/configuration", label: "Configuration reference" }}
-        aside={<AssetKinds />}
+        aside={<HeroTerminal />}
       >
         <ConfigExample />
       </Feature>
 
-      {/* == Sync == */}
-      <Feature
-        id="sync"
-        split="7-5"
-        title={
-          <>
-            The same setup on <em>every machine</em>
-          </>
-        }
-        body={
-          <>
-            <code>kst sync</code> makes a machine match the lock: fetch each source, write every
-            asset where the agent expects it, change only what differs. A new teammate runs one
-            command and has the environment everyone else already has. Sources come from any forge,
-            public or private, or a local path.
-          </>
-        }
-        link={{ href: "/docs/commands", label: "Command reference" }}
-        aside={<ForgeList />}
-      >
-        <HeroTerminal />
-      </Feature>
+      {/* == Assets and Sources == */}
+      <section id="sources" className="lp-section" aria-labelledby="sources-title">
+        <div className="lp-section-head">
+          <h2 id="sources-title" className="lp-h2 display">
+            From any forge <em>to every agent</em>
+          </h2>
+        </div>
+        <AssetKinds />
+        <ForgeWall />
+      </section>
 
       {/* == Lock == */}
       <Feature
