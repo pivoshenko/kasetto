@@ -24,7 +24,7 @@ export function HeroCassette({ className }: { className?: string }) {
       viewBox="-8 4 116 92"
       className={className}
       role="img"
-      aria-label="An isometric cassette labelled kasetto.yaml, side A: skills, commands, MCP, instructions"
+      aria-label="An isometric cassette labelled kasetto.yaml, side A: skills, commands, MCPs, instructions"
     >
       <defs>
         <linearGradient id={`${id}-top`} x1="0" y1="0" x2="1" y2="1">
@@ -120,10 +120,10 @@ export function HeroCassette({ className }: { className?: string }) {
               y="26.2"
               fontSize="2.15"
               opacity=".8"
-              textLength="50.6"
+              textLength="51.9"
               lengthAdjust="spacingAndGlyphs"
             >
-              SKILLS / COMMANDS / MCP / INSTRUCTIONS
+              SKILLS / COMMANDS / MCPs / INSTRUCTIONS
             </text>
             {REELS.map((r) => (
               <g key={r.cx} className="lp-reel">
