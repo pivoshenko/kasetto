@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.12.0] - 2026-10-28
+
+### Bug fixes
+
+- **site**: Keep the production opengraph image
+- **site**: Allow eval under the csp in development so client bundles load
+- **site**: Close the gap between the docs link and the nav rule
+- **site**: Centre the nav rule, tighten heading word gaps, ground the cassette shadow
+- **site**: Derive the docs-domain redirects from meta.json
+- **site**: Refuse to proxy a failed install script download
+- **audit**: Address review findings
+- **audit**: Keep resolved secrets out of package lookups
+
+### Documentation
+
+- Make AGENTS.md the instruction file and drop CLAUDE.md
+- Call MCP servers MCPs across the docs and site metadata
+
+### Features
+
+- **site**: Rewrite the landing copy in plainer prose
+- **site**: Title the audit section as a security and audit layer
+- **site**: Retitle the audit and lock sections in plainer words
+- **site**: Retitle the secrets pane and drop its tag
+- **site**: Rule the docs link off from the repository block
+- **site**: Set the jump links apart from the agent ribbon
+- **site**: Move the docs link to the right of the nav
+- **site**: Send a content security policy
+- **site**: Keep the hero tagline on one line
+- **site**: Print MCPs on the cassette label
+- **site**: Set the jump links in title case with ampersands
+- **site**: Separate the jump links with vertical rules
+- **site**: Retitle the lock section around reproducibility
+- **site**: Retitle the sources section
+- **site**: Put audit before lock and name the jump links in full
+- **site**: Lay the vault roster out in two columns
+- **site**: Drop the CLI label from the vault roster
+- **site**: Enlarge the vault roster and move secrets under the forge section
+- **site**: Quiet the asset-kinds band to a dark pane with a label stripe
+- **site**: Print the asset kinds on a cassette-label band
+- **site**: Set asset kinds as an open legend row above the forge wall
+- **site**: Present asset kinds as plain cells without paths
+- **site**: Center the section jump links
+- **site**: Bring back the agent ribbon and add section jump links
+- **site**: Match hero buttons and pane heights, label private tokens and installers
+- **site**: Align the install section and pane heights with the feature rows
+- **site**: Pair the config with the sync terminal and group assets with forges
+- **site**: Pair each landing feature with a second visual, drop the bullets
+- **site**: Rework the landing with audit, secrets, and source walls
+- **site**: Rebrand the site around the cassette mark
+- **site**: Add security audit to the feature list
+- **audit**: Add deps.dev health signals for mcp packages
+- **audit**: Audit installed skills and mcp servers
+
+### Performance
+
+- **site**: Drop the unused archivo font and its stretch token
+
+### Refactor
+
+- **site**: Drop comments that restate the code
+- **site**: Share one github client, stream nav stats, use next/link
+
 ## [3.11.0] - 2026-10-15
 
 ### Bug fixes
@@ -30,6 +93,10 @@ All notable changes to this project will be documented in this file.
 
 - **site**: Sort imports
 - Apply just format
+
+### Release
+
+- V3.11.0
 
 ## [3.10.2] - 2026-10-15
 

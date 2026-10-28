@@ -746,7 +746,7 @@ dependencies = [
 
 [[package]]
 name = "kasetto"
-version = "3.11.0"
+version = "3.12.0"
 dependencies = [
  "assert_cmd",
  "clap",
