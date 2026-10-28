@@ -1,0 +1,95 @@
+/* Cassette: dark-only, warm tape-stock greys with amber tape gold and a violet brand hue. Raw hex mirrors lib/palette.ts, which the off-DOM next/og renderers read
+   because they cannot resolve CSS variables. Change a color in both places */
+:root {
+  /* == Surfaces == */
+  --bg: #1f1f1e;
+  --bg-elevated: #262625;
+  --bg-raise: #2e2e2c;
+  --border: #373634;
+  --border-strong: #46443f;
+
+  /* == Text == */
+  --fg: #e4e2de;
+  --fg-muted: #a8a195;
+  --fg-subtle: #6e6759;
+
+  /* == Brand == */
+  --accent: #e8a94d;
+  --accent-2: #b6a6ef;
+  --accent-3: #7a68c2;
+  --accent-deep: #3a2f6e;
+  --on-accent: #1f1f1e;
+
+  /* == Status: Mirrors the CLI Roles in src/colors.rs == */
+  --success: #84c578;
+  --danger: #e87e6c;
+  --warning: #e8a94d;
+  --info: #6cbfd3;
+
+  /* == Type == */
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
+  /* Archivo's wdth axis: display copy runs expanded, body copy stays at normal width */
+  --display-stretch: 125%;
+  --display-weight: 500;
+  --display-tracking: -0.02em;
+
+  --fs-xs: 11px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-base: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+
+  /* == Spacing (4px Base) == */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-18: 72px;
+
+  --tracking-tight: 0.02em;
+  --tracking-normal: 0.04em;
+  --tracking-wide: 0.14em;
+  --tracking-wider: 0.22em;
+  --tracking-widest: 0.32em;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Film grain, the analog texture cue shared by the hero art and tiles */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-opacity: 0.03;
+}
+
+/* == Fumadocs Theme Bridge == */
+/* Fumadocs reads bare HSL triples */
+:root {
+  --fd-background: 60 2% 12%; /* --bg #1f1f1e */
+  --fd-foreground: 40 10% 88%; /* --fg #e4e2de */
+  --fd-card: 60 1% 15%; /* --bg-elevated #262625 */
+  --fd-card-foreground: 40 10% 88%;
+  --fd-popover: 60 1% 15%;
+  --fd-popover-foreground: 40 10% 88%;
+  --fd-primary: 36 77% 61%; /* --accent #e8a94d */
+  --fd-primary-foreground: 60 2% 12%;
+  --fd-secondary: 60 2% 18%; /* --bg-raise #2e2e2c */
+  --fd-secondary-foreground: 40 10% 88%;
+  --fd-muted: 60 1% 15%;
+  --fd-muted-foreground: 38 10% 62%; /* --fg-muted #a8a195 */
+  --fd-accent: 60 2% 18%;
+  --fd-accent-foreground: 40 10% 88%;
+  --fd-border: 40 3% 21%; /* --border #373634 */
+  --fd-ring: 36 77% 61%;
+}

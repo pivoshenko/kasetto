@@ -2,6 +2,7 @@ import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import type { Code, Root } from "mdast";
 import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
+import { cassetteTheme } from "./lib/shiki-theme";
 
 export const docs = defineDocs({
   dir: "content/docs",
@@ -31,9 +32,10 @@ export default defineConfig({
   mdxOptions: {
     remarkPlugins: [remarkMermaid],
     rehypeCodeOptions: {
+      // The site is dark only, so both slots take the same theme
       themes: {
-        light: "catppuccin-latte",
-        dark: "catppuccin-mocha",
+        light: cassetteTheme,
+        dark: cassetteTheme,
       },
     },
   },

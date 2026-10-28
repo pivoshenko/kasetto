@@ -76,10 +76,10 @@ const COUNTS = (() => {
 })();
 
 function glyphFor(s: Status | undefined): { g: string; cls: string } {
-  if (!s) return { g: "✓", cls: "t-faint" };
-  if (s.s === "updated") return { g: "↑", cls: "t-amber" };
-  if (s.s === "added") return { g: "+", cls: "t-green" };
-  return { g: "−", cls: "t-red" };
+  if (!s) return { g: "✓", cls: "t-subtle" };
+  if (s.s === "updated") return { g: "↑", cls: "t-accent" };
+  if (s.s === "added") return { g: "+", cls: "t-success" };
+  return { g: "−", cls: "t-danger" };
 }
 
 // scene "sync" runs the original kst sync animation; "edit" runs the
@@ -123,7 +123,7 @@ function SyncScene({
         <span className="t-prompt">❯</span>
         <span>
           <span className="t-fg">kst </span>
-          <span className="t-amber">{typed > 4 ? SYNC_COMMAND.slice(4, typed) : ""}</span>
+          <span className="t-accent">{typed > 4 ? SYNC_COMMAND.slice(4, typed) : ""}</span>
         </span>
         {typingCursor && <span className="t-cursor" aria-hidden />}
       </div>
@@ -133,7 +133,7 @@ function SyncScene({
           {phase === "resolving" ? (
             <span className="t-spin" aria-hidden />
           ) : (
-            <span className="t-green">✓</span>
+            <span className="t-success">✓</span>
           )}
           <span>
             {phase === "resolving" ? (
@@ -141,8 +141,8 @@ function SyncScene({
             ) : (
               <span>
                 <span className="t-fg">Resolved </span>
-                <span className="t-amber">{GROUPS.length} sources</span>
-                <span className="t-dim"> · {TOTAL} items</span>
+                <span className="t-accent">{GROUPS.length} sources</span>
+                <span className="t-muted"> · {TOTAL} items</span>
               </span>
             )}
           </span>
@@ -160,11 +160,11 @@ function SyncScene({
             <div key={g.repo} className="t-group">
               <div className="t-srch">
                 {past ? (
-                  <span className="t-green">✓</span>
+                  <span className="t-success">✓</span>
                 ) : (
                   <span className="t-spin" aria-hidden />
                 )}
-                <span className="t-cyan">{g.repo}</span>
+                <span className="t-info">{g.repo}</span>
               </div>
               {g.items.map((slug, i) => {
                 const isLast = i === g.items.length - 1;
@@ -174,13 +174,13 @@ function SyncScene({
                 const { g: gl, cls } = glyphFor(st);
                 return (
                   <div key={slug} className="t-row">
-                    <span className="t-faint">{isLast ? "└─" : "├─"}</span>
+                    <span className="t-subtle">{isLast ? "└─" : "├─"}</span>
                     <span className={cls}>{gl}</span>
                     <span className="t-label">
-                      {!st && <span className="t-faint">unchanged</span>}
-                      {st?.s === "updated" && <span className="t-amber">updated</span>}
-                      {st?.s === "added" && <span className="t-green">added</span>}
-                      {st?.s === "removed" && <span className="t-red">removed</span>}
+                      {!st && <span className="t-subtle">unchanged</span>}
+                      {st?.s === "updated" && <span className="t-accent">updated</span>}
+                      {st?.s === "added" && <span className="t-success">added</span>}
+                      {st?.s === "removed" && <span className="t-danger">removed</span>}
                     </span>
                     <strong className={st?.s === "removed" ? "t-strike" : "t-fg"}>{slug}</strong>
                     <span className="t-detail">
@@ -199,21 +199,21 @@ function SyncScene({
           <span />
           <span>
             {"  "}
-            <span className="t-amber">●</span>
+            <span className="t-accent">●</span>
             <span className="t-fg"> {COUNTS.updated} </span>
-            <span className="t-dim">updated</span>
+            <span className="t-muted">updated</span>
             {"  "}
-            <span className="t-green">●</span>
+            <span className="t-success">●</span>
             <span className="t-fg"> {COUNTS.added} </span>
-            <span className="t-dim">added</span>
+            <span className="t-muted">added</span>
             {"  "}
-            <span className="t-red">●</span>
+            <span className="t-danger">●</span>
             <span className="t-fg"> {COUNTS.removed} </span>
-            <span className="t-dim">removed</span>
+            <span className="t-muted">removed</span>
             {"  "}
-            <span className="t-faint">●</span>
+            <span className="t-subtle">●</span>
             <span className="t-fg"> {COUNTS.unchanged} </span>
-            <span className="t-dim">unchanged</span>
+            <span className="t-muted">unchanged</span>
           </span>
         </div>
       )}
@@ -475,10 +475,8 @@ export function HeroTerminal() {
       aria-label="Example kst sync, then kst add and kst remove output"
     >
       <div className="hero-terminal-bar">
-        <span className="hero-terminal-dot" />
-        <span className="hero-terminal-dot" />
-        <span className="hero-terminal-dot" />
         <span className="hero-terminal-title">~/dev/kasetto</span>
+        <span className="hero-terminal-tag">terminal</span>
       </div>
       <div className="hero-terminal-body">
         <div className="t-stage">
@@ -502,7 +500,7 @@ export function HeroTerminal() {
                     <span className="t-prompt">❯</span>
                     <span>
                       <span className="t-fg">kst </span>
-                      <span className="t-amber">
+                      <span className="t-accent">
                         {addTyped > 4 ? ADD_COMMAND.slice(4, addTyped) : ""}
                       </span>
                     </span>
@@ -515,7 +513,7 @@ export function HeroTerminal() {
                     <span />
                     <span>
                       <span className="t-fg">Adding </span>
-                      <span className="t-cyan">{ADD_SOURCE}</span>
+                      <span className="t-info">{ADD_SOURCE}</span>
                       <span className="t-fg"> to skills</span>
                     </span>
                   </div>
@@ -526,7 +524,7 @@ export function HeroTerminal() {
                     {step === "add-resolving" ? (
                       <span className="t-spin" aria-hidden />
                     ) : (
-                      <span className="t-green">✓</span>
+                      <span className="t-success">✓</span>
                     )}
                     <span>
                       {step === "add-resolving" ? (
@@ -534,8 +532,8 @@ export function HeroTerminal() {
                       ) : (
                         <span>
                           <span className="t-fg">Resolved </span>
-                          <span className="t-amber">1 source</span>
-                          <span className="t-dim"> · 1 item</span>
+                          <span className="t-accent">1 source</span>
+                          <span className="t-muted"> · 1 item</span>
                         </span>
                       )}
                     </span>
@@ -546,18 +544,18 @@ export function HeroTerminal() {
                   <div className="t-group">
                     <div className="t-srch">
                       {past("add-running") ? (
-                        <span className="t-green">✓</span>
+                        <span className="t-success">✓</span>
                       ) : (
                         <span className="t-spin" aria-hidden />
                       )}
-                      <span className="t-cyan">{ADD_REPO}</span>
+                      <span className="t-info">{ADD_REPO}</span>
                     </div>
                     {addItemShown && (
                       <div className="t-row">
-                        <span className="t-faint">└─</span>
-                        <span className="t-green">+</span>
+                        <span className="t-subtle">└─</span>
+                        <span className="t-success">+</span>
                         <span className="t-label">
-                          <span className="t-green">added</span>
+                          <span className="t-success">added</span>
                         </span>
                         <strong className="t-fg">{ADD_ITEM}</strong>
                         <span className="t-detail">v1.2.0</span>
@@ -571,9 +569,9 @@ export function HeroTerminal() {
                     <span />
                     <span>
                       {"  "}
-                      <span className="t-green">●</span>
+                      <span className="t-success">●</span>
                       <span className="t-fg"> 1 </span>
-                      <span className="t-dim">added</span>
+                      <span className="t-muted">added</span>
                     </span>
                   </div>
                 )}
@@ -583,7 +581,7 @@ export function HeroTerminal() {
                     <span className="t-prompt">❯</span>
                     <span>
                       <span className="t-fg">kst </span>
-                      <span className="t-amber">
+                      <span className="t-accent">
                         {rmTyped > 4 ? REMOVE_COMMAND.slice(4, rmTyped) : ""}
                       </span>
                     </span>
@@ -596,7 +594,7 @@ export function HeroTerminal() {
                     <span />
                     <span>
                       <span className="t-fg">Removing </span>
-                      <span className="t-cyan">{REMOVE_SOURCE}</span>
+                      <span className="t-info">{REMOVE_SOURCE}</span>
                       <span className="t-fg"> from skills</span>
                     </span>
                   </div>
@@ -607,7 +605,7 @@ export function HeroTerminal() {
                     {step === "rm-resolving" ? (
                       <span className="t-spin" aria-hidden />
                     ) : (
-                      <span className="t-green">✓</span>
+                      <span className="t-success">✓</span>
                     )}
                     <span>
                       {step === "rm-resolving" ? (
@@ -615,8 +613,8 @@ export function HeroTerminal() {
                       ) : (
                         <span>
                           <span className="t-fg">Resolved </span>
-                          <span className="t-amber">1 source</span>
-                          <span className="t-dim"> · 1 item</span>
+                          <span className="t-accent">1 source</span>
+                          <span className="t-muted"> · 1 item</span>
                         </span>
                       )}
                     </span>
@@ -627,18 +625,18 @@ export function HeroTerminal() {
                   <div className="t-group">
                     <div className="t-srch">
                       {past("rm-running") ? (
-                        <span className="t-green">✓</span>
+                        <span className="t-success">✓</span>
                       ) : (
                         <span className="t-spin" aria-hidden />
                       )}
-                      <span className="t-cyan">{REMOVE_REPO}</span>
+                      <span className="t-info">{REMOVE_REPO}</span>
                     </div>
                     {rmItemShown && (
                       <div className="t-row">
-                        <span className="t-faint">└─</span>
-                        <span className="t-red">−</span>
+                        <span className="t-subtle">└─</span>
+                        <span className="t-danger">−</span>
                         <span className="t-label">
-                          <span className="t-red">removed</span>
+                          <span className="t-danger">removed</span>
                         </span>
                         <strong className="t-fg t-strike">{REMOVE_ITEM}</strong>
                         <span className="t-detail" />
@@ -652,9 +650,9 @@ export function HeroTerminal() {
                     <span />
                     <span>
                       {"  "}
-                      <span className="t-red">●</span>
+                      <span className="t-danger">●</span>
                       <span className="t-fg"> 1 </span>
-                      <span className="t-dim">removed</span>
+                      <span className="t-muted">removed</span>
                     </span>
                   </div>
                 )}

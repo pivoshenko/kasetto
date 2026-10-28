@@ -1,8 +1,6 @@
-"use client";
+import { AgentIcon } from "./landing/agent-icon";
 
-import { useState } from "react";
-
-const AGENTS = [
+export const AGENTS = [
   { name: "Claude Code", value: "claude-code" },
   { name: "Cursor", value: "cursor" },
   { name: "Codex", value: "codex" },
@@ -28,34 +26,27 @@ const AGENTS = [
   { name: "ZCode", value: "zcode" },
 ];
 
-const INITIAL = 4;
-
 export function AgentsGrid() {
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? AGENTS : AGENTS.slice(0, INITIAL);
-  const remaining = AGENTS.length - INITIAL;
-
   return (
-    <div className="grid-box">
-      <div className="agents-header">
-        <span>{AGENTS.length} PRESETS, BUILT IN</span>
-      </div>
-      <div className="agents-cells">
-        {visible.map((agent) => (
-          <div key={agent.value} className="agent-cell">
-            {agent.name.toUpperCase()}
-          </div>
-        ))}
-        {showAll &&
-          Array.from({ length: (4 - (AGENTS.length % 4)) % 4 }).map((_, i) => (
-            <div key={`filler-${i}`} className="agent-cell agent-cell--empty" />
-          ))}
-      </div>
-      {!showAll && (
-        <button type="button" className="show-more-row" onClick={() => setShowAll(true)}>
-          + SHOW {remaining} MORE
-        </button>
-      )}
-    </div>
+    <ul className="lp-wall">
+      {AGENTS.map((agent) => (
+        <li key={agent.value} className="lp-wall-cell">
+          <AgentIcon preset={agent.value} name={agent.name} className="lp-wall-icon" />
+          <span className="lp-wall-name">{agent.name}</span>
+          <code className="lp-wall-preset">{agent.value}</code>
+        </li>
+      ))}
+      <li className="lp-wall-cell lp-wall-cell--ask">
+        <a
+          href="https://github.com/pivoshenko/kasetto/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="lp-wall-ask"
+        >
+          <span className="lp-wall-name">Your agent?</span>
+          <span className="lp-wall-preset">Open an issue -&gt;</span>
+        </a>
+      </li>
+    </ul>
   );
 }

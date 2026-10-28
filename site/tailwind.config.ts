@@ -12,8 +12,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        mono: ["JetBrains Mono", "Menlo", "Consolas", "monospace"],
-        sans: ["DM Sans", "system-ui", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "Menlo", "Consolas", "monospace"],
+        sans: ["var(--font-archivo)", "Helvetica Neue", "Arial", "sans-serif"],
       },
     },
   },
