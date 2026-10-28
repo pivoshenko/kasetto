@@ -1,66 +1,57 @@
+import Link from "next/link";
+import { Suspense } from "react";
 import { FaGithub } from "react-icons/fa";
 import { GoArrowUpRight, GoStarFill, GoTag } from "react-icons/go";
 import { IoMenuOutline } from "react-icons/io5";
+import { getLatestRelease, getStars } from "@/lib/github";
+import { REPO_URL } from "@/lib/site";
 import { BrandLogo } from "./brand-mark";
 
-const REPO_URL = "https://github.com/pivoshenko/kasetto";
-
-async function getRepoMeta(): Promise<{ stars: string | null; version: string | null }> {
+/** The star count and release tag beside the repository name; streams in after the shell. */
+async function RepoStats() {
   const [stars, version] = await Promise.all([getStars(), getLatestRelease()]);
-  return { stars, version };
+  return (
+    <>
+      {stars && (
+        <span className="top-nav-repo-stat">
+          <GoStarFill className="top-nav-star" aria-hidden />
+          {stars}
+        </span>
+      )}
+      {version && (
+        <span className="top-nav-repo-stat top-nav-version">
+          <GoTag className="top-nav-tag" aria-hidden />
+          {version}
+        </span>
+      )}
+    </>
+  );
 }
 
-async function getStars(): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/pivoshenko/kasetto", {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { stargazers_count: number };
-    const n = data.stargazers_count;
-    return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
-  } catch {
-    return null;
-  }
+async function MenuVersion() {
+  const version = await getLatestRelease();
+  return version ? <span className="top-nav-menu-meta">{version}</span> : null;
 }
 
-async function getLatestRelease(): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/pivoshenko/kasetto/releases/latest", {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { tag_name?: string };
-    return data.tag_name ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function TopNav() {
-  const { stars, version } = await getRepoMeta();
-  const repoLabel = [
-    "Kasetto on GitHub",
-    stars && `${stars} stars`,
-    version && `latest release ${version}`,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
+/**
+ * The nav renders synchronously; the GitHub numbers are the only async part and sit in their
+ * own Suspense boundaries, so a cache miss there never delays the first byte of a page.
+ */
+export function TopNav() {
   return (
     <header className="top-nav">
       <nav className="top-nav-inner" aria-label="Main">
-        <a href="/" className="top-nav-brand" aria-label="Kasetto home">
+        <Link href="/" className="top-nav-brand" aria-label="Kasetto home">
           <BrandLogo className="brand-logo" />
           <span className="top-nav-wordmark">kasetto</span>
-        </a>
+        </Link>
 
         <ul className="top-nav-links">
           <li>
-            <a href="/docs" className="top-nav-link">
+            <Link href="/docs" className="top-nav-link">
               Docs
               <GoArrowUpRight className="top-nav-arrow" aria-hidden />
-            </a>
+            </Link>
           </li>
         </ul>
 
@@ -69,22 +60,13 @@ export async function TopNav() {
           className="top-nav-repo"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={repoLabel}
+          aria-label="Kasetto on GitHub"
         >
           <FaGithub className="top-nav-repo-icon" aria-hidden />
           <span className="top-nav-repo-name">pivoshenko/kasetto</span>
-          {stars && (
-            <span className="top-nav-repo-stat">
-              <GoStarFill className="top-nav-star" aria-hidden />
-              {stars}
-            </span>
-          )}
-          {version && (
-            <span className="top-nav-repo-stat top-nav-version">
-              <GoTag className="top-nav-tag" aria-hidden />
-              {version}
-            </span>
-          )}
+          <Suspense>
+            <RepoStats />
+          </Suspense>
         </a>
 
         {/* A native disclosure keeps the mobile menu usable without client JS */}
@@ -94,12 +76,14 @@ export async function TopNav() {
           </summary>
           <ul className="top-nav-menu-panel">
             <li>
-              <a href="/docs">Docs</a>
+              <Link href="/docs">Docs</Link>
             </li>
             <li>
               <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
                 GitHub
-                {version && <span className="top-nav-menu-meta">{version}</span>}
+                <Suspense>
+                  <MenuVersion />
+                </Suspense>
               </a>
             </li>
           </ul>
