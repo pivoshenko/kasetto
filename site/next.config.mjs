@@ -8,6 +8,23 @@ const DOC_SLUGS = meta.pages.filter((slug) => slug !== "index" && !slug.startsWi
 
 const docsHost = [{ type: "host", value: "docs.kasetto.dev" }];
 
+// Scripts and styles need 'unsafe-inline' for Next's own bootstrap, the JSON-LD blocks, and
+// mermaid; everything else is pinned to this origin plus Vercel's analytics hosts
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https://backlinklog.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+  "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join("; ");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,6 +33,7 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: CSP },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
