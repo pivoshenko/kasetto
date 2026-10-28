@@ -19,16 +19,12 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
 });
 
-const DESCRIPTION =
-  "One YAML file for the skills, commands, MCPs, and instructions your AI agents use. Kasetto installs them on any machine and pins every install in a lock file.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     template: "%s - Kasetto",
     default: "Kasetto - Declarative AI Agent Environment Manager",
   },
-  description: DESCRIPTION,
   alternates: {
     canonical: "/",
   },
@@ -37,13 +33,11 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: "Kasetto",
     title: "Kasetto - Declarative AI Agent Environment Manager",
-    description: DESCRIPTION,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "Kasetto - Declarative AI Agent Environment Manager",
-    description: DESCRIPTION,
   },
 };
 
