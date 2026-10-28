@@ -1,3 +1,4 @@
+import { GoArrowRight, GoPlus } from "react-icons/go";
 import { AgentIcon } from "./landing/agent-icon";
 
 export const AGENTS = [
@@ -33,7 +34,6 @@ export function AgentsGrid() {
         <li key={agent.value} className="lp-wall-cell">
           <AgentIcon preset={agent.value} name={agent.name} className="lp-wall-icon" />
           <span className="lp-wall-name">{agent.name}</span>
-          <code className="lp-wall-preset">{agent.value}</code>
         </li>
       ))}
       <li className="lp-wall-cell lp-wall-cell--ask">
@@ -43,8 +43,12 @@ export function AgentsGrid() {
           rel="noopener noreferrer"
           className="lp-wall-ask"
         >
-          <span className="lp-wall-name">Your agent?</span>
-          <span className="lp-wall-preset">Open an issue -&gt;</span>
+          <span className="lp-wall-icon lp-wall-add" aria-hidden>
+            <GoPlus />
+          </span>
+          <span className="lp-wall-name">
+            Add yours <GoArrowRight className="lp-wall-arrow" aria-hidden />
+          </span>
         </a>
       </li>
     </ul>
