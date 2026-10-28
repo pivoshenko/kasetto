@@ -201,9 +201,11 @@
   align-self: start;
 }
 
+/* One line on desktop; the column is wide enough and a split tagline reads as two thoughts */
 .lp-hero-lede {
+  max-width: none;
   margin-top: var(--space-6);
-  text-wrap: balance;
+  white-space: nowrap;
 }
 
 /* Two equal fr tracks in a fit-content grid both size to the wider button, so the pair matches */
@@ -1822,6 +1824,10 @@
   .lp-cassette {
     width: min(100%, 560px);
     margin: 0;
+  }
+
+  .lp-hero-lede {
+    white-space: normal;
   }
 
   .lp-feature,
