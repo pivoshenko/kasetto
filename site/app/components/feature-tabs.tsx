@@ -1,41 +1,3 @@
-const FEATURES = [
-  {
-    title: "Team baselines",
-    desc: "Publish a team config and have every project `extends` it. Everyone starts from the same skills and servers, then layers their own on top.",
-  },
-  {
-    title: "Private and enterprise repos",
-    desc: "Pull from GitHub, GitLab, Bitbucket, or self-hosted forges, public or private. Secrets resolve from `kst_*` placeholders at sync time, so they are never committed or locked.",
-  },
-  {
-    title: "Agent-agnostic",
-    desc: "Use Claude Code today and Cursor tomorrow, or both. Presets know where each agent keeps its files, so switching never means rebuilding your setup.",
-  },
-  {
-    title: "Four asset kinds",
-    desc: "Skills, commands, MCPs, and instructions from one source, transformed into each agent's native format and merged where agents share a file.",
-  },
-  {
-    title: "Fast",
-    desc: "Built in Rust. Content is hashed and diffed against the lock, so only what changed is touched. Syncs finish in seconds.",
-  },
-  {
-    title: "Same everywhere",
-    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes, so your laptop and CI behave the same.",
-  },
-  {
-    title: "Security audit",
-    desc: "Know what you installed. Skills take skills.sh partner verdicts; MCP servers get offline launch checks plus OSV and deps.dev lookups. `kst audit` reports, `--audit` turns any sync into a gate.",
-  },
-];
-
-// Renders `code` spans in feature copy without pulling in a markdown parser
-function inlineCode(text: string) {
-  return text
-    .split("`")
-    .map((part, i) => (i % 2 === 1 ? <code key={i}>{part}</code> : <span key={i}>{part}</span>));
-}
-
 type Token = { t: string; v?: string };
 
 // kasetto-config:start - generated from kasetto.example.yaml; run `just sync-config`
@@ -304,20 +266,6 @@ function renderTokens(tokens: Token[]) {
       <span>{line}</span>
     </div>
   ));
-}
-
-export function FeatureList() {
-  return (
-    <ol className="lp-grid">
-      {FEATURES.map((f, i) => (
-        <li key={f.title} className="lp-grid-cell">
-          <span className="lp-grid-index">{String(i + 1).padStart(2, "0")}</span>
-          <h3 className="lp-grid-title display">{f.title}</h3>
-          <p className="lp-grid-desc">{inlineCode(f.desc)}</p>
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 export function ConfigExample() {
