@@ -489,13 +489,6 @@
   padding-block: var(--lp-section-pad-top) var(--lp-section-pad);
 }
 
-.lp-feature[data-flip] {
-  grid-template-areas:
-    "title title"
-    "intro intro"
-    "aside art";
-}
-
 .lp-feature[data-split="5-7"] {
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
@@ -636,8 +629,7 @@
   color: var(--fg);
 }
 
-.lp-pane-tag,
-.hero-terminal-tag {
+.lp-pane-tag {
   font-size: 11px;
   letter-spacing: var(--tracking-normal);
   text-transform: uppercase;
@@ -1831,7 +1823,6 @@
   }
 
   .lp-feature,
-  .lp-feature[data-flip],
   .lp-feature[data-split] {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
