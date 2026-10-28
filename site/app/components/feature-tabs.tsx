@@ -1,33 +1,40 @@
 const FEATURES = [
   {
-    title: "DECLARATIVE",
-    desc: "One YAML file: skills, commands, MCPs, and instructions. Apply globally or per project; compose with `extends`.",
+    title: "Team baselines",
+    desc: "Publish a team config and have every project `extends` it. Everyone starts from the same skills and servers, then layers their own on top.",
   },
   {
-    title: "ENTERPRISE & PRIVATE REPOSITORIES",
-    desc: "Pull from GitHub, GitLab, Bitbucket, or self-hosted repos, public or private. Secrets resolve from `kst_*` placeholders at sync time, so they're never committed or locked.",
+    title: "Private and enterprise repos",
+    desc: "Pull from GitHub, GitLab, Bitbucket, or self-hosted forges, public or private. Secrets resolve from `kst_*` placeholders at sync time, so they are never committed or locked.",
   },
   {
-    title: "MULTI-AGENT",
-    desc: "Write once, ship everywhere. Claude Code, Cursor, Codex, Copilot: one sync keeps every agent current.",
+    title: "Agent-agnostic",
+    desc: "Use Claude Code today and Cursor tomorrow, or both. Presets know where each agent keeps its files, so switching never means rebuilding your setup.",
   },
   {
-    title: "SKILLS, COMMANDS, MCPS & INSTRUCTIONS",
-    desc: "All four asset kinds from one source, transformed into each agent's native format and auto-merged. Share tools and prompts like a repo link.",
+    title: "Four asset kinds",
+    desc: "Skills, commands, MCPs, and instructions from one source, transformed into each agent's native format and merged where agents share a file.",
   },
   {
-    title: "SPEED",
-    desc: "Built in Rust. Content is hashed and diffed against a lock file, so only what changed is touched. Syncs finish in seconds.",
+    title: "Fast",
+    desc: "Built in Rust. Content is hashed and diffed against the lock, so only what changed is touched. Syncs finish in seconds.",
   },
   {
-    title: "UNIVERSAL",
-    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes. Same behavior on your laptop or in CI.",
+    title: "Same everywhere",
+    desc: "One static binary for macOS, Linux, and Windows. JSON output and real exit codes, so your laptop and CI behave the same.",
   },
   {
-    title: "SECURITY AUDIT",
+    title: "Security audit",
     desc: "Know what you installed. Skills take skills.sh partner verdicts; MCP servers get offline launch checks plus OSV and deps.dev lookups. `kst audit` reports, `--audit` turns any sync into a gate.",
   },
 ];
+
+// Renders `code` spans in feature copy without pulling in a markdown parser
+function inlineCode(text: string) {
+  return text
+    .split("`")
+    .map((part, i) => (i % 2 === 1 ? <code key={i}>{part}</code> : <span key={i}>{part}</span>));
+}
 
 type Token = { t: string; v?: string };
 
@@ -266,6 +273,14 @@ const CONFIG_LINES: Token[] = [
 ];
 // kasetto-config:end
 
+const TOKEN_CLASS: Record<string, string> = {
+  key: "sy-key",
+  str: "sy-str",
+  url: "sy-url",
+  cmt: "sy-cmt",
+  dash: "sy-dash",
+};
+
 function renderTokens(tokens: Token[]) {
   const lines: React.ReactNode[][] = [[]];
   let key = 0;
@@ -273,20 +288,8 @@ function renderTokens(tokens: Token[]) {
     if (tok.t === "nl") {
       lines.push([]);
     } else {
-      const cls =
-        tok.t === "key"
-          ? "sy-key"
-          : tok.t === "str"
-            ? "sy-str"
-            : tok.t === "url"
-              ? "sy-url"
-              : tok.t === "cmt"
-                ? "sy-cmt"
-                : tok.t === "dash"
-                  ? "sy-dash"
-                  : "sy-punct";
       lines[lines.length - 1].push(
-        <span key={key++} className={cls}>
+        <span key={key++} className={TOKEN_CLASS[tok.t] ?? "sy-punct"}>
           {tok.v}
         </span>
       );
@@ -295,32 +298,36 @@ function renderTokens(tokens: Token[]) {
   if (lines[lines.length - 1].length === 0) lines.pop();
   return lines.map((line, i) => (
     <div key={i} className="sy-line">
-      <span className="sy-ln">{i + 1}</span>
-      <span className="sy-line-content">{line}</span>
+      <span className="sy-ln" aria-hidden="true">
+        {i + 1}
+      </span>
+      <span>{line}</span>
     </div>
   ));
 }
 
 export function FeatureList() {
   return (
-    <div className="grid-box">
-      <div className="feat-grid">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="feat-cell">
-            <p className="feat-cell-title">{f.title}</p>
-            <p className="feat-cell-desc">{f.desc}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    <ol className="lp-grid">
+      {FEATURES.map((f, i) => (
+        <li key={f.title} className="lp-grid-cell">
+          <span className="lp-grid-index">{String(i + 1).padStart(2, "0")}</span>
+          <h3 className="lp-grid-title display">{f.title}</h3>
+          <p className="lp-grid-desc">{inlineCode(f.desc)}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
 export function ConfigExample() {
   return (
-    <div className="feat-code-block">
-      <div className="feat-code-header">kasetto.yaml</div>
-      <div className="feat-code-body">{renderTokens(CONFIG_LINES)}</div>
-    </div>
+    <figure className="lp-pane lp-pane--scroll">
+      <figcaption className="lp-pane-bar">
+        <span>kasetto.yaml</span>
+        <span className="lp-pane-tag">yaml</span>
+      </figcaption>
+      <div className="lp-pane-body lp-code">{renderTokens(CONFIG_LINES)}</div>
+    </figure>
   );
 }
