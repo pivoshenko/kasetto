@@ -1470,13 +1470,52 @@
   font-size: 15px;
 }
 
-.lp-wall.lp-wall--kinds,
 .lp-wall.lp-wall--forges {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: clamp(32px, 4vw, 48px);
 }
 
-.lp-wall.lp-wall--forges {
-  margin-top: var(--space-8);
+/* == Asset Kinds == */
+/* An open four-column row, no boxes: the forge wall below is the grid, this is the legend above it */
+.lp-kinds {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-6) var(--space-8);
+  list-style: none;
+}
+
+.lp-kind {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-strong);
+}
+
+.lp-kind-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lp-kind-head svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.lp-kind-name {
+  font-size: 21px;
+  line-height: 1.2;
+  color: var(--fg);
+}
+
+.lp-kind-desc {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--fg-muted);
 }
 
 .lp-wall-name {
@@ -1827,8 +1866,8 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .lp-wall.lp-wall--kinds,
-  .lp-wall.lp-wall--forges {
+  .lp-wall.lp-wall--forges,
+  .lp-kinds {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1842,7 +1881,8 @@
     display: none;
   }
 
-  .lp-roster {
+  .lp-roster,
+  .lp-kinds {
     grid-template-columns: minmax(0, 1fr);
   }
 
