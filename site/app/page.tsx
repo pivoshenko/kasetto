@@ -34,13 +34,13 @@ const INSTALL = [
 ];
 
 const JUMP = [
-  { href: "#declare", label: "Config" },
+  { href: "#declare", label: "Config and sync" },
   { href: "#sources", label: "Assets and sources" },
-  { href: "#secrets", label: "Secrets" },
-  { href: "#lock", label: "Lock file" },
-  { href: "#audit", label: "Audit" },
-  { href: "#agents", label: "Agents" },
-  { href: "#install", label: "Install" },
+  { href: "#secrets", label: "Secrets management" },
+  { href: "#audit", label: "Audit and security" },
+  { href: "#lock", label: "Lock and reproducibility" },
+  { href: "#agents", label: "Agents support" },
+  { href: "#install", label: "Installation" },
 ];
 
 const FOOTER = [
@@ -280,29 +280,6 @@ export default async function Page() {
         <SecretSources />
       </Feature>
 
-      {/* == Lock == */}
-      <Feature
-        id="lock"
-        split="7-5"
-        title={
-          <>
-            Know exactly <em>what is installed</em>
-          </>
-        }
-        body={
-          <>
-            Every sync records source, resolved revision, destination, and content hash in{" "}
-            <code>kasetto.lock</code>. Commit it, and every change to your AI environment shows up
-            in code review. <code>--locked</code> never touches the network and fails if the lock
-            cannot satisfy the config.
-          </>
-        }
-        link={{ href: "/docs/how-sync-works", label: "How sync works" }}
-        aside={<LockDiff />}
-      >
-        <LockExample />
-      </Feature>
-
       {/* == Audit == */}
       <Feature
         id="audit"
@@ -324,6 +301,29 @@ export default async function Page() {
         aside={<AuditPolicy />}
       >
         <AuditGate />
+      </Feature>
+
+      {/* == Lock == */}
+      <Feature
+        id="lock"
+        split="7-5"
+        title={
+          <>
+            Know exactly <em>what is installed</em>
+          </>
+        }
+        body={
+          <>
+            Every sync records source, resolved revision, destination, and content hash in{" "}
+            <code>kasetto.lock</code>. Commit it, and every change to your AI environment shows up
+            in code review. <code>--locked</code> never touches the network and fails if the lock
+            cannot satisfy the config.
+          </>
+        }
+        link={{ href: "/docs/how-sync-works", label: "How sync works" }}
+        aside={<LockDiff />}
+      >
+        <LockExample />
       </Feature>
 
       {/* == Agent Wall == */}
