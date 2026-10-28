@@ -1476,29 +1476,28 @@
 }
 
 /* == Asset Kinds == */
-/* The four kinds as the cassette label: the same amber-to-violet print as the hero tape, so the
-   row reads as "what is on the tape" rather than another grid of cells */
+/* The four kinds as the cassette label: one dark pane with the tape's amber-to-violet stripe
+   along its top edge, so the row reads as "what is on the tape" rather than another grid of cells */
 .lp-kinds {
   position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6) var(--space-8);
   padding: clamp(22px, 2.6vw, 30px) clamp(22px, 2.6vw, 32px);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-2) 58%, var(--accent-3) 100%);
-  color: var(--on-accent);
+  background: var(--bg-elevated);
+  box-shadow: var(--lp-lift);
   list-style: none;
   overflow: hidden;
 }
 
-.lp-kinds::after {
+.lp-kinds::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background-image: var(--grain);
-  opacity: 0.12;
-  mix-blend-mode: multiply;
-  pointer-events: none;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2) 58%, var(--accent-3));
 }
 
 .lp-kind {
@@ -1519,17 +1518,19 @@
   flex: none;
   width: 20px;
   height: 20px;
+  color: var(--accent);
 }
 
 .lp-kind-name {
   font-size: 21px;
   line-height: 1.2;
+  color: var(--fg);
 }
 
 .lp-kind-desc {
   font-size: var(--fs-md);
   line-height: 1.5;
-  opacity: 0.78;
+  color: var(--fg-muted);
 }
 
 .lp-wall-name {
