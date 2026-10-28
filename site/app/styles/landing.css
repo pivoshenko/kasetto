@@ -339,7 +339,7 @@
 }
 
 .lp-feature-intro .lp-lede {
-  max-width: 76ch;
+  max-width: none;
 }
 
 .lp-feature-intro .lp-textlink {
@@ -356,6 +356,11 @@
   min-width: 0;
 }
 
+/* A feature with no second visual gives its main one the whole row */
+.lp-feature-art:last-child {
+  grid-column: 1 / -1;
+}
+
 /* == Rosters: Forges, Vaults == */
 .lp-roster {
   display: grid;
@@ -363,10 +368,6 @@
   column-gap: var(--space-6);
   list-style: none;
   border-top: 1px solid var(--border);
-}
-
-.lp-roster[data-cols="1"] {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .lp-roster li {
@@ -443,7 +444,7 @@
 }
 
 .lp-pane--scroll .lp-pane-body {
-  max-height: 560px;
+  max-height: 680px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -1205,7 +1206,7 @@
 /* == Asset Kinds == */
 .lp-kinds {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   list-style: none;
   background: var(--border);
@@ -1357,10 +1358,23 @@
   font-size: 15px;
 }
 
+.lp-wall.lp-wall--forges {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: var(--space-8);
+}
+
 .lp-wall-name {
   font-size: var(--fs-md);
   font-weight: 500;
   color: var(--fg);
+}
+
+.lp-wall-note {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-subtle);
+  overflow-wrap: anywhere;
 }
 
 .lp-wall-cell--ask {
@@ -1663,6 +1677,10 @@
     margin-top: var(--space-6);
   }
 
+  .lp-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .lp-feature-title {
     white-space: normal;
   }
@@ -1687,6 +1705,10 @@
 @media (max-width: 760px) {
   .lp-wall {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lp-wall.lp-wall--forges {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
