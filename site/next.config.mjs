@@ -9,14 +9,16 @@ const DOC_SLUGS = meta.pages.filter((slug) => slug !== "index" && !slug.startsWi
 const docsHost = [{ type: "host", value: "docs.kasetto.dev" }];
 
 // Scripts and styles need 'unsafe-inline' for Next's own bootstrap, the JSON-LD blocks, and
-// mermaid; everything else is pinned to this origin plus Vercel's analytics hosts
+// mermaid; everything else is pinned to this origin plus Vercel's analytics hosts. The dev
+// runtime evaluates source maps and hot updates as strings, so only it gets 'unsafe-eval'
+const DEV_EVAL = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
+  `script-src 'self' 'unsafe-inline'${DEV_EVAL} https://va.vercel-scripts.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://backlinklog.com",
   "font-src 'self' data:",
