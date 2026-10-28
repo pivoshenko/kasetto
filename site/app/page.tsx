@@ -268,7 +268,7 @@ export default async function Page() {
         split="7-5"
         title={
           <>
-            Audit <em>what you install</em>
+            A security and audit layer <em>for your agent</em>
           </>
         }
         body={
