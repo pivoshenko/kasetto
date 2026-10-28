@@ -77,7 +77,7 @@ export function SecretSources() {
             <pre className="lp-inject-code">
               <span className="sy-key">hash</span>
               <span className="sy-punct">: </span>
-              <span className="sy-str">9b2e41e0…</span>
+              <span className="sy-str">9b2e41e0...</span>
               <span className="lp-inject-note"># of the placeholder</span>
             </pre>
           </div>

@@ -12,7 +12,7 @@ const FORGES: { icon: IconType; name: string; token?: string; note?: string }[] 
   { icon: SiGitea, name: "Gitea", token: "GITEA_TOKEN" },
   { icon: SiForgejo, name: "Forgejo", token: "FORGEJO_TOKEN" },
   { icon: FaServer, name: "Self-hosted", note: "GitHub Enterprise, GitLab, Gitea" },
-  { icon: FaFolderOpen, name: "Local path", note: "no network at all" },
+  { icon: FaFolderOpen, name: "Local path", note: "no network needed" },
 ];
 
 export function ForgeWall() {
