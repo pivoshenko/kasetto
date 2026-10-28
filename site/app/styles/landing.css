@@ -565,7 +565,8 @@
 /* == Rosters: Forges, Vaults == */
 .lp-roster {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-8);
   list-style: none;
   border-top: 1px solid var(--border);
 }
@@ -1888,7 +1889,8 @@
     display: none;
   }
 
-  .lp-kinds {
+  .lp-kinds,
+  .lp-roster {
     grid-template-columns: minmax(0, 1fr);
   }
 
