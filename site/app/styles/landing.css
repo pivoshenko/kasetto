@@ -441,8 +441,18 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px 28px;
+  gap: 6px 0;
   list-style: none;
+}
+
+/* A hairline between neighbours; the left edge of a wrapped row keeps none */
+.lp-jump li {
+  padding-inline: 14px;
+  border-left: 1px solid var(--border-strong);
+}
+
+.lp-jump li:first-child {
+  border-left: none;
 }
 
 .lp-jump a {
