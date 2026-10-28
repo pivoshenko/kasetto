@@ -268,7 +268,7 @@ export default async function Page() {
         split="7-5"
         title={
           <>
-            Catch a bad install <em>before it ships</em>
+            Audit <em>what you install</em>
           </>
         }
         body={
@@ -291,7 +291,7 @@ export default async function Page() {
         split="7-5"
         title={
           <>
-            Pin once, <em>reproduce anywhere</em>
+            Every install, <em>pinned in a lock file</em>
           </>
         }
         body={
