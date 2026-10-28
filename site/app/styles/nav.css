@@ -48,7 +48,6 @@
 
 .top-nav-wordmark {
   font-family: var(--font-display);
-  font-stretch: var(--display-stretch);
   font-weight: var(--display-weight);
   letter-spacing: var(--display-tracking);
   font-size: var(--fs-lg);

@@ -2,7 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RootProvider } from "fumadocs-ui/provider";
 import type { Metadata } from "next";
-import { Archivo, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import { SITE_URL } from "@/lib/site";
 import { BackToTop } from "./components/back-to-top";
 import { TopNav } from "./components/top-nav";
@@ -12,14 +12,6 @@ import "./styles/base.css";
 import "./styles/nav.css";
 import "./styles/docs.css";
 import "./styles/landing.css";
-
-// The wdth axis carries the brand: display copy runs at 125%, body copy at 100%
-const archivo = Archivo({
-  subsets: ["latin"],
-  display: "swap",
-  axes: ["wdth"],
-  variable: "--font-archivo",
-});
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -59,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`dark ${archivo.variable} ${jetbrainsMono.variable}`}
+      className={`dark ${jetbrainsMono.variable}`}
       data-theme="dark"
       suppressHydrationWarning
     >
