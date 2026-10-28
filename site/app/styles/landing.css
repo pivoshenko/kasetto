@@ -425,18 +425,28 @@
 }
 
 /* == Section Jump Links == */
-/* Sits under the ribbon as one quiet row; its own bottom rule is the first feature's divider */
+/* Its own band, ruled top and bottom and set apart from the ribbon; the bottom rule doubles as
+   the first feature's divider */
 .lp-jump {
-  padding-block: 14px;
+  margin-top: var(--space-8);
+  padding-block: 16px;
 }
 
+.lp-jump::before,
 .lp-jump::after {
   content: "";
   position: absolute;
-  bottom: 0;
   inset-inline: var(--lp-gutter);
   height: 1px;
   background: var(--lp-rule);
+}
+
+.lp-jump::before {
+  top: 0;
+}
+
+.lp-jump::after {
+  bottom: 0;
 }
 
 .lp-jump ul {
