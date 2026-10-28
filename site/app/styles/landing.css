@@ -17,6 +17,8 @@
 
 /* Hosts for the fading dividers below */
 .lp-hero,
+.lp-strip,
+.lp-jump,
 .lp-feature,
 .lp-section,
 .lp-footer {
@@ -24,6 +26,8 @@
 }
 
 .lp-hero,
+.lp-strip,
+.lp-jump,
 .lp-feature,
 .lp-section,
 .lp-footer {
@@ -291,6 +295,170 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* == Agent Strip == */
+.lp-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.lp-strip > * {
+  padding-block: var(--space-6);
+}
+
+.lp-marquee {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.lp-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: lp-marquee 70s linear infinite;
+}
+
+/* Hovering or tabbing into the ribbon stops it so a name can be read */
+.lp-strip:hover .lp-marquee-track,
+.lp-strip:focus-within .lp-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes lp-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* padding-right equals the gap, so both copies are the same width and -50% lands on the seam */
+.lp-strip-list {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 40px;
+  padding-right: 40px;
+  list-style: none;
+}
+
+.lp-strip-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fg-subtle);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.lp-strip-list li:hover {
+  color: var(--fg);
+}
+
+.lp-strip-name {
+  font-size: var(--fs-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-marquee {
+    mask-image: none;
+  }
+
+  .lp-marquee-track {
+    width: auto;
+    animation: none;
+  }
+
+  .lp-strip-list {
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    gap: 14px 28px;
+    padding-right: 0;
+  }
+
+  .lp-strip-list[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+.lp-strip-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.lp-strip-more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  transition: color 0.15s ease;
+}
+
+.lp-strip-more:hover {
+  color: var(--accent);
+}
+
+.lp-strip-icon.lp-monogram {
+  font-size: 12px;
+}
+
+.lp-hero + .lp-strip::before,
+.lp-hero + .lp-strip::after {
+  content: "";
+  position: absolute;
+  inset-inline: var(--lp-gutter);
+  height: 1px;
+  background: var(--lp-rule);
+}
+
+.lp-hero + .lp-strip::before {
+  top: 0;
+}
+
+.lp-hero + .lp-strip::after {
+  bottom: 0;
+}
+
+/* == Section Jump Links == */
+/* Sits under the ribbon as one quiet row; its own bottom rule is the first feature's divider */
+.lp-jump {
+  padding-block: 14px;
+}
+
+.lp-jump::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  inset-inline: var(--lp-gutter);
+  height: 1px;
+  background: var(--lp-rule);
+}
+
+.lp-jump ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 28px;
+  list-style: none;
+}
+
+.lp-jump a {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  transition: color 0.15s ease;
+}
+
+.lp-jump a:hover {
+  color: var(--accent);
+}
+
+/* Jump targets stop below the sticky nav */
+.lp-feature,
+.lp-section {
+  scroll-margin-top: 72px;
 }
 
 /* == Feature Rows == */
@@ -1696,6 +1864,24 @@
 
   .lp-feature-aside {
     margin-top: var(--space-6);
+  }
+
+  .lp-strip {
+    flex-wrap: wrap;
+    gap: 0 var(--space-6);
+  }
+
+  .lp-marquee {
+    flex-basis: 100%;
+  }
+
+  .lp-marquee + .lp-strip-more {
+    padding-top: 0;
+  }
+
+  .lp-strip-more {
+    margin-left: auto;
+    padding-bottom: 0;
   }
 
   /* Stacked, the config pane has no neighbour to match, so it caps itself again */
