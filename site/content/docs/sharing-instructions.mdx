@@ -9,12 +9,12 @@ you use.
 
 ## The Drift Problem
 
-Instruction files are per-repository by design. Once you work in more than one repo, the copies
+Instruction files are per-repository by design. Once you work in more than one repository, the copies
 diverge: you fix a rule in one project's `CLAUDE.md` and the other four keep the old wording. Add a
 second agent and it doubles, because Cursor wants `.cursor/rules/*.mdc` while Claude Code wants
 `CLAUDE.md` and Codex wants `AGENTS.md`.
 
-Symlinking a shared file breaks down quickly. It cannot merge with the repo-specific content that
+Symlinking a shared file breaks down quickly. It cannot merge with the repository-specific content that
 belongs in the same file, it does not survive a fresh clone, and it has no notion of a version.
 
 Kasetto treats instructions as a synced asset kind, like skills and MCPs. You write each rule
@@ -23,7 +23,7 @@ once, and `kst sync` renders it into whatever shape each agent expects.
 ## Publish Instructions in a Repo
 
 An instruction is Markdown with optional YAML frontmatter, living in the source's `instructions/`
-directory. Any Git repository works - a dedicated one, or a folder inside a repo you already have.
+directory. Any Git repository works - a dedicated one, or a folder inside a repository you already have.
 
 ```markdown
 ---
@@ -112,7 +112,7 @@ kst sync --project   # writes ./CLAUDE.md, ./.cursor/rules/
 kst sync --global    # writes ~/.claude/CLAUDE.md, ~/.cursor/rules/
 ```
 
-Org-wide conventions usually belong in global scope, with repo-specific rules layered on top in
+Org-wide conventions usually belong in global scope, with repository-specific rules layered on top in
 project scope. Configs compose with `extends`, so a team base config can carry the shared set while
 each project adds its own - see [extending another config](/docs/configuration#extending-another-config).
 

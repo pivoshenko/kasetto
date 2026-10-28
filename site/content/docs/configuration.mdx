@@ -257,7 +257,7 @@ After installing, the gate audits every skill and MCP in the lock, exactly as [`
 
 <Callout type="info">
 
-By default the gate never fails on missing data: an asset it cannot verify (skills.sh, OSV, or deps.dev unreachable, a non-`github.com` skill source, no audit yet, a partner answer nobody can classify) only adds a warning. Set `fail-on-unverified: true` (or pass `--fail-on-unverified`) to fail closed instead; on an offline runner every lookup fails, so that setting fails every asset there. Skill verdicts are repo-level on skills.sh, not pinned to your locked commit.
+By default the gate never fails on missing data: an asset it cannot verify (skills.sh, OSV, or deps.dev unreachable, a non-`github.com` skill source, no audit yet, a partner answer nobody can classify) only adds a warning. Set `fail-on-unverified: true` (or pass `--fail-on-unverified`) to fail closed instead; on an offline runner every lookup fails, so that setting fails every asset there. Skill verdicts are repository-level on skills.sh, not pinned to your locked commit.
 
 </Callout>
 

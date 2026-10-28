@@ -192,7 +192,7 @@ export default async function Page() {
         body={
           <>
             <code>kasetto.yaml</code> is the full inventory of your AI environment: every skill,
-            slash command, MCP, and instruction, and the repo each one comes from.{" "}
+            slash command, MCP, and instruction, and the repository each one comes from.{" "}
             <code>kst sync</code> makes any machine match it: fetch each source, write every asset
             where the agent expects it, change only what differs.
           </>

@@ -202,8 +202,16 @@
   text-wrap: balance;
 }
 
+/* Two equal fr tracks in a fit-content grid both size to the wider button, so the pair matches */
 .lp-hero-copy .lp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: fit-content;
   margin-top: var(--space-8);
+}
+
+.lp-hero-copy .lp-actions .lp-btn {
+  justify-content: center;
 }
 
 .lp-cmd {
@@ -355,6 +363,25 @@
   min-width: 0;
 }
 
+/* Beside a second visual, the config pane fills the cell its neighbour sized instead of
+   adding its own height to the row, so the two panes end on the same line */
+.lp-feature-art:not(:last-child) {
+  position: relative;
+}
+
+.lp-feature-art:not(:last-child) .lp-pane--scroll {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-feature-art:not(:last-child) .lp-pane--scroll .lp-pane-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 .lp-feature-aside {
   grid-area: aside;
   align-self: stretch;
@@ -448,16 +475,7 @@
   overflow-x: auto;
 }
 
-/* The config pane fills its row, so beside the terminal the two panes share one height */
-.lp-pane--scroll {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 .lp-pane--scroll .lp-pane-body {
-  flex: 1;
-  min-height: 0;
   max-height: 680px;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -1387,8 +1405,12 @@
   margin-top: 4px;
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  color: var(--fg-subtle);
+  color: var(--fg-muted);
   overflow-wrap: anywhere;
+}
+
+.lp-wall-comment {
+  color: var(--fg-subtle);
 }
 
 .lp-wall-cell--ask {
@@ -1484,7 +1506,7 @@
   font-size: 11px;
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--fg-subtle);
+  color: var(--accent);
 }
 
 .lp-install-cmd {
@@ -1677,11 +1699,11 @@
   }
 
   /* Stacked, the config pane has no neighbour to match, so it caps itself again */
-  .lp-pane--scroll {
-    height: auto;
+  .lp-feature-art:not(:last-child) .lp-pane--scroll {
+    position: static;
   }
 
-  .lp-pane--scroll .lp-pane-body {
+  .lp-feature-art:not(:last-child) .lp-pane--scroll .lp-pane-body {
     max-height: 560px;
   }
 
@@ -1754,9 +1776,8 @@
     max-height: 440px;
   }
 
-  .lp-hero-copy .lp-actions .lp-btn {
-    flex: 1 1 auto;
-    justify-content: center;
+  .lp-hero-copy .lp-actions {
+    width: 100%;
   }
 
   .lp-footer-grid {
