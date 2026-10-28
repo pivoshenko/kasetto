@@ -293,11 +293,11 @@ export default async function Page() {
       </section>
 
       {/* == Install == */}
-      <section id="install" className="lp-section lp-install" aria-labelledby="install-title">
+      <section id="install" className="lp-feature" aria-labelledby="install-title">
         <h2 id="install-title" className="lp-h2 lp-feature-title display">
           One binary, <em>any machine</em>
         </h2>
-        <div className="lp-install-copy">
+        <div className="lp-feature-intro">
           <p className="lp-lede">
             A single static binary for macOS, Linux, and Windows, with JSON output and real exit
             codes for CI. It installs as both <code>kasetto</code> and the short alias{" "}
@@ -312,7 +312,7 @@ export default async function Page() {
             </External>
           </div>
         </div>
-        <ul className="lp-install-list">
+        <ul className="lp-install-list lp-feature-art">
           {INSTALL.map((m) => (
             <li key={m.label} className="lp-install-row">
               <span className="lp-install-label">{m.label}</span>

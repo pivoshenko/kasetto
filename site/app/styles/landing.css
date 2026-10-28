@@ -6,6 +6,8 @@
   --lp-max: 1200px;
   --lp-gutter: clamp(16px, 4vw, 40px);
   --lp-section-pad: clamp(56px, 6.5vw, 88px);
+  /* Less air above a title than below a section, so the divider reads as the title's own rule */
+  --lp-section-pad-top: clamp(32px, 3.5vw, 44px);
   /* Section dividers fade out before the gutter instead of stopping square against it */
   --lp-rule: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
   /* Top-edge catch-light; a dark surface reads as a raised object rather than a hole */
@@ -295,7 +297,7 @@
     "art aside";
   align-items: start;
   column-gap: clamp(24px, 3vw, 40px);
-  padding-block: var(--lp-section-pad);
+  padding-block: var(--lp-section-pad-top) var(--lp-section-pad);
 }
 
 .lp-feature[data-flip] {
@@ -346,13 +348,16 @@
   margin-top: var(--space-4);
 }
 
+/* Both cells take the row's full height, so a pane that opts in can match its neighbour */
 .lp-feature-art {
   grid-area: art;
+  align-self: stretch;
   min-width: 0;
 }
 
 .lp-feature-aside {
   grid-area: aside;
+  align-self: stretch;
   min-width: 0;
 }
 
@@ -443,7 +448,16 @@
   overflow-x: auto;
 }
 
+/* The config pane fills its row, so beside the terminal the two panes share one height */
+.lp-pane--scroll {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .lp-pane--scroll .lp-pane-body {
+  flex: 1;
+  min-height: 0;
   max-height: 680px;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -1196,7 +1210,7 @@
 
 /* == Sections == */
 .lp-section {
-  padding-block: var(--lp-section-pad);
+  padding-block: var(--lp-section-pad-top) var(--lp-section-pad);
 }
 
 .lp-section-head {
@@ -1431,30 +1445,15 @@
 }
 
 /* == Install == */
-/* Same anatomy as a feature row: one-line title across, copy and the command list below */
-.lp-install {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  grid-template-areas:
-    "title title"
-    "copy art";
-  align-items: start;
-  gap: clamp(24px, 3vw, 40px) clamp(40px, 6vw, 88px);
-}
-
-.lp-install-copy {
-  grid-area: copy;
-}
-
-.lp-install-list {
-  grid-area: art;
-}
-
 .lp-install-links {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3) var(--space-8);
-  margin-top: var(--space-8);
+  margin-top: var(--space-4);
+}
+
+.lp-install-links .lp-textlink {
+  margin-top: 0;
 }
 
 .lp-install-list {
@@ -1677,20 +1676,21 @@
     margin-top: var(--space-6);
   }
 
+  /* Stacked, the config pane has no neighbour to match, so it caps itself again */
+  .lp-pane--scroll {
+    height: auto;
+  }
+
+  .lp-pane--scroll .lp-pane-body {
+    max-height: 560px;
+  }
+
   .lp-kinds {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .lp-feature-title {
     white-space: normal;
-  }
-
-  .lp-install {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "title"
-      "copy"
-      "art";
   }
 
   .lp-footer-grid {

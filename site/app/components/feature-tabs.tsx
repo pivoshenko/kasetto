@@ -273,7 +273,6 @@ export function ConfigExample() {
     <figure className="lp-pane lp-pane--scroll">
       <figcaption className="lp-pane-bar">
         <span>kasetto.yaml</span>
-        <span className="lp-pane-tag">yaml</span>
       </figcaption>
       <div className="lp-pane-body lp-code">{renderTokens(CONFIG_LINES)}</div>
     </figure>
