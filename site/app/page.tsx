@@ -1,19 +1,18 @@
 import { FaGithub, FaGlobe, FaLinkedinIn } from "react-icons/fa";
 import { GoArrowRight, GoArrowUpRight } from "react-icons/go";
 import { softwareApplicationJsonLd } from "@/lib/structured-data";
-import { AGENTS, AgentsGrid } from "./components/agents-grid";
+import { AgentsGrid } from "./components/agents-grid";
 import { BrandLogo } from "./components/brand-mark";
 import { CopyButton } from "./components/copy-button";
 import { ConfigExample } from "./components/feature-tabs";
 import { HeroTerminal } from "./components/hero-terminal";
 import { JsonLd } from "./components/json-ld";
-import { AgentIcon } from "./components/landing/agent-icon";
 import { AssetKinds } from "./components/landing/asset-kinds";
-import { AuditGate } from "./components/landing/audit-gate";
-import { ForgeWall } from "./components/landing/forge-wall";
+import { AuditGate, AuditPolicy } from "./components/landing/audit-gate";
+import { ForgeList } from "./components/landing/forge-wall";
 import { HeroCassette } from "./components/landing/hero-cassette";
-import { LockExample } from "./components/landing/lock-example";
-import { SecretWall } from "./components/landing/secret-providers";
+import { LockDiff, LockExample } from "./components/landing/lock-example";
+import { VaultList } from "./components/landing/secret-providers";
 import { SecretSources } from "./components/secret-sources";
 
 const REPO = "https://github.com/pivoshenko/kasetto";
@@ -104,17 +103,19 @@ function Feature({
   id,
   title,
   body,
-  points,
   link,
   flip,
+  split,
+  aside,
   children,
 }: {
   id: string;
   title: React.ReactNode;
   body: React.ReactNode;
-  points: React.ReactNode[];
   link: { href: string; label: string };
   flip?: boolean;
+  split?: "5-7" | "7-5";
+  aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -122,23 +123,20 @@ function Feature({
       id={id}
       className="lp-feature"
       data-flip={flip ? "" : undefined}
+      data-split={split}
       aria-labelledby={`${id}-title`}
     >
       <h2 id={`${id}-title`} className="lp-h2 lp-feature-title display">
         {title}
       </h2>
-      <div className="lp-feature-copy">
+      <div className="lp-feature-intro">
         <p className="lp-lede">{body}</p>
-        <ul className="lp-points">
-          {points.map((p, i) => (
-            <li key={i}>{p}</li>
-          ))}
-        </ul>
         <a href={link.href} className="lp-textlink">
           {link.label} <GoArrowRight aria-hidden />
         </a>
       </div>
       <div className="lp-feature-art">{children}</div>
+      {aside ? <div className="lp-feature-aside">{aside}</div> : null}
     </section>
   );
 }
@@ -183,31 +181,10 @@ export default async function Page() {
         </div>
       </header>
 
-      {/* == Agent Strip == */}
-      <section className="lp-strip" aria-label="Supported agents">
-        <div className="lp-marquee">
-          {/* Two identical lists side by side; the track slides by exactly one list width, so the loop has no seam */}
-          <div className="lp-marquee-track">
-            {[false, true].map((copy) => (
-              <ul key={String(copy)} className="lp-strip-list" aria-hidden={copy || undefined}>
-                {AGENTS.map((a) => (
-                  <li key={a.value}>
-                    <AgentIcon preset={a.value} name={a.name} className="lp-strip-icon" />
-                    <span className="lp-strip-name">{a.name}</span>
-                  </li>
-                ))}
-              </ul>
-            ))}
-          </div>
-        </div>
-        <a href="#agents" className="lp-strip-more">
-          See all <GoArrowRight aria-hidden />
-        </a>
-      </section>
-
-      {/* == How It Works == */}
+      {/* == Declare == */}
       <Feature
         id="declare"
+        split="5-7"
         title={
           <>
             See everything in <em>one file</em>
@@ -216,68 +193,20 @@ export default async function Page() {
         body={
           <>
             <code>kasetto.yaml</code> is the full inventory of your AI environment: every skill,
-            slash command, MCP, and instruction, and the repo each one comes from.
+            slash command, MCP, and instruction, and the repo each one comes from. Four kinds of
+            asset, each written where the agent looks for it, in the agent&apos;s own format.
           </>
         }
-        points={[
-          <>
-            Pin a tag or commit with <code>ref:</code>, or follow a <code>branch:</code>
-          </>,
-          <>
-            Share a team base with <code>extends:</code> and layer your own entries on top
-          </>,
-          <>
-            <code>kst add</code> and <code>kst remove</code> edit the file and keep your comments
-          </>,
-        ]}
         link={{ href: "/docs/configuration", label: "Configuration reference" }}
+        aside={<AssetKinds />}
       >
         <ConfigExample />
       </Feature>
 
-      {/* == Asset Kinds == */}
-      <section id="kinds" className="lp-section lp-section--tight" aria-labelledby="kinds-title">
-        <div className="lp-section-head">
-          <h2 id="kinds-title" className="lp-h2 display">
-            Four kinds of asset, <em>each in native format</em>
-          </h2>
-        </div>
-        <AssetKinds />
-      </section>
-
-      <Feature
-        id="lock"
-        flip
-        title={
-          <>
-            Know exactly <em>what is installed</em>
-          </>
-        }
-        body={
-          <>
-            Every sync records what it installed in <code>kasetto.lock</code>: source, resolved
-            revision, destination, content hash. Commit it, and every change to your AI environment
-            shows up in code review.
-          </>
-        }
-        points={[
-          <>
-            <code>--locked</code> never touches the network and fails if the lock cannot satisfy the
-            config
-          </>,
-          <>
-            <code>--update</code> re-resolves moving branches, for every source or only the assets
-            you name
-          </>,
-          <>Paths are stored relative to the project, so the lock is portable across machines</>,
-        ]}
-        link={{ href: "/docs/how-sync-works", label: "How sync works" }}
-      >
-        <LockExample />
-      </Feature>
-
+      {/* == Sync == */}
       <Feature
         id="sync"
+        split="7-5"
         title={
           <>
             The same setup on <em>every machine</em>
@@ -287,39 +216,43 @@ export default async function Page() {
           <>
             <code>kst sync</code> makes a machine match the lock: fetch each source, write every
             asset where the agent expects it, change only what differs. A new teammate runs one
-            command and has the environment everyone else already has.
+            command and has the environment everyone else already has. Sources come from any forge,
+            public or private, or a local path.
           </>
         }
-        points={[
-          <>Content is hashed and diffed against the lock, so unchanged assets are never touched</>,
-          <>Anything you drop from the config is pruned on the next sync, so nothing lingers</>,
-          <>
-            Shared files such as <code>CLAUDE.md</code> get managed blocks, so your own edits
-            survive
-          </>,
-        ]}
         link={{ href: "/docs/commands", label: "Command reference" }}
+        aside={<ForgeList />}
       >
         <HeroTerminal />
       </Feature>
 
-      {/* == Forge Wall == */}
-      <section
-        id="sources"
-        className="lp-section lp-section--tight"
-        aria-labelledby="sources-title"
+      {/* == Lock == */}
+      <Feature
+        id="lock"
+        split="7-5"
+        title={
+          <>
+            Know exactly <em>what is installed</em>
+          </>
+        }
+        body={
+          <>
+            Every sync records source, resolved revision, destination, and content hash in{" "}
+            <code>kasetto.lock</code>. Commit it, and every change to your AI environment shows up
+            in code review. <code>--locked</code> never touches the network and fails if the lock
+            cannot satisfy the config.
+          </>
+        }
+        link={{ href: "/docs/how-sync-works", label: "How sync works" }}
+        aside={<LockDiff />}
       >
-        <div className="lp-section-head">
-          <h2 id="sources-title" className="lp-h2 display">
-            Pull from any forge, <em>public or private</em>
-          </h2>
-        </div>
-        <ForgeWall />
-      </section>
+        <LockExample />
+      </Feature>
 
+      {/* == Audit == */}
       <Feature
         id="audit"
-        flip
+        split="7-5"
         title={
           <>
             Catch a bad install <em>before it ships</em>
@@ -327,27 +260,19 @@ export default async function Page() {
         }
         body={
           <>
-            <code>kst audit</code> grades every installed skill and MCP. Add <code>--audit</code> to
-            a sync and it becomes a gate: anything at or above your threshold fails the run, so CI
-            goes red instead of your agent picking it up.
+            <code>kst audit</code> grades every installed skill and MCP: skills.sh verdicts for
+            skills, launch checks plus OSV and deps.dev for the package an MCP runs. As a gate on
+            sync, anything at or above your threshold fails the run, so CI goes red instead of your
+            agent picking it up.
           </>
         }
-        points={[
-          <>Skills take the verdicts skills.sh partners publish, worst one first</>,
-          <>
-            MCPs get offline launch checks, then OSV advisories and deps.dev health for the package
-            they run
-          </>,
-          <>
-            An asset nothing can judge is unverified, never safe: it warns, or fails with{" "}
-            <code>--fail-on-unverified</code>
-          </>,
-        ]}
         link={{ href: "/docs/security", label: "Security model" }}
+        aside={<AuditPolicy />}
       >
         <AuditGate />
       </Feature>
 
+      {/* == Secrets == */}
       <Feature
         id="secrets"
         title={
@@ -357,30 +282,17 @@ export default async function Page() {
         }
         body={
           <>
-            MCPs need API keys. Write a <code>{PLACEHOLDER}</code> placeholder instead, and Kasetto
-            resolves it at sync time from your environment, a credentials file, or the secret
-            manager you already use.
+            Write a <code>{PLACEHOLDER}</code> placeholder instead of a token. Kasetto resolves it
+            at sync time from your environment, a credentials file, or the vault you already use,
+            through the CLI session you are signed in to, and writes the value only to the
+            agent&apos;s config. Never to the lock.
           </>
         }
-        points={[
-          <>Resolved values are written only to the agent&apos;s config, never to the lock</>,
-          <>Secret managers are read through the CLI session you are already signed in to</>,
-          <>Private repos authenticate with tokens from env vars; Kasetto stores no credentials</>,
-        ]}
         link={{ href: "/docs/secrets", label: "Secrets guide" }}
+        aside={<VaultList />}
       >
         <SecretSources />
       </Feature>
-
-      {/* == Vault Wall == */}
-      <section id="vaults" className="lp-section lp-section--tight" aria-labelledby="vaults-title">
-        <div className="lp-section-head">
-          <h2 id="vaults-title" className="lp-h2 display">
-            Any vault, <em>one placeholder</em>
-          </h2>
-        </div>
-        <SecretWall />
-      </section>
 
       {/* == Agent Wall == */}
       <section id="agents" className="lp-section" aria-labelledby="agents-title">

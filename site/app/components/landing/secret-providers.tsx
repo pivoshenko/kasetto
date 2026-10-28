@@ -28,15 +28,17 @@ export const SECRET_PROVIDERS: { icon: IconType; name: string; via: string; usag
   { icon: FaApple, name: "macOS Keychain", via: "security", usage: "kst:keychain:vercel-token" },
 ];
 
-export function SecretWall() {
+/** Every vault as a compact two-column list: the name and the CLI whose session it reuses. */
+export function VaultList() {
   return (
-    <ul className="lp-wall lp-wall--vaults">
+    <ul className="lp-roster">
       {SECRET_PROVIDERS.map((p) => {
         const Icon = p.icon;
         return (
-          <li key={p.name} className="lp-wall-cell">
-            <Icon className="lp-wall-icon" aria-hidden />
-            <span className="lp-wall-name">{p.name}</span>
+          <li key={p.name}>
+            <Icon aria-hidden />
+            <span className="lp-roster-name">{p.name}</span>
+            <code className="lp-roster-note">{p.via}</code>
           </li>
         );
       })}

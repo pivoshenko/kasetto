@@ -177,3 +177,40 @@ export function AuditGate() {
     </figure>
   );
 }
+
+// The config form of the gate; `kst sync --audit high` is the one-run equivalent
+const POLICY = [
+  { key: "audit", value: "" },
+  { key: "  fail-on", value: " high" },
+  { key: "  fail-on-unverified", value: " true" },
+];
+
+/** How the gate is switched on: three lines of config, or one flag for a single run. */
+export function AuditPolicy() {
+  return (
+    <figure className="lp-pane">
+      <figcaption className="lp-pane-bar">
+        <span>kasetto.yaml</span>
+        <span className="lp-pane-tag">policy</span>
+      </figcaption>
+      <div className="lp-pane-body lp-code">
+        {POLICY.map((l, i) => (
+          <div key={l.key} className="sy-line">
+            <span className="sy-ln" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span>
+              <span className="sy-key">{l.key}</span>
+              <span className="sy-punct">:</span>
+              <span className="sy-str">{l.value}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="lp-pane-foot">
+        <span className="lp-pane-prompt">$</span> kst sync --audit high
+        <span className="lp-pane-note">the same gate for one run, no config</span>
+      </div>
+    </figure>
+  );
+}

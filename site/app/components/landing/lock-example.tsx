@@ -59,3 +59,39 @@ export function LockExample() {
     </figure>
   );
 }
+
+// What a bumped pin looks like in review: the revision and the content hash move together
+const DIFF: { sign: " " | "-" | "+"; text: string }[] = [
+  { sign: " ", text: "  github.com/anthropics/skills::pdf:" },
+  { sign: " ", text: "    source: github.com/anthropics/skills" },
+  { sign: "-", text: "    source_revision: ref:v1.2.0" },
+  { sign: "+", text: "    source_revision: ref:v1.3.0" },
+  { sign: "-", text: "    hash: 9b2e41c07d5fa8e3..." },
+  { sign: "+", text: "    hash: 4c71d02be9a0f6d1..." },
+];
+
+/** The lock in a pull request: one bumped skill, two changed lines, nothing else to read. */
+export function LockDiff() {
+  return (
+    <figure className="lp-pane lp-diff">
+      <figcaption className="lp-pane-bar">
+        <span>kasetto.lock</span>
+        <span className="lp-pane-tag">pull request</span>
+      </figcaption>
+      <div className="lp-pane-body lp-code">
+        {DIFF.map((l, i) => (
+          <div key={i} className="lp-diff-line" data-sign={l.sign}>
+            <span className="lp-diff-sign" aria-hidden="true">
+              {l.sign}
+            </span>
+            <span>{l.text}</span>
+          </div>
+        ))}
+      </div>
+      <div className="lp-pane-foot">
+        <span className="lp-pane-prompt">$</span> kst sync --update pdf
+        <span className="lp-pane-note">re-resolve one asset, or every moving branch</span>
+      </div>
+    </figure>
+  );
+}
