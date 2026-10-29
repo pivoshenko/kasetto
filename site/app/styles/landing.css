@@ -1890,22 +1890,9 @@
     margin-top: var(--space-6);
   }
 
-  .lp-strip {
-    flex-wrap: wrap;
-    gap: 0 var(--space-6);
-  }
-
-  .lp-marquee {
-    flex-basis: 100%;
-  }
-
-  .lp-marquee + .lp-strip-more {
-    padding-top: 0;
-  }
-
+  /* No room beside the marquee, and the agents wall further down covers the same ground */
   .lp-strip-more {
-    margin-left: auto;
-    padding-bottom: 0;
+    display: none;
   }
 
   /* Stacked, the config pane has no neighbour to match, so it caps itself again */
