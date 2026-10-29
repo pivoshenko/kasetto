@@ -1804,6 +1804,41 @@
     margin-right: 0;
   }
 
+  /* Below this the seven links no longer fit one row, and wrapped, every row leader would carry
+     a dangling hairline, so they become one scrollable row that bleeds to the viewport edges. The
+     fade sits on the band, not the list: a mask on a scroll container travels with its content */
+  .lp-jump {
+    mask-image: linear-gradient(90deg, transparent, #000 var(--lp-gutter), #000 calc(100% - 56px), transparent);
+  }
+
+  .lp-jump ul {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-inline: calc(-1 * var(--lp-gutter));
+    padding-inline: var(--lp-gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .lp-jump ul::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Auto margins centre the row while it fits and drop to zero once it scrolls, where a centred
+     overflow would hide its first links behind the left edge */
+  .lp-jump li {
+    flex: none;
+  }
+
+  .lp-jump li:first-child {
+    margin-left: auto;
+    padding-left: 0;
+  }
+
+  .lp-jump li:last-child {
+    margin-right: auto;
+  }
+
   .hero-terminal-body {
     font-size: 11.5px;
   }
@@ -1942,8 +1977,21 @@
     max-height: 440px;
   }
 
+  /* Side by side, both labels break onto two lines; stacked they stay whole */
   .lp-hero-copy .lp-actions {
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
+  }
+
+  .lp-roster li {
+    gap: 10px;
+    padding: 10px 0;
+    font-size: var(--fs-sm);
+  }
+
+  .lp-roster svg {
+    width: 18px;
+    height: 18px;
   }
 
   .lp-footer-grid {
