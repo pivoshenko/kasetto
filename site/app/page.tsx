@@ -213,11 +213,10 @@ export default async function Page() {
         }
         body={
           <>
-            <code>kasetto.yaml</code> lists every skill, slash command, MCP, and instruction you
-            use, and the repository each one comes from. <code>kst sync</code> fetches those
-            repositories and writes each asset where your agent looks for it. Run it again on
-            another machine and you get the same setup; run it after a change and only that change
-            is touched.
+            <code>kasetto.yaml</code> lists every skill, command, MCP, and instruction you use, and
+            the repository each one comes from. <code>kst sync</code> fetches those repositories and
+            writes each asset where your agent looks for it. Run it again on another machine and you
+            get the same setup; run it after a change and only that change is touched.
           </>
         }
         link={{ href: "/docs/configuration", label: "Configuration reference" }}

@@ -145,7 +145,7 @@ against an independent count before its numbers are trusted.
 ## Scope
 
 Skills and MCP servers only. Commands and instructions are deliberately out:
-slash commands in the logs are mostly agent built-ins rather than kasetto assets,
+commands in the logs are mostly agent built-ins rather than kasetto assets,
 and instructions are injected as context and never "invoked", so usage is
 undefined for them. If asked about those, explain why rather than guessing.
 

@@ -25,7 +25,7 @@ export function softwareApplicationJsonLd() {
     programmingLanguage: "Rust",
     license: "https://github.com/pivoshenko/kasetto/blob/main/LICENSE-MIT",
     description:
-      "A declarative AI environment manager. Declares skills, MCPs, slash commands, and instructions in one YAML file and pins every install in a lock file, so you and your team get the same setup on every machine.",
+      "A declarative AI environment manager. Declares skills, MCPs, commands, and instructions in one YAML file and pins every install in a lock file, so you and your team get the same setup on every machine.",
     author: {
       "@type": "Person",
       name: "Volodymyr Pivoshenko",
