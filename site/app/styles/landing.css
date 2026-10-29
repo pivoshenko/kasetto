@@ -1808,7 +1808,13 @@
      a dangling hairline, so they become one scrollable row that bleeds to the viewport edges. The
      fade sits on the band, not the list: a mask on a scroll container travels with its content */
   .lp-jump {
-    mask-image: linear-gradient(90deg, transparent, #000 var(--lp-gutter), #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 var(--lp-gutter),
+      #000 calc(100% - 56px),
+      transparent
+    );
   }
 
   .lp-jump ul {
