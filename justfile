@@ -12,7 +12,8 @@ install-site:
 format: format-rs format-site
 
 format-rs:
-    cargo fmt
+    cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets
+    cargo fmt --all
 
 format-site:
     cd site && pnpm format
@@ -20,19 +21,20 @@ format-site:
 lint: lint-rs lint-site
 
 lint-rs:
-    cargo fmt --check
-    cargo clippy --all-targets -- -D warnings
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
 
 lint-site:
-    cd site && pnpm check:ci
+    cd site && pnpm lint
+    cd site && pnpm typecheck
 
 test: test-rs test-site
 
 test-rs:
-    cargo test
+    @[ -f .no-tests ] && echo "skipping (.no-tests sentinel)" || cargo test --workspace
 
 test-site:
-    @echo "no Next.js tests"
+    @cd site && ([ -f .no-tests ] && echo "skipping (.no-tests sentinel)" || { echo "no test command, add tests or restore .no-tests" >&2; exit 1; })
 
 check: lint test build
 
