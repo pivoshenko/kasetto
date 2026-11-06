@@ -49,7 +49,7 @@ update-site:
 build: build-rs build-site
 
 build-rs:
-    cargo build --release
+    cargo build --release --workspace
 
 build-site:
     cd site && pnpm build
