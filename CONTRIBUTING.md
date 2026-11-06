@@ -68,14 +68,14 @@ This project uses [`just`](https://github.com/casey/just) as its task runner. Ru
 | `install-rs` | Fetches the crate dependencies into the cargo cache |
 | `install-site` | Installs the `site/` app's Node dependencies with pnpm |
 | `format` | Runs `format-rs` and `format-site` |
-| `format-rs` | Reformats the Rust sources in place |
-| `format-site` | Reformats the `site/` sources in place |
+| `format-rs` | Applies Clippy autofixes, then reformats the Rust sources in place |
+| `format-site` | Applies Biome fixes and reformats the `site/` sources in place |
 | `lint` | Runs `lint-rs` and `lint-site` |
 | `lint-rs` | Checks Rust formatting, then lints every target with Clippy, failing on any warning |
-| `lint-site` | Checks the `site/` sources for formatting, lint, and import order without writing |
+| `lint-site` | Checks the `site/` sources for formatting, lint, and import order then type-checks them with `tsc`, without writing |
 | `test` | Runs `test-rs` and `test-site` |
-| `test-rs` | Runs the Rust test suite |
-| `test-site` | No-op; the site has no test suite |
+| `test-rs` | Runs the Rust test suite across the workspace, skipped when the `.no-tests` sentinel is present |
+| `test-site` | Skips, since the site has no test suite and carries a `.no-tests` sentinel |
 | `check` | Runs `lint`, `test`, and `build` |
 | `update` | Runs `update-rs` and `update-site` |
 | `update-rs` | Upgrades the crate lockfile to the newest compatible versions |
