@@ -57,7 +57,7 @@ build-site:
 run-dev-server:
     cd site && pnpm dev
 
-run-prod-server:
+run-prod-server: build-site
     cd site && pnpm start
 
 generate-changelog:
