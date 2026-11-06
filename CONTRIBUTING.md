@@ -84,7 +84,7 @@ This project uses [`just`](https://github.com/casey/just) as its task runner. Ru
 | `build-rs` | Builds the optimized release binaries |
 | `build-site` | Builds the production bundle for the `site/` app |
 | `run-dev-server` | Serves the `site/` app locally in development mode |
-| `run-prod-server` | Serves the built production `site/` app locally |
+| `run-prod-server` | Builds the `site/` app, then serves the production build locally |
 | `generate-changelog` | Regenerates `CHANGELOG.md` from the commit history with git-cliff |
 | `generate-config-docs` | Regenerates the example config in the README and docs, then reformats the affected site file |
 | `generate-social-preview` | Rasterizes the social preview SVG into a 1280x640 PNG via `rsvg-convert` |
