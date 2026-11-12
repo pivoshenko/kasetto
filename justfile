@@ -28,6 +28,14 @@ lint-site:
     cd site && pnpm lint
     cd site && pnpm typecheck
 
+audit: audit-rs audit-site
+
+audit-rs:
+    cargo audit
+
+audit-site:
+    cd site && pnpm audit
+
 test: test-rs test-site
 
 test-rs:
