@@ -73,6 +73,10 @@ pub(crate) struct Report {
     /// The security gate's result; `None` (serialized `null`) when the gate did
     /// not run, so a JSON consumer can tell "passed" from "never judged".
     pub audit: Option<AuditGate>,
+    /// Non-fatal notes from the run, such as subagent fields a target format
+    /// dropped. Omitted from JSON when empty.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
 }
 
 /// What the `sync` security gate decided, carried in the report and the runtime

@@ -1,6 +1,6 @@
 //! Module that contains `kasetto remove`, which drops sources (or named entries) from the config, then
 //! prune them via sync. Mirrors `add`: kind-tagged, value-taking, repeatable
-//! `--skill` / `--mcp` / `--command` / `--instruction` flags subtract named
+//! `--skill` / `--mcp` / `--command` / `--instruction` / `--agent` / `--plugin` flags subtract named
 //! entries; a lone `*` value drops that kind's whole entry; no kind flags at
 //! all removes the source from every list it appears in.
 
@@ -21,6 +21,8 @@ pub(crate) struct RemoveOptions<'a> {
     pub mcps: &'a [String],
     pub commands: &'a [String],
     pub instructions: &'a [String],
+    pub agents: &'a [String],
+    pub plugins: &'a [String],
     pub git_ref: Option<&'a str>,
     pub branch: Option<&'a str>,
     pub sub_dir: Option<&'a str>,
@@ -77,6 +79,8 @@ pub(crate) fn run(opts: &RemoveOptions) -> Result<Outcome> {
         (Section::Mcps, opts.mcps),
         (Section::Commands, opts.commands),
         (Section::Instructions, opts.instructions),
+        (Section::Agents, opts.agents),
+        (Section::Plugins, opts.plugins),
     ];
     let any_kind = kinds.iter().any(|(_, names)| !names.is_empty());
 
@@ -121,6 +125,8 @@ fn remove_whole_source(
         Section::Mcps,
         Section::Commands,
         Section::Instructions,
+        Section::Agents,
+        Section::Plugins,
     ] {
         // MCP entries never carry sub-dir; don't let a deep-URL sub-dir filter
         // them out when the user is dropping the source from every list

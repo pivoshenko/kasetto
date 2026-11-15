@@ -546,6 +546,8 @@ mod tests {
                 sub_dir: None,
                 instructions,
             }],
+            subagents: Vec::new(),
+            plugins: Vec::new(),
             secrets: None,
             audit: None,
         }

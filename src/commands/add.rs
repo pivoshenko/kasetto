@@ -1,9 +1,9 @@
 //! Module that contains `kasetto add`, which appends one or more sources to the config, then syncs them in.
 //!
 //! Kind-tagged repeatable flags (`--skill` / `--mcp` / `--command` /
-//! `--instruction`) select both the asset kind and the named entries, so a
+//! `--instruction` / `--agent` / `--plugin`) select both the asset kind and the named entries, so a
 //! single `add` can touch several sections of `kasetto.yaml` at once (a repo
-//! that ships skills + MCPs + commands + instructions). The source may be a
+//! that ships skills + MCPs + commands + instructions + subagents + plugins). The source may be a
 //! plain repo URL, a `<source>@<ref>` shorthand, or a deep `blob`/`tree`
 //! browse URL; the latter is decomposed into `source` +
 //! `ref`/`branch` + `sub-dir` (+ skill name for a `SKILL.md` link); explicit
@@ -28,6 +28,8 @@ pub(crate) struct AddOptions<'a> {
     pub mcps: &'a [String],
     pub commands: &'a [String],
     pub instructions: &'a [String],
+    pub agents: &'a [String],
+    pub plugins: &'a [String],
     pub git_ref: Option<&'a str>,
     pub branch: Option<&'a str>,
     pub sub_dir: Option<&'a str>,
@@ -155,8 +157,8 @@ fn resolve_pin(opts: &AddOptions, derived: &BrowseDerived, at_ref: Option<&str>)
 }
 
 /// Build the per-section edits from the kind flags, with these defaults:
-/// - named `--skill`/`--mcp`/`--command`/`--instruction` → that section as a
-///   list (a lone `*` value becomes a wildcard);
+/// - named `--skill`/`--mcp`/`--command`/`--instruction`/`--agent`/`--plugin` → that section
+///   as a list (a lone `*` value becomes a wildcard);
 /// - a `SKILL.md` browse URL with no `--skill` flags → a one-skill list;
 /// - nothing specified at all → `skills: "*"` (the common "add this pack" case).
 ///
@@ -178,7 +180,9 @@ fn plan_edits(
     let nothing_specified = skill_names.is_empty()
         && opts.mcps.is_empty()
         && opts.commands.is_empty()
-        && opts.instructions.is_empty();
+        && opts.instructions.is_empty()
+        && opts.agents.is_empty()
+        && opts.plugins.is_empty();
 
     let mut edits = Vec::new();
     let mut push = |section: Section, selector: Selector| {
@@ -212,6 +216,12 @@ fn plan_edits(
     if !opts.instructions.is_empty() {
         push(Section::Instructions, selector_from(opts.instructions));
     }
+    if !opts.agents.is_empty() {
+        push(Section::Agents, selector_from(opts.agents));
+    }
+    if !opts.plugins.is_empty() {
+        push(Section::Plugins, selector_from(opts.plugins));
+    }
     edits
 }
 
@@ -225,8 +235,8 @@ fn selector_from(names: &[String]) -> Selector {
 }
 
 /// Fetch the source once to confirm it resolves before touching the config; for
-/// named skill entries also assert each skill exists. MCP, command, and
-/// instruction names are validated later at sync time.
+/// named skill entries also assert each skill exists. MCP, command,
+/// instruction, agent, and plugin names are validated later at sync time.
 fn verify_source(
     source: &str,
     pin: &Pin,

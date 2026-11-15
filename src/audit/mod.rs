@@ -1,7 +1,7 @@
 //! Package that contains the security audit shared by `kasetto audit` and the
 //! `sync` gate.
 //!
-//! Two asset kinds are covered, each from the source that can actually judge it:
+//! Two asset kinds are judged, each from the source that can actually judge it:
 //!
 //! - **skills** take the verdicts [skills.sh](https://skills.sh) publishes from
 //!   several independent partners (Snyk, Socket, Gen Agent Trust Hub, ...). They
@@ -15,6 +15,18 @@
 //!   source repo's OpenSSF Scorecard, and an [OSV](https://osv.dev) lookup for
 //!   the advisories affecting that version, which also carries the OpenSSF
 //!   malicious-packages feed.
+//!
+//! **Subagents** are listed too but always unverified: they are model
+//! instructions fetched from a third-party repository, as risky as a skill, yet
+//! nothing audits them. skills.sh keys every verdict to one skill slug, so a
+//! verdict for a sibling skill in the same repository says nothing about an
+//! agent file, and borrowing it would read as a judgement nobody made.
+//!
+//! **Plugins** are listed the same way. A plugin can run hooks and MCP servers,
+//! so it is at least as risky as a skill, but Kasetto only declares it in the
+//! tool's settings and the tool fetches it later, so there is nothing local to
+//! read and no provider that judges one. Plugin marketplaces are not audit
+//! targets.
 //!
 //! An asset that cannot be judged (no audit yet, not indexed, lookup failed, a
 //! partner answer nobody can classify) is reported as unverified and never
@@ -119,13 +131,22 @@ impl AuditThreshold {
     }
 }
 
-/// Which kind of installed asset an audit row describes.
+/// Which kind of installed asset an audit row describes. The variant order is
+/// the order rows are sorted and reports list their sections in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum AssetKind {
     Skill,
     Mcp,
+    Agent,
+    Plugin,
 }
+
+/// Why an installed subagent is unverified: no provider audits agent files.
+pub(crate) const AGENT_UNAUDITED: &str = "no audit source for agents";
+
+/// Why an installed plugin is unverified: nothing can judge a marketplace plugin.
+pub(crate) const PLUGIN_UNAUDITED: &str = "no audit source for plugins";
 
 /// One provider's judgement of an asset, severity already normalized.
 #[derive(Debug, Clone, Serialize)]
@@ -183,19 +204,19 @@ pub(crate) enum AuditOutcome {
 /// agent config the server was merged into).
 pub(crate) struct AuditTarget {
     pub kind: AssetKind,
-    /// Skill directory name, or MCP server name.
+    /// Skill directory name, MCP server name, subagent name, or `plugin@marketplace`.
     pub name: String,
     /// Configured source URL (or `<inline>` for config-declared MCP servers).
     pub source: String,
     /// The launch-relevant fields of the installed server, the only part of the
-    /// definition the rules need; `None` for skills, and for a server the lock
-    /// tracks but no agent config holds any more.
+    /// definition the rules need; `None` for skills and subagents, and for a
+    /// server the lock tracks but no agent config holds any more.
     spec: Option<mcp::ServerSpec>,
 }
 
 impl AuditTarget {
-    /// A target with no installed definition: a skill, or an MCP server that is
-    /// no longer in any agent config.
+    /// A target with no installed definition: a skill, a subagent, or an MCP
+    /// server that is no longer in any agent config.
     pub(crate) fn new(kind: AssetKind, name: impl Into<String>, source: impl Into<String>) -> Self {
         AuditTarget {
             kind,
@@ -232,9 +253,11 @@ impl AuditResult {
     }
 }
 
-/// Collect every installed skill and MCP server recorded in `lock`, reading each
-/// server's definition from the scope's agent configs. `names` narrows the set
-/// to assets whose name (or MCP pack name) matches; empty keeps everything.
+/// Collect every installed skill, subagent, plugin, and MCP server recorded in `lock`,
+/// reading each server's definition from the scope's agent configs. `names`
+/// narrows the set to assets whose name (or MCP pack name) matches; empty keeps
+/// everything. Only a subagent's or plugin's name and source are read, never its
+/// file or the settings that enable it.
 pub(crate) fn collect_targets(
     lock: &LockFile,
     scope: Scope,
@@ -248,6 +271,20 @@ pub(crate) fn collect_targets(
         .filter(|e| wanted(&e.skill))
         .map(|e| AuditTarget::new(AssetKind::Skill, &e.skill, &e.source))
         .collect();
+
+    out.extend(
+        lock.assets
+            .values()
+            .filter(|a| a.kind == "agent" && wanted(&a.name))
+            .map(|a| AuditTarget::new(AssetKind::Agent, &a.name, &a.source)),
+    );
+
+    out.extend(
+        lock.assets
+            .values()
+            .filter(|a| a.kind == "plugin" && wanted(&a.name))
+            .map(|a| AuditTarget::new(AssetKind::Plugin, &a.name, &a.source)),
+    );
 
     let settings = mcp_settings_for_scope(scope, scope_root)?;
     for asset in lock.assets.values().filter(|a| a.kind == "mcp") {
@@ -309,7 +346,7 @@ pub(crate) fn audit_all(targets: Vec<AuditTarget>, refresh: bool) -> Vec<AuditRe
 
 /// Skills fan out one lookup each; MCP servers are grouped by the package they
 /// launch so each package is looked up once, then every server reads its
-/// package's report.
+/// package's report. Subagents and plugins never issue a request.
 fn audit_in_pool(targets: Vec<AuditTarget>, refresh: bool) -> Vec<AuditResult> {
     let packages = distinct_packages(&targets);
     let (skills, reports) = rayon::join(
@@ -318,6 +355,8 @@ fn audit_in_pool(targets: Vec<AuditTarget>, refresh: bool) -> Vec<AuditResult> {
                 .par_iter()
                 .map(|t| match t.kind {
                     AssetKind::Skill => Some(skills_sh::audit_skill(&t.name, &t.source, refresh)),
+                    AssetKind::Agent => Some(AuditOutcome::Unaudited(AGENT_UNAUDITED)),
+                    AssetKind::Plugin => Some(AuditOutcome::Unaudited(PLUGIN_UNAUDITED)),
                     AssetKind::Mcp => None,
                 })
                 .collect::<Vec<_>>()
@@ -756,6 +795,36 @@ mod tests {
                 ..Default::default()
             },
         );
+        lock.assets.insert(
+            "agent::https://github.com/o/r::reviewer".into(),
+            AssetEntry {
+                kind: "agent".into(),
+                name: "reviewer".into(),
+                source: "https://github.com/o/r".into(),
+                destination: ".claude/agents/reviewer.md".into(),
+                ..Default::default()
+            },
+        );
+        lock.assets.insert(
+            "plugin::https://github.com/o/p::fmt".into(),
+            AssetEntry {
+                kind: "plugin".into(),
+                name: "fmt@market".into(),
+                source: "https://github.com/o/p".into(),
+                destination: ".claude/settings.json".into(),
+                ..Default::default()
+            },
+        );
+        lock.assets.insert(
+            "plugin-marketplace::https://github.com/o/p".into(),
+            AssetEntry {
+                kind: "plugin-marketplace".into(),
+                name: "market".into(),
+                source: "https://github.com/o/p".into(),
+                destination: ".claude/settings.json".into(),
+                ..Default::default()
+            },
+        );
 
         let all = collect_targets(&lock, Scope::Project, &root, &[]).unwrap();
         let names: Vec<_> = all.iter().map(|t| (t.kind, t.name.as_str())).collect();
@@ -765,8 +834,14 @@ mod tests {
                 (AssetKind::Skill, "pdf"),
                 (AssetKind::Mcp, "gh"),
                 (AssetKind::Mcp, "gone"),
+                (AssetKind::Agent, "reviewer"),
+                (AssetKind::Plugin, "fmt@market"),
             ]
         );
+        assert_eq!(all[3].source, "https://github.com/o/r");
+        assert!(all[3].spec.is_none());
+        assert_eq!(all[4].source, "https://github.com/o/p");
+        assert!(all[4].spec.is_none());
         assert_eq!(
             all[1].spec.as_ref().and_then(|s| s.url.as_deref()),
             Some("https://api.example.com/mcp")
@@ -778,7 +853,63 @@ mod tests {
         assert_eq!(only_pack.len(), 2);
         let only_gh = collect_targets(&lock, Scope::Project, &root, &["gh".into()]).unwrap();
         assert_eq!(only_gh.len(), 1);
+        let only_agent =
+            collect_targets(&lock, Scope::Project, &root, &["reviewer".into()]).unwrap();
+        assert_eq!(only_agent.len(), 1);
+        assert_eq!(only_agent[0].kind, AssetKind::Agent);
+        let only_plugin =
+            collect_targets(&lock, Scope::Project, &root, &["fmt@market".into()]).unwrap();
+        assert_eq!(only_plugin.len(), 1);
+        assert_eq!(only_plugin[0].kind, AssetKind::Plugin);
+        let market = collect_targets(&lock, Scope::Project, &root, &["market".into()]).unwrap();
+        assert!(market.is_empty(), "a marketplace is not an audit target");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn agents_are_unverified_without_a_lookup_whatever_their_source() {
+        // A github.com source would be a skills.sh request for a skill; an agent
+        // must not borrow that, so the outcome is fixed before any lookup runs
+        let targets = vec![
+            AuditTarget::new(AssetKind::Agent, "reviewer", "https://github.com/o/r"),
+            AuditTarget::new(AssetKind::Agent, "planner", "https://gitlab.com/g/p"),
+        ];
+        let results = audit_in_pool(targets, false);
+        assert_eq!(results.len(), 2);
+        for r in &results {
+            assert_eq!(r.target.kind, AssetKind::Agent);
+            assert!(matches!(
+                r.outcome,
+                AuditOutcome::Unaudited(AGENT_UNAUDITED)
+            ));
+            assert!(r.is_unverified());
+            assert_eq!(r.worst(), None);
+        }
+    }
+
+    #[test]
+    fn plugins_are_unverified_without_a_lookup_whatever_their_source() {
+        let targets = vec![
+            AuditTarget::new(AssetKind::Plugin, "fmt@market", "https://github.com/o/p"),
+            AuditTarget::new(AssetKind::Plugin, "lint@other", "https://gitlab.com/g/p"),
+        ];
+        let results = audit_in_pool(targets, false);
+        assert_eq!(results.len(), 2);
+        for r in &results {
+            assert_eq!(r.target.kind, AssetKind::Plugin);
+            assert!(matches!(
+                r.outcome,
+                AuditOutcome::Unaudited(PLUGIN_UNAUDITED)
+            ));
+            assert!(r.is_unverified());
+            assert_eq!(r.worst(), None);
+        }
+    }
+
+    #[test]
+    fn asset_kind_serializes_to_its_lock_kind_string() {
+        assert_eq!(serde_json::to_value(AssetKind::Agent).unwrap(), "agent");
+        assert_eq!(serde_json::to_value(AssetKind::Plugin).unwrap(), "plugin");
     }
 
     #[test]

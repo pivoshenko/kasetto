@@ -18,12 +18,14 @@ During `kst sync`, Kasetto may:
 - **Install/update skills** by copying skill directories into the chosen destination path
 - **Remove skills** that are no longer in your config (for the selected scope)
 - **Merge MCPs** into agent-native settings files (additive merge; existing servers are preserved, except a kasetto-managed server replaced by `--update`)
+- **Enable plugins** by declaring a marketplace and enabling plugins in Claude Code and Copilot CLI settings files. The tool, not Kasetto, then clones and installs the plugin
 - **Write the lock file** for the selected scope
 
 Kasetto is designed around a "tracked-only" principle:
 
 - **Skills**: fully managed at their install paths for entries tracked in the lock
 - **MCPs**: only server entries that Kasetto installed (tracked in the lock) are removed during cleanup
+- **Plugins**: only the `enabledPlugins` keys and marketplace entries Kasetto wrote are removed; a marketplace you declared yourself is never overwritten or removed
 
 See [How Sync Works](/docs/how-sync-works) for details.
 
@@ -33,10 +35,12 @@ New MCPs are merged into agent settings files automatically on `kst sync`, with 
 
 ## Security Audits
 
-`kst audit` reports a severity for every installed skill and MCP, and the opt-in gate (`audit.fail-on`, or `kst sync --audit`) fails a sync when one is at or above a threshold. See [`kst audit`](/docs/commands#kst-audit) and [Configuration](/docs/configuration#audit).
+`kst audit` reports a severity for every installed skill and MCP, lists every installed subagent and plugin, and the opt-in gate (`audit.fail-on`, or `kst sync --audit`) fails a sync when one is at or above a threshold. See [`kst audit`](/docs/commands#kst-audit) and [Configuration](/docs/configuration#audit).
 
-- **Skills** use the verdicts [skills.sh](https://skills.sh) publishes from independent partners. They disagree often, so the headline is the worst one and `--verbose` shows them all. The verdicts are repo-level, not tied to the commit you locked, and only `github.com` sources are indexed.
-- **MCPs** are checked offline for risky launch options. The npm or PyPI package they run is resolved on [deps.dev](https://deps.dev) to the version a floating launch runs today, then looked up on [OSV](https://osv.dev) for the advisories affecting that version, including its malicious-packages feed, and on deps.dev for deprecation and its source repo's OpenSSF Scorecard.
+- **Skills** use the verdicts [skills.sh](https://skills.sh) publishes from independent partners. They disagree often, so the headline is the worst one and `--verbose` shows them all. The verdicts are repository-level, not tied to the commit you locked, and only `github.com` sources are indexed.
+- **MCPs** are checked offline for risky launch options. The npm or PyPI package they run is resolved on [deps.dev](https://deps.dev) to the version a floating launch runs today, then looked up on [OSV](https://osv.dev) for the advisories affecting that version, including its malicious-packages feed, and on deps.dev for deprecation and its source repository's OpenSSF Scorecard.
+- **Subagents** are always **unverified** (`no audit source for agents`). They are model instructions from a third-party repository, as risky as a skill, but skills.sh keys every verdict to one skill, not to the repository, so no verdict covers an agent file. Review them before you sync them.
+- **Plugins** are always **unverified** (`no audit source for plugins`). A plugin can run hooks and MCP servers on your machine, and no provider judges a marketplace plugin. Review the marketplace before you enable one
 - An asset that cannot be verified is reported as **unverified**, never as safe. It only warns unless you opt into failing closed with `fail-on-unverified`.
 
 Treat a clean audit as a signal, not a guarantee. The audit only reads public endpoints: it sends skills.sh the `owner/repo/skill` of each skill and OSV and deps.dev the name and version of each launched package, never a credential or a server definition. Nothing is sent unless you run `kst audit` or turn the gate on.
@@ -48,6 +52,7 @@ Treat a clean audit as a signal, not a guarantee. The audit only reads public en
 ## What Kasetto Does Not Do
 
 - It does not run skill code
+- It does not fetch, install, or run plugins. It only enables them; Claude Code or the Copilot CLI installs them at its next session start
 - It does not overwrite MCP entries it didn't install (only a Kasetto-managed server is replaced, and only under `--update`)
 - It does not write a credentials file. It can optionally *read* one for [secret injection](/docs/secrets)
 
@@ -78,6 +83,6 @@ This means a private config hosted on a git provider can be accessed by setting 
 
 ## Practical Recommendations
 
-- Prefer pinning remote sources to immutable refs (`ref: v1.2.3` or a commit SHA) for stable rollouts
+- Prefer pinning remote sources to immutable refs (`ref: v1.2.3` or a commit SHA) for stable rollouts. For a plugin source, use a tag: Kasetto writes `ref` into the tool's settings as is, and Claude Code before 2.1.324 cannot load a marketplace pinned to a commit SHA
 - In CI, use `--dry-run` (and ideally `--json`) to validate without writing changes
-- In CI, `kst sync --locked --audit` installs exactly the locked set and fails the job if any skill or MCP is rated high or worse. Add `--fail-on-unverified` to also fail when a verdict could not be fetched; on an air-gapped runner every lookup fails, so that flag fails every asset there
+- In CI, `kst sync --locked --audit` installs exactly the locked set and fails the job if any skill or MCP is rated high or worse. Add `--fail-on-unverified` to also fail when a verdict could not be fetched (and on any subagent or plugin, which is never verified); on an air-gapped runner every lookup fails, so that flag fails every asset there

@@ -5,8 +5,8 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use super::{
-    CommandFormat, CommandTarget, InstructionFormat, InstructionTarget, McpSettingsFormat,
-    McpSettingsTarget,
+    AgentFormat, AgentTarget, CommandFormat, CommandTarget, InstructionFormat, InstructionTarget,
+    McpSettingsFormat, McpSettingsTarget, PluginTarget,
 };
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
@@ -156,6 +156,34 @@ pub(crate) fn command_project_targets(project_root: &Path, agents: &[Agent]) -> 
     dedup_command_targets(agents.iter().map(|a| a.commands_project_path(project_root)))
 }
 
+fn dedup_agent_targets(iter: impl Iterator<Item = Option<AgentTarget>>) -> Vec<AgentTarget> {
+    dedup_by_path(iter.flatten(), |t| t.path.as_path())
+}
+
+/// Deduped global subagent directories for every known agent.
+pub(crate) fn all_agent_global_targets(home: &Path) -> Vec<AgentTarget> {
+    dedup_agent_targets(AGENT_PRESETS.iter().map(|a| a.agents_global_path(home)))
+}
+
+/// Deduped project-level subagent directories for every known agent.
+pub(crate) fn all_agent_project_targets(project_root: &Path) -> Vec<AgentTarget> {
+    dedup_agent_targets(
+        AGENT_PRESETS
+            .iter()
+            .map(|a| a.agents_project_path(project_root)),
+    )
+}
+
+/// Deduped global subagent directories for a specific set of agents.
+pub(crate) fn agent_global_targets(home: &Path, agents: &[Agent]) -> Vec<AgentTarget> {
+    dedup_agent_targets(agents.iter().map(|a| a.agents_global_path(home)))
+}
+
+/// Deduped project subagent directories for a specific set of agents.
+pub(crate) fn agent_project_targets(project_root: &Path, agents: &[Agent]) -> Vec<AgentTarget> {
+    dedup_agent_targets(agents.iter().map(|a| a.agents_project_path(project_root)))
+}
+
 fn dedup_paths(iter: impl Iterator<Item = PathBuf>) -> Vec<PathBuf> {
     dedup_by_path(iter, |p| p.as_path())
 }
@@ -243,6 +271,14 @@ pub(crate) fn mcp_settings_project_targets(
 #[inline]
 fn cmd(base: &Path, rel: &str, format: CommandFormat) -> Option<CommandTarget> {
     Some(CommandTarget {
+        path: base.join(rel),
+        format,
+    })
+}
+
+#[inline]
+fn subagent(base: &Path, rel: &str, format: AgentFormat) -> Option<AgentTarget> {
+    Some(AgentTarget {
         path: base.join(rel),
         format,
     })
@@ -567,6 +603,106 @@ impl Agent {
             | Agent::Replit
             | Agent::Trae
             | Agent::Warp => None,
+        }
+    }
+
+    /// Global subagent directory and write format for this agent, if supported.
+    ///
+    /// `None` covers tools with no file-defined subagents (Amp needs TypeScript,
+    /// Continue keeps them in `config.yaml`, OpenClaw in its gateway config, Pi only
+    /// through extensions, Replit and Warp not at all, Roo Code is discontinued),
+    /// plus two that do have them but are left out for now: Antigravity, whose
+    /// `tools` default of `[]` has undocumented semantics, and Windsurf, whose
+    /// subagents belong to Devin Desktop rather than Cascade.
+    pub(crate) fn agents_global_path(self, home: &Path) -> Option<AgentTarget> {
+        use AgentFormat as F;
+        match self {
+            Agent::ClaudeCode => subagent(home, ".claude/agents", F::ClaudeCode),
+            Agent::Cursor => subagent(home, ".cursor/agents", F::Cursor),
+            Agent::GithubCopilot => subagent(home, ".copilot/agents", F::Copilot),
+            Agent::Codex => subagent(home, ".codex/agents", F::CodexToml),
+            Agent::GeminiCli => subagent(home, ".gemini/agents", F::Gemini),
+            Agent::OpenCode => subagent(home, ".config/opencode/agents", F::OpenCode),
+            Agent::Augment => subagent(home, ".augment/agents", F::Augment),
+            Agent::Cline => subagent(home, ".cline/agents", F::Cline),
+            Agent::Goose => subagent(home, ".goose/agents", F::Goose),
+            Agent::Junie => subagent(home, ".junie/agents", F::Junie),
+            Agent::KiroCli => subagent(home, ".kiro/agents", F::Kiro),
+            Agent::OpenHands => subagent(home, ".openhands/agents", F::OpenHands),
+            // Unverified: Trae's subagent docs name `~/.trae-cn/agents` (the CN
+            // edition's home), while every other Trae user asset lives under `~/.trae`
+            Agent::Trae => subagent(home, ".trae/agents", F::Trae),
+            Agent::ZCode => subagent(home, ".zcode/agents", F::ZCode),
+            Agent::Amp
+            | Agent::Antigravity
+            | Agent::Continue
+            | Agent::OpenClaw
+            | Agent::Pi
+            | Agent::Replit
+            | Agent::Roo
+            | Agent::Warp
+            | Agent::Windsurf => None,
+        }
+    }
+
+    /// Project-local subagent directory and write format for this agent, if supported.
+    ///
+    /// ZCode documents only user-level subagents, so it has no project target.
+    pub(crate) fn agents_project_path(self, project_root: &Path) -> Option<AgentTarget> {
+        use AgentFormat as F;
+        match self {
+            Agent::ClaudeCode => subagent(project_root, ".claude/agents", F::ClaudeCode),
+            Agent::Cursor => subagent(project_root, ".cursor/agents", F::Cursor),
+            Agent::GithubCopilot => subagent(project_root, ".github/agents", F::Copilot),
+            Agent::Codex => subagent(project_root, ".codex/agents", F::CodexToml),
+            Agent::GeminiCli => subagent(project_root, ".gemini/agents", F::Gemini),
+            Agent::OpenCode => subagent(project_root, ".opencode/agents", F::OpenCode),
+            Agent::Augment => subagent(project_root, ".augment/agents", F::Augment),
+            Agent::Cline => subagent(project_root, ".cline/agents", F::Cline),
+            Agent::Goose => subagent(project_root, ".goose/agents", F::Goose),
+            Agent::Junie => subagent(project_root, ".junie/agents", F::Junie),
+            Agent::KiroCli => subagent(project_root, ".kiro/agents", F::Kiro),
+            Agent::OpenHands => subagent(project_root, ".openhands/agents", F::OpenHands),
+            Agent::Trae => subagent(project_root, ".trae/agents", F::Trae),
+            Agent::Amp
+            | Agent::Antigravity
+            | Agent::Continue
+            | Agent::OpenClaw
+            | Agent::Pi
+            | Agent::Replit
+            | Agent::Roo
+            | Agent::Warp
+            | Agent::Windsurf
+            | Agent::ZCode => None,
+        }
+    }
+
+    /// Global settings file that declares plugin marketplaces and enabled plugins.
+    pub(crate) fn plugins_global_target(self, home: &Path) -> Option<PluginTarget> {
+        match self {
+            Agent::ClaudeCode => Some(PluginTarget {
+                path: home.join(".claude/settings.json"),
+            }),
+            // Copilot CLI reads the same two keys and installs the plugin itself
+            Agent::GithubCopilot => Some(PluginTarget {
+                path: home.join(".copilot/settings.json"),
+            }),
+            _ => None,
+        }
+    }
+
+    /// Project settings file that declares plugin marketplaces and enabled plugins.
+    /// Claude Code applies it only after the folder is trusted, and fetches an
+    /// external-source plugin from it only once each user installs it.
+    pub(crate) fn plugins_project_target(self, project_root: &Path) -> Option<PluginTarget> {
+        match self {
+            Agent::ClaudeCode => Some(PluginTarget {
+                path: project_root.join(".claude/settings.json"),
+            }),
+            Agent::GithubCopilot => Some(PluginTarget {
+                path: project_root.join(".github/copilot/settings.json"),
+            }),
+            _ => None,
         }
     }
 

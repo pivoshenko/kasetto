@@ -26,7 +26,7 @@ Appends a source to your local `kasetto.yaml` and syncs it in, the cargo/uv-styl
 kst add <SOURCE> [OPTIONS]
 ```
 
-Kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) name the entries to add. Because skills, MCPs, commands, and instructions are separate lists, a single `add` can write to several of them at once, which is handy for a repo that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
+Kind-tagged flags `--skill`, `--mcp`, `--command`, `--instruction`, `--agent`, and `--plugin` (each repeatable) name the entries to add. Because skills, MCPs, commands, instructions, subagents, and plugins are separate lists, a single `add` can write to several of them at once, which is handy for a repository that ships more than one kind. A lone `*` value (`--skill "*"`) is a wildcard. With **no** kind flags, the source is added as `skills: "*"`.
 
 ```bash
 kst add https://github.com/anthropics/skills                 # every skill in the pack
@@ -37,7 +37,7 @@ kst add https://github.com/example/pack --branch develop --no-sync
 kst add https://github.com/example/pack --dry-run             # preview the edit, don't write
 ```
 
-**Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab, and `add` decomposes a `blob`/`tree` URL into the repo, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
+**Deep browse URLs.** Paste the URL you're looking at on GitHub/Gitea/GitLab, and `add` decomposes a `blob`/`tree` URL into the repository, ref, and sub-directory (and, for a `SKILL.md` link, the skill name):
 
 ```bash
 kst add https://github.com/mattpocock/skills/blob/main/skills/personal/edit-article/SKILL.md
@@ -64,9 +64,11 @@ A 40-char hex ref is pinned as `ref:`; any other ref (e.g. `main`) becomes `bran
 | `--mcp <name>`        | MCP to add (repeatable; `*` for all)                           |
 | `--command <name>`    | Command to add (repeatable; `*` for all)                              |
 | `--instruction <name>`| Instruction to add (repeatable; `*` for all)                          |
+| `--agent <name>`      | [Subagent](/docs/subagents) to add (repeatable; `*` for all)          |
+| `--plugin <name>`     | [Plugin](/docs/plugins) to enable (repeatable; `*` for all)           |
 | `--ref <ref>`         | Pin to a git tag, commit SHA, or ref (conflicts with `--branch`)      |
 | `--branch <branch>`   | Track a specific branch (conflicts with `--ref`)                      |
-| `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands/instructions)   |
+| `--sub-dir <dir>`     | Subdirectory inside the source to use as the root (skills/commands/instructions/subagents), or that holds a plugin marketplace   |
 | `--config <path>`     | Config file to edit (default: `./kasetto.yaml`); must be a local file |
 | `--no-verify`         | Skip the upfront fetch that validates the source resolves             |
 | `--no-sync`           | Edit the config without installing                                    |
@@ -84,13 +86,13 @@ The `<SOURCE>@<REF>` shorthand (cargo/uv-style) splits the trailing `@<ref>` off
 
 ## `kst remove`
 
-Deletes entries from your local `kasetto.yaml`, then syncs so the now-unconfigured skills, MCPs, commands, and instructions are pruned from disk and the lock. Aliased as `kst rm`.
+Deletes entries from your local `kasetto.yaml`, then syncs so the now-unconfigured skills, MCPs, commands, subagents, and instructions are pruned from disk and the lock, and the now-unconfigured plugins are disabled. Aliased as `kst rm`.
 
 ```bash
 kst remove <SOURCE> [OPTIONS]
 ```
 
-`remove` mirrors `add`. The kind-tagged flags `--skill`, `--mcp`, `--command`, and `--instruction` (each repeatable) **subtract** named entries from a list; when the last name goes, the whole entry is dropped. A lone `*` value drops that kind's entry outright. With **no** kind flags, the source is removed from every list it appears in.
+`remove` mirrors `add`. The kind-tagged flags `--skill`, `--mcp`, `--command`, `--instruction`, `--agent`, and `--plugin` (each repeatable) **subtract** named entries from a list; when the last name goes, the whole entry is dropped. A lone `*` value drops that kind's entry outright. With **no** kind flags, the source is removed from every list it appears in.
 
 ```bash
 kst remove https://github.com/anthropics/skills               # drop the whole source
@@ -102,7 +104,7 @@ kst remove https://github.com/example/pack --dry-run          # preview, don't w
 kst rm ./local/pack --no-sync                                 # edit config only
 ```
 
-Deep `blob`/`tree` browse URLs are accepted too. They resolve to the same repo-root source `add` would have written, so you can paste the URL you're looking at.
+Deep `blob`/`tree` browse URLs are accepted too. They resolve to the same repository-root source `add` would have written, so you can paste the URL you're looking at.
 
 ### Options
 
@@ -112,6 +114,8 @@ Deep `blob`/`tree` browse URLs are accepted too. They resolve to the same repo-r
 | `--mcp <name>`      | MCP to remove (repeatable; `*` drops the whole mcps entry)       |
 | `--command <name>`  | Command to remove (repeatable; `*` drops the whole commands entry) |
 | `--instruction <name>` | Instruction to remove (repeatable; `*` drops the whole instructions entry) |
+| `--agent <name>`    | Subagent to remove (repeatable; `*` drops the whole agents entry) |
+| `--plugin <name>`   | Plugin to remove (repeatable; `*` drops the whole plugins entry)  |
 | `--ref <ref>`       | Disambiguate by pinned ref when a URL appears more than once      |
 | `--branch <branch>` | Disambiguate by tracked branch                                    |
 | `--sub-dir <path>`  | Disambiguate by sub-dir (or pass a deep blob/tree URL)            |
@@ -155,6 +159,10 @@ Missing skills are reported as broken but won't stop the rest of the run: every 
 
 When the security gate runs, the `--json` report gains an `audit` object: `threshold`, `fail_on_unverified`, `violations` (one `{kind, name, source, level, provider}` row per asset at or above the threshold, worst first), `unverified` (how many assets could not be fully verified), and `passed`. The gate's verdicts still print on stderr, and `kst doctor` lists a failed gate under failed assets until the next sync.
 
+When a subagent is installed or updated and a target tool cannot carry some of its fields, the run prints one warning line per subagent and tool naming what was dropped, and `--json` lists them in a `warnings` array. See [Subagents](/docs/subagents#dropped-fields).
+
+Plugins report as `plugin:<plugin>@<marketplace>`. Sync installs no plugin files: it declares the marketplace and enables the plugin in each tool's settings, and Claude Code or the Copilot CLI installs it at its next session start. See [Plugins](/docs/plugins).
+
 <Callout type="tip">
 
 
@@ -183,7 +191,7 @@ kst lock [OPTIONS]
 | `--project`              | Lock the project scope (`./kasetto.lock`)             |
 | `--global`               | Lock the global scope (default)                       |
 
-Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination, so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. Inline MCP entries need no fetch, so `lock` pins them fully. Source-based MCP and command entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
+Skills are hashed from the materialized **source tree**. Because a skill installs as a verbatim copy, that hash equals the one a later `sync` computes at the destination, so after `kst lock` a plain `kst sync --locked` succeeds with zero fetches. Inline MCP entries need no fetch, so `lock` pins them fully. Source-based MCP, command, instruction, subagent, and plugin entries can't be hashed without applying their merge/transform, so `lock` only refreshes their resolved revision pins; their content hash fills in on the next real `sync`. Any source that fails to resolve aborts the lock before writing.
 
 <Callout type="info">
 
@@ -203,24 +211,26 @@ kst list [OPTIONS]
 
 | Flag                | Description                                                            |
 | ------------------- | ---------------------------------------------------------------------- |
-| `--type <kind>`     | `all` (default), `skills`, `mcps`, `commands`, or `instructions`                       |
+| `--type <kind>`     | `all` (default), `skills`, `mcps`, `commands`, `instructions`, `agents`, or `plugins`  |
 | `--json`            | Output as JSON                                                         |
 | `-q`, `--quiet`     | Suppress output (unless `--json` is set)                               |
 | `--color <when>`    | `auto` (default), `always`, or `never`                                 |
 | `--project`         | Only read the project lock (`./kasetto.lock`) in the current directory |
 | `--global`          | Only read the global lock (under XDG data)                             |
 
-With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
+With **no** `--project` or `--global`, Kasetto merges **both** scopes so you can see global and project installs together. Each row includes a **scope** column. The `--json` shape always includes top-level `skills`, `mcps`, `commands`, `instructions`, `agents`, `plugins`, and `merged_scopes` keys; `--type` filters the contents of each list but never drops the key.
 ## `kst audit`
 
-Reports a security verdict for every installed skill and MCP in the scope's lock. It is read-only: nothing on disk or in the lock changes.
+Reports a security verdict for every installed skill, MCP, subagent, and plugin in the scope's lock. It is read-only: nothing on disk or in the lock changes.
 
 ```bash
 kst audit [NAME...] [OPTIONS]
 ```
 
 - **Skills** take the verdicts [skills.sh](https://skills.sh) publishes from several independent partners (Snyk, Socket, Gen Agent Trust Hub, and others). They often disagree, so the row shows the worst one and `--verbose` lists each. These verdicts describe the source repository, not the commit your lock pins, and only `github.com` sources are indexed; anything else shows as `not on skills.sh`.
-- **MCPs** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages, and on [deps.dev](https://deps.dev) for whether it is deprecated and how its source repo scores on the OpenSSF Scorecard.
+- **MCPs** are judged from the definition installed in your agent's config. Kasetto checks it offline for risky launch options, then looks up the npm or PyPI package it runs on [OSV](https://osv.dev), which also lists known malicious packages, and on [deps.dev](https://deps.dev) for whether it is deprecated and how its source repository scores on the OpenSSF Scorecard.
+- **Subagents** are listed but always unverified (`no audit source for agents`): skills.sh verdicts belong to one skill, not to the repository that ships it, so nothing judges an agent file. They never breach a `--fail-on` threshold and fail the run only under `--fail-on-unverified`. `--json` lists them in an `agents` array.
+- **Plugins** are listed the same way, always unverified (`no audit source for plugins`): a plugin can run hooks and MCP servers, and no provider judges a marketplace plugin. They fail the run only under `--fail-on-unverified`. `--json` lists them in a `plugins` array
 
 | MCP check | Severity | Flags |
 | --------- | -------- | ----- |
@@ -234,8 +244,8 @@ kst audit [NAME...] [OPTIONS]
 | OSV advisory | from the advisory | A known vulnerability in the pinned package version |
 | OSV `MAL-` entry | critical | A known malicious package, pinned or not |
 | `deprecated` | low / medium | The pinned version is deprecated (low), or the latest version is, so the package is abandoned (medium) |
-| `low-scorecard` | low / medium | The source repo scores below 5 (low) or below 3 (medium) on the OpenSSF Scorecard |
-| `unmaintained` | low | The source repo fails the Scorecard `Maintained` check |
+| `low-scorecard` | low / medium | The source repository scores below 5 (low) or below 3 (medium) on the OpenSSF Scorecard |
+| `unmaintained` | low | The source repository fails the Scorecard `Maintained` check |
 
 Verdict summaries never echo env values, headers, URL paths, or scripts, because the installed definition already has its secrets resolved.
 
@@ -243,7 +253,7 @@ Verdict summaries never echo env values, headers, URL paths, or scripts, because
 
 | Flag               | Description                                                           |
 | ------------------ | --------------------------------------------------------------------- |
-| `NAME...`          | Only audit these skills, MCPs, or MCP packs (default: all)     |
+| `NAME...`          | Only audit these skills, subagents, plugins, MCPs, or MCP packs (default: all) |
 | `-v`, `--verbose`  | Show every provider's verdict, not only the worst                     |
 | `--fail-on <level>`| Exit non-zero if any asset is at or above `low`, `medium`, `high`, or `critical` |
 | `--fail-on-unverified` | Exit non-zero if any asset could not be verified; works with or without `--fail-on` |
@@ -260,11 +270,13 @@ The summary line sorts every asset into exactly one of three buckets. `flagged` 
 
 Prints a local health check: your version, lock file location, install paths, last sync time, and any skills that failed. It exits non-zero when it reports issues (failed assets, or locked skills missing on disk), so `kst doctor` works as a CI gate; `-q` runs the same checks and sets the same exit code without printing.
 
-It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCPs in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
+It also reports **untracked entries**, assets sitting in a Kasetto-managed install path that the lock file does not track: stray skills, command files, subagent files, per-directory instruction rules, orphaned instruction blocks left in a shared `CLAUDE.md`/`AGENTS.md`, and MCPs in an agent's settings file. This is purely advisory and **read-only**. Kasetto never deletes files it does not own, and the check never changes the exit code.
+
+It also prints advisory **warnings** that never change the exit code, such as a configured tool that has no subagent support (`windsurf has no subagent support; agents are skipped for it`). With plugins configured it adds a `Plugins` inventory row, and its warnings cover a configured tool with no declarative plugin install, a locked plugin no longer enabled in a settings file (`kst sync` restores it), a marketplace declared by hand with a different source (Kasetto leaves it alone), and when the tool will actually install the plugin: at its next session start (`/reload-plugins`), and at project scope only once each user trusts the folder. `--json` carries them under `plugins` and `plugin_drift`.
 
 <Callout type="info">
 
-Because Kasetto writes no ownership marker into MCP settings files (and deliberately preserves servers you add yourself), the MCP portion is an **inventory of every server the lock does not track**, so it will also list servers you added by hand. Treat it as an FYI, not an orphan report. Command and per-directory instruction dirs are likewise shared with your own files, so anything you hand-authored there shows up too.
+Because Kasetto writes no ownership marker into MCP settings files (and deliberately preserves servers you add yourself), the MCP portion is an **inventory of every server the lock does not track**, so it will also list servers you added by hand. Treat it as an FYI, not an orphan report. Command, subagent, and per-directory instruction dirs are likewise shared with your own files, so anything you hand-authored there shows up too.
 
 </Callout>
 
@@ -284,7 +296,7 @@ kst doctor [OPTIONS]
 
 ## `kst clean`
 
-Removes everything Kasetto installed for the given scope: skills, commands, MCP configs, instructions, and lock file entries. It also drops the machine-local runtime state and the cached audit lookups, so the next `kst audit` asks every provider again.
+Removes everything Kasetto installed for the given scope: skills, commands, subagents, MCP configs, instructions, and lock file entries. For plugins it removes only the `enabledPlugins` keys and marketplace entries Kasetto wrote (`plugins_removed` in `--json`); Claude Code keeps its own clone and cache, see [Plugins](/docs/plugins#pruning-and-clean). It also drops the machine-local runtime state and the cached audit lookups, so the next `kst audit` asks every provider again.
 
 ```bash
 kst clean [OPTIONS]
@@ -339,7 +351,7 @@ The notice is suppressed when:
 
 ### `kst self uninstall`
 
-A full teardown: removes installed skills, commands, instructions, and MCP configs, clears Kasetto's data directories, and deletes the binary.
+A full teardown: removes installed skills, commands, subagents, instructions, and MCP configs, removes the plugin keys Kasetto wrote from each settings file, clears Kasetto's data directories, and deletes the binary.
 
 ```bash
 kst self uninstall [OPTIONS]

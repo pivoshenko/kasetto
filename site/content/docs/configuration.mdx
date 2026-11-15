@@ -1,6 +1,6 @@
 ---
 title: "Configuring kasetto.yaml"
-description: "Declare skills, commands, MCPs, and instructions in one kasetto.yaml - sources, agents, scope, and composing configs with extends."
+description: "Declare skills, commands, subagents, MCPs, instructions, and plugins in one kasetto.yaml - sources, agents, scope, and composing configs with extends."
 ---
 
 When `--config` is omitted, Kasetto looks for config in this order:
@@ -17,7 +17,7 @@ To persist a remote URL as your default, add a `source:` key to `~/.config/kaset
 
 Two similarly named files live in `~/.config/kasetto/`, and they do different jobs:
 
-- **`kasetto.yaml`** is a config. It holds your agents, skills, MCPs, commands, and instructions. `kst init --global` writes this one
+- **`kasetto.yaml`** is a config. It holds your agents, skills, MCPs, commands, subagents, instructions, and plugins. `kst init --global` writes this one
 - **`config.yaml`** is a preferences file. Its only job is a `source:` key naming the config to use, and it never contains skills itself
 
 Because `./kasetto.yaml` is checked first, a project that has its own config always wins over a persisted `source:`.
@@ -28,64 +28,62 @@ Because `./kasetto.yaml` is checked first, a project that has its own config alw
 
 {/* kasetto-config:start */}
 ```yaml
-# Option A: preset destination by agent (see README for supported agent values)
 agent:
   - codex
   - claude-code
 
-# Option B: manual destination (takes precedence if both are set)
-# destination: ./.agents/skills
-
 skills:
-  # "*" syncs every skill in the source. Each is a directory with a SKILL.md,
-  # discovered in the source root or its skills/ subdirectory
   - source: https://github.com/vercel-labs/next-skills
-    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
     skills: "*"
 
-  # or list skills by name
   - source: https://github.com/anthropics/skills
     skills:
       - doc-coauthoring
       - frontend-design
       - pptx
 
-  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
   - source: https://github.com/mattpocock/skills
     sub-dir: skills/productivity
     skills:
       - grill-me
       - caveman
 
-  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
       - name: improve-codebase-architecture
         path: skills/engineering
 
 commands:
-  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
   - source: https://github.com/gsd-build/get-shit-done
     commands:
       - gsd:explore
       - gsd:fast
 
+agents:
+  - source: https://github.com/cursor/plugins
+    sub-dir: harness/pstack/claude-code
+    agents:
+      - poteto-agent
+      - comment-sicko
+
 instructions:
-  # instructions wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from instructions/<name>.{md,mdc}
-  # "*" syncs every instruction; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
   - source: https://github.com/pivoshenko/pivoshenko.ai
     instructions:
       - docs-autoupdate
       - multi-agent-dispatch
 
 mcps:
-  # names resolve to mcps/<name>.json in the source
   - source: https://github.com/pivoshenko/pivoshenko.ai
-    branch: main   # track a specific branch (use ref: to pin a tag or commit)
+    branch: main
     mcps:
       - github
       - vercel
       - kaggle
+
+plugins:
+  - source: https://github.com/cursor/plugins
+    plugins:
+      - pstack
 ```
 {/* kasetto-config:end */}
 
@@ -101,7 +99,9 @@ mcps:
 | `skills`      | **yes**  | List of skill sources                                               |
 | `mcps`        | no       | List of MCP sources or inline definitions                           |
 | `commands`    | no       | List of command sources                                             |
+| `agents`      | no       | List of [subagent](/docs/subagents) sources. Not the same key as `agent`, which names the target tools |
 | `instructions`       | no       | List of instruction sources (CLAUDE.md / .cursor/rules / AGENTS.md ...)      |
+| `plugins`     | no       | List of [plugin](/docs/plugins) marketplace sources, enabled in Claude Code and Copilot CLI settings |
 | `secrets`     | no       | Secret-injection policy for `${kst_...}` placeholders (see [Secret Injection](/docs/secrets)) |
 | `extends`     | no       | Path or URL of a parent config to inherit from (string or list)     |
 | `audit`       | no       | Security gate for `sync` (see [Audit](#audit))                      |
@@ -253,7 +253,7 @@ audit:
 | `fail-on`            | no       | Minimum severity that fails a sync: `low`, `medium`, `high`, or `critical`. Any other value (including `safe`) is a config error. Omit it and sync never audits. |
 | `fail-on-unverified` | no       | `true` makes the gate fail closed: an asset it cannot verify fails the sync instead of only warning. Defaults to `false`, and only acts when `fail-on` (or `--audit`) turns the gate on. |
 
-After installing, the gate audits every skill and MCP in the lock, exactly as [`kst audit`](/docs/commands#kst-audit) does, and the run exits non-zero if any is at or above the threshold. The files stay installed: the exit code is what stops a CI job before the environment is used. `kst sync --audit [level]` turns the gate on for one run (or overrides the configured level), `--fail-on-unverified` is the flag form of `fail-on-unverified`, and `--no-audit` skips the gate whatever else is set. `kst add` and `kst remove` honor the configured policy in their follow-up sync. Dry runs skip the gate, since they install nothing. The verdict is recorded in the sync report (`audit` in `kst sync --json`) and surfaces in `kst doctor` as a failed asset until the next sync.
+After installing, the gate audits every skill and MCP in the lock, exactly as [`kst audit`](/docs/commands#kst-audit) does, and the run exits non-zero if any is at or above the threshold. Subagents and plugins are listed as unverified, since nothing audits them, so they fail the gate only under `fail-on-unverified`. The files stay installed: the exit code is what stops a CI job before the environment is used. `kst sync --audit [level]` turns the gate on for one run (or overrides the configured level), `--fail-on-unverified` is the flag form of `fail-on-unverified`, and `--no-audit` skips the gate whatever else is set. `kst add` and `kst remove` honor the configured policy in their follow-up sync. Dry runs skip the gate, since they install nothing. The verdict is recorded in the sync report (`audit` in `kst sync --json`) and surfaces in `kst doctor` as a failed asset until the next sync.
 
 <Callout type="info">
 
@@ -292,7 +292,9 @@ extends:
 | `skills`      | Merge by `(source, ref-or-branch, sub-dir)` identity. Same identity replaces; new entries append.                             |
 | `mcps`        | Same as `skills` (`sub-dir` is always empty for MCP sources, so identity is `(source, ref-or-branch)`).                       |
 | `commands`    | Same as `skills`.                                                                                                            |
+| `agents`      | Same as `skills`.                                                                                                            |
 | `instructions`       | Same as `skills`.                                                                                                            |
+| `plugins`     | Same as `skills`.                                                                                                            |
 
 Identity-based merging lets a child *narrow* a parent's `skills: "*"` to a specific list, or pin a different `ref`, while still adding new sources.
 

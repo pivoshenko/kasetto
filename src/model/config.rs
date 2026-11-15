@@ -30,6 +30,12 @@ pub(crate) struct Config {
     pub commands: Vec<CommandSourceSpec>,
     #[serde(default)]
     pub instructions: Vec<InstructionSourceSpec>,
+    /// The `agents:` key. Named `subagents` here because `Config::agents()` already
+    /// returns the target tools from `agent:`.
+    #[serde(default, rename = "agents")]
+    pub subagents: Vec<AgentSourceSpec>,
+    #[serde(default)]
+    pub plugins: Vec<PluginSourceSpec>,
     /// Optional secret-injection settings. Carries no secret *values* (it is
     /// committed), only policy and extra credential-file paths.
     #[serde(default)]
@@ -339,6 +345,42 @@ instructions:
     }
 
     #[test]
+    fn config_agents_parses_list_and_objects() {
+        let cfg: Config = serde_yaml::from_str(
+            r#"
+agents:
+  - source: https://github.com/cursor/plugins
+    sub-dir: harness/pstack/claude-code
+    agents:
+      - poteto-agent
+      - name: comment-sicko
+        path: extra
+"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.subagents.len(), 1);
+        let spec = &cfg.subagents[0];
+        assert_eq!(spec.sub_dir.as_deref(), Some("harness/pstack/claude-code"));
+        let AgentsField::List(ref entries) = spec.agents else {
+            panic!("expected list")
+        };
+        assert_eq!(entries[0].name(), "poteto-agent");
+        assert!(
+            matches!(&entries[1], AgentEntry::Obj { name, path: Some(p) } if name == "comment-sicko" && p == "extra")
+        );
+    }
+
+    #[test]
+    fn config_plugins_parses_names() {
+        let cfg: Config = serde_yaml::from_str(
+            "plugins:\n  - source: https://github.com/cursor/plugins\n    ref: v1\n    plugins:\n      - pstack\n",
+        )
+        .unwrap();
+        assert_eq!(cfg.plugins[0].git_ref.as_deref(), Some("v1"));
+        assert!(matches!(&cfg.plugins[0].plugins, PluginsField::List(n) if n == &["pstack"]));
+    }
+
+    #[test]
     fn config_commands_supports_sub_dir_alias() {
         let yaml = r#"
 skills: []
@@ -610,6 +652,95 @@ pub(crate) enum InstructionsField {
 pub(crate) enum InstructionEntry {
     Name(String),
     Obj { name: String, path: Option<String> },
+}
+
+/// A subagent source: where to fetch from and which subagents to install.
+#[derive(Debug, Deserialize)]
+pub(crate) struct AgentSourceSpec {
+    pub source: String,
+    pub branch: Option<String>,
+    #[serde(rename = "ref")]
+    pub git_ref: Option<String>,
+    #[serde(default, rename = "sub-dir", alias = "sub_dir")]
+    pub sub_dir: Option<String>,
+    pub agents: AgentsField,
+}
+
+impl AgentSourceSpec {
+    pub(crate) fn as_source_spec(&self) -> SourceSpec {
+        SourceSpec {
+            source: self.source.clone(),
+            branch: self.branch.clone(),
+            git_ref: self.git_ref.clone(),
+            sub_dir: self.sub_dir.clone(),
+            skills: SkillsField::Wildcard("*".to_string()),
+        }
+    }
+}
+
+/// The `agents` field on an `AgentSourceSpec`. Mirrors `CommandsField`.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum AgentsField {
+    Wildcard(String),
+    List(Vec<AgentEntry>),
+}
+
+/// One entry in `agents[].agents`. Mirrors `CommandEntry`, minus namespacing:
+/// subagent directories are flat in most tools.
+///
+/// - Plain string `"reviewer"` -> `agents/reviewer.md`
+/// - Object `{ name: reviewer, path: team }` -> `team/reviewer.md`
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum AgentEntry {
+    Name(String),
+    Obj { name: String, path: Option<String> },
+}
+
+impl AgentEntry {
+    pub(crate) fn name(&self) -> &str {
+        match self {
+            AgentEntry::Name(n) => n,
+            AgentEntry::Obj { name, .. } => name,
+        }
+    }
+}
+
+/// A plugin marketplace source: a repository holding `.claude-plugin/marketplace.json`,
+/// and which of its plugins to enable. Claude Code fetches the plugins itself.
+#[derive(Debug, Deserialize)]
+pub(crate) struct PluginSourceSpec {
+    pub source: String,
+    pub branch: Option<String>,
+    #[serde(rename = "ref")]
+    pub git_ref: Option<String>,
+    /// Directory holding `.claude-plugin/marketplace.json`, when it is not the
+    /// repository root.
+    #[serde(default, rename = "sub-dir", alias = "sub_dir")]
+    pub sub_dir: Option<String>,
+    pub plugins: PluginsField,
+}
+
+impl PluginSourceSpec {
+    pub(crate) fn as_source_spec(&self) -> SourceSpec {
+        SourceSpec {
+            source: self.source.clone(),
+            branch: self.branch.clone(),
+            git_ref: self.git_ref.clone(),
+            sub_dir: self.sub_dir.clone(),
+            skills: SkillsField::Wildcard("*".to_string()),
+        }
+    }
+}
+
+/// The `plugins` field on a `PluginSourceSpec`: `"*"` for every plugin in the
+/// marketplace, or a list of marketplace entry names.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum PluginsField {
+    Wildcard(String),
+    List(Vec<String>),
 }
 
 #[derive(Debug, Deserialize)]

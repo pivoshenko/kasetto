@@ -1,9 +1,9 @@
 //! Module that contains `kasetto audit`, which reports security verdicts for the
-//! installed skills and MCP servers read from the lock.
+//! installed skills, subagents, plugins, and MCP servers read from the lock.
 //!
 //! Read-only: it never changes files or the lock. Skills are looked up on
-//! skills.sh; MCP servers are checked offline and against OSV (see
-//! [`crate::audit`]). It exits non-zero only when `--fail-on` is given and an
+//! skills.sh; MCP servers are checked offline and against OSV; subagents and plugins
+//! have no audit source and are listed as unverified (see [`crate::audit`]). It exits non-zero only when `--fail-on` is given and an
 //! asset meets the threshold, or `--fail-on-unverified` is given and an asset
 //! could not be verified, so it doubles as a CI gate.
 
@@ -85,16 +85,22 @@ pub(crate) fn run(opts: &AuditOptions) -> Result<Outcome> {
     let outcome = Outcome::from_failed(breached);
 
     if opts.as_json {
-        let (skills, mcps): (Vec<_>, Vec<_>) = results
-            .iter()
-            .partition(|r| r.target.kind == AssetKind::Skill);
+        let rows = |kind: AssetKind| {
+            results
+                .iter()
+                .filter(|r| r.target.kind == kind)
+                .map(row)
+                .collect::<Vec<_>>()
+        };
         print_json(&serde_json::json!({
             "scope": match scope {
                 Scope::Global => "global",
                 Scope::Project => "project",
             },
-            "skills": skills.into_iter().map(row).collect::<Vec<_>>(),
-            "mcps": mcps.into_iter().map(row).collect::<Vec<_>>(),
+            "skills": rows(AssetKind::Skill),
+            "mcps": rows(AssetKind::Mcp),
+            "agents": rows(AssetKind::Agent),
+            "plugins": rows(AssetKind::Plugin),
             "summary": summarize(&results),
             "fail_on": opts.fail_on,
             "fail_on_unverified": opts.fail_on_unverified,
@@ -186,7 +192,7 @@ fn render(
     plain: bool,
 ) {
     if results.is_empty() {
-        println!("No skills or MCP servers installed to audit.");
+        println!("No skills, MCP servers, subagents, or plugins installed to audit.");
         print_tip("run `kst sync` to install assets first", plain);
         return;
     }
@@ -196,6 +202,8 @@ fn render(
     for (kind, label, via) in [
         (AssetKind::Skill, "Skills", "via skills.sh"),
         (AssetKind::Mcp, "MCP servers", mcp_via.as_str()),
+        (AssetKind::Agent, "Agents", "not audited"),
+        (AssetKind::Plugin, "Plugins", "not audited"),
     ] {
         let rows: Vec<&AuditResult> = results.iter().filter(|r| r.target.kind == kind).collect();
         if rows.is_empty() {
@@ -284,7 +292,7 @@ fn headline(r: &AuditResult, plain: bool) -> (String, usize, String) {
                 return (dim("-", plain), 1, dim("no usable verdict", plain));
             };
             let mut tail = match r.target.kind {
-                AssetKind::Skill => {
+                AssetKind::Skill | AssetKind::Agent | AssetKind::Plugin => {
                     let n = a.verdicts.len();
                     format!("{n} {}", pluralize(n, "partner", "partners"))
                 }
@@ -394,7 +402,7 @@ fn truncate(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audit::{AssetAudit, AuditTarget, Verdict};
+    use crate::audit::{AssetAudit, AuditTarget, Verdict, AGENT_UNAUDITED, PLUGIN_UNAUDITED};
 
     fn result(kind: AssetKind, outcome: AuditOutcome) -> AuditResult {
         AuditResult {
@@ -437,14 +445,16 @@ mod tests {
             result(AssetKind::Mcp, audited(RiskLevel::Medium)),
             result(AssetKind::Skill, AuditOutcome::Unaudited("no audit yet")),
             result(AssetKind::Skill, AuditOutcome::Error("timeout".into())),
+            result(AssetKind::Agent, AuditOutcome::Unaudited(AGENT_UNAUDITED)),
+            result(AssetKind::Plugin, AuditOutcome::Unaudited(PLUGIN_UNAUDITED)),
         ];
         assert_eq!(
             summarize(&results),
             Summary {
                 safe: 2,
                 flagged: 2,
-                unverified: 2,
-                unaudited: 1,
+                unverified: 4,
+                unaudited: 3,
                 errors: 1,
             }
         );
@@ -491,6 +501,28 @@ mod tests {
     }
 
     #[test]
+    fn an_unaudited_agent_breaches_only_with_fail_on_unverified() {
+        let results = vec![
+            result(AssetKind::Agent, AuditOutcome::Unaudited(AGENT_UNAUDITED)),
+            result(AssetKind::Mcp, audited(RiskLevel::Safe)),
+        ];
+        assert!(!breached(&results, Some(RiskLevel::Low), false));
+        assert!(breached(&results, None, true));
+        assert_eq!(unverified(&results), 1);
+    }
+
+    #[test]
+    fn an_unaudited_plugin_breaches_only_with_fail_on_unverified() {
+        let results = vec![
+            result(AssetKind::Plugin, AuditOutcome::Unaudited(PLUGIN_UNAUDITED)),
+            result(AssetKind::Mcp, audited(RiskLevel::Safe)),
+        ];
+        assert!(!breached(&results, Some(RiskLevel::Low), false));
+        assert!(breached(&results, None, true));
+        assert_eq!(unverified(&results), 1);
+    }
+
+    #[test]
     fn json_row_carries_status_reason_and_worst() {
         let r = row(&result(
             AssetKind::Skill,
@@ -506,6 +538,26 @@ mod tests {
         assert_eq!(v["status"], "audited");
         assert_eq!(v["worst"], "critical");
         assert_eq!(v["audit"]["verdicts"][0]["provider"], "P");
+
+        let r = row(&result(
+            AssetKind::Agent,
+            AuditOutcome::Unaudited(AGENT_UNAUDITED),
+        ));
+        let v = serde_json::to_value(&r).unwrap();
+        assert_eq!(v["status"], "unaudited");
+        assert_eq!(v["reason"], AGENT_UNAUDITED);
+        assert!(v.get("worst").is_none());
+        assert!(v.get("audit").is_none());
+
+        let r = row(&result(
+            AssetKind::Plugin,
+            AuditOutcome::Unaudited(PLUGIN_UNAUDITED),
+        ));
+        let v = serde_json::to_value(&r).unwrap();
+        assert_eq!(v["status"], "unaudited");
+        assert_eq!(v["reason"], PLUGIN_UNAUDITED);
+        assert!(v.get("worst").is_none());
+        assert!(v.get("audit").is_none());
     }
 
     #[test]

@@ -22,13 +22,24 @@ A look at what `kst sync` actually does: how skills are installed, how MCP confi
    c. Discover commands in source, transform into each agent's native format
    d. For each command: hash → compare to lock → write if changed
    e. Remove commands no longer in config
-5. Sync MCPs
+5. Sync subagents
+   a. For each subagent source: decide whether a fetch is needed (the lock pins it and the destination files already exist -> no network)
+   b. Materialize (download if remote) only when a fetch is needed
+   c. Discover subagents in source, transform into each tool's native format, warn about dropped fields
+   d. For each subagent: hash -> compare to lock -> write if changed
+   e. Remove subagents no longer in config
+6. Sync MCPs
    a. For each MCP source: decide whether a fetch is needed (the lock pins it and its servers are already present in the agent settings → no network)
    b. Materialize (download if remote) only when a fetch is needed
    c. Discover MCP pack files in source
    d. For each pack: hash → compare to lock → merge into agent settings if changed
    e. Remove MCP entries no longer in config
-6. Save lock file and report (unless --dry-run)
+7. Sync plugins
+   a. For each plugin source: decide whether a fetch is needed (the lock pins every plugin and the ref has not moved -> no network)
+   b. Materialize (download if remote) only when a fetch is needed, and read the marketplace name and plugins from .claude-plugin/marketplace.json
+   c. For each plugin: hash -> compare to lock -> declare the marketplace and enable the plugin in each tool's settings if changed or missing
+   d. Remove plugin keys and marketplace entries no longer in config
+8. Save lock file and report (unless --dry-run)
 ```
 
 ## Skills: Copy and Replace
@@ -96,12 +107,15 @@ Kasetto uses SHA-256 hashes so it only does work when something actually changed
   skipped
 - **MCP packs:** The pack file is hashed. If the hash matches **and** all server names are still
   present in the target settings, the pack is skipped
+- **Plugins:** Each plugin's marketplace entry is hashed, plus its directory when it lives inside the
+  marketplace repository. If the hash matches **and** every settings file still enables it, the
+  plugin is skipped
 
 This keeps re-sync fast: unchanged sources require no file I/O beyond reading the lock.
 
 ## The Lockfile Contract
 
-`kasetto.lock` is a real lockfile, in the same spirit as `Cargo.lock`, `package-lock.json`, or `go.sum`. It pins exactly which skills, commands, instructions, and MCP assets were installed (by source, revision, destination, and content hash), so anyone who runs `kst sync` against the same config and lock gets an identical setup.
+`kasetto.lock` is a real lockfile, in the same spirit as `Cargo.lock`, `package-lock.json`, or `go.sum`. It pins exactly which skills, commands, subagents, instructions, and MCP assets were installed and which plugins were enabled (by source, revision, destination, and content hash), so anyone who runs `kst sync` against the same config and lock gets an identical setup.
 
 Where it lives depends on the scope:
 
@@ -115,6 +129,8 @@ The lock is also how Kasetto knows what to remove when you drop a source from th
 **Skills** are tracked by a composite key (`source::skill-name`) along with their destination path and hash.
 
 **MCPs** are tracked as assets with the server names they installed (e.g., `destination: "git-tools,airflow"`). Only these tracked names are removed during cleanup.
+
+**Plugins** are tracked twice: a `plugin` entry per enabled plugin, and a `plugin-marketplace` entry per marketplace Kasetto declared, holding a hash of the `source` it wrote. A marketplace you declared yourself is never recorded. See [Plugins](/docs/plugins#ownership).
 
 <Callout type="info">
 
@@ -169,6 +185,8 @@ Remove a source from `kasetto.yaml` and re-sync:
 - **Skills:** The skill directory is deleted from disk
 - **MCPs:** The specific server entries that Kasetto installed are removed from the agent's settings
   file. The file itself is preserved
+- **Plugins:** The `enabledPlugins` keys and the marketplace entries Kasetto wrote are removed from
+  the tool's settings file. The tool keeps its own clone and cache
 
 ### `kst clean`
 
@@ -176,6 +194,7 @@ Removes everything tracked in the lock file for the given scope:
 
 - Deletes all tracked skill directories
 - Removes all tracked MCP entries from every agent's settings file
+- Removes all tracked plugin keys and Kasetto-declared marketplace entries
 - Clears the lock file
 
 `--dry-run` prints what would be removed (skill destinations and MCP pack lines) without changing disk.

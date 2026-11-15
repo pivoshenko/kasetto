@@ -258,6 +258,59 @@ pub(crate) fn resolve_instruction_targets(
     Ok(out)
 }
 
+/// Returns one subagent directory per configured agent (filtering unsupported), deduped.
+pub(crate) fn resolve_agent_targets(
+    cfg: &Config,
+    scope: Scope,
+    project_root: &Path,
+) -> Result<Vec<crate::model::AgentTarget>> {
+    let agents = cfg.agents();
+    let home = match scope {
+        Scope::Project => None,
+        Scope::Global => Some(dirs_home()?),
+    };
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out = Vec::new();
+    for a in agents {
+        let target = match &home {
+            None => a.agents_project_path(project_root),
+            Some(home) => a.agents_global_path(home),
+        };
+        if let Some(t) = target {
+            if seen.insert(t.path.clone()) {
+                out.push(t);
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Returns one plugin settings file per configured agent (filtering unsupported), deduped.
+pub(crate) fn resolve_plugin_targets(
+    cfg: &Config,
+    scope: Scope,
+    project_root: &Path,
+) -> Result<Vec<crate::model::PluginTarget>> {
+    let home = match scope {
+        Scope::Project => None,
+        Scope::Global => Some(dirs_home()?),
+    };
+    let mut seen = std::collections::HashSet::<PathBuf>::new();
+    let mut out = Vec::new();
+    for a in cfg.agents() {
+        let target = match &home {
+            None => a.plugins_project_target(project_root),
+            Some(home) => a.plugins_global_target(home),
+        };
+        if let Some(t) = target {
+            if seen.insert(t.path.clone()) {
+                out.push(t);
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Root that lock-file `destination` paths are stored relative to, so the
 /// committed lock stays portable across machines and users.
 /// Project scope → the project root; Global scope → the user's home directory.

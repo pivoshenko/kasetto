@@ -196,11 +196,13 @@ mod instructions;
 mod lock;
 mod mcps;
 mod model;
+mod plugins;
 mod profile;
 mod prompts;
 mod secrets;
 mod source;
 mod state;
+mod subagents;
 mod ui;
 mod update_notifier;
 

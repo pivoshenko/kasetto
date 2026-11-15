@@ -42,7 +42,10 @@ pub(crate) fn merge_yaml(base: Value, overlay: Value) -> Value {
     };
     for (key, ov_val) in overlay_map {
         let key_str = key.as_str().unwrap_or("");
-        let is_source_list = matches!(key_str, "skills" | "mcps" | "commands" | "instructions");
+        let is_source_list = matches!(
+            key_str,
+            "skills" | "mcps" | "commands" | "instructions" | "agents" | "plugins"
+        );
         match (is_source_list.then(|| out.remove(&key)).flatten(), ov_val) {
             (Some(Value::Sequence(base_seq)), Value::Sequence(ov_seq)) => {
                 out.insert(key, Value::Sequence(merge_source_list(base_seq, ov_seq)));
@@ -250,6 +253,17 @@ mod tests {
             panic!("expected sequence")
         };
         assert_eq!(seq.len(), 2);
+    }
+
+    #[test]
+    fn merge_agents_dedupes_same_source() {
+        let base = yaml("agents:\n  - source: https://x/a\n    agents: \"*\"\n");
+        let overlay = yaml("agents:\n  - source: https://x/a\n    agents:\n      - reviewer\n");
+        let merged = merge_yaml(base, overlay);
+        let Value::Sequence(seq) = merged.get("agents").unwrap() else {
+            panic!("expected sequence")
+        };
+        assert_eq!(seq.len(), 1);
     }
 
     #[test]

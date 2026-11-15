@@ -2,11 +2,12 @@
 //!
 //! The gate is off unless a threshold is in effect: `--audit [LEVEL]` on the
 //! command line, else `audit.fail-on` in the config; `--no-audit` turns it off
-//! outright. When on, every skill and MCP server recorded in the lock is audited
-//! (see [`crate::audit`]) and any at or above the threshold fails the run. An
-//! asset that cannot be verified only warns, so a flaky network or an
-//! unindexed source never blocks a sync by default; `--fail-on-unverified` (or
-//! `audit.fail-on-unverified`) makes it fail closed instead.
+//! outright. When on, every skill, subagent, plugin, and MCP server recorded in the lock
+//! is audited (see [`crate::audit`]) and any at or above the threshold fails the
+//! run. An asset that cannot be verified only warns, so a flaky network, an
+//! unindexed source, or a subagent or plugin (which nothing audits) never blocks a sync by
+//! default; `--fail-on-unverified` (or `audit.fail-on-unverified`) makes it fail
+//! closed instead.
 //!
 //! The gate judges what was installed, so a failing run leaves those files in
 //! place: the non-zero exit is what lets CI stop before the environment is used.
@@ -110,6 +111,8 @@ pub(super) fn report(gate: &AuditGate, plain: bool) {
             let kind = match v.kind {
                 AssetKind::Skill => "skill",
                 AssetKind::Mcp => "mcp",
+                AssetKind::Agent => "agent",
+                AssetKind::Plugin => "plugin",
             };
             let provider = v
                 .provider
@@ -148,7 +151,7 @@ pub(super) fn report(gate: &AuditGate, plain: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audit::{AssetAudit, AuditTarget, Verdict};
+    use crate::audit::{AssetAudit, AuditTarget, Verdict, AGENT_UNAUDITED, PLUGIN_UNAUDITED};
 
     #[test]
     fn no_audit_wins_then_flag_then_config() {
@@ -222,6 +225,52 @@ mod tests {
 
         let empty = decide(&[], RiskLevel::Low, true);
         assert!(empty.passed);
+    }
+
+    fn agent(name: &str) -> AuditResult {
+        AuditResult {
+            target: AuditTarget::new(AssetKind::Agent, name, "https://github.com/o/r"),
+            outcome: AuditOutcome::Unaudited(AGENT_UNAUDITED),
+        }
+    }
+
+    #[test]
+    fn an_unaudited_agent_only_warns_unless_fail_on_unverified() {
+        let results = vec![
+            agent("reviewer"),
+            result("b-medium", audited(RiskLevel::Medium)),
+        ];
+        let gate = decide(&results, RiskLevel::Low, false);
+        let names: Vec<&str> = gate.violations.iter().map(|v| v.name.as_str()).collect();
+        assert_eq!(names, vec!["b-medium"]);
+        assert_eq!(gate.unverified, 1);
+
+        let gate = decide(&results[..1], RiskLevel::Low, false);
+        assert!(gate.violations.is_empty());
+        assert_eq!(gate.unverified, 1);
+        assert!(gate.passed, "an unaudited agent never fails by default");
+
+        let gate = decide(&results[..1], RiskLevel::Low, true);
+        assert!(!gate.passed);
+        let v = serde_json::to_value(&gate).unwrap();
+        assert_eq!(v["unverified"], 1);
+        assert_eq!(v["violations"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn an_unaudited_plugin_only_warns_unless_fail_on_unverified() {
+        let plugin = AuditResult {
+            target: AuditTarget::new(AssetKind::Plugin, "fmt@market", "https://github.com/o/p"),
+            outcome: AuditOutcome::Unaudited(PLUGIN_UNAUDITED),
+        };
+        let results = vec![plugin];
+        let gate = decide(&results, RiskLevel::Low, false);
+        assert!(gate.violations.is_empty());
+        assert_eq!(gate.unverified, 1);
+        assert!(gate.passed, "an unaudited plugin never fails by default");
+
+        let gate = decide(&results, RiskLevel::Low, true);
+        assert!(!gate.passed);
     }
 
     #[test]

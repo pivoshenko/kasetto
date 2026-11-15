@@ -410,6 +410,60 @@ fn resolve_named_command(root: &Path, name: &str) -> Result<(String, PathBuf)> {
     )))
 }
 
+/// List `<root>/agents/*.md` and return a map of name (file stem) -> file path.
+///
+/// Flat on purpose: Gemini CLI, Goose, OpenHands and Cline read only the top level
+/// of their agents directory, so a nested source agent would have no portable name.
+/// `README.md` is skipped, as OpenHands does, so a repository can document its agents.
+pub(crate) fn discover_agents(root: &Path) -> Result<HashMap<String, PathBuf>> {
+    let mut out = HashMap::new();
+    let base = root.join("agents");
+    if !base.is_dir() {
+        return Ok(out);
+    }
+    for e in fs::read_dir(&base)? {
+        let e = e?;
+        let path = e.path();
+        if !e.file_type()?.is_file() || path.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue;
+        }
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if stem.eq_ignore_ascii_case("readme") {
+            continue;
+        }
+        out.insert(stem.to_string(), path);
+    }
+    Ok(out)
+}
+
+/// Resolve one `AgentEntry` to a file path.
+///
+/// - `Name("reviewer")` -> `<root>/agents/reviewer.md`.
+/// - `Obj { name: "reviewer", path: Some("team") }` -> `<root>/team/reviewer.md`.
+pub(crate) fn resolve_agent_entry(
+    root: &Path,
+    entry: &crate::model::AgentEntry,
+) -> Result<(String, PathBuf)> {
+    let (name, dir) = match entry {
+        crate::model::AgentEntry::Name(n) => (n.as_str(), "agents"),
+        crate::model::AgentEntry::Obj { name, path } => {
+            (name.as_str(), path.as_deref().unwrap_or("agents"))
+        }
+    };
+    let name = name.trim_end_matches(".md");
+    let target = root.join(dir).join(format!("{name}.md"));
+    if target.is_file() {
+        Ok((name.to_string(), target))
+    } else {
+        Err(err(format!(
+            "agent entry not found: {name}.md in {dir}/ (resolved to {})",
+            target.display()
+        )))
+    }
+}
+
 /// Walk `<root>/instructions/**/*.{md,mdc}` and return a map of namespaced name → file path.
 ///
 /// Mirrors [`discover_commands`]: subdirectory nesting becomes `:`-separated
@@ -733,6 +787,41 @@ mod tests {
         let (name, path) = resolve_command_entry(&root, &entry).unwrap();
         assert_eq!(name, "git:commit");
         assert!(path.ends_with("commands/git/commit.md"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn discover_agents_is_flat_and_skips_readme() {
+        let root = temp_dir("kasetto-agent-disc");
+        fs::create_dir_all(root.join("agents/team")).unwrap();
+        fs::write(root.join("agents/reviewer.md"), "x").unwrap();
+        fs::write(root.join("agents/README.md"), "x").unwrap();
+        fs::write(root.join("agents/notes.txt"), "x").unwrap();
+        fs::write(root.join("agents/team/nested.md"), "x").unwrap();
+
+        let map = discover_agents(&root).unwrap();
+        assert_eq!(map.len(), 1);
+        assert!(map.contains_key("reviewer"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_agent_entry_honors_path_override() {
+        let root = temp_dir("kasetto-agent-resolve");
+        fs::create_dir_all(root.join("team")).unwrap();
+        fs::write(root.join("team/reviewer.md"), "x").unwrap();
+
+        let entry = crate::model::AgentEntry::Obj {
+            name: "reviewer".into(),
+            path: Some("team".into()),
+        };
+        let (name, path) = resolve_agent_entry(&root, &entry).unwrap();
+        assert_eq!(name, "reviewer");
+        assert!(path.ends_with("team/reviewer.md"));
+        let missing = crate::model::AgentEntry::Name("reviewer".into());
+        assert!(resolve_agent_entry(&root, &missing).is_err());
 
         let _ = fs::remove_dir_all(&root);
     }

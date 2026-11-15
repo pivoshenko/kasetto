@@ -88,6 +88,8 @@ pub(crate) enum ListKind {
     Mcps,
     Commands,
     Instructions,
+    Agents,
+    Plugins,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
@@ -138,7 +140,7 @@ pub(crate) struct SyncArgs {
     #[arg(long, short = 'u', num_args = 0.., value_name = "NAME")]
     #[arg(
         help = "re-resolve branch/default sources and rewrite locked hashes",
-        long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more asset names (--update foo bar) to re-resolve only the sources providing them; a name can be a skill, MCP, command, or instruction. All other sources are honored from the lock.\n\nUpdating one asset from a multi-asset source re-resolves that whole source."
+        long_help = "Re-resolve moving refs (branches/default HEAD) and rewrite the locked hash + revision.\n\nWith no value (--update), updates every source. Pass one or more asset names (--update foo bar) to re-resolve only the sources providing them; a name can be a skill, MCP, command, instruction, subagent, or plugin. All other sources are honored from the lock.\n\nUpdating one asset from a multi-asset source re-resolves that whole source."
     )]
     pub update: Option<Vec<String>>,
     #[arg(long)]
@@ -250,7 +252,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Sync configured assets into your agents",
-        long_about = "Read configuration, discover the requested skills, MCPs, commands, and instructions, then install/update/remove local copies so destinations match config.\n\nUse --dry-run to preview changes without modifying files.",
+        long_about = "Read configuration, discover the requested skills, MCPs, commands, instructions, subagents, and plugins, then install/update/remove local copies so destinations match config.\n\nUse --dry-run to preview changes without modifying files.",
         after_help = crate::cli_examples!(
             "kst sync",
             "kst sync --update",
@@ -266,7 +268,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Add a source to the config and sync it",
-        long_about = "Append a skill/MCP/command/instruction source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL; the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
+        long_about = "Append a skill/MCP/command/instruction/subagent/plugin source to your local kasetto.yaml (preserving comments), then run a sync to install it.\n\nUse the kind-tagged flags --skill / --mcp / --command / --instruction / --agent / --plugin (each repeatable) to name entries; a single add can touch several lists at once when a repo ships more than one kind. A lone `*` value (e.g. --skill \"*\") is a wildcard. With no kind flags, the source is added as `skills: \"*\"`.\n\nThe source may be a repo URL or a deep blob/tree browse URL; the latter is decomposed into source + ref/branch + sub-dir (and the skill name for a SKILL.md link). Explicit --ref / --branch / --sub-dir override the derived pieces.\n\nThe source is fetched once up front to verify it resolves (skip with --no-verify). Use --no-sync to edit the config without installing.",
         after_help = crate::cli_examples!(
             "kst add https://github.com/example/skill-pack",
             "kst add https://github.com/example/pack@v2.0",
@@ -293,6 +295,12 @@ pub(crate) enum Commands {
         #[arg(long = "instruction", value_name = "NAME")]
         #[arg(help = "instruction name to add (repeatable; \"*\" for all)")]
         instruction: Vec<String>,
+        #[arg(long = "agent", value_name = "NAME")]
+        #[arg(help = "subagent name to add (repeatable; \"*\" for all)")]
+        agent: Vec<String>,
+        #[arg(long = "plugin", value_name = "NAME")]
+        #[arg(help = "plugin name to add (repeatable; \"*\" for all)")]
+        plugin: Vec<String>,
         #[arg(long = "ref", value_name = "REF", conflicts_with = "branch")]
         #[arg(help = "pin to a git tag, commit SHA, or ref")]
         git_ref: Option<String>,
@@ -328,7 +336,7 @@ pub(crate) enum Commands {
     #[command(
         visible_alias = "rm",
         about = "Remove a source or named entries from the config and prune them",
-        long_about = "Delete entries from your local kasetto.yaml (preserving comments), then run a sync so the now-unconfigured assets are removed from disk and the lock.\n\nMirrors `add`: the kind-tagged flags --skill / --mcp / --command / --instruction (each repeatable) name entries to subtract from a list; when the last name goes, the whole entry is dropped. A lone `*` value (e.g. --mcp \"*\") drops that kind's whole entry. With no kind flags, the source is removed from every list it appears in.\n\nThe source may be a repo URL or a deep blob/tree browse URL. When multiple entries share a source URL, pass --ref or --branch to pick one. Use --no-sync to edit the config without pruning.",
+        long_about = "Delete entries from your local kasetto.yaml (preserving comments), then run a sync so the now-unconfigured assets are removed from disk and the lock.\n\nMirrors `add`: the kind-tagged flags --skill / --mcp / --command / --instruction / --agent / --plugin (each repeatable) name entries to subtract from a list; when the last name goes, the whole entry is dropped. A lone `*` value (e.g. --mcp \"*\") drops that kind's whole entry. With no kind flags, the source is removed from every list it appears in.\n\nThe source may be a repo URL or a deep blob/tree browse URL. When multiple entries share a source URL, pass --ref or --branch to pick one. Use --no-sync to edit the config without pruning.",
         after_help = crate::cli_examples!(
             "kst remove https://github.com/example/skill-pack",
             "kst remove https://github.com/example/pack@v2.0",
@@ -355,6 +363,12 @@ pub(crate) enum Commands {
         #[arg(long = "instruction", value_name = "NAME")]
         #[arg(help = "instruction name to remove (repeatable; \"*\" drops the whole entry)")]
         instruction: Vec<String>,
+        #[arg(long = "agent", value_name = "NAME")]
+        #[arg(help = "subagent name to remove (repeatable; \"*\" drops the whole entry)")]
+        agent: Vec<String>,
+        #[arg(long = "plugin", value_name = "NAME")]
+        #[arg(help = "plugin name to remove (repeatable; \"*\" drops the whole entry)")]
+        plugin: Vec<String>,
         #[arg(long = "ref", value_name = "REF", conflicts_with = "branch")]
         #[arg(help = "disambiguate by pinned ref")]
         git_ref: Option<String>,
@@ -386,7 +400,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Resolve the config and pin it into kasetto.lock",
-        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. Inline MCP entries are pinned fully. Source-based MCP, command, and instruction entries get refreshed revision pins; their content hash fills in on the next sync.",
+        long_about = "Re-resolve every source (re-resolving moving refs like `--update`) and write kasetto.lock, without installing to destinations.\n\nSkills are hashed from the source tree (identical to the hash a later sync computes at the destination), so the lock is immediately usable with `sync --locked`. Inline MCP entries are pinned fully. Source-based MCP, command, instruction, subagent, and plugin entries get refreshed revision pins; their content hash fills in on the next sync.",
         after_help = crate::cli_examples!(
             "kst lock",
             "kst lock --check",
@@ -413,7 +427,7 @@ pub(crate) enum Commands {
         )]
         #[arg(
             help = "only re-resolve sources providing these skills",
-            long_help = "Restrict the re-resolve to sources whose skill list (per the existing lock) overlaps NAME. Every other source's lock entries are carried over unchanged.\n\nOnly skill names are matched here, unlike `sync --update <name>...`, which also accepts MCP, command, and instruction names."
+            long_help = "Restrict the re-resolve to sources whose skill list (per the existing lock) overlaps NAME. Every other source's lock entries are carried over unchanged.\n\nOnly skill names are matched here, unlike `sync --update <name>...`, which also accepts MCP, command, instruction, subagent, and plugin names."
         )]
         upgrade_package: Vec<String>,
         #[command(flatten)]
@@ -422,8 +436,8 @@ pub(crate) enum Commands {
         scope: ScopeArgs,
     },
     #[command(
-        about = "List installed skills, MCPs, commands, and instructions",
-        long_about = "Read installed assets from the lock file and print them as plain tables.\n\nFilter the output with `--type skills|mcps|commands|instructions|all` (default: all). Use --json for scripting.",
+        about = "List installed skills, MCPs, commands, instructions, subagents, and plugins",
+        long_about = "Read installed assets from the lock file and print them as plain tables.\n\nFilter the output with `--type skills|mcps|commands|instructions|agents|plugins|all` (default: all). Use --json for scripting.",
         after_help = crate::cli_examples!(
             "kst list",
             "kst list --type skills",
@@ -481,7 +495,7 @@ pub(crate) enum Commands {
     },
     #[command(
         about = "Run local diagnostics",
-        long_about = "Inspect local kasetto setup, including version, manifest path, active installation paths, an inventory of installed skills, MCP servers, commands, and instructions, and any failed installs from the latest sync report.",
+        long_about = "Inspect local kasetto setup, including version, manifest path, active installation paths, an inventory of installed skills, MCP servers, commands, instructions, subagents, and plugins, plugins no longer enabled in their settings files, and any failed installs from the latest sync report.",
         after_help = crate::cli_examples!("kst doctor", "kst doctor --json",)
     )]
     Doctor {
@@ -496,7 +510,7 @@ pub(crate) enum Commands {
 
     #[command(
         about = "Remove every installed asset for the scope",
-        long_about = "Remove all installed skills, MCP server configurations, commands, and instructions, resetting the lock file.",
+        long_about = "Remove all installed skills, MCP server configurations, commands, instructions, subagents, and plugins, resetting the lock file.",
         after_help = crate::cli_examples!("kst clean", "kst clean --dry-run",)
     )]
     Clean {

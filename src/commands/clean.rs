@@ -26,6 +26,8 @@ struct CleanOutput {
     skills_removed: usize,
     mcps_removed: usize,
     commands_removed: usize,
+    agents_removed: usize,
+    plugins_removed: usize,
     instructions_removed: usize,
     dry_run: bool,
 }
@@ -45,6 +47,7 @@ pub(crate) fn run(
     let state = lock.state();
     let mcp_assets = lock.list_tracked_asset_ids("mcp");
     let command_assets = lock.list_tracked_asset_ids("command");
+    let agent_assets = lock.list_tracked_asset_ids("agent");
     // Instructions need source + name (to recompute the managed-block id at teardown),
     // so snapshot them directly rather than via the (id, dest) list helper
     let instruction_meta: Vec<(String, String, String)> = lock
@@ -53,16 +56,39 @@ pub(crate) fn run(
         .filter(|(_, a)| a.kind == "instructions")
         .map(|(_, a)| (a.source.clone(), a.name.clone(), a.destination.clone()))
         .collect();
+    // Plugins before marketplaces, so a plugin is never left enabled against a
+    // marketplace that is already gone
+    let plugin_assets: Vec<PluginAsset> = ["plugin", "plugin-marketplace"]
+        .iter()
+        .flat_map(|kind| {
+            lock.assets
+                .values()
+                .filter(move |a| a.kind == *kind)
+                .map(|a| PluginAsset {
+                    marketplace: *kind == "plugin-marketplace",
+                    name: a.name.clone(),
+                    hash: a.hash.clone(),
+                    destination: a.destination.clone(),
+                })
+        })
+        .collect();
 
     let skills_count = state.skills.len();
     let mcps_count = mcp_assets.len();
     let commands_count = command_assets.len();
+    let agents_count = agent_assets.len();
+    let plugins_count = plugin_assets.iter().filter(|p| !p.marketplace).count();
     let instructions_count = instruction_meta.len();
 
     // `clear_all` empties the lock before the tree renders it
     let tracked_assets = lock.assets.clone();
 
-    let total = skills_count + mcps_count + commands_count + instructions_count;
+    let total = skills_count
+        + mcps_count
+        + commands_count
+        + agents_count
+        + plugins_count
+        + instructions_count;
     // A real clean announces what it is about to remove; the tree that follows
     // must then separate itself from that line
     let preamble = !dry_run && !as_json && !quiet && total > 0;
@@ -70,11 +96,11 @@ pub(crate) fn run(
         let color = list_color_enabled() && !plain;
         if color {
             println!(
-                "{ATTENTION}⚠{RESET} Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, and {instructions_count} instructions."
+                "{ATTENTION}⚠{RESET} Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, {agents_count} agents, {plugins_count} plugins, and {instructions_count} instructions."
             );
         } else {
             println!(
-                "Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, and {instructions_count} instructions."
+                "Removing {skills_count} skills, {mcps_count} MCP servers, {commands_count} commands, {agents_count} agents, {plugins_count} plugins, and {instructions_count} instructions."
             );
         }
     }
@@ -84,6 +110,8 @@ pub(crate) fn run(
             &state,
             &mcp_assets,
             &command_assets,
+            &agent_assets,
+            &plugin_assets,
             &instruction_meta,
             scope,
             &project_root,
@@ -100,6 +128,8 @@ pub(crate) fn run(
         skills_removed: skills_count,
         mcps_removed: mcps_count,
         commands_removed: commands_count,
+        agents_removed: agents_count,
+        plugins_removed: plugins_count,
         instructions_removed: instructions_count,
         dry_run,
     };
@@ -121,10 +151,21 @@ pub(crate) fn run(
     Ok(())
 }
 
+/// A `plugin` or `plugin-marketplace` lock entry, snapshotted before the lock is cleared.
+struct PluginAsset {
+    marketplace: bool,
+    name: String,
+    hash: String,
+    destination: String,
+}
+
+#[allow(clippy::too_many_arguments)]
 fn apply_removals(
     state: &State,
     mcp_assets: &[(&str, &str)],
     command_assets: &[(&str, &str)],
+    agent_assets: &[(&str, &str)],
+    plugin_assets: &[PluginAsset],
     instruction_assets: &[(String, String, String)],
     scope: Scope,
     project_root: &std::path::Path,
@@ -142,6 +183,28 @@ fn apply_removals(
             if path.exists() && path.is_file() {
                 let _ = fs::remove_file(path);
             }
+        }
+    }
+
+    for (_id, dest_csv) in agent_assets {
+        for p in dest_csv.split(',').filter(|s| !s.is_empty()) {
+            let path = resolve_dest(p, &root);
+            if path.exists() && path.is_file() {
+                let _ = fs::remove_file(path);
+            }
+        }
+    }
+
+    // Only the keys Kasetto wrote come out of each settings file. Claude Code keeps its
+    // own clone and cache under ~/.claude/plugins/, which clean leaves alone
+    for plugin in plugin_assets {
+        for p in plugin.destination.split(',').filter(|s| !s.is_empty()) {
+            let path = resolve_dest(p, &root);
+            let _ = if plugin.marketplace {
+                crate::plugins::remove_marketplace(&path, &plugin.name, &plugin.hash).map(|_| ())
+            } else {
+                crate::plugins::remove_plugin(&path, &plugin.name)
+            };
         }
     }
 
@@ -220,7 +283,7 @@ fn print_report(
 }
 
 /// Print a source-grouped red teardown tree for skills, MCP packs, commands,
-/// and instructions captured in the lock state. Used by both `--dry-run` (with
+/// agents, plugins, and instructions captured in the lock state. Used by both `--dry-run` (with
 /// `would_remove` glyphs) and the real run (with `removed` glyphs).
 fn print_removal_tree(
     assets: &BTreeMap<String, AssetEntry>,
@@ -325,6 +388,62 @@ fn print_removal_tree(
         }
     }
 
+    let agent_assets: Vec<_> = assets.iter().filter(|(_, a)| a.kind == "agent").collect();
+    if !agent_assets.is_empty() {
+        print_section_header(
+            "Agents",
+            Some((agent_assets.len(), "to remove")),
+            printed,
+            plain,
+        );
+        printed = true;
+        let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
+        for (_, a) in &agent_assets {
+            let key = a.source.clone();
+            if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                g.1.push(a.name.as_str());
+            } else {
+                by_source.push((key, vec![a.name.as_str()]));
+            }
+        }
+        for (source, items) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), plain);
+            for (i, name) in items.iter().enumerate() {
+                let is_last = i == items.len() - 1;
+                print_status_leaf(is_last, status, name, "", plain);
+            }
+        }
+    }
+
+    let plugin_assets: Vec<_> = assets.iter().filter(|(_, a)| a.kind == "plugin").collect();
+    if !plugin_assets.is_empty() {
+        print_section_header(
+            "Plugins",
+            Some((plugin_assets.len(), "to remove")),
+            printed,
+            plain,
+        );
+        printed = true;
+        let mut by_source: Vec<(String, Vec<&str>)> = Vec::new();
+        for (_, a) in &plugin_assets {
+            let key = a.source.clone();
+            if let Some(g) = by_source.iter_mut().find(|(k, _)| k == &key) {
+                g.1.push(a.name.as_str());
+            } else {
+                by_source.push((key, vec![a.name.as_str()]));
+            }
+        }
+        for (source, items) in &by_source {
+            let repo = short_source(source);
+            print_source_header(&repo, None, Some(true), plain);
+            for (i, name) in items.iter().enumerate() {
+                let is_last = i == items.len() - 1;
+                print_status_leaf(is_last, status, name, "", plain);
+            }
+        }
+    }
+
     let instruction_assets: Vec<_> = assets
         .iter()
         .filter(|(_, a)| a.kind == "instructions")
@@ -362,5 +481,172 @@ fn format_elapsed(d: Duration) -> String {
         format!("{ms}ms")
     } else {
         format!("{:.2}s", d.as_secs_f64())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fsops::temp_dir;
+
+    #[test]
+    fn apply_removals_deletes_only_recorded_agent_files() {
+        let root = temp_dir("kasetto-clean-agents");
+        let agents = root.join(".claude/agents");
+        fs::create_dir_all(&agents).unwrap();
+        fs::write(agents.join("reviewer.md"), "x").unwrap();
+        fs::write(agents.join("planner.md"), "x").unwrap();
+        fs::write(agents.join("mine.md"), "user authored").unwrap();
+
+        let recorded = [(
+            "agent::src::reviewer",
+            ".claude/agents/reviewer.md,.claude/agents/planner.md",
+        )];
+        apply_removals(
+            &State::default(),
+            &[],
+            &[],
+            &recorded,
+            &[],
+            &[],
+            Scope::Project,
+            &root,
+        )
+        .unwrap();
+
+        assert!(!agents.join("reviewer.md").exists());
+        assert!(!agents.join("planner.md").exists());
+        assert!(agents.join("mine.md").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn apply_removals_leaves_every_other_settings_key() {
+        let root = temp_dir("kasetto-clean-plugins");
+        let settings = root.join(".claude/settings.json");
+        fs::create_dir_all(settings.parent().unwrap()).unwrap();
+        let source = serde_json::json!({"source": "github", "repo": "o/r"});
+        let hash = crate::plugins::source_hash(&source);
+        fs::write(
+            &settings,
+            serde_json::json!({
+                "model": "opus",
+                "enabledPlugins": {"mine@x": true, "kit@market": true},
+                "extraKnownMarketplaces": {
+                    "market": {"source": source, "autoUpdate": true},
+                    "other": {"source": {"source": "github", "repo": "a/b"}}
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let assets = [
+            PluginAsset {
+                marketplace: true,
+                name: "market".into(),
+                hash,
+                destination: ".claude/settings.json".into(),
+            },
+            PluginAsset {
+                marketplace: false,
+                name: "kit@market".into(),
+                hash: String::new(),
+                destination: ".claude/settings.json".into(),
+            },
+        ];
+        apply_removals(
+            &State::default(),
+            &[],
+            &[],
+            &[],
+            &assets,
+            &[],
+            Scope::Project,
+            &root,
+        )
+        .unwrap();
+
+        let after: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&settings).unwrap()).unwrap();
+        assert_eq!(
+            after,
+            serde_json::json!({
+                "model": "opus",
+                "enabledPlugins": {"mine@x": true},
+                "extraKnownMarketplaces": {
+                    "other": {"source": {"source": "github", "repo": "a/b"}}
+                }
+            })
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn apply_removals_keeps_a_marketplace_the_user_repointed() {
+        let root = temp_dir("kasetto-clean-plugins-repointed");
+        let settings = root.join(".claude/settings.json");
+        fs::create_dir_all(settings.parent().unwrap()).unwrap();
+        let ours = serde_json::json!({"source": "github", "repo": "o/r"});
+        let theirs = serde_json::json!({"source": "github", "repo": "me/fork"});
+        fs::write(
+            &settings,
+            serde_json::json!({
+                "enabledPlugins": {"kit@market": true},
+                "extraKnownMarketplaces": {"market": {"source": theirs}}
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let assets = [
+            PluginAsset {
+                marketplace: true,
+                name: "market".into(),
+                hash: crate::plugins::source_hash(&ours),
+                destination: ".claude/settings.json".into(),
+            },
+            PluginAsset {
+                marketplace: false,
+                name: "kit@market".into(),
+                hash: String::new(),
+                destination: ".claude/settings.json".into(),
+            },
+        ];
+        apply_removals(
+            &State::default(),
+            &[],
+            &[],
+            &[],
+            &assets,
+            &[],
+            Scope::Project,
+            &root,
+        )
+        .unwrap();
+
+        let after: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&settings).unwrap()).unwrap();
+        assert_eq!(
+            after,
+            serde_json::json!({"extraKnownMarketplaces": {"market": {"source": theirs}}})
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn removal_tree_lists_agents_without_panicking() {
+        let mut assets = BTreeMap::new();
+        assets.insert(
+            "agent::src::reviewer".to_string(),
+            AssetEntry {
+                kind: "agent".into(),
+                name: "reviewer".into(),
+                source: "https://github.com/o/r".into(),
+                destination: ".claude/agents/reviewer.md".into(),
+                ..AssetEntry::default()
+            },
+        );
+        print_removal_tree(&assets, &State::default(), true, true, false);
     }
 }

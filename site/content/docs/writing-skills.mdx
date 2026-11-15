@@ -10,8 +10,8 @@ Skills are just directories with a `SKILL.md` file inside. Here's how to structu
 Kasetto discovers skills from the source root and from `skills/`:
 
 ```
-repo-root/
-├── SKILL.md                ← discovered as repository name skill
+repository-root/
+├── SKILL.md            ← discovered as repository name skill
 ├── my-skill/
 │   └── SKILL.md        ← discovered
 ├── skills/
@@ -84,7 +84,7 @@ Reference skills by their directory name in `kasetto.yaml`:
 skills:
   - source: https://github.com/org/skill-pack
     skills:
-      - my-skill           # matches repo-root/my-skill/ or repo-root/skills/my-skill/
+      - my-skill           # matches repository-root/my-skill/ or repository-root/skills/my-skill/
       - another-skill
 ```
 

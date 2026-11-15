@@ -1,0 +1,222 @@
+---
+title: "Plugins"
+description: "Enable Claude Code plugins in Claude Code and Copilot CLI from kasetto.yaml - Kasetto declares the marketplace, the tool installs the plugin."
+---
+
+Kasetto can enable **plugins** from a Claude Code plugin marketplace. Unlike every other section of
+`kasetto.yaml`, this one installs no files: Kasetto declares the marketplace under
+`extraKnownMarketplaces` and turns each plugin on under `enabledPlugins` in the tool's settings
+file, and the tool clones the marketplace and installs the plugin itself at its next session start.
+Kasetto never copies plugin files, so the plugin keeps the tool's own update, cache, and uninstall
+behavior.
+
+Two tools read these keys today: Claude Code and the GitHub Copilot CLI.
+
+## Config
+
+```yaml
+plugins:
+  - source: https://github.com/cursor/plugins
+    plugins:
+      - pstack
+
+  - source: https://github.com/acme/agent-plugins
+    ref: v1.2.0              # tag or branch, written to the tool as `ref`
+    plugins: "*"             # every plugin the marketplace lists
+
+  - source: https://gitlab.com/acme/monorepo
+    branch: main
+    sub-dir: tools/market    # directory holding .claude-plugin/marketplace.json
+    plugins:
+      - formatter
+```
+
+| Key       | Required | Description |
+| --------- | -------- | ----------- |
+| `source`  | **yes**  | Git host URL or local path of a repository holding `.claude-plugin/marketplace.json` |
+| `branch`  | no       | Branch to track, written to the tool as `ref` |
+| `ref`     | no       | Tag (or branch) to pin, written to the tool as `ref`; takes priority over `branch`. Avoid a commit SHA, see [Caveats](#caveats) |
+| `sub-dir` | no       | Directory inside the source that holds `.claude-plugin/marketplace.json`, when it is not the repository root (`sub_dir` alias supported) |
+| `plugins` | **yes**  | `"*"` for every plugin in the marketplace, or a list of plugin names |
+
+A plugin name is the `name` of its entry in `marketplace.json`, which is the key the tool enables,
+even when the plugin's own `plugin.json` says something else. Unlike skills and subagents, there is
+no `{ name, path }` form: the marketplace already says where each plugin lives. A name the
+marketplace does not list is reported as broken, with the names it does list, and a source without a
+`.claude-plugin/marketplace.json` is broken too.
+
+`kst add <source> --plugin <name>` and `kst remove <source> --plugin <name>` edit the list for you,
+`kst list --type plugins` shows what is enabled, and `extends:` merges `plugins` sources by the same
+identity as every other list.
+
+## What Kasetto Writes
+
+For the first entry above, Kasetto fetches `cursor/plugins` once, reads its marketplace name from
+`.claude-plugin/marketplace.json`, and merges this into `~/.claude/settings.json`:
+
+```json
+{
+  "enabledPlugins": {
+    "pstack@cursor-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "cursor-plugins": {
+      "source": {
+        "repo": "cursor/plugins",
+        "source": "github"
+      }
+    }
+  }
+}
+```
+
+Every other key in the file is left alone, and an existing entry for the same marketplace keeps the
+fields the tool added to it, such as `autoUpdate`.
+
+The plugin id is `<plugin>@<marketplace>`, and the marketplace name always comes from the `name` in
+`marketplace.json`, never from the URL: both tools key a declared marketplace by that name, and
+the `extraKnownMarketplaces` key must match it. `cursor/plugins` is named `cursor-plugins`, so the id is
+`pstack@cursor-plugins`. This is why Kasetto fetches the source at least once, even though the tool
+does the install: it needs the name, it validates the plugin names you listed, and it hashes each
+plugin into the lock.
+
+### Source Mapping
+
+The `source` object Kasetto writes depends on where the marketplace lives:
+
+| Config `source` | Written `source` object |
+| --------------- | ----------------------- |
+| A `github.com` repository | `{"source": "github", "repo": "<owner>/<repo>"}` |
+| Any other git host | `{"source": "git", "url": "<source as written in the config>"}` |
+| A local path | `{"source": "directory", "path": "<absolute path>"}`, resolved against the config file's directory |
+
+- `ref` carries the config's `ref`, or its `branch` when there is no `ref`, verbatim. With neither,
+  `ref` is omitted and the tool tracks the repository's default branch
+- `sub-dir` becomes `"path": "<sub-dir>/.claude-plugin/marketplace.json"` for a git source; for a
+  local path it is joined into the directory `path` itself
+- The tool clones a `github` or `git` marketplace with your own git credentials (credential helpers,
+  SSH keys). Kasetto's [host tokens](/docs/authentication) only cover its own fetch of
+  `marketplace.json`
+
+## Supported Tools
+
+Global paths are relative to `$HOME`, project paths to the project root.
+
+| Tool | Global settings file | Project settings file | Docs |
+| ---- | -------------------- | --------------------- | ---- |
+| claude-code | `~/.claude/settings.json` | `.claude/settings.json` | [Claude Code](https://code.claude.com/docs/en/settings-reference#extraknownmarketplaces) |
+| github-copilot | `~/.copilot/settings.json` | `.github/copilot/settings.json` | [Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference) |
+
+The Copilot CLI reads the same two keys with the same shape, documented as "declarative plugin
+auto-install", and installs a Claude-format marketplace as is
+([plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference)).
+VS Code is covered through it: VS Code discovers the plugins the Copilot CLI installed.
+
+## Tools Without Declarative Plugin Install
+
+Every other tool is skipped for plugins. `kst doctor` lists a configured one as an advisory warning
+without changing its exit code. Several of these tools have a plugin system, and some even read
+Claude marketplaces, but none has a file Kasetto can write that makes the tool fetch and install a
+Claude marketplace plugin by itself.
+
+| Tool | Why not | Docs |
+| ---- | ------- | ---- |
+| amp | Plugins are TypeScript or JavaScript programs run by Bun, a different kind of plugin | [Amp](https://ampcode.com/docs/customize/plugins) |
+| antigravity | Installs through `agy plugin install` or a hand-placed plugin with a root `plugin.json`; no enablement file. `agy plugin import claude` is a one-off migration | [Antigravity](https://antigravity.google/docs/plugins) |
+| augment | Reads Claude marketplaces and `enabledPlugins`, but only from a marketplace already cloned under `~/.augment/plugins/marketplaces/`; the settings never trigger a fetch | [Augment](https://docs.augmentcode.com/cli/plugins) |
+| cline | Plugins are TS/JS modules or Agent Plugins packages placed on disk; there is no enable key and no Claude format | [Cline](https://docs.cline.bot/customization/plugins) |
+| codex | Reads Claude marketplaces, but `config.toml` enables only a plugin already cloned and cached; installing takes `codex plugin marketplace add` and `codex plugin add`, and `github`-source entries are skipped | [Codex](https://developers.openai.com/codex/plugins/build) |
+| continue | No plugin or bundle concept; hub blocks are referenced one by one in `config.yaml` | [Continue](https://docs.continue.dev/reference) |
+| cursor | No documented settings file installs a marketplace plugin: the project key is described only on the forum and user scope has none. Cursor does import plugins Claude Code installed, from `~/.claude/plugins/marketplaces/`, while "Include Third-Party Plugins, Skills, and Other Configs" is on | [Cursor](https://cursor.com/docs/plugins) |
+| gemini-cli | Extensions are a Gemini-only format, either placed on disk or installed with `gemini extensions install` | [Gemini CLI](https://geminicli.com/docs/extensions/reference/) |
+| goose | Open Plugins placed under `~/.agents/plugins/` or cloned by `goose plugin install` without a ref; no Claude manifest support | [Goose](https://goose-docs.ai/docs/guides/context-engineering/plugins) |
+| junie | Reads Claude marketplaces through `extensions.json`, but its git source has no `ref` field, and whether it fetches uncached extensions on start is undocumented | [Junie](https://junie.jetbrains.com/docs/junie-cli-extensions.html) |
+| kiro-cli | Powers are Agent Plugins or `POWER.md` packages installed with `kiro-cli powers install`; no config file | [Kiro](https://kiro.dev/docs/powers/) |
+| openclaw | Reads Claude bundles and marketplaces, but installs only through `openclaw plugins install`, recording machine state rather than config | [OpenClaw](https://docs.openclaw.ai/plugins/bundles) |
+| opencode | Plugins are npm or git JS modules listed in `opencode.json`, a different kind of plugin | [OpenCode](https://opencode.ai/docs/plugins/) |
+| openhands | Reads Claude plugins, but the CLI and GUI load only directories already on disk; a self-fetching marketplace registration exists only for the agent server | [OpenHands](https://docs.openhands.dev/overview/plugins) |
+| pi | `packages` in its settings install at startup, but a pi package bundles extensions, skills, prompts, and themes, not a Claude plugin | [Pi](https://docs.pi.dev/latest/packages) |
+| replit | No plugin concept; skills and account-level MCP only | [Replit](https://docs.replit.com/references/agent/skills) |
+| roo | Discontinued, and the repository is archived | [Roo Code](https://github.com/RooCodeInc/Roo-Code) |
+| trae | A curated in-app marketplace with UI-only install and no custom sources | [Trae](https://docs.trae.ai/ide/marketplace) |
+| warp | No plugin system for its own agent; skills and MCP only | [Warp](https://docs.warp.dev/getting-started/migrate-to-warp/migrate-to-warp-from-claude-code/) |
+| windsurf | Devin Desktop uses Devin's plugins: the user list lives in Devin Cloud behind a login, and the project `requiredPlugins` key is contradicted by Devin's own config reference | [Devin](https://docs.devin.ai/cli/extensibility/plugins/overview) |
+| zcode | Uses the same key names (`plugins.extraKnownMarketplaces`, `plugins.enabledPlugins`), but a declaration never triggers a download; installing takes the UI or `zcode plugins install` | [ZCode](https://zcode.z.ai/en/docs/plugin) |
+
+## Ownership
+
+`kasetto.lock` records exactly what Kasetto wrote, as two kinds of entry:
+
+- **`plugin`**: one per enabled plugin, keyed `plugin::<source>::<name>`, with the `plugin@marketplace`
+  id, every settings file it was enabled in, and a content hash (the marketplace entry, plus the
+  plugin's tree when it lives inside the marketplace repository, as pstack does)
+- **`plugin-marketplace`**: one per marketplace Kasetto declared, keyed `plugin-marketplace::<source>`,
+  with the marketplace name, a hash of the `source` object it wrote, and only the settings files it
+  declared it in
+
+Before writing to a settings file, Kasetto checks what that file already declares under the
+marketplace name:
+
+- **Nothing**: Kasetto declares the marketplace and records it
+- **The entry Kasetto wrote** (the lock's hash still matches): Kasetto updates it
+- **An entry you added by hand with the same source**: Kasetto uses it and enables the plugins, but
+  never records it, so it never removes it either
+- **An entry with a different source**: Kasetto never overwrites it. Every plugin from that config
+  entry is reported broken (``marketplace `X` is already declared in <path> with a different source;
+  Kasetto does not overwrite it``) and nothing is written for it
+
+## Pruning and Clean
+
+Drop a plugin from the config, or run `kst clean`, and Kasetto removes only what it recorded: the
+`enabledPlugins` keys first, then its own `extraKnownMarketplaces` entries, each only while its
+`source` still hashes to what Kasetto wrote. An entry whose source you changed since is left in
+place, and a map left empty is dropped from the file.
+
+<Callout type="warn">
+Removing the keys disables the plugin; it does not uninstall it. Claude Code keeps its marketplace
+clone and plugin cache under `~/.claude/plugins/`, and still lists the marketplace. To purge them,
+run `claude plugin uninstall <plugin>@<marketplace>` and `claude plugin marketplace remove
+<marketplace>` after Kasetto has removed the keys.
+</Callout>
+
+A sync also repairs drift without the network: if you delete a locked plugin's `enabledPlugins` key
+by hand, the next `kst sync` writes it back from the lock. To turn a plugin off for good, remove it
+from the config.
+
+## Caveats
+
+- **No commit SHA pins.** Kasetto writes the config's tag or branch as `ref` and never a resolved
+  commit, because Claude Code before 2.1.324 passes `ref` to `git clone --branch`, so a commit SHA
+  fails silently and the plugin disappears from the session. Kasetto still records the resolved
+  revision in the lock. A `ref:` you set to a SHA yourself (or `kst add <source>@<sha>`) is written
+  as is, so keep plugin sources on a tag or a branch unless every user runs Claude Code 2.1.324 or
+  later. Branch refs were verified on Claude Code 2.1.311; tags take the same `git clone --branch`
+  path
+- **Updates are the tool's.** Kasetto leaves `autoUpdate` to the tool, which keeps it off by default
+  for third-party marketplaces, so an installed plugin stays on the version the tool installed. A
+  plugin moves when the `source` Kasetto writes changes (for example, you bump `ref` to a new tag
+  and sync), which makes Claude Code re-fetch the marketplace, or when you run `claude plugin
+  marketplace update`. On a branch, `kst sync --update` refreshes the lock but writes the same
+  `source`, so the tool's clone does not move on its own. Claude Code also keeps a cached plugin
+  until its manifest `version` changes. The Copilot CLI ignores `autoUpdate` in a repository
+  settings file
+- **Project scope.** Claude Code applies a project `.claude/settings.json` only after you accept the
+  folder's trust dialog, and silently ignores it in an untrusted folder. A plugin that lives inside
+  the marketplace repository (pstack) then loads, but a plugin whose marketplace entry points at
+  another repository is never fetched from a committed file: each user still runs `claude plugin
+  install <plugin>@<marketplace> --scope project`. The Copilot CLI also reads project
+  `.claude/settings.json`, so with both `claude-code` and `github-copilot` configured it sees the same
+  plugin declared twice, with identical entries
+- **First session.** The tool installs at session start, in the background. The plugin is not in a
+  session that was already open, and may not be in the next one until the install finishes: run
+  `/reload-plugins` or restart. A headless `claude -p` waits for it with
+  `CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1`
+- **Key order.** Kasetto rewrites the settings file with its keys in alphabetical order and two-space
+  indentation, as it does for MCP configs. Values and unknown keys are kept; only the order moves.
+  Claude Code's own `claude plugin` commands also rewrite the file when they change it
+- **Audit.** `kst audit` and the sync gate list plugins, always as unverified (`no audit source for
+  plugins`): a plugin can run hooks and MCP servers, and no provider judges a marketplace plugin.
+  They never breach a severity threshold and fail only under `fail-on-unverified`
+- **Silent without a target.** With `plugins:` configured but neither `claude-code` nor
+  `github-copilot` in `agent:`, sync does nothing for plugins and prints nothing about it; `kst doctor`
+  warns about each configured tool that cannot take them
