@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GitHub social preview (Open Graph card) for kasetto.
+  Canvas: 1280×558 — the frame hugs the content at a 40px margin, so the
+  README card carries no dead space. Palette mirrors the popil flavor
+  (lavender #b89cdc, yellow #d4b070) and the terminal frame from
+  `assets/demo.svg`.
+
+  The canvas is transparent so the README picks up the reader's GitHub theme;
+  `assets/preview_social_light.svg` is the light-theme twin, so geometry edits
+  here belong there too.
+
+  Share cards need a solid canvas at GitHub's recommended 1280×640, so the
+  raster paints the popil base in and pads the missing 82px back out. Run
+  `just sync-preview` (rsvg-convert with a 1280×640 page, top offset 41, and
+  the card drawn at 1280×558) and upload the PNG under Settings, Social
+  preview, on GitHub.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-160 0 1600 558" width="1600" height="558" font-family="'JetBrainsMono Nerd Font Mono','JetBrainsMono NFM','Iosevka Nerd Font Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">
+  <title>Kasetto: a declarative AI agent environment manager, written in Rust</title>
+  <!-- outline border -->
+  <rect x="-120" y="40" width="1520" height="478" fill="none" stroke="#b89cdc" stroke-width="4"/>
+
+  <!--
+    ASCII wordmark - left-anchored. Block width at font-size 30 in JetBrains Mono
+    ≈ 1050px; x=122 leaves ~80px on each side of the frame.
+
+    Drawn as two layers over one grid so the letters read as stacked tiles rather
+    than a solid slab: the box-drawing rules render unmasked, keeping the shadow
+    outline continuous, while the █ blocks are masked by a 3px transparent line on
+    every row seam. Seams sit 3.5px under each baseline (113 + 34n), so moving y
+    or dy means moving the mask lines with them; widening stroke-width opens the
+    gaps, and dropping the mask attribute restores the solid wordmark.
+  -->
+  <defs>
+    <mask id="wordmark-tiles" maskUnits="userSpaceOnUse" x="0" y="0" width="1280" height="558">
+      <rect width="1280" height="558" fill="#fff"/>
+      <g stroke="#000" stroke-width="3">
+        <line x1="118" y1="116.5" x2="1190" y2="116.5"/>
+        <line x1="118" y1="150.5" x2="1190" y2="150.5"/>
+        <line x1="118" y1="184.5" x2="1190" y2="184.5"/>
+        <line x1="118" y1="218.5" x2="1190" y2="218.5"/>
+        <line x1="118" y1="252.5" x2="1190" y2="252.5"/>
+      </g>
+    </mask>
+  </defs>
+  <g fill="#b89cdc" font-size="30" font-weight="700" xml:space="preserve">
+    <text x="122" y="113" xml:space="preserve">
+      <tspan x="122" dy="0">  ╗    ╗      ╗        ╗       ╗        ╗        ╗       ╗</tspan>
+      <tspan x="122" dy="34">  ║   ╔╝  ╔══  ╗  ╔════╝  ╔════╝╚══  ╔══╝╚══  ╔══╝  ╔═══  ╗</tspan>
+      <tspan x="122" dy="34">     ╔╝        ║       ╗     ╗       ║        ║     ║     ║</tspan>
+      <tspan x="122" dy="34">  ╔═  ╗   ╔══  ║╚════  ║  ╔══╝       ║        ║     ║     ║</tspan>
+      <tspan x="122" dy="34">  ║    ╗  ║    ║       ║       ╗     ║        ║   ╚      ╔╝</tspan>
+      <tspan x="122" dy="34">╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝</tspan>
+    </text>
+    <text x="122" y="113" xml:space="preserve" mask="url(#wordmark-tiles)">
+      <tspan x="122" dy="0">██   ██  █████  ███████ ███████ ████████ ████████  ██████</tspan>
+      <tspan x="122" dy="34">██  ██  ██   ██ ██      ██         ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">█████   ███████ ███████ █████      ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">██  ██  ██   ██      ██ ██         ██       ██    ██    ██</tspan>
+      <tspan x="122" dy="34">██   ██ ██   ██ ███████ ███████    ██       ██     ██████</tspan>
+    </text>
+  </g>
+
+  <!-- tagline -->
+  <text x="640" y="351" text-anchor="middle" fill="#e4e2de" font-size="26" letter-spacing="0.01em" xml:space="preserve">
+    <tspan fill="#a8a195">A declarative </tspan><tspan fill="#e4e2de">AI agent environment manager</tspan><tspan fill="#a8a195">, written in </tspan><tspan fill="#e8a94d">Rust</tspan><tspan fill="#a8a195">.</tspan>
+  </text>
+
+  <!-- prompt + command -->
+  <text x="640" y="397" text-anchor="middle" font-size="24" xml:space="preserve">
+    <tspan fill="#e8a94d">❯</tspan><tspan fill="#e4e2de"> kst </tspan><tspan fill="#e8a94d">sync</tspan>
+  </text>
+
+  <!-- chip strip totals -->
+  <text x="640" y="437" text-anchor="middle" font-size="20" xml:space="preserve">
+    <tspan fill="#e8a94d">●</tspan><tspan fill="#e4e2de"> 4 </tspan><tspan fill="#e8a94d">updated</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#84c578">●</tspan><tspan fill="#e4e2de"> 2 </tspan><tspan fill="#84c578">added</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#e87e6c">●</tspan><tspan fill="#e4e2de"> 1 </tspan><tspan fill="#e87e6c">removed</tspan><tspan fill="#a8a195">    </tspan><tspan fill="#6e6759">●</tspan><tspan fill="#e4e2de"> 11 </tspan><tspan fill="#a8a195">unchanged</tspan>
+  </text>
+
+  <!-- Japanese subtitle, popil yellow -->
+  <text x="640" y="475" text-anchor="middle" fill="#d4b070" font-size="14" letter-spacing="0.4em" font-family="'Noto Sans Mono CJK JP','Noto Sans JP','Yu Gothic',sans-serif">スキル・パッケージ・マネージャー</text>
+</svg>

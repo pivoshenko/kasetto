@@ -1,30 +1,47 @@
-/* Cassette: dark-only, warm tape-stock greys with amber tape gold and a violet brand hue. Raw hex mirrors lib/palette.ts, which the off-DOM next/og renderers read
+/* Cassette on the pivoshenko palette: dark-only neutral greys with yellow tape gold and a lavender-to-mauve brand hue. Raw hex mirrors lib/palette.ts, which the off-DOM next/og renderers read
    because they cannot resolve CSS variables. Change a color in both places */
 :root {
   /* == Surfaces == */
-  --bg: #1f1f1e;
-  --bg-elevated: #262625;
-  --bg-raise: #2e2e2c;
-  --border: #373634;
-  --border-strong: #46443f;
+  --bg: #0d0d0d;
+  --bg-elevated: #181818;
+  --bg-raise: #212121;
+  --border: #2a2a2a;
+  --border-strong: #57534e;
+  /* The nav and footer bars: a black scrim over the page, and a black ground under the footer */
+  --bar-scrim: rgb(0 0 0 / 0.72);
+  --bar-ground: #000000;
+  --bar-border: #212121;
+  /* Terminal and file mocks: a step below the cards, with a lighter title bar */
+  --mock-bg: #111111;
+  --mock-bar: #181818;
+  /* Drop shadows under floating panels, mixed down to the alpha each one needs */
+  --shadow-ink: #000000;
 
   /* == Text == */
-  --fg: #e4e2de;
-  --fg-muted: #a8a195;
-  --fg-subtle: #6e6759;
+  --fg: #e7e5e4;
+  --fg-muted: #a8a29e;
+  --fg-subtle: #78716c;
 
   /* == Brand == */
-  --accent: #e8a94d;
-  --accent-2: #b6a6ef;
-  --accent-3: #7a68c2;
-  --accent-deep: #3a2f6e;
-  --on-accent: #1f1f1e;
+  --accent: #d4b070;
+  --accent-2: #babcd8;
+  --accent-3: #aa89c2;
+  --accent-deep: #4a3b5c;
+  --on-accent: #111111;
 
-  /* == Status: Mirrors the CLI Roles in src/colors.rs == */
-  --success: #84c578;
-  --danger: #e87e6c;
-  --warning: #e8a94d;
-  --info: #6cbfd3;
+  /* == Status == */
+  --success: #8aaf86;
+  --danger: #df7c7b;
+  --warning: #d4b070;
+  --info: #49a4bf;
+
+  /* == CLI: The Terminal Mockups Paint With src/colors.rs, Not the Site Palette; Mirrored by `cli` in lib/palette.ts == */
+  --cli-attention: #e8a94d;
+  --cli-success: #84c578;
+  --cli-error: #e87e6c;
+  --cli-info: #6cbfd3;
+  --cli-secondary: #a8a195;
+  --cli-infra: #6e6759;
 
   /* == Type == */
   --font-display: var(--font-jetbrains-mono), ui-monospace, Menlo, Consolas, monospace;
@@ -74,20 +91,20 @@
 /* == Fumadocs Theme Bridge == */
 /* Fumadocs reads bare HSL triples */
 :root {
-  --fd-background: 60 2% 12%; /* --bg #1f1f1e */
-  --fd-foreground: 40 10% 88%; /* --fg #e4e2de */
-  --fd-card: 60 1% 15%; /* --bg-elevated #262625 */
-  --fd-card-foreground: 40 10% 88%;
-  --fd-popover: 60 1% 15%;
-  --fd-popover-foreground: 40 10% 88%;
-  --fd-primary: 36 77% 61%; /* --accent #e8a94d */
-  --fd-primary-foreground: 60 2% 12%;
-  --fd-secondary: 60 2% 18%; /* --bg-raise #2e2e2c */
-  --fd-secondary-foreground: 40 10% 88%;
-  --fd-muted: 60 1% 15%;
-  --fd-muted-foreground: 38 10% 62%; /* --fg-muted #a8a195 */
-  --fd-accent: 60 2% 18%;
-  --fd-accent-foreground: 40 10% 88%;
-  --fd-border: 40 3% 21%; /* --border #373634 */
-  --fd-ring: 36 77% 61%;
+  --fd-background: 0 0% 5%; /* --bg #0d0d0d */
+  --fd-foreground: 20 6% 90%; /* --fg #e7e5e4 */
+  --fd-card: 0 0% 9%; /* --bg-elevated #181818 */
+  --fd-card-foreground: 20 6% 90%;
+  --fd-popover: 0 0% 9%;
+  --fd-popover-foreground: 20 6% 90%;
+  --fd-primary: 38 54% 64%; /* --accent #d4b070 */
+  --fd-primary-foreground: 0 0% 7%;
+  --fd-secondary: 0 0% 13%; /* --bg-raise #212121 */
+  --fd-secondary-foreground: 20 6% 90%;
+  --fd-muted: 0 0% 9%;
+  --fd-muted-foreground: 24 5% 64%; /* --fg-muted #a8a29e */
+  --fd-accent: 0 0% 13%;
+  --fd-accent-foreground: 20 6% 90%;
+  --fd-border: 0 0% 16%; /* --border #2a2a2a */
+  --fd-ring: 38 54% 64%;
 }

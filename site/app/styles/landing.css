@@ -5,10 +5,10 @@
 .lp {
   --lp-max: 1200px;
   --lp-gutter: clamp(16px, 4vw, 40px);
-  --lp-section-pad: clamp(56px, 6.5vw, 88px);
-  /* Less air above a title than below a section, so the divider reads as the title's own rule */
+  --lp-section-pad: clamp(24px, 3vw, 40px);
+  /* Less air above a title than below a section, so each title reads as the start of its block */
   --lp-section-pad-top: clamp(32px, 3.5vw, 44px);
-  /* Section dividers fade out before the gutter instead of stopping square against it */
+  /* The rules around the agent strip and section links fade out before the gutter */
   --lp-rule: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
   /* Top-edge catch-light; a dark surface reads as a raised object rather than a hole */
   --lp-lift: inset 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent);
@@ -29,8 +29,7 @@
 .lp-strip,
 .lp-jump,
 .lp-feature,
-.lp-section,
-.lp-footer {
+.lp-section {
   width: 100%;
   max-width: calc(var(--lp-max) + 2 * var(--lp-gutter));
   margin-inline: auto;
@@ -54,18 +53,6 @@
 
 /* == Type == */
 /* A monospace space is a whole cell, which at display size reads as a hole between words */
-.lp-h1 {
-  font-size: clamp(40px, 5vw, 74px);
-  line-height: 0.99;
-  letter-spacing: -0.03em;
-  word-spacing: -0.3em;
-  color: var(--fg);
-}
-
-.lp-h1-line {
-  display: block;
-}
-
 .lp-h2 {
   font-size: clamp(30px, 3.4vw, 46px);
   line-height: 1.08;
@@ -73,7 +60,7 @@
   color: var(--fg);
 }
 
-:is(.lp-h1, .lp-h2) em {
+.lp-h2 em {
   font-style: normal;
   color: var(--accent);
 }
@@ -129,17 +116,16 @@
   background: var(--bg-elevated);
 }
 
+/* A muted tint rather than a solid fill: accent text on a faint accent wash, no glow */
 .lp-btn--primary {
-  color: var(--on-accent);
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 8px 28px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .lp-btn--primary:hover {
-  background: color-mix(in srgb, var(--accent) 86%, var(--fg));
-  border-color: transparent;
-  box-shadow: 0 10px 32px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .lp-btn svg {
@@ -147,68 +133,30 @@
 }
 
 /* == Hero == */
-/* Three layers behind the hero, all mixed from existing tokens: a cool glow where the
-   cassette sits, a surveyor's grid masked to an oval, and the dark ground showing through */
-.lp-hero::before,
-.lp-hero::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  inset: 0 -45%;
-  pointer-events: none;
-}
-
-.lp-hero::before {
-  background:
-    radial-gradient(
-      48% 52% at 70% 40%,
-      color-mix(in srgb, var(--accent-3) 24%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      34% 38% at 78% 32%,
-      color-mix(in srgb, var(--accent) 8%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      56% 64% at 28% 88%,
-      color-mix(in srgb, var(--accent-deep) 26%, transparent),
-      transparent 72%
-    );
-  /* The glow is clipped at the hero's bottom edge, so fade it before the strip's rule */
-  mask-image: linear-gradient(to bottom, #000 72%, transparent);
-}
-
-.lp-hero::after {
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--fg) 7%, transparent) 1px, transparent 1px);
-  background-size: 68px 68px;
-  mask-image: radial-gradient(62% 68% at 50% 42%, #000, transparent 76%);
-}
-
 .lp-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  align-items: center;
-  gap: var(--space-8);
-  /* The cassette is the tallest thing in the row, so the box is sized just under it; a larger
-     min-height is split by align-items and lands as dead space under the nav */
-  min-height: min(520px, calc(100svh - 160px));
-  padding-block: clamp(14px, 2.2vw, 28px) clamp(16px, 2.5vw, 40px);
+  padding-block: clamp(24px, 3.5vw, 48px) clamp(40px, 6vw, 80px);
 }
 
+/* The README card leads the hero, so everything under it centres on it */
 .lp-hero-copy {
-  position: relative;
-  z-index: 1;
-  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* One line on desktop; the column is wide enough and a split tagline reads as two thoughts */
-.lp-hero-lede {
-  max-width: none;
-  margin-top: var(--space-6);
-  white-space: nowrap;
+/* A flex item shrinks to its content, and a percentage-width image has none of its own */
+.lp-hero-title {
+  width: 100%;
+}
+
+/* A copy of assets/preview_social_dark.svg, the card the README opens with, its frame widened by
+   160px a side so the hero card reads as a banner */
+.lp-hero-logo {
+  display: block;
+  width: 100%;
+  max-width: 1000px;
+  height: auto;
+  margin-inline: auto;
 }
 
 /* Two equal fr tracks in a fit-content grid both size to the wider button, so the pair matches */
@@ -252,50 +200,6 @@
   scrollbar-width: none;
 }
 
-.lp-hero-art {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.lp-cassette {
-  display: block;
-  width: 122%;
-  max-width: 760px;
-  height: auto;
-  margin-right: -14%;
-  overflow: visible;
-}
-
-.lp-cassette-print text {
-  fill: var(--bg);
-  font-family: var(--font-mono);
-}
-
-.lp-cassette-print > rect {
-  stroke: var(--bg);
-}
-
-.lp-cassette-float {
-  animation: lp-float 7s ease-in-out infinite alternate;
-}
-
-.lp-reel {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: lp-spin 4.5s linear infinite;
-}
-
-@keyframes lp-float {
-  from {
-    transform: translateY(1.2px);
-  }
-  to {
-    transform: translateY(-1.8px);
-  }
-}
-
 @keyframes lp-spin {
   to {
     transform: rotate(360deg);
@@ -303,6 +207,13 @@
 }
 
 /* == Agent Strip == */
+/* The agent strip and the section links sit on the page colour, so the grid stops at their edges
+   instead of running under the moving names and the link row */
+.lp-strip,
+.lp-jump {
+  background: var(--bg);
+}
+
 .lp-strip {
   display: flex;
   align-items: center;
@@ -323,7 +234,7 @@
 .lp-marquee-track {
   display: flex;
   width: max-content;
-  animation: lp-marquee 70s linear infinite;
+  animation: lp-marquee 160s linear infinite;
 }
 
 /* Hovering or tabbing into the ribbon stops it so a name can be read */
@@ -510,20 +421,6 @@
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
 
-.lp-hero + .lp-feature::before,
-.lp-feature + .lp-feature::before,
-.lp-feature + .lp-section::before,
-.lp-section + .lp-feature::before,
-.lp-section + .lp-section::before,
-.lp-footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  inset-inline: var(--lp-gutter);
-  height: 1px;
-  background: var(--lp-rule);
-}
-
 .lp-feature-title {
   grid-area: title;
   white-space: nowrap;
@@ -586,7 +483,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: var(--space-8);
   list-style: none;
-  border-top: 1px solid var(--border);
 }
 
 .lp-roster li {
@@ -595,7 +491,6 @@
   gap: 12px;
   min-width: 0;
   padding: 14px 0;
-  border-bottom: 1px solid var(--border);
   font-size: var(--fs-base);
   color: var(--fg);
 }
@@ -620,12 +515,12 @@
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
+  background: var(--mock-bg);
   overflow: hidden;
   box-shadow:
     var(--lp-lift),
     0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
-    0 32px 64px -32px rgba(0, 0, 0, 0.8);
+    0 32px 64px -32px color-mix(in srgb, var(--shadow-ink) 80%, transparent);
 }
 
 .lp-pane-bar,
@@ -636,7 +531,7 @@
   gap: var(--space-4);
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-raise);
+  background: var(--mock-bar);
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--fg);
@@ -1338,7 +1233,7 @@
 }
 
 .t-detail {
-  color: var(--fg-subtle);
+  color: var(--cli-infra);
 }
 
 .t-summary-chips {
@@ -1347,7 +1242,7 @@
 
 .t-prompt,
 .t-accent {
-  color: var(--accent);
+  color: var(--cli-attention);
 }
 
 .t-fg {
@@ -1356,27 +1251,27 @@
 }
 
 .t-success {
-  color: var(--success);
+  color: var(--cli-success);
 }
 
 .t-danger {
-  color: var(--danger);
+  color: var(--cli-error);
 }
 
 .t-info {
-  color: var(--info);
+  color: var(--cli-info);
 }
 
 .t-muted {
-  color: var(--fg-muted);
+  color: var(--cli-secondary);
 }
 
 .t-subtle {
-  color: var(--fg-subtle);
+  color: var(--cli-infra);
 }
 
 .t-strike {
-  color: var(--fg-muted);
+  color: var(--cli-secondary);
   text-decoration: line-through;
 }
 
@@ -1385,7 +1280,7 @@
   width: 7px;
   height: 15px;
   margin-left: -8px;
-  background: var(--accent);
+  background: var(--cli-attention);
   animation: lp-blink 1s steps(1) infinite;
 }
 
@@ -1443,7 +1338,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-width: 0;
+  text-align: center;
   padding: 22px 20px 20px;
   background: var(--bg);
   transition: background-color 0.15s ease;
@@ -1486,61 +1383,19 @@
 }
 
 /* == Asset Kinds == */
-/* The four kinds as the cassette label: one dark pane with the tape's amber-to-violet stripe
-   along its top edge, so the row reads as "what is on the tape" rather than another grid of cells */
+/* The six kinds as wall cells under the tape's amber-to-violet stripe, so the row reads as "what
+   is on the tape". The stripe sits above the cells, which would otherwise paint over it */
 .lp-kinds {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-6) var(--space-8);
-  padding: clamp(22px, 2.6vw, 30px) clamp(22px, 2.6vw, 32px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  box-shadow: var(--lp-lift);
-  list-style: none;
-  overflow: hidden;
 }
 
 .lp-kinds::before {
   content: "";
   position: absolute;
+  z-index: 1;
   inset: 0 0 auto;
   height: 3px;
   background: linear-gradient(90deg, var(--accent), var(--accent-2) 58%, var(--accent-3));
-}
-
-.lp-kind {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.lp-kind-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.lp-kind-head svg {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  color: var(--accent);
-}
-
-.lp-kind-name {
-  font-size: 21px;
-  line-height: 1.2;
-  color: var(--fg);
-}
-
-.lp-kind-desc {
-  font-size: var(--fs-md);
-  line-height: 1.5;
-  color: var(--fg-muted);
 }
 
 .lp-wall-name {
@@ -1570,6 +1425,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
+  align-items: center;
   padding: 22px 20px 20px;
 }
 
@@ -1674,7 +1530,12 @@
 }
 
 /* == Footer == */
+/* A full-bleed band like the nav, so its rule spans the viewport; the padding keeps the content
+   on the page column */
 .lp-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bar-ground);
+  padding-inline: max(var(--lp-gutter), calc((100% - var(--lp-max)) / 2));
   padding-top: var(--space-14);
   padding-bottom: var(--space-10);
 }
@@ -1798,12 +1659,6 @@
 
 /* == Responsive == */
 @media (max-width: 1200px) {
-  /* The cassette's bleed past its column only has room on a full-width frame */
-  .lp-cassette {
-    width: 100%;
-    margin-right: 0;
-  }
-
   /* Below this the seven links no longer fit one row, and wrapped, every row leader would carry
      a dangling hairline, so they become one scrollable row that bleeds to the viewport edges. The
      fade sits on the band, not the list: a mask on a scroll container travels with its content */
@@ -1854,28 +1709,14 @@
   .lp-wall {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  /* Six kinds split evenly into two rows rather than four and two */
+  .lp-wall.lp-kinds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 960px) {
-  .lp-hero {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-  }
-
-  .lp-hero-art {
-    order: -1;
-    margin-bottom: calc(-1 * var(--space-8));
-  }
-
-  .lp-cassette {
-    width: min(100%, 560px);
-    margin: 0;
-  }
-
-  .lp-hero-lede {
-    white-space: normal;
-  }
-
   .lp-feature,
   .lp-feature[data-split] {
     grid-template-columns: minmax(0, 1fr);
@@ -1922,8 +1763,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .lp-wall.lp-wall--forges,
-  .lp-kinds {
+  .lp-wall.lp-wall--forges {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1937,7 +1777,6 @@
     display: none;
   }
 
-  .lp-kinds,
   .lp-roster {
     grid-template-columns: minmax(0, 1fr);
   }

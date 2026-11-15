@@ -5,6 +5,7 @@ import { GoArrowUpRight, GoStarFill, GoTag } from "react-icons/go";
 import { IoMenuOutline } from "react-icons/io5";
 import { getLatestRelease, getStars } from "@/lib/github";
 import { REPO_URL } from "@/lib/site";
+import { AsciiField } from "./ascii-field";
 import { BrandLogo } from "./brand-mark";
 
 /** The star count and release tag beside the repository name; streams in after the shell. */
@@ -40,6 +41,7 @@ async function MenuVersion() {
 export function TopNav() {
   return (
     <header className="top-nav">
+      <AsciiField />
       <nav className="top-nav-inner" aria-label="Main">
         <Link href="/" className="top-nav-brand" aria-label="Kasetto home">
           <BrandLogo className="brand-logo" />

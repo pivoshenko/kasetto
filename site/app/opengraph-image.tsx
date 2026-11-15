@@ -2,23 +2,23 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import type { CSSProperties } from "react";
+import { cli, palette } from "@/lib/palette";
 
 export const alt = "Kasetto: Declarative AI agent environment manager";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Brand tokens mirror the canonical palette in `src/colors.rs` (CLI is the
-// source of truth) and the popil surfaces in `app/globals.css`. Update both
-// when this changes
-const BG = "#1f1f1e"; // popil base
-const FG = "#e4e2de"; // popil text
-const MUTED = "#a8a195"; // CLI SECONDARY
-const LAVENDER = "#b89cdc"; // CLI BRAND
-const ACCENT_WARM = "#e8a94d"; // CLI ATTENTION
-const ADDED = "#84c578"; // CLI SUCCESS
-const REMOVED = "#e87e6c"; // CLI ERROR
-const DIM = "#6e6759"; // CLI INFRA
-const JP_YELLOW = "#d4b070"; // popil yellow
+// Surfaces and the frame take the site palette; the `kst sync` line and its
+// chips mimic real CLI output, so they keep the roles from `src/colors.rs`
+const BG = palette.bg;
+const FG = palette.fg;
+const MUTED = cli.secondary;
+const LAVENDER = palette.accent2;
+const ACCENT_WARM = cli.attention;
+const ADDED = cli.success;
+const REMOVED = cli.error;
+const DIM = cli.infra;
+const JP_YELLOW = palette.accent;
 
 // Same six lines as `assets/preview_social_dark.svg`, so the shared card and the
 // GitHub social preview stay in sync. 58 columns; at 28px in JetBrains Mono

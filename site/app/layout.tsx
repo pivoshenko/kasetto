@@ -17,6 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-jetbrains-mono",
+  // Google's subsets omit box-drawing and arrow glyphs; the default size-adjusted Arial fallback
+  // would render them proportionally and break ASCII trees, so let them fall through to Menlo/Consolas
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
