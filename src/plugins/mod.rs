@@ -25,6 +25,9 @@ const ENABLED: &str = "enabledPlugins";
 pub(crate) struct Marketplace {
     pub name: String,
     pub plugins: Vec<MarketplacePlugin>,
+    /// Entry names Claude Code would refuse as plugin ids. They are skipped rather
+    /// than failing the marketplace, so one bad sibling cannot disable the rest.
+    pub invalid: Vec<String>,
 }
 
 /// One `plugins[]` entry of a marketplace.
@@ -77,11 +80,15 @@ pub(crate) fn read_marketplace(root: &Path) -> Result<Marketplace> {
         .and_then(Value::as_array)
         .ok_or_else(|| err("marketplace.json has no `plugins` array"))?;
     let mut plugins = Vec::new();
+    let mut invalid = Vec::new();
     for entry in entries {
         let Some(plugin_name) = entry.get("name").and_then(Value::as_str) else {
             continue;
         };
-        check_id_part("plugin", plugin_name)?;
+        if check_id_part("plugin", plugin_name).is_err() {
+            invalid.push(plugin_name.to_string());
+            continue;
+        }
         let relative_dir = entry
             .get("source")
             .and_then(Value::as_str)
@@ -96,6 +103,7 @@ pub(crate) fn read_marketplace(root: &Path) -> Result<Marketplace> {
     Ok(Marketplace {
         name: name.to_string(),
         plugins,
+        invalid,
     })
 }
 
@@ -222,6 +230,12 @@ fn object_at<'a>(
         .ok_or_else(|| err(format!("settings key `{key}` is not an object")))
 }
 
+/// The current `enabledPlugins[id]` value in a settings file, if the key is set.
+pub(crate) fn plugin_value(path: &Path, id: &str) -> Result<Option<Value>> {
+    let sf = SettingsFile::load(path)?;
+    Ok(sf.data.get(ENABLED).and_then(|m| m.get(id)).cloned())
+}
+
 pub(crate) fn plugin_enabled(path: &Path, id: &str) -> bool {
     SettingsFile::load(path)
         .ok()
@@ -324,6 +338,22 @@ mod tests {
         )
         .unwrap();
         assert!(read_marketplace(&root).is_err());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn invalid_plugin_name_is_skipped_not_fatal() {
+        let root = temp_dir("kasetto-mp-bad-sibling");
+        fs::create_dir_all(root.join(".claude-plugin")).unwrap();
+        fs::write(
+            root.join(".claude-plugin/marketplace.json"),
+            r#"{"name": "acme", "plugins": [{"name": "good"}, {"name": "Origin Apps"}]}"#,
+        )
+        .unwrap();
+        let mp = read_marketplace(&root).unwrap();
+        assert_eq!(mp.plugins.len(), 1);
+        assert_eq!(mp.plugins[0].name, "good");
+        assert_eq!(mp.invalid, vec!["Origin Apps".to_string()]);
         let _ = fs::remove_dir_all(&root);
     }
 

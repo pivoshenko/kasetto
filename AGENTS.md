@@ -139,7 +139,8 @@ Copilot CLI reads the same two keys with the same shape, so `claude-code` and `g
 writer and every other agent returns `None`. Two lock kinds back it: `plugin` (each enabled key, with
 every settings file it went into) and `plugin-marketplace` (only an entry Kasetto declared, hashed by
 its `source` object), so pruning removes a marketplace only while its source still hashes to what
-Kasetto wrote and a hand-declared marketplace with the same source is used but never recorded. `ref` is
+Kasetto wrote and a hand-declared marketplace with the same source is used but never recorded; an
+`enabledPlugins` key the user set first gets the same treatment, so a hand `false` is never flipped. `ref` is
 never a SHA (see Never). Removing the keys only disables a plugin; Claude Code keeps its clone and
 cache.
 

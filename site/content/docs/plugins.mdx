@@ -163,14 +163,31 @@ marketplace name:
   never records it, so it never removes it either
 - **An entry with a different source**: Kasetto never overwrites it. Every plugin from that config
   entry is reported broken (``marketplace `X` is already declared in <path> with a different source;
-  Kasetto does not overwrite it``) and nothing is written for it
+  Kasetto does not overwrite it``) and nothing is written for it. That includes an entry another
+  configured source declared under the same marketplace name
+
+The same rule covers a plugin's own `enabledPlugins` key. A key you set before Kasetto owned it is
+left alone: a `true` is used as is and never claimed, so pruning leaves it, and a `false` is never
+flipped, so the plugin is
+reported broken (``turned off by hand in <path>``) until you change or remove the key.
+
+If the marketplace is renamed upstream, the next fetch retires the old `plugin@old` and
+`extraKnownMarketplaces.old` keys Kasetto wrote and writes the new ones. A settings file Kasetto
+cannot parse marks that source's plugins broken and is left untouched, while the rest of the sync goes
+on.
 
 ## Pruning and Clean
 
 Drop a plugin from the config, or run `kst clean`, and Kasetto removes only what it recorded: the
 `enabledPlugins` keys first, then its own `extraKnownMarketplaces` entries, each only while its
 `source` still hashes to what Kasetto wrote. An entry whose source you changed since is left in
-place, and a map left empty is dropped from the file.
+place, and a map left empty is dropped from the file. If a settings file cannot be edited (for
+example, it no longer parses), the lock keeps its record so the next sync or clean can retry, and
+the plugin is reported broken instead of removed.
+
+A source that cannot be read on a run, such as a missing or malformed `marketplace.json`, keeps the
+plugins it already enabled rather than pruning them, and an invalid plugin name in the marketplace
+skips that one entry instead of failing the rest.
 
 <Callout type="warn">
 Removing the keys disables the plugin; it does not uninstall it. Claude Code keeps its marketplace
