@@ -65,7 +65,7 @@ already sorted by severity. Then use the rest of the JSON to answer follow-ups.
 Severity is a deliberately narrow vocabulary, and it drives colour in the
 dashboard:
 
-- `bad` (red) - Concrete waste, meaning a source repo with nothing in use. This
+- `bad` (red) - Concrete waste, meaning a source repository with nothing in use. This
   is the only thing red is spent on, because an unused skill is dormant, not
   broken, and colouring it red would burn the strongest signal on the least
   urgent finding
@@ -83,8 +83,8 @@ the user asks something specific:
 - `skills` / `mcps` - Per asset: `total`, `last_used`, `by_agent`, `days` (a
   date-keyed histogram), plus `source` and `scope` from the lock. Skills carry
   `age` and a `fresh` flag; MCP packs carry `by_server` and `by_tool`
-- `by_source` - Per source repo, how many of its assets are live, fresh and idle.
-  **Usually the most useful view.** Assets go idle in clusters, because a repo
+- `by_source` - Per source repository, how many of its assets are live, fresh and idle.
+  **Usually the most useful view.** Assets go idle in clusters, because a repository
   gets added for one skill and brings twelve. A wholly idle source is a single
   `source:` block to delete rather than N rows to prune, so lead with this when
   recommending cuts
@@ -144,10 +144,18 @@ against an independent count before its numbers are trusted.
 
 ## Scope
 
-Skills and MCP servers only. Commands and instructions are deliberately out:
-commands in the logs are mostly agent built-ins rather than kasetto assets,
-and instructions are injected as context and never "invoked", so usage is
-undefined for them. If asked about those, explain why rather than guessing.
+Skills and MCP servers only. The other four asset kinds are deliberately out:
+
+- Commands - In the logs they are mostly agent built-ins rather than kasetto
+  assets, so a count would mostly measure the agent
+- Instructions - Injected as context and never "invoked", so usage is undefined
+- Subagents - Only Claude Code records a dispatch by name (`subagent_type` on a
+  Task call); every other agent kasetto installs them into leaves no trace, so a
+  count would read as idle in thirteen agents for no reason the user can see
+- Plugins - Kasetto only enables them; the agent installs and runs them, and their
+  skills and commands surface under a `plugin:` prefix rather than as one asset
+
+If asked about any of those, explain why rather than guessing.
 
 Everything stays local. The scripts read files and run `kst list --json`; nothing
 is uploaded, and the dashboard makes no network requests so it stays readable
