@@ -1,5 +1,5 @@
 ---
-title: "Sharing Instructions Across Repos"
+title: "Sharing Instructions Across Repositories"
 description: "Keep one CLAUDE.md, AGENTS.md, and .cursor/rules in sync across every repository and agent, without copy-paste or symlinks."
 ---
 
@@ -20,7 +20,7 @@ belongs in the same file, it does not survive a fresh clone, and it has no notio
 Kasetto treats instructions as a synced asset kind, like skills and MCPs. You write each rule
 once, and `kst sync` renders it into whatever shape each agent expects.
 
-## Publish Instructions in a Repo
+## Publish Instructions in a Repository
 
 An instruction is Markdown with optional YAML frontmatter, living in the source's `instructions/`
 directory. Any Git repository works - a dedicated one, or a folder inside a repository you already have.

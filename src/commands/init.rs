@@ -54,6 +54,22 @@ const TEMPLATE: &str = r#"# Kasetto - https://github.com/pivoshenko/kasetto
 #       - review-pr
 #       - name: deploy
 #         path: ops
+
+# agents:
+#   - source: https://github.com/example/agents
+#     agents: "*"
+#   - source: https://github.com/example/agents
+#     ref: v1.0
+#     sub-dir: agents
+#     agents:
+#       - reviewer
+#       - name: planner
+#         path: ops
+
+# plugins:
+#   - source: https://github.com/cursor/plugins
+#     plugins:
+#       - pstack
 "#;
 
 pub(crate) fn run(force: bool, global: bool) -> Result<()> {

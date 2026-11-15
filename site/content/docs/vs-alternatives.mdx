@@ -19,7 +19,7 @@ Most tools in this space are **installers**: you run a command, a skill lands on
 record of what you did is the disk itself. Kasetto is a **package manager**: the config declares
 what should exist, a lock file pins exactly what you got, and sync converges the disk to match.
 
-If you work in one repo, on one machine, with one agent, an installer is enough and Kasetto is
+If you work in one repository, on one machine, with one agent, an installer is enough and Kasetto is
 overhead. The difference starts to matter at the second machine, the second agent, or the second
 teammate.
 
@@ -47,16 +47,18 @@ to own its lifecycle.
 Kasetto sits a layer below and is agent-agnostic. It writes files into the locations agents already
 read, so the same source lands in Claude Code, Cursor, Codex, and 20 others from one `kst sync`.
 The two compose - a marketplace plugin and a Kasetto-managed skill can coexist, because Kasetto
-never touches entries it did not install.
+never touches entries it did not install. Kasetto can also declare the marketplace itself: a
+`plugins:` entry enables a marketplace plugin in Claude Code and Copilot CLI, which then install it
+on their own. See [Plugins](/docs/plugins).
 
 ## Compared to Dotfiles and Symlinks
 
-A dotfiles repo with symlinks is the honest DIY baseline, and for a single machine it works.
+A dotfiles repository with symlinks is the honest DIY baseline, and for a single machine it works.
 
 Where it runs out:
 
 - **Merging.** A symlink replaces a file. It cannot merge shared rules into a `CLAUDE.md` that also
-  holds repo-specific content. Kasetto uses managed comment blocks so both survive in the same file
+  holds repository-specific content. Kasetto uses managed comment blocks so both survive in the same file
 - **Per-agent formats.** Symlinking the same file into `.cursor/rules/` does not give Cursor the
   MDC frontmatter it expects. Kasetto transforms each asset into the target's native format
 - **Versioning.** Symlinks track your working copy, whatever state it is in. A lock file pins a
@@ -67,7 +69,7 @@ Where it runs out:
 ## Compared to Copying Files by Hand
 
 This is what most people actually do, and it works right up until the copies diverge. The failure is
-silent: one repo's conventions quietly go stale and the agent keeps confidently applying the old
+silent: one repository's conventions quietly go stale and the agent keeps confidently applying the old
 ones.
 
 ## Feature Comparison
@@ -87,7 +89,7 @@ ones.
 
 Being direct about this is more useful than a feature list:
 
-- **One repo, one agent, no team.** Copy the file. You do not need a lock file
+- **One repository, one agent, no team.** Copy the file. You do not need a lock file
 - **You want runtime behavior inside one agent.** That is what plugins are for. Kasetto only moves
   files into place; it never executes what it installs
 - **Your skills are not in Git.** Kasetto reads Git repositories and local directories. If your

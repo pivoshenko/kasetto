@@ -10,7 +10,7 @@ export function GET() {
 
   const body = `# Kasetto
 
-> A declarative AI agent environment manager. Syncs skills, MCPs, commands, and instructions from GitHub repositories or local directories into 23 agent environments.
+> A declarative AI agent environment manager. Syncs skills, MCPs, commands, instructions, and subagents from GitHub repositories or local directories into 23 agent environments, and enables Claude Code plugins in Claude Code and Copilot CLI.
 
 ## Docs
 

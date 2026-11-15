@@ -1,5 +1,5 @@
 //! Module that contains `kasetto list`, which prints the installed skills, MCPs,
-//! commands, and instructions read from the lock.
+//! commands, instructions, subagents, and plugins read from the lock.
 
 use serde::Serialize;
 
@@ -39,7 +39,7 @@ pub(crate) fn run(
 
     let project_root = std::env::current_dir().unwrap_or_default();
     let merged = scope_override.is_none();
-    let (mut skills, mut mcps, mut commands, mut instructions) =
+    let (mut skills, mut mcps, mut commands, mut instructions, mut agents, mut plugins) =
         load_installed_assets(scope_override, &project_root)?;
 
     if !matches!(kind, ListKind::All | ListKind::Skills) {
@@ -54,6 +54,12 @@ pub(crate) fn run(
     if !matches!(kind, ListKind::All | ListKind::Instructions) {
         instructions.clear();
     }
+    if !matches!(kind, ListKind::All | ListKind::Agents) {
+        agents.clear();
+    }
+    if !matches!(kind, ListKind::All | ListKind::Plugins) {
+        plugins.clear();
+    }
 
     if as_json {
         let output = serde_json::json!({
@@ -61,13 +67,19 @@ pub(crate) fn run(
             "mcps": mcps,
             "commands": commands,
             "instructions": instructions,
+            "agents": agents,
+            "plugins": plugins,
             "merged_scopes": merged,
         });
         return print_json(&output);
     }
 
-    let has_anything =
-        !skills.is_empty() || !mcps.is_empty() || !commands.is_empty() || !instructions.is_empty();
+    let has_anything = !skills.is_empty()
+        || !mcps.is_empty()
+        || !commands.is_empty()
+        || !instructions.is_empty()
+        || !agents.is_empty()
+        || !plugins.is_empty();
     if !has_anything {
         print_nothing_installed(kind, !color);
         return Ok(());
@@ -78,9 +90,17 @@ pub(crate) fn run(
     // output, so it must not open on one
     let mut printed = false;
     print_skills_tree(&skills, plain, &mut printed);
-    print_assets_tree("MCP Servers", &mcps, plain, &mut printed);
-    print_assets_tree("Commands", &commands, plain, &mut printed);
-    print_assets_tree("Instructions", &instructions, plain, &mut printed);
+    print_assets_tree("MCP Servers", &mcps, "installed", plain, &mut printed);
+    print_assets_tree("Commands", &commands, "installed", plain, &mut printed);
+    print_assets_tree(
+        "Instructions",
+        &instructions,
+        "installed",
+        plain,
+        &mut printed,
+    );
+    print_assets_tree("Agents", &agents, "installed", plain, &mut printed);
+    print_assets_tree("Plugins", &plugins, "enabled", plain, &mut printed);
 
     Ok(())
 }
@@ -95,6 +115,8 @@ fn print_nothing_installed(kind: ListKind, plain: bool) {
         ListKind::Mcps => "No MCP servers installed",
         ListKind::Commands => "No commands installed",
         ListKind::Instructions => "No instructions installed",
+        ListKind::Agents => "No agents installed",
+        ListKind::Plugins => "No plugins enabled",
     };
     if plain {
         println!("{line}");
@@ -137,11 +159,17 @@ fn print_skills_tree(skills: &[InstalledSkill], plain: bool, printed: &mut bool)
     }
 }
 
-fn print_assets_tree(label: &str, rows: &[AssetEntry], plain: bool, printed: &mut bool) {
+fn print_assets_tree(
+    label: &str,
+    rows: &[AssetEntry],
+    status: &str,
+    plain: bool,
+    printed: &mut bool,
+) {
     if rows.is_empty() {
         return;
     }
-    print_section_header(label, Some((rows.len(), "installed")), *printed, plain);
+    print_section_header(label, Some((rows.len(), status)), *printed, plain);
     *printed = true;
 
     let mut groups: Vec<(String, Vec<&AssetEntry>)> = Vec::new();
@@ -167,6 +195,8 @@ type InstalledAssets = (
     Vec<AssetEntry>,
     Vec<AssetEntry>,
     Vec<AssetEntry>,
+    Vec<AssetEntry>,
+    Vec<AssetEntry>,
 );
 
 fn load_installed_assets(
@@ -182,6 +212,8 @@ fn load_installed_assets(
             mcp_asset_entries(&lock, scope),
             kind_asset_entries(&lock, scope, "command"),
             kind_asset_entries(&lock, scope, "instructions"),
+            kind_asset_entries(&lock, scope, "agent"),
+            kind_asset_entries(&lock, scope, "plugin"),
         ));
     }
     let global_lock = load_lock(Scope::Global, project_root)?;
@@ -216,7 +248,13 @@ fn load_installed_assets(
         "instructions",
     ));
     instructions.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
-    Ok((skills, mcps, commands, instructions))
+    let mut agents = kind_asset_entries(&global_lock, Scope::Global, "agent");
+    agents.extend(kind_asset_entries(&project_lock, Scope::Project, "agent"));
+    agents.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
+    let mut plugins = kind_asset_entries(&global_lock, Scope::Global, "plugin");
+    plugins.extend(kind_asset_entries(&project_lock, Scope::Project, "plugin"));
+    plugins.sort_by_cached_key(|m| (m.name.to_lowercase(), scope_ord(m.scope)));
+    Ok((skills, mcps, commands, instructions, agents, plugins))
 }
 
 fn kind_asset_entries(lock: &LockFile, scope: Scope, kind: &str) -> Vec<AssetEntry> {
@@ -323,4 +361,97 @@ fn installed_skills_from_lock(
     }
     skills.sort_by_cached_key(|s| s.name.to_lowercase());
     skills
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lock::AssetEntry as LockAsset;
+
+    fn lock_with(kind: &str, name: &str, source: &str) -> LockFile {
+        let mut lock = LockFile::default();
+        lock.save_tracked_asset(
+            &format!("{kind}::{source}::{name}"),
+            LockAsset {
+                kind: kind.to_string(),
+                name: name.to_string(),
+                source: source.to_string(),
+                ..Default::default()
+            },
+        );
+        lock
+    }
+
+    #[test]
+    fn kind_asset_entries_selects_agents_only() {
+        let mut lock = lock_with("agent", "reviewer", "https://github.com/o/r");
+        lock.save_tracked_asset(
+            "command::https://github.com/o/r::commit",
+            LockAsset {
+                kind: "command".into(),
+                name: "commit".into(),
+                ..Default::default()
+            },
+        );
+        let rows = kind_asset_entries(&lock, Scope::Project, "agent");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "reviewer");
+        assert_eq!(rows[0].source, "https://github.com/o/r");
+        assert!(matches!(rows[0].scope, Scope::Project));
+    }
+
+    #[test]
+    fn kind_asset_entries_sorts_agents_by_name() {
+        let mut lock = lock_with("agent", "zeta", "s");
+        lock.save_tracked_asset(
+            "agent::s::Alpha",
+            LockAsset {
+                kind: "agent".into(),
+                name: "Alpha".into(),
+                source: "s".into(),
+                ..Default::default()
+            },
+        );
+        let names: Vec<_> = kind_asset_entries(&lock, Scope::Global, "agent")
+            .into_iter()
+            .map(|a| a.name)
+            .collect();
+        assert_eq!(names, ["Alpha", "zeta"]);
+    }
+
+    #[test]
+    fn agent_entries_serialize_under_agents_key() {
+        let lock = lock_with("agent", "reviewer", "s");
+        let agents = kind_asset_entries(&lock, Scope::Global, "agent");
+        let v = serde_json::json!({ "agents": agents });
+        assert_eq!(v["agents"][0]["name"], "reviewer");
+        assert_eq!(v["agents"][0]["scope"], "global");
+    }
+
+    #[test]
+    fn kind_asset_entries_selects_plugins_not_marketplaces() {
+        let mut lock = lock_with("plugin", "review@acme", "https://github.com/o/r");
+        lock.save_tracked_asset(
+            "plugin-marketplace::https://github.com/o/r",
+            LockAsset {
+                kind: "plugin-marketplace".into(),
+                name: "acme".into(),
+                source: "https://github.com/o/r".into(),
+                ..Default::default()
+            },
+        );
+        let rows = kind_asset_entries(&lock, Scope::Project, "plugin");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "review@acme");
+        assert_eq!(rows[0].source, "https://github.com/o/r");
+    }
+
+    #[test]
+    fn plugin_entries_serialize_under_plugins_key() {
+        let lock = lock_with("plugin", "review@acme", "s");
+        let plugins = kind_asset_entries(&lock, Scope::Global, "plugin");
+        let v = serde_json::json!({ "plugins": plugins });
+        assert_eq!(v["plugins"][0]["name"], "review@acme");
+        assert_eq!(v["plugins"][0]["scope"], "global");
+    }
 }

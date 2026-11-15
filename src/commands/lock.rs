@@ -6,7 +6,7 @@
 //! hash a later `sync` computes at the destination, so the lock is immediately
 //! offline-ready (`sync --locked` works with zero fetches afterward).
 //!
-//! Source-based MCP, command, and instruction assets cannot be hashed without
+//! Source-based MCP, command, instruction, agent, and plugin assets cannot be hashed without
 //! applying their merge / transform, so `lock` only refreshes their resolved
 //! revision pins; their content hash fills in on the next real `sync`. Inline
 //! MCP entries need no fetch, so `lock` pins them fully.
@@ -213,11 +213,13 @@ fn configured_source_count(cfg: &Config) -> usize {
     );
     seen.extend(cfg.commands.iter().map(|s| s.source.as_str()));
     seen.extend(cfg.instructions.iter().map(|s| s.source.as_str()));
+    seen.extend(cfg.subagents.iter().map(|s| s.source.as_str()));
+    seen.extend(cfg.plugins.iter().map(|s| s.source.as_str()));
     seen.len()
 }
 
-/// Refresh the resolved revision pin on already-tracked MCP, command, and
-/// instruction assets to match the current config. No content hash is
+/// Refresh the resolved revision pin on already-tracked MCP, command,
+/// instruction, agent, and plugin assets to match the current config. No content hash is
 /// recomputed (see module docs).
 fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     let mut rev_by_source: HashMap<String, String> = HashMap::new();
@@ -229,6 +231,12 @@ fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     }
     for r in &cfg.instructions {
         rev_by_source.insert(r.source.clone(), r.as_source_spec().expected_revision());
+    }
+    for a in &cfg.subagents {
+        rev_by_source.insert(a.source.clone(), a.as_source_spec().expected_revision());
+    }
+    for p in &cfg.plugins {
+        rev_by_source.insert(p.source.clone(), p.as_source_spec().expected_revision());
     }
     for asset in lock.assets.values_mut() {
         if let Some(rev) = rev_by_source.get(&asset.source) {
@@ -381,7 +389,7 @@ mod tests {
     use super::*;
 
     /// A repo shipping several asset kinds is one source, and sources declared
-    /// only under `mcps`/`commands`/`instructions` still count. Previously the
+    /// only under `mcps`/`commands`/`instructions`/`agents` still count. Previously the
     /// tally was `cfg.skills.len()`, which missed both.
     #[test]
     fn source_count_dedupes_and_spans_every_kind() {
@@ -401,11 +409,16 @@ commands:
 instructions:
   - source: https://example.com/four
     instructions: "*"
+agents:
+  - source: https://example.com/five
+    agents: "*"
+  - source: https://example.com/one
+    agents: "*"
 "#,
         )
         .expect("config parses");
-        // one, two, three, four: the repeated `one` counts once
-        assert_eq!(configured_source_count(&cfg), 4);
+        // one through five: the repeated `one` counts once
+        assert_eq!(configured_source_count(&cfg), 5);
     }
 
     #[test]
@@ -442,6 +455,73 @@ instructions:
         write_config("https://example.com/v2");
         assert_eq!(lock(true), Outcome::Failure);
         fs::remove_dir_all(project).unwrap();
+    }
+
+    /// An agent source retargeted to a new ref gets its pin refreshed like a
+    /// command source, so `sync` sees the lock and config agree.
+    #[test]
+    fn refresh_repins_agent_assets_to_the_configured_ref() {
+        let cfg: Config = serde_yaml::from_str(
+            "agents:\n  - source: https://example.com/agents\n    ref: v2\n    agents: \"*\"\n",
+        )
+        .expect("config parses");
+        let mut lock = LockFile::default();
+        lock.save_tracked_asset(
+            "agent::https://example.com/agents::reviewer",
+            crate::lock::AssetEntry {
+                kind: "agent".into(),
+                name: "reviewer".into(),
+                hash: "h".into(),
+                source: "https://example.com/agents".into(),
+                destination: ".claude/agents/reviewer.md".into(),
+                source_revision: "ref:v1".into(),
+                has_secrets: false,
+            },
+        );
+        refresh_asset_revisions(&mut lock, &cfg);
+        assert_eq!(
+            lock.assets["agent::https://example.com/agents::reviewer"].source_revision,
+            "ref:v2"
+        );
+    }
+
+    #[test]
+    fn refresh_repins_plugin_assets_and_marketplace_to_the_configured_ref() {
+        let cfg: Config = serde_yaml::from_str(
+            "plugins:\n  - source: https://example.com/plugins\n    ref: v2\n    plugins: [pstack]\n",
+        )
+        .expect("config parses");
+        let mut lock = LockFile::default();
+        for (id, kind, name) in [
+            (
+                "plugin::https://example.com/plugins::pstack",
+                "plugin",
+                "pstack@m",
+            ),
+            (
+                "plugin-marketplace::https://example.com/plugins",
+                "plugin-marketplace",
+                "m",
+            ),
+        ] {
+            lock.save_tracked_asset(
+                id,
+                crate::lock::AssetEntry {
+                    kind: kind.into(),
+                    name: name.into(),
+                    hash: "h".into(),
+                    source: "https://example.com/plugins".into(),
+                    destination: ".claude/settings.json".into(),
+                    source_revision: "ref:v1".into(),
+                    has_secrets: false,
+                },
+            );
+        }
+        refresh_asset_revisions(&mut lock, &cfg);
+        for a in lock.assets.values() {
+            assert_eq!(a.source_revision, "ref:v2");
+        }
+        assert_eq!(configured_source_count(&cfg), 1);
     }
 
     #[test]

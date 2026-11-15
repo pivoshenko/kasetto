@@ -1,0 +1,159 @@
+---
+title: "Subagents"
+description: "Share subagents across Claude Code, Cursor, Copilot, Codex, Gemini CLI, OpenCode, and more from one Claude Code-format source."
+---
+
+Kasetto can sync **subagents**, the specialized agents a coding tool delegates a task to, into
+every tool that defines them as files. A subagent is authored once in Claude Code's format, then
+rewritten into each tool's native file on the fly, keeping only the fields that tool understands.
+
+<Callout type="info">
+`agent:` names the tools that receive assets (`claude-code`, `cursor`, ...). `agents:` lists the
+subagent sources to install into them. They are different keys.
+</Callout>
+
+## Source Format
+
+A subagent repository contains a flat `agents/` directory. Each subagent is one Markdown file with
+YAML frontmatter, and the body is the subagent's prompt:
+
+```markdown
+---
+name: code-reviewer
+description: Reviews a diff for bugs and risky changes. Use after a change is ready.
+tools: Read, Grep, Glob, Bash
+model: inherit
+---
+You review code. Read the diff, then report each bug with its file and line.
+```
+
+- `description` is required, since every tool picks a subagent by it
+- `name` defaults to the file stem (`agents/code-reviewer.md` -> `code-reviewer`) and must not contain `:`
+- The body must not be empty
+- `agents/` is not namespaced: files in subdirectories and a `README.md` are not discovered
+
+The installed file is always named after the config name (the file stem), whatever `name:` says.
+
+## Config
+
+```yaml
+agents:
+  - source: https://github.com/cursor/plugins
+    sub-dir: harness/pstack/claude-code   # optional - discovery root inside the source repository
+    agents:
+      - poteto-agent
+      - comment-sicko
+
+  - source: https://github.com/me/my-agents
+    ref: v1.0
+    agents: "*"            # every agents/*.md in the source
+
+  - source: https://github.com/acme/monorepo
+    branch: main
+    agents:
+      - name: reviewer
+        path: team/agents  # -> team/agents/reviewer.md in the source
+```
+
+The `agents` field accepts the same shapes as `commands`:
+
+- `"*"`: discover every `.md` file directly under `agents/`
+- A list of names, each resolving to `agents/<name>.md`
+- A list of `{ name, path }` objects, resolving to `<path>/<name>.md`
+
+`source`, `branch`, `ref`, and `sub-dir` work exactly as they do for [skill sources](/docs/configuration#skill-source-fields).
+`kst add <source> --agent <name>` and `kst remove <source> --agent <name>` edit the list for you,
+and `kst list --type agents` shows what is installed.
+
+The example above installs the two subagents [pstack](https://github.com/cursor/plugins/tree/main/harness/pstack/claude-code/agents)
+ships for Claude Code: `poteto-agent` sets Cursor's `is_background: true`, and `comment-sicko` has
+only a `name` and a `description`.
+
+## Per-Tool Output
+
+Kasetto writes each subagent into the directory the tool reads, in the shape it expects. Global paths
+are relative to `$HOME`, project paths to the project root. Every source field not listed under
+"Carries" is dropped.
+
+| Tool | Global directory | Project directory | File | Carries | Docs |
+| ---- | ---------------- | ----------------- | ---- | ------- | ---- |
+| claude-code | `~/.claude/agents/` | `.claude/agents/` | `<name>.md` | The source verbatim, with `name` added when absent | [Claude Code](https://code.claude.com/docs/en/sub-agents) |
+| cursor | `~/.cursor/agents/` | `.cursor/agents/` | `<name>.md` | `name`, `description`, `model: inherit`, `readonly`; `background: true` becomes `is_background: true` | [Cursor](https://cursor.com/docs/context/subagents) |
+| github-copilot | `~/.copilot/agents/` | `.github/agents/` | `<name>.agent.md` | `name`, `description`, `tools` (Claude tool names are Copilot aliases) | [GitHub](https://docs.github.com/en/copilot/reference/custom-agents-configuration) |
+| codex | `~/.codex/agents/` | `.codex/agents/` | `<name>.toml` | `name`, `description`, and the body as `developer_instructions` | [Codex](https://developers.openai.com/codex/subagents) |
+| gemini-cli | `~/.gemini/agents/` | `.gemini/agents/` | `<name>.md` | `name` (slugified), `description`, `model: inherit`, `tools` mapped to Gemini names (`read_file`, `run_shell_command`, ...) | [Gemini CLI](https://geminicli.com/docs/core/subagents/) |
+| opencode | `~/.config/opencode/agents/` | `.opencode/agents/` | `<name>.md` | `description` plus `mode: subagent`; the filename is the name | [OpenCode](https://opencode.ai/docs/agents/) |
+| augment | `~/.augment/agents/` | `.augment/agents/` | `<name>.md` | `name`, `description`, `color`, `model`, `tools` mapped to Auggie's built-ins, `disallowedTools` as `disabled_tools` | [Augment](https://docs.augmentcode.com/cli/subagents) |
+| cline | `~/.cline/agents/` | `.cline/agents/` | `<name>.yaml` (frontmatter and body) | `name`, `description`, `tools` mapped to Cline tool ids | [Cline source](https://github.com/cline/cline/blob/72b3d7140553a733242126e51a7c2e87efe75c64/sdk/packages/core/src/extensions/tools/team/configured-agent-config.ts) |
+| goose | `~/.goose/agents/` | `.goose/agents/` | `<name>.md` | `name`, `description` | [Goose](https://goose-docs.ai/docs/guides/context-engineering/custom-agents) |
+| junie | `~/.junie/agents/` | `.junie/agents/` | `<name>.md` | `name` (slugified), `description`, `model`, `tools` and `disallowedTools` limited to the names Junie shares, `maxTurns`, `skills` | [Junie](https://junie.jetbrains.com/docs/junie-cli-subagents.html) |
+| kiro-cli | `~/.kiro/agents/` | `.kiro/agents/` | `<name>.md` | `name`, `description`, `tools` mapped to `read`, `write`, `shell`, `web` | [Kiro](https://kiro.dev/docs/custom-agents/configuration-reference/) |
+| openhands | `~/.openhands/agents/` | `.openhands/agents/` | `<name>.md` | `name`, `description`, `tools` mapped to `file_editor`, `terminal`, `task_tracker` | [OpenHands](https://docs.openhands.dev/sdk/guides/agent-file-based) |
+| trae | `~/.trae/agents/` | `.trae/agents/` | `<name>.md` | `name` (slugified), `description`, `tools` and `disallowedTools` limited to Trae's names, as a comma-separated string | [Trae](https://docs.trae.ai/ide/subagents?_lang=en) |
+| zcode | `~/.zcode/agents/` | - | `<name>.md` | `name`, `description`, `model: inherit`, `tools` and `disallowedTools` limited to ZCode's names | [ZCode](https://zcode.z.ai/en/docs/subagents) |
+
+A few rules apply across the table:
+
+- `model` is kept as-is only for Augment and Junie. Cursor, Gemini CLI, and ZCode keep only `model: inherit`, and every other tool drops `model`, because a Claude alias such as `sonnet` means nothing there
+- A tool argument form such as `Bash(git *)` maps by its base name, `Bash`
+- `mcp__server__tool` entries survive only for Trae and ZCode, the two tools that accept them
+- A slugified name is lowercase `a-z`, `0-9`, and `-` only, for the loaders that reject anything else
+
+## Dropped Fields
+
+<Callout type="warn">
+Kasetto never writes a key or tool name a tool does not document. Gemini CLI, Codex, and OpenHands
+refuse to load a subagent that carries one, so passing it through would lose the whole subagent.
+Each field or tool that a tool cannot carry is dropped, and `kst sync` prints one warning line per
+subagent and tool naming what was dropped (also in the `warnings` array of `kst sync --json`). The
+warning appears only when the subagent is installed or updated, not on every sync.
+</Callout>
+
+A slugified name that changed is reported the same way. When a non-empty `tools` list maps to
+nothing at all, the key is omitted and the warning says so: that subagent then gets every tool,
+not none.
+
+## Tools Without Subagent Support
+
+These tools are skipped for subagents. `kst doctor` lists a configured one as an advisory warning
+(for example `windsurf has no subagent support; agents are skipped for it`) without changing its
+exit code.
+
+- **amp**: subagents are TypeScript plugins, not files ([Amp](https://ampcode.com/docs/models-and-subagents))
+- **antigravity**: has file subagents, but the semantics of their `tools` default of `[]` are undocumented, so it is left out for now ([Antigravity](https://antigravity.google/docs/subagents))
+- **continue**: subagents are model entries inside `config.yaml`, behind a beta flag ([Continue source](https://github.com/continuedev/continue/blob/5522c6f44ca0ac3528b37244818fbfa39b5af470/extensions/cli/src/tools/subagent.ts))
+- **openclaw**: sub-agents are runtime spawns of agents defined in its gateway config ([OpenClaw](https://docs.openclaw.ai/tools/subagents))
+- **pi**: subagents exist only through extensions, not in core ([Pi](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/README.md))
+- **replit**: no user-defined subagents ([Replit](https://docs.replit.com/chat/memories-custom-instructions-and-skills))
+- **roo**: discontinued, and its modes were personas in one aggregate file ([Roo Code](https://github.com/RooCodeInc/Roo-Code))
+- **warp**: the local agent has no file subagents; named agents are cloud factory agents ([Warp](https://docs.warp.dev/getting-started/migrate-to-warp/migrate-to-warp-from-claude-code/))
+- **windsurf**: subagents belong to Devin Local in Devin Desktop, not to Cascade ([Devin Local](https://docs.devin.ai/desktop/devin-local))
+
+ZCode documents only user-level subagents, so it is skipped under `scope: project`.
+
+## Caveats
+
+- **Cursor, VS Code Copilot, and Goose also read `.claude/agents/`.** With `claude-code` configured
+  alongside one of them, that tool sees the same subagent twice. Cursor documents that `.cursor/`
+  wins over `.claude/`, and Goose scans `.goose/agents/` before `.claude/agents/` and keeps the first
+  it finds. VS Code reads both `.claude/agents/` and `~/.claude/agents/` without documenting which
+  copy wins; the Copilot CLI reads only the project `.claude/agents/`
+- **Gemini CLI asks you to acknowledge each project subagent**, and asks again whenever its content
+  changes, so a sync that updates one re-prompts. Project subagents also load only in a trusted
+  folder, and on the first run a same-named user subagent wins over an unacknowledged project copy
+- **Trae subagents are a beta toggle**: Settings > Beta > Subagents > Enable Subagents Directory. The
+  global path is unverified: Trae's docs name `~/.trae-cn/agents/` (the CN edition's home), while
+  Kasetto writes `~/.trae/agents/`, where every other Trae asset lives
+- **OpenCode treats an agent without `mode` as a primary persona**, not a delegate. Kasetto adds
+  `mode: subagent` so the main agent can hand work to it
+- **Codex takes TOML, not Markdown.** The body becomes `developer_instructions`, and every
+  frontmatter field other than `name` and `description` is dropped
+- **Audit**: `kst audit` and the sync gate list subagents, always as unverified (`no audit source for
+  agents`), since skills.sh verdicts belong to one skill, not to a repository. They never breach a
+  severity threshold and fail only under `fail-on-unverified`
+
+## Stale-File Safety
+
+Kasetto only deletes files it claims to own in the lock file. Your own subagent files in the same
+directories are preserved even when a subagent is removed from your config, and `kst doctor` lists
+them as untracked.

@@ -15,6 +15,8 @@ pub(crate) enum Section {
     Mcps,
     Commands,
     Instructions,
+    Agents,
+    Plugins,
 }
 
 impl Section {
@@ -25,6 +27,8 @@ impl Section {
             Section::Mcps => "mcps",
             Section::Commands => "commands",
             Section::Instructions => "instructions",
+            Section::Agents => "agents",
+            Section::Plugins => "plugins",
         }
     }
 
@@ -35,6 +39,8 @@ impl Section {
             Section::Mcps => "mcp",
             Section::Commands => "command",
             Section::Instructions => "instruction",
+            Section::Agents => "agent",
+            Section::Plugins => "plugin",
         }
     }
 }
@@ -541,6 +547,87 @@ mod tests {
             out,
             "agent: claude-code\n\nmcps:\n  - source: https://x/m\n    mcps: \"*\"\n"
         );
+    }
+
+    #[test]
+    fn insert_agents_section_preserves_comments() {
+        let text = "# top\nagent: claude-code # tool\n\ncommands:\n  - source: https://x/c\n    commands: \"*\" # all\n";
+        let item = SourceItem {
+            source: "https://x/a".into(),
+            pin: Pin::None,
+            sub_dir: None,
+            selector: Selector::Names(vec!["reviewer".into()]),
+        };
+        assert!(!item_exists(text, Section::Agents, &item));
+        let out = insert_item(text, Section::Agents, &item).unwrap();
+        assert_eq!(
+            out,
+            format!("{text}\nagents:\n  - source: https://x/a\n    agents:\n      - reviewer\n")
+        );
+        assert!(item_exists(&out, Section::Agents, &item));
+    }
+
+    #[test]
+    fn insert_plugins_section_preserves_comments() {
+        let text = "# top\nagent: claude-code # tool\n\nagents:\n  - source: https://x/a\n    agents: \"*\" # all\n";
+        let item = SourceItem {
+            source: "https://x/p".into(),
+            pin: Pin::None,
+            sub_dir: None,
+            selector: Selector::Names(vec!["pstack".into()]),
+        };
+        assert!(!item_exists(text, Section::Plugins, &item));
+        let out = insert_item(text, Section::Plugins, &item).unwrap();
+        assert_eq!(
+            out,
+            format!("{text}\nplugins:\n  - source: https://x/p\n    plugins:\n      - pstack\n")
+        );
+        assert!(item_exists(&out, Section::Plugins, &item));
+    }
+
+    #[test]
+    fn remove_plugin_names_and_whole_item() {
+        let text =
+            "# keep\nplugins:\n  - source: https://x/p\n    plugins:\n      - one\n      - two\n";
+        let (out, outcome) = remove_names(
+            text,
+            Section::Plugins,
+            "https://x/p",
+            None,
+            None,
+            &["one".to_string()],
+        )
+        .unwrap();
+        assert_eq!(
+            out,
+            "# keep\nplugins:\n  - source: https://x/p\n    plugins:\n      - two\n"
+        );
+        assert_eq!(outcome, RemoveOutcome::Names(vec!["one".into()]));
+        let (out, removed) =
+            remove_item(text, Section::Plugins, "https://x/p", None, None).unwrap();
+        assert!(removed);
+        assert_eq!(out, "# keep\nplugins:\n");
+    }
+
+    #[test]
+    fn remove_agent_names_and_whole_item() {
+        let text =
+            "# keep\nagents:\n  - source: https://x/a\n    agents:\n      - one\n      - two\n";
+        let (out, outcome) = remove_names(
+            text,
+            Section::Agents,
+            "https://x/a",
+            None,
+            None,
+            &["one".to_string()],
+        )
+        .unwrap();
+        assert_eq!(outcome, RemoveOutcome::Names(vec!["one".into()]));
+        assert!(out.starts_with("# keep\n") && out.contains("      - two\n"));
+        assert!(!out.contains("one"));
+        let (out, removed) = remove_item(text, Section::Agents, "https://x/a", None, None).unwrap();
+        assert!(removed);
+        assert!(out.starts_with("# keep\n") && !out.contains("https://x/a"));
     }
 
     #[test]

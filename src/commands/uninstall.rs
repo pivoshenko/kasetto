@@ -68,6 +68,18 @@ pub(crate) fn run(yes: bool) -> Result<()> {
             counts.command_dirs
         ));
     }
+    if counts.agent_dirs > 0 {
+        print_check(&format!(
+            "agents removed from {} directories",
+            counts.agent_dirs
+        ));
+    }
+    if counts.plugin_files > 0 {
+        print_check(&format!(
+            "plugins removed from {} settings files (Claude Code keeps its own clone and cache)",
+            counts.plugin_files
+        ));
+    }
     if counts.instructions > 0 {
         print_check(&format!("{} instructions removed", counts.instructions));
     }
@@ -89,6 +101,8 @@ struct UninstallCounts {
     skills: usize,
     mcps: usize,
     command_dirs: usize,
+    agent_dirs: usize,
+    plugin_files: usize,
     instructions: usize,
 }
 
@@ -103,6 +117,21 @@ fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
         .filter(|s| !s.is_empty())
         .filter_map(|p| Path::new(p).parent().map(Path::to_path_buf))
         .collect();
+    let agent_dirs: HashSet<PathBuf> = lock
+        .assets
+        .values()
+        .filter(|a| a.kind == "agent")
+        .flat_map(|a| a.destination.split(','))
+        .filter(|s| !s.is_empty())
+        .filter_map(|p| Path::new(p).parent().map(Path::to_path_buf))
+        .collect();
+    let plugin_files: HashSet<&str> = lock
+        .assets
+        .values()
+        .filter(|a| a.kind == "plugin" || a.kind == "plugin-marketplace")
+        .flat_map(|a| a.destination.split(','))
+        .filter(|s| !s.is_empty())
+        .collect();
     // `clean::run` tears down instructions too, so they belong in the summary;
     // omitting them meant they were deleted without ever being reported
     let instructions = lock
@@ -114,6 +143,8 @@ fn count_assets(lock: &crate::lock::LockFile) -> UninstallCounts {
         skills,
         mcps,
         command_dirs: command_dirs.len(),
+        agent_dirs: agent_dirs.len(),
+        plugin_files: plugin_files.len(),
         instructions,
     }
 }
@@ -186,10 +217,41 @@ mod tests {
     }
 
     #[test]
+    fn counts_agent_directories() {
+        let lock = lock_with(vec![
+            asset(
+                "agent",
+                "reviewer",
+                ".claude/agents/reviewer.md,.cursor/agents/reviewer.md",
+            ),
+            asset("agent", "planner", ".claude/agents/planner.md"),
+        ]);
+        let counts = count_assets(&lock);
+        // Two distinct parent directories: .claude/agents and .cursor/agents
+        assert_eq!(counts.agent_dirs, 2);
+        assert_eq!(counts.command_dirs, 0);
+    }
+
+    #[test]
+    fn counts_plugin_settings_files() {
+        let lock = lock_with(vec![
+            asset("plugin", "kit@market", ".claude/settings.json"),
+            asset(
+                "plugin-marketplace",
+                "market",
+                ".claude/settings.json,.copilot/settings.json",
+            ),
+        ]);
+        assert_eq!(count_assets(&lock).plugin_files, 2);
+    }
+
+    #[test]
     fn counts_are_zero_for_an_empty_lock() {
         let counts = count_assets(&lock_with(vec![]));
         assert_eq!(counts.instructions, 0);
         assert_eq!(counts.command_dirs, 0);
+        assert_eq!(counts.agent_dirs, 0);
+        assert_eq!(counts.plugin_files, 0);
         assert_eq!(counts.skills, 0);
     }
 }

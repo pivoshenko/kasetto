@@ -1,10 +1,12 @@
 //! Package that contains `kasetto sync`, which installs, updates, and prunes
 //! assets so destinations match the config.
 
+mod agents;
 mod commands;
 mod gate;
 mod instructions;
 mod mcps;
+mod plugins;
 mod skills;
 
 pub(crate) use mcps::inline_mcp_lock_asset;
@@ -39,7 +41,7 @@ pub(super) struct SyncContext<'a> {
     /// `--update`: re-resolve moving refs and rewrite locked hashes.
     pub(super) update: bool,
     /// `--update <name>...`: when non-empty, only sources providing these
-    /// assets (skill, MCP, command, or instruction names) are re-resolved.
+    /// assets (skill, MCP, command, instruction, agent, or plugin names) are re-resolved.
     pub(super) update_only: Vec<String>,
     /// `--update-local`: re-resolve every local-path source, no names needed.
     pub(super) update_local: bool,
@@ -195,8 +197,10 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         skills::sync_skills(&ctx, &mut sm)?;
     }
     commands::sync_commands(&ctx, &mut lock, &mut summary, &mut actions)?;
+    let warnings = agents::sync_agents(&ctx, &mut lock, &mut summary, &mut actions)?;
     instructions::sync_instructions(&ctx, &mut lock, &mut summary, &mut actions)?;
     let secrets_need_update = mcps::sync_mcps(&ctx, &mut lock, &mut summary, &mut actions)?;
+    plugins::sync_plugins(&ctx, &mut lock, &mut summary, &mut actions)?;
 
     if !opts.dry_run {
         lock.apply_state(&state);
@@ -222,6 +226,7 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         summary,
         actions,
         audit,
+        warnings,
     };
 
     if !opts.dry_run {
@@ -241,6 +246,12 @@ pub(crate) fn run(opts: &SyncOptions) -> Result<Outcome> {
         print_resolution_header(&report, report_plain);
         print_sync_tree(&report, report_plain);
         print_sync_summary(&report, report_plain, opts.verbose, elapsed, opts.locked);
+        // Collected during the run so they never interleave with the spinner;
+        // stderr may be piped while stdout is a terminal, so gate on stderr
+        let warn_plain = opts.plain || !crate::ui::color_stderr_enabled();
+        for w in &report.warnings {
+            crate::ui::eprint_warn(w, warn_plain);
+        }
         // A plain sync never re-resolves secrets for an unchanged server, so a
         // token rotated in env/credentials/op won't propagate until `--update`
         if secrets_need_update {
@@ -496,8 +507,8 @@ fn print_sync_tree(report: &Report, plain: bool) {
 /// Whether `--update` re-resolves a source. Active when `--update` was passed
 /// with no names, when `--update <name>...` includes one of this source's
 /// desired asset names, or when `--update-local` was passed and `source` is a
-/// local path. Shared across the skill, command, instruction, and MCP sync
-/// paths.
+/// local path. Shared across the skill, command, instruction, agent, MCP, and
+/// plugin sync paths.
 pub(super) fn update_active_for_source(
     ctx: &SyncContext,
     source: &str,
@@ -559,6 +570,7 @@ mod tests {
             summary: Summary::default(),
             actions,
             audit: None,
+            warnings: Vec::new(),
         }
     }
 
@@ -586,6 +598,19 @@ mod tests {
         let v = serde_json::to_value(report_with(Vec::new())).unwrap();
         assert!(v.as_object().unwrap().contains_key("audit"));
         assert!(v["audit"].is_null());
+    }
+
+    /// `warnings` is optional in the JSON report: absent when empty, so existing
+    /// consumers see no change on a run that warned about nothing.
+    #[test]
+    fn report_json_omits_empty_warnings() {
+        let mut report = report_with(Vec::new());
+        let v = serde_json::to_value(&report).unwrap();
+        assert!(!v.as_object().unwrap().contains_key("warnings"));
+        let line = "agent `a` for .gemini/agents: dropped color";
+        report.warnings.push(line.into());
+        let v = serde_json::to_value(&report).unwrap();
+        assert_eq!(v["warnings"][0], line);
     }
 
     /// A successful sync must not emit any failure line.

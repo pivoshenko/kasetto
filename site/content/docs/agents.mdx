@@ -76,6 +76,19 @@ cross-tool `AGENTS.md` standard as a fallback. See the
 Pi merges MCPs into `~/.pi/agent/mcp.json` globally (under `PI_CODING_AGENT_DIR` when set)
 and `.pi/mcp.json` per project, using the same `mcpServers` shape as Claude Code.
 
+## Subagent Destinations
+
+`agents` (subagents) land in each tool's own subagent directory, such as `.claude/agents/` or
+`.github/agents/`, never in the skills path above. Fourteen of these agents support them; see
+[Subagents](/docs/subagents#per-tool-output) for every path, file format, and what each one keeps.
+
+## Plugin Destinations
+
+`plugins` are not files Kasetto writes into these directories. Kasetto declares the marketplace and
+enables the plugin in a settings file that only Claude Code (`.claude/settings.json`) and Copilot CLI
+(`.copilot/settings.json`, or `.github/copilot/settings.json` in a project) read; see
+[Plugins](/docs/plugins#supported-tools).
+
 ## Custom Paths
 
 Don't see your agent? Use the `destination` field to point at any path:

@@ -21,7 +21,7 @@
 
 **About the name**
 
-Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands, and instructions as cassettes you plug in, swap out, and share across machines.
+Name comes from the Japanese word **カセット** (*kasetto*) - cassette. Think of Skills, MCPs, commands, subagents, instructions, and plugins as cassettes you plug in, swap out, and share across machines.
 
 <a href="https://twitter.com/yachima_tana/status/1647153787923234816"><img width="24" alt="Kasane Teto, artwork by yachima tana" src="https://static.zerochan.net/Kasane.Teto.1024.4077055.webp"></a> Someone commented under a Reddit post about Kasetto that the name also reminded them of **Kasane Teto** (重音テト), the virtual singer. That turns out to fit the project just as well, so both origins are canon and Teto is the patron saint of Kasetto.
 
@@ -31,10 +31,11 @@ There are good tools in this space already. [Vercel Skills](https://github.com/v
 
 Kasetto is a **community-first** project that solves a different problem: **declarative, reproducible AI environment management across projects, machines, and agents.**
 
-- **Declarative**: skills, commands, MCPs, instructions, and agents in one YAML file. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync
+- **Declarative**: skills, commands, subagents, MCPs, instructions, plugins, and agents in one YAML file. Apply globally or scope to a project; configs compose with `extends`, so org, team, and project stay in sync
 - **Enterprise & private repositories**: pull from GitHub, GitLab, Bitbucket, Codeberg, Gitea, and self-hosted instances, public or private. Onboard a new engineer with one command; everyone gets the same environment, zero drift
 - **Agent-agnostic**: use Claude Code, Cursor, Codex, Windsurf, Copilot, Gemini CLI, or [any supported agent](#supported-agents), and switch without rebuilding your setup. The environment belongs to you and your team, not to one editor
-- **Skills, Commands, MCPs & Instructions**: four asset kinds from one source, instruction files included (`CLAUDE.md`, `.cursor/rules`, `AGENTS.md`, ...). Everything is transformed into each agent's native format, and auto-merged. Distribute instructions, tools, and prompts by sharing a repository link
+- **Skills, Commands, Subagents, MCPs & Instructions**: five asset kinds from one source, instruction files and subagents included (`CLAUDE.md`, `.cursor/rules`, `AGENTS.md`, `.claude/agents`, ...). Everything is transformed into each agent's native format, and auto-merged. Distribute instructions, tools, and prompts by sharing a repository link
+- **Plugins**: enable plugins from any Claude Code plugin marketplace in Claude Code and Copilot CLI. Kasetto copies no plugin files: it declares the marketplace and enables the plugin in the tool's settings, the tool installs it itself, and the lock records exactly what Kasetto wrote
 - **Secrets management**: put `${kst_...}` placeholders in your configs instead of real tokens. At sync time Kasetto pulls the value from your environment, a credentials file, or a secret manager you already use (1Password, Vault, AWS, GCP, Azure, KeePassXC, pass, macOS Keychain) and injects it into the agent's settings only
 - **Speed**: built in Rust. It hashes content and diffs a lock file so only what changed gets touched, and full syncs finish in seconds
 - **Universal**: one static binary for macOS, Linux, and Windows. Install as `kasetto`, run as `kst`. CI-friendly with `--json` output and real exit codes
@@ -123,7 +124,7 @@ See [pivoshenko/pivoshenko.ai](https://github.com/pivoshenko/pivoshenko.ai) for 
 **3. See what's installed:**
 
 ```bash
-kst list                    # table of installed skills, MCPs, commands, instructions
+kst list                    # table of installed skills, MCPs, commands, instructions, subagents, plugins
 kst list --type skills      # filter to one asset kind
 kst doctor                  # version, paths, last sync status
 ```
@@ -136,11 +137,11 @@ kst doctor                  # version, paths, last sync status
 | `kst add <source>`        | Append a source to the config and sync it in                                        |
 | `kst remove <source>`     | Drop entries from the config and prune the now-unconfigured assets (alias `rm`)     |
 | `kst lock`                | Re-resolve every source and pin it into `kasetto.lock` without installing           |
-| `kst sync`                | Install skills, MCPs, commands, and instructions into agent dirs, honoring the lock |
+| `kst sync`                | Install skills, MCPs, commands, subagents, and instructions, enable plugins, honoring the lock |
 | `kst list`                | Print a table of installed assets from the lock file                                |
 | `kst audit`               | Security verdicts for installed skills (skills.sh) and MCPs (OSV, deps.dev)         |
 | `kst doctor`              | Local diagnostics: version, paths, last sync status, broken skills                  |
-| `kst clean`               | Remove tracked skills, commands, MCPs, and instructions for a scope; clear caches   |
+| `kst clean`               | Remove tracked assets of every kind for a scope; clear caches                       |
 | `kst self update`         | Fetch the latest release, verify SHA256, replace the binary in place                |
 | `kst self uninstall`      | Remove installed assets, data, and the binary                                       |
 | `kst completions <shell>` | Emit a shell completion script (`bash`/`zsh`/`fish`/`powershell`)                   |
@@ -164,64 +165,62 @@ Run `kst init` to scaffold a local config, or `kst init --global` for the global
 
 <!-- kasetto-config:start -->
 ```yaml
-# Option A: preset destination by agent (see README for supported agent values)
 agent:
   - codex
   - claude-code
 
-# Option B: manual destination (takes precedence if both are set)
-# destination: ./.agents/skills
-
 skills:
-  # "*" syncs every skill in the source. Each is a directory with a SKILL.md,
-  # discovered in the source root or its skills/ subdirectory
   - source: https://github.com/vercel-labs/next-skills
-    # ref: v1.0.0   # pin to a tag or commit; omit to track the default branch
     skills: "*"
 
-  # or list skills by name
   - source: https://github.com/anthropics/skills
     skills:
       - doc-coauthoring
       - frontend-design
       - pptx
 
-  # sub-dir: resolve the named skills under this path, e.g. skills/productivity/grill-me/
   - source: https://github.com/mattpocock/skills
     sub-dir: skills/productivity
     skills:
       - grill-me
       - caveman
 
-  # path: a skill in a non-standard location → <path>/<name>/, here skills/engineering/improve-codebase-architecture/
   - source: https://github.com/mattpocock/skills
     skills:
       - name: improve-codebase-architecture
         path: skills/engineering
 
 commands:
-  # names resolve to commands/<name>.md in the source (nested dirs namespace, e.g. git:commit)
   - source: https://github.com/gsd-build/get-shit-done
     commands:
       - gsd:explore
       - gsd:fast
 
+agents:
+  - source: https://github.com/cursor/plugins
+    sub-dir: harness/pstack/claude-code
+    agents:
+      - poteto-agent
+      - comment-sicko
+
 instructions:
-  # instructions wire CLAUDE.md / .cursor/rules / AGENTS.md etc. from instructions/<name>.{md,mdc}
-  # "*" syncs every instruction; aggregate files (CLAUDE.md, AGENTS.md) get managed blocks
   - source: https://github.com/pivoshenko/pivoshenko.ai
     instructions:
       - docs-autoupdate
       - multi-agent-dispatch
 
 mcps:
-  # names resolve to mcps/<name>.json in the source
   - source: https://github.com/pivoshenko/pivoshenko.ai
-    branch: main   # track a specific branch (use ref: to pin a tag or commit)
+    branch: main
     mcps:
       - github
       - vercel
       - kaggle
+
+plugins:
+  - source: https://github.com/cursor/plugins
+    plugins:
+      - pstack
 ```
 <!-- kasetto-config:end -->
 
@@ -243,7 +242,7 @@ MCP packs often need a token or password. Reference one with a `${kst_<name>}` p
 }
 ```
 
-Values come from environment variables first (the name as written, then uppercased, so `${kst_vercel_token}` reads `KST_VERCEL_TOKEN`), then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${kst_vercel__token}` → `vercel.token`).
+Values come from environment variables first (the name as written, then uppercased, so `${kst_vercel_token}` reads `KST_VERCEL_TOKEN`), then `~/.config/kasetto/credentials.yaml` (`__` in a name descends nested keys, e.g. `${kst_vercel__token}` -> `vercel.token`).
 
 To pin exactly one source, use the tagged form `${kst:<source>:<ref>}`:
 
@@ -256,7 +255,7 @@ To pin exactly one source, use the tagged form `${kst:<source>:<ref>}`:
 - **`gcp`**: Google Secret Manager
 - **`az`**: Azure Key Vault
 - **`pass`**: Pass / GoPass
-- **`keychain`**: MacOS Keychain
+- **`keychain`**: macOS Keychain
 
 Each external manager inherits your existing CLI session, so Kasetto stores no tokens of its own. A missing secret fails the sync (exit non-zero) unless you pass `--allow-missing-secrets`. The resolved value never lands in `kasetto.lock`, so the lock stays commit-safe. Rotated a secret? A plain `sync` won't touch the live entry, so run `kst sync --update` to push it. Full details in the [secret-injection docs](https://kasetto.dev/docs/secrets).
 
@@ -299,6 +298,8 @@ Set the `agent` field and Kasetto figures out where to put things.
 
 Pi's preset syncs skills, prompt templates, `AGENTS.md`, and MCPs (`~/.pi/agent/mcp.json`
 globally, `.pi/mcp.json` per project).
+
+Subagents install into 14 of these agents, in each one's own format; see the [subagents docs](https://kasetto.dev/docs/subagents) for the per-agent table. Plugins are enabled only in Claude Code and GitHub Copilot CLI, the two that install marketplace plugins from their settings; see the [plugins docs](https://kasetto.dev/docs/plugins).
 
 Don't see your agent? Use the `destination` field to point at any path.
 

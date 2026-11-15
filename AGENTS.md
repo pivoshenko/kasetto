@@ -1,10 +1,12 @@
 # AGENTS.md
 
 Kasetto is a declarative AI agent environment manager written in Rust: a user declares skills, slash
-commands, MCP servers, and instruction files in a `kasetto.yaml`, and `kst sync` pulls them from git
+commands, subagents, MCP servers, and instruction files in a `kasetto.yaml`, and `kst sync` pulls them from git
 forges, transforms them into each agent's native format, installs them, and records exactly what was
-installed in `kasetto.lock`. The repo is one Rust crate at the root shipping two binaries (`kasetto`
-and its short alias `kst`, both calling `kasetto::run()`) plus the documentation site at `site/`.
+installed in `kasetto.lock`. Its `plugins:` section is the exception that installs nothing: it enables
+Claude Code marketplace plugins in the tool's settings and leaves the install to the tool. The repository is
+one Rust crate at the root shipping two binaries (`kasetto` and its short alias `kst`, both calling
+`kasetto::run()`) plus the documentation site at `site/`.
 
 ## Never
 
@@ -18,9 +20,14 @@ and its short alias `kst`, both calling `kasetto::run()`) plus the documentation
 - never change the lock schema without bumping `LOCK_VERSION` in `model/types.rs`
 - never put machine- or run-specific data in `kasetto.lock`. It is committed and portable, so install
   paths are stored **relative to the scope root**
-- never read `destination:` outside the skills path. It redirects skills only; commands, instructions,
-  and MCPs go through `resolve_command_targets`, `resolve_instruction_targets`, and
-  `resolve_mcp_settings_targets`, which always use the agent presets
+- never read `destination:` outside the skills path. It redirects skills only; commands, subagents,
+  instructions, MCPs, and plugins go through `resolve_command_targets`, `resolve_agent_targets`,
+  `resolve_instruction_targets`, `resolve_mcp_settings_targets`, and `resolve_plugin_targets`, which
+  always use the agent presets
+- never write a resolved commit SHA into a plugin marketplace's `ref`, and never overwrite an
+  `extraKnownMarketplaces` entry Kasetto did not write. `plugins/mod.rs` passes the config's tag or
+  branch through, because Claude Code before 2.1.324 hands `ref` to `git clone --branch` and drops the
+  plugin silently on a SHA; a same-named entry with another source is reported broken, never replaced
 - never make `fsops/config_edit.rs` round-trip serde. It edits `kasetto.yaml` at the raw-line level
   because `add`/`remove` must preserve the user's comments and key order byte-for-byte. Keep it that way
 - never store a raw IP or a stable per-machine id in the site counters. `site/lib/stats.ts` hashes IP +
@@ -89,28 +96,49 @@ scripts/sync-config-example.mjs --check` exits non-zero on drift) and `just gene
 ## Cross-Cutting Changes
 
 **Adding an agent** starts in `model/agent.rs` - one enum variant, and with it that agent's
-skill/command/instruction/MCP paths and formats for both global and project scope. The roster is then
+skill/command/subagent/instruction/MCP/plugin paths and formats for both global and project scope. The roster is then
 mirrored by hand and every copy has to move together, and a half-updated roster still compiles: the
 README's agent table, `site/app/components/agents-grid.tsx`, its logo in `site/lib/agent-icons.ts`
 (a missing entry falls back to a monogram), and the per-agent tables in
-`site/content/docs/` (`agents.mdx`, `slash-commands.mdx`, `how-sync-works.mdx`). A new MCP settings shape
-additionally needs an arm in `src/mcps/`.
+`site/content/docs/` (`agents.mdx`, `slash-commands.mdx`, `subagents.mdx`, `plugins.mdx`, `how-sync-works.mdx`). A new
+MCP settings shape additionally needs an arm in `src/mcps/`, and a new subagent format an `AgentFormat`
+variant plus a `spec()` arm in `src/subagents/transform.rs`.
 
 **Adding a subcommand** touches the `Commands` enum in `cli.rs`, a new module under `commands/` declared
 in `commands/mod.rs`, a dispatch arm plus a `should_suppress_notice` arm in `app.rs`, an `Outcome`
 choice, the README's Commands table, and `site/content/docs/commands.mdx`.
 
-**Adding anything for one asset kind** usually needs the same treatment in the other three. Skills,
-commands, MCPs, and instructions are parallel concepts, each with its own config list, its own
-discovery convention in a source repo, and its own per-agent destination and format.
+**Adding anything for one asset kind** usually needs the same treatment in the other four (plugins
+are not one of them, see Architecture). Skills,
+commands, subagents, MCPs, and instructions are parallel concepts, each with its own config list, its
+own discovery convention in a source repository, and its own per-agent destination and format.
 
 ## Architecture
 
-**Sync.** The four asset kinds meet in `commands/sync/`, one submodule per kind plus a shared `mod.rs`
+**Sync.** The five asset kinds meet in `commands/sync/`, one submodule per kind plus a shared `mod.rs`
 holding `SyncContext`, `SyncMut`, and the shared orphan-pruning pass `remove_stale`. Discovery
 conventions live in `source/mod.rs`: skills are directories with a `SKILL.md`, commands are
 `commands/**/*.md` with nesting namespaced by `:` (`commands/git/commit.md` -> `git:commit`),
-instructions are `instructions/**/*.{md,mdc}` with the same namespacing, MCPs are `mcps/<name>.json`.
+instructions are `instructions/**/*.{md,mdc}` with the same namespacing, subagents are a flat
+`agents/*.md` (no namespacing, name = file stem), MCPs are `mcps/<name>.json`. Subagents live in the
+YAML `agents:` key, which deserializes into `Config.subagents` because `Config::agents()` already returns
+the target tools from `agent:`; their parsing and per-tool transforms are in `src/subagents/`, named so
+to avoid reading as the `model::Agent` registry. A format a tool cannot fully carry drops the field and
+warns, because the strict loaders (Gemini CLI, Codex, OpenHands) reject a whole definition over one
+unknown key.
+
+**Plugins.** `commands/sync/plugins.rs` is the one sync leg that installs no files: it reads
+`.claude-plugin/marketplace.json` for the marketplace name (never the URL: `cursor/plugins` is
+`cursor-plugins`), declares it under `extraKnownMarketplaces`, and sets `enabledPlugins["plugin@marketplace"]`
+in the settings file from `Agent::plugins_global_target` / `plugins_project_target`; the tool clones and
+installs at its next session start. `src/plugins/` holds the parsing and the key-level settings merge.
+Copilot CLI reads the same two keys with the same shape, so `claude-code` and `github-copilot` share one
+writer and every other agent returns `None`. Two lock kinds back it: `plugin` (each enabled key, with
+every settings file it went into) and `plugin-marketplace` (only an entry Kasetto declared, hashed by
+its `source` object), so pruning removes a marketplace only while its source still hashes to what
+Kasetto wrote and a hand-declared marketplace with the same source is used but never recorded. `ref` is
+never a SHA (see Never). Removing the keys only disables a plugin; Claude Code keeps its clone and
+cache.
 
 **Config and scope.** Scope resolution is CLI override > config `scope:` > `Global`, and
 `fsops::resolve_destinations` turns (config, scope) into the concrete skills dirs, an explicit
@@ -149,7 +177,10 @@ resolves the version a floating launch runs, then OSV (`audit/osv.rs`) is querie
 deps.dev for deprecation and the source repo's Scorecard. Lookups run on a dedicated I/O pool, deduped
 per package and per repo within a run, through a 24h TTL cache in `audit/cache.rs` that `kst clean`
 clears. An asset that cannot be judged is unverified: it warns and never fails the gate unless
-`fail-on-unverified` (config or flag) opts into failing closed. The gate runs before the sync report is
+`fail-on-unverified` (config or flag) opts into failing closed. Subagents are listed but always
+unverified ("no audit source for agents"), and so are plugins ("no audit source for plugins"):
+skills.sh keys verdicts to one skill slug, so borrowing a
+sibling skill's verdict would claim a judgement nobody made. The gate runs before the sync report is
 rendered, so `sync --json` carries its verdict under `audit` and `doctor` sees a failed gate. It is the
 one network call `--locked` still makes, because the user opted into it.
 

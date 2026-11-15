@@ -118,6 +118,31 @@ impl LockFile {
         names
     }
 
+    pub(crate) fn list_installed_agents(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "agent")
+            .map(|(_, a)| a.name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
+    /// Enabled plugin ids (`plugin@marketplace`) Kasetto wrote.
+    pub(crate) fn list_installed_plugins(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .assets
+            .iter()
+            .filter(|(_, a)| a.kind == "plugin")
+            .map(|(_, a)| a.name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
     pub(crate) fn list_installed_instructions(&self) -> Vec<String> {
         let mut names: Vec<String> = self
             .assets

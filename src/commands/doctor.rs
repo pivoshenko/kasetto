@@ -7,9 +7,10 @@ use std::path::{Path, PathBuf};
 use crate::colors::{ACCENT, ERROR, RESET, SECONDARY};
 use crate::commands::Outcome;
 use crate::error::Result;
-use crate::fsops::{resolve_dest, scope_root};
-use crate::lock::{load_lock, lock_path};
-use crate::model::{resolve_scope, Scope, SyncFailure};
+use crate::fsops::{resolve_dest, resolve_plugin_targets, scope_root};
+use crate::lock::{load_lock, lock_path, LockFile};
+use crate::model::{resolve_scope, PluginSourceSpec, PluginTarget, Scope, SyncFailure};
+use crate::plugins::{declared_source_hash, marketplace_source, plugin_enabled, source_hash};
 use crate::profile::{format_updated_ago, list_color_enabled};
 use crate::state::load_runtime_state;
 use crate::ui::{
@@ -30,12 +31,29 @@ struct DoctorOutput {
     failures: Vec<SyncFailure>,
     mcps: Vec<String>,
     commands: Vec<String>,
+    agents: Vec<String>,
+    plugins: Vec<String>,
     instructions: Vec<String>,
     command_dirs: Vec<CommandDirCheck>,
+    agent_dirs: Vec<CommandDirCheck>,
+    /// Advisory notes that do not fail the run, such as configured tools that
+    /// cannot receive the declared subagents.
+    warnings: Vec<String>,
+    /// Locked plugins no longer enabled in one of their settings files. Advisory:
+    /// the tool or the user turned them off, and the next sync turns them back on.
+    plugin_drift: Vec<PluginDrift>,
     /// Assets found in managed install paths that the lock does not track.
     /// Read-only/advisory: kasetto never deletes files it does not own.
     unmanaged: Vec<UnmanagedEntry>,
     update_check: UpdateCheckOutput,
+}
+
+#[derive(serde::Serialize, Debug, PartialEq)]
+struct PluginDrift {
+    /// `plugin@marketplace`, the `enabledPlugins` key.
+    plugin: String,
+    /// Absolute path of the settings file it is missing from.
+    path: String,
 }
 
 #[derive(serde::Serialize)]
@@ -45,8 +63,8 @@ struct CommandDirCheck {
 }
 
 /// One asset present in a kasetto-managed install path with no matching lock
-/// entry. `kind` is `"skill" | "command" | "instruction" | "instruction-block"
-/// | "mcp"`.
+/// entry. `kind` is `"skill" | "command" | "agent" | "instruction"
+/// | "instruction-block" | "mcp"`.
 #[derive(serde::Serialize, Clone)]
 struct UnmanagedEntry {
     kind: String,
@@ -127,8 +145,23 @@ pub(crate) fn run(
 
     let managed_mcps = lock.list_installed_mcps();
     let managed_commands = lock.list_installed_commands();
+    let managed_agents = lock.list_installed_agents();
+    let managed_plugins = lock.list_installed_plugins();
     let managed_instructions = lock.list_installed_instructions();
     let command_dirs = collect_command_dirs(scope, &project_root);
+    let agent_dirs = collect_agent_dirs(scope, &project_root);
+    let plugin_drift = find_plugin_drift(&lock, &root);
+    let mut warnings: Vec<String> = plugin_drift
+        .iter()
+        .map(|d| {
+            format!(
+                "plugin `{}` is no longer enabled in {}; `{program_name} sync` restores it",
+                d.plugin,
+                relativize_home(&d.path)
+            )
+        })
+        .collect();
+    warnings.extend(collect_warnings(scope, &project_root, &root, &lock));
     let unmanaged = collect_unmanaged(scope, &root, &lock);
 
     let scope_label = match scope {
@@ -149,8 +182,13 @@ pub(crate) fn run(
         failures,
         mcps: managed_mcps,
         commands: managed_commands,
+        agents: managed_agents,
+        plugins: managed_plugins,
         instructions: managed_instructions,
         command_dirs,
+        agent_dirs,
+        warnings,
+        plugin_drift,
         unmanaged,
         update_check,
     };
@@ -196,13 +234,14 @@ pub(crate) fn run(
         ("Skills", output.skills.len().to_string()),
         ("MCP servers", output.mcps.len().to_string()),
         ("Commands", output.commands.len().to_string()),
+        ("Subagents", output.agents.len().to_string()),
+        ("Plugins", output.plugins.len().to_string()),
         ("Instructions", output.instructions.len().to_string()),
     ];
     let inv_key_w = inv_rows.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &inv_rows {
         print_doctor_kv(k, v, inv_key_w, !color);
     }
-    let _ = program_name;
 
     print_section_header("Checks", None, true, !color);
     let lock_ok = std::path::Path::new(&output.lock_file).exists() || !output.lock_file.is_empty();
@@ -243,6 +282,15 @@ pub(crate) fn run(
     let dirs_total = output.command_dirs.len();
     let dirs_label = format!("{dirs_writable} of {dirs_total} command directories writable");
     print_check(dirs_writable == dirs_total, &dirs_label, !color);
+    let agent_dirs_writable = output.agent_dirs.iter().filter(|d| d.writable).count();
+    let agent_dirs_total = output.agent_dirs.len();
+    let agent_dirs_label =
+        format!("{agent_dirs_writable} of {agent_dirs_total} subagent directories writable");
+    print_check(
+        agent_dirs_writable == agent_dirs_total,
+        &agent_dirs_label,
+        !color,
+    );
 
     if !output.command_dirs.is_empty() {
         print_section_header(
@@ -253,6 +301,36 @@ pub(crate) fn run(
         );
         for d in &output.command_dirs {
             print_dir_row(&d.path, d.writable, !color);
+        }
+    }
+
+    if !output.agent_dirs.is_empty() {
+        print_section_header(
+            "Subagent directories",
+            Some((output.agent_dirs.len(), "checked")),
+            true,
+            !color,
+        );
+        for d in &output.agent_dirs {
+            print_dir_row(&d.path, d.writable, !color);
+        }
+    }
+
+    // Warnings are advisory: they never change the verdict or the exit code
+    if !output.warnings.is_empty() {
+        use crate::colors::ATTENTION;
+        print_section_header(
+            "Warnings",
+            Some((output.warnings.len(), "found")),
+            true,
+            !color,
+        );
+        for w in &output.warnings {
+            if color {
+                println!("{ATTENTION}{ACCENT}!{RESET} {w}");
+            } else {
+                println!("! {w}");
+            }
         }
     }
 
@@ -340,6 +418,200 @@ fn collect_command_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<
         .collect()
 }
 
+fn collect_agent_dirs(scope: crate::model::Scope, project_root: &Path) -> Vec<CommandDirCheck> {
+    let agents: Vec<crate::model::Agent> =
+        match crate::fsops::load_config_any(&crate::default_config_path()) {
+            Ok((cfg, _, _)) => cfg.agents(),
+            Err(_) => Vec::new(),
+        };
+    let targets = match scope {
+        crate::model::Scope::Project => {
+            if agents.is_empty() {
+                crate::model::all_agent_project_targets(project_root)
+            } else {
+                crate::model::agent_project_targets(project_root, &agents)
+            }
+        }
+        crate::model::Scope::Global => match crate::fsops::dirs_home() {
+            Ok(home) => {
+                if agents.is_empty() {
+                    crate::model::all_agent_global_targets(&home)
+                } else {
+                    crate::model::agent_global_targets(&home, &agents)
+                }
+            }
+            Err(_) => return Vec::new(),
+        },
+    };
+    targets
+        .into_iter()
+        .map(|t| CommandDirCheck {
+            writable: is_writable(&t.path),
+            path: t.path.to_string_lossy().to_string(),
+        })
+        .collect()
+}
+
+/// Advisory notes derived from the config. Empty when there is no readable
+/// config, since there is nothing declared to compare the tools against.
+fn collect_warnings(
+    scope: crate::model::Scope,
+    project_root: &Path,
+    root: &Path,
+    lock: &LockFile,
+) -> Vec<String> {
+    let Ok((cfg, cfg_dir, _)) = crate::fsops::load_config_any(&crate::default_config_path()) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    if !cfg.subagents.is_empty() {
+        let tools = tools_without_subagents(&cfg.agents(), scope);
+        if !tools.is_empty() {
+            out.push(format!(
+                "{} no subagent support; agents are skipped for {}",
+                tools.join(", ") + if tools.len() == 1 { " has" } else { " have" },
+                if tools.len() == 1 { "it" } else { "them" }
+            ));
+        }
+    }
+    if !cfg.plugins.is_empty() {
+        let tools = tools_without_plugins(&cfg.agents(), scope);
+        if !tools.is_empty() {
+            out.push(format!(
+                "{} no declarative plugin install; plugins are enabled only for claude-code and github-copilot",
+                tools.join(", ") + if tools.len() == 1 { " has" } else { " have" },
+            ));
+        }
+        let targets = resolve_plugin_targets(&cfg, scope, project_root).unwrap_or_default();
+        if !targets.is_empty() {
+            out.extend(hand_added_marketplaces(
+                &cfg.plugins,
+                &cfg_dir,
+                lock,
+                &targets,
+                root,
+            ));
+            out.push(match scope {
+                crate::model::Scope::Project => "project plugins apply after each user trusts the folder; Claude Code fetches an external-source plugin from a committed settings file only after each user installs it".to_string(),
+                crate::model::Scope::Global => "each tool installs enabled plugins at its next session start (`/reload-plugins` in an open Claude Code session)".to_string(),
+            });
+        }
+    }
+    out
+}
+
+/// Configured tools whose preset has no plugin settings file for `scope`.
+fn tools_without_plugins(
+    agents: &[crate::model::Agent],
+    scope: crate::model::Scope,
+) -> Vec<String> {
+    let probe = Path::new("/");
+    agents
+        .iter()
+        .filter(|a| match scope {
+            crate::model::Scope::Global => a.plugins_global_target(probe).is_none(),
+            crate::model::Scope::Project => a.plugins_project_target(probe).is_none(),
+        })
+        .filter_map(|a| serde_yaml::to_string(a).ok().map(|s| s.trim().to_string()))
+        .collect()
+}
+
+/// Locked plugin ids missing from, or switched off in, a settings file the lock
+/// says Kasetto enabled them in.
+fn find_plugin_drift(lock: &LockFile, root: &Path) -> Vec<PluginDrift> {
+    let mut out: Vec<PluginDrift> = lock
+        .assets
+        .values()
+        .filter(|a| a.kind == "plugin")
+        .flat_map(|a| {
+            a.destination
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|d| resolve_dest(d, root))
+                .filter(|p| !plugin_enabled(p, &a.name))
+                .map(|p| PluginDrift {
+                    plugin: a.name.clone(),
+                    path: p.to_string_lossy().into(),
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    out.sort_by(|a, b| (&a.plugin, &a.path).cmp(&(&b.plugin, &b.path)));
+    out.dedup();
+    out
+}
+
+/// Settings files that declare a configured source's marketplace with a source
+/// other than the one Kasetto would write, in an entry the lock does not own.
+/// Sync refuses to overwrite such an entry. The marketplace name is only known
+/// from the lock, so a source that never synced is not checked.
+fn hand_added_marketplaces(
+    specs: &[PluginSourceSpec],
+    cfg_dir: &Path,
+    lock: &LockFile,
+    targets: &[PluginTarget],
+    root: &Path,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for spec in specs {
+        let Ok(source) = marketplace_source(spec, cfg_dir) else {
+            continue;
+        };
+        let want = source_hash(&source);
+        let owned = lock
+            .assets
+            .values()
+            .find(|a| a.kind == "plugin-marketplace" && a.source == spec.source);
+        let name = owned.map(|a| a.name.clone()).or_else(|| {
+            lock.assets
+                .values()
+                .find(|a| a.kind == "plugin" && a.source == spec.source)
+                .and_then(|a| a.name.rsplit_once('@').map(|(_, m)| m.to_string()))
+        });
+        let Some(name) = name else {
+            continue;
+        };
+        let owned_paths: Vec<PathBuf> = owned
+            .map(|a| {
+                a.destination
+                    .split(',')
+                    .filter(|s| !s.is_empty())
+                    .map(|d| resolve_dest(d, root))
+                    .collect()
+            })
+            .unwrap_or_default();
+        for t in targets {
+            let Ok(Some(declared)) = declared_source_hash(&t.path, &name) else {
+                continue;
+            };
+            let ours = owned.is_some_and(|a| a.hash == declared) && owned_paths.contains(&t.path);
+            if declared != want && !ours {
+                out.push(format!(
+                    "marketplace `{name}` in {} was added by hand with a different source; Kasetto leaves it alone",
+                    relativize_home(&t.path.to_string_lossy())
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// Configured tools whose preset has no subagent directory for `scope`.
+fn tools_without_subagents(
+    agents: &[crate::model::Agent],
+    scope: crate::model::Scope,
+) -> Vec<String> {
+    let probe = Path::new("/");
+    agents
+        .iter()
+        .filter(|a| match scope {
+            crate::model::Scope::Global => a.agents_global_path(probe).is_none(),
+            crate::model::Scope::Project => a.agents_project_path(probe).is_none(),
+        })
+        .filter_map(|a| serde_yaml::to_string(a).ok().map(|s| s.trim().to_string()))
+        .collect()
+}
+
 /// Short display tag for an `UnmanagedEntry.kind` in the human-mode tree.
 fn short_kind(kind: &str) -> &str {
     match kind {
@@ -374,7 +646,7 @@ fn collect_unmanaged(
     let custom_dest = cfg.as_ref().and_then(|c| c.destination.clone());
     let all = agents.is_empty();
 
-    let (skill_dirs, command_targets, instr_targets, mcp_targets) = match scope {
+    let (skill_dirs, command_targets, agent_targets, instr_targets, mcp_targets) = match scope {
         Scope::Project => (
             if all {
                 crate::model::all_skill_project_targets(root)
@@ -385,6 +657,11 @@ fn collect_unmanaged(
                 crate::model::all_command_project_targets(root)
             } else {
                 crate::model::command_project_targets(root, &agents)
+            },
+            if all {
+                crate::model::all_agent_project_targets(root)
+            } else {
+                crate::model::agent_project_targets(root, &agents)
             },
             if all {
                 crate::model::all_instruction_project_targets(root)
@@ -407,6 +684,11 @@ fn collect_unmanaged(
                 crate::model::all_command_global_targets(root)
             } else {
                 crate::model::command_global_targets(root, &agents)
+            },
+            if all {
+                crate::model::all_agent_global_targets(root)
+            } else {
+                crate::model::agent_global_targets(root, &agents)
             },
             if all {
                 crate::model::all_instruction_global_targets(root)
@@ -440,6 +722,7 @@ fn collect_unmanaged(
     }
 
     let command_dirs: Vec<PathBuf> = command_targets.into_iter().map(|t| t.path).collect();
+    let agent_dirs: Vec<PathBuf> = agent_targets.into_iter().map(|t| t.path).collect();
     let dir_instr: Vec<PathBuf> = instr_targets
         .iter()
         .filter(|t| !t.format.is_aggregate())
@@ -461,6 +744,7 @@ fn collect_unmanaged(
         }
     }
     let mut locked_command_files: HashSet<PathBuf> = HashSet::new();
+    let mut locked_agent_files: HashSet<PathBuf> = HashSet::new();
     let mut locked_instr_files: HashSet<PathBuf> = HashSet::new();
     let mut locked_agg_owned: HashMap<PathBuf, HashSet<String>> = HashMap::new();
     for a in lock.assets.values() {
@@ -468,6 +752,11 @@ fn collect_unmanaged(
             "command" => {
                 for d in a.destination.split(',').filter(|s| !s.is_empty()) {
                     locked_command_files.insert(resolve_dest(d, root));
+                }
+            }
+            "agent" => {
+                for d in a.destination.split(',').filter(|s| !s.is_empty()) {
+                    locked_agent_files.insert(resolve_dest(d, root));
                 }
             }
             "instructions" => {
@@ -494,6 +783,11 @@ fn collect_unmanaged(
         &command_dirs,
         &locked_command_files,
         "command",
+    ));
+    out.extend(find_unmanaged_files(
+        &agent_dirs,
+        &locked_agent_files,
+        "agent",
     ));
     out.extend(find_unmanaged_files(
         &dir_instr,
@@ -712,6 +1006,7 @@ fn format_age(secs: u64) -> String {
 mod tests {
     use super::*;
     use crate::fsops::temp_dir;
+    use crate::lock::AssetEntry;
     use crate::model::{McpSettingsFormat, McpSettingsTarget};
     use std::fs;
 
@@ -762,6 +1057,49 @@ mod tests {
         assert_eq!(found[1].name, "stray.md");
 
         let _ = fs::remove_dir_all(&scan);
+    }
+
+    #[test]
+    fn agent_files_report_only_unlocked() {
+        let scan = temp_dir("kasetto-doctor-agents");
+        fs::create_dir_all(&scan).unwrap();
+        let target = crate::model::AgentTarget {
+            path: scan.clone(),
+            format: crate::model::AgentFormat::ClaudeCode,
+        };
+        let tracked = crate::subagents::destination_path(&target, "reviewer");
+        fs::write(&tracked, "x").unwrap();
+        fs::write(scan.join("stray.md"), "x").unwrap();
+
+        let locked: HashSet<PathBuf> = [tracked].into_iter().collect();
+        let found = find_unmanaged_files(std::slice::from_ref(&scan), &locked, "agent");
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].kind, "agent");
+        assert_eq!(found[0].name, "stray.md");
+
+        let _ = fs::remove_dir_all(&scan);
+    }
+
+    #[test]
+    fn tools_without_subagents_names_unsupported_tools_per_scope() {
+        use crate::model::{Agent, Scope};
+        let agents = [Agent::ClaudeCode, Agent::Windsurf];
+        assert_eq!(
+            tools_without_subagents(&agents, Scope::Global),
+            vec!["windsurf".to_string()]
+        );
+        assert_eq!(
+            tools_without_subagents(&agents, Scope::Project),
+            vec!["windsurf".to_string()]
+        );
+        assert!(tools_without_subagents(&[Agent::ClaudeCode], Scope::Project).is_empty());
+        // zcode has a global directory but no project one
+        assert_eq!(
+            tools_without_subagents(&[Agent::ZCode], Scope::Project),
+            vec!["zcode".to_string()]
+        );
+        assert!(tools_without_subagents(&[Agent::ZCode], Scope::Global).is_empty());
     }
 
     #[test]
@@ -836,6 +1174,170 @@ mod tests {
         assert_eq!(found[0].path, settings.to_string_lossy());
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn plugin_asset(kind: &str, name: &str, source: &str, hash: &str, dest: &str) -> AssetEntry {
+        AssetEntry {
+            kind: kind.into(),
+            name: name.into(),
+            hash: hash.into(),
+            source: source.into(),
+            destination: dest.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn plugin_drift_reports_ids_disabled_or_missing_per_settings_file() {
+        let root = temp_dir("kasetto-doctor-plugin-drift");
+        fs::create_dir_all(root.join(".claude")).unwrap();
+        fs::write(
+            root.join(".claude/settings.json"),
+            r#"{"enabledPlugins":{"a@m":true,"b@m":false}}"#,
+        )
+        .unwrap();
+        let mut lock = LockFile::default();
+        lock.assets.insert(
+            "plugin::src::a".into(),
+            plugin_asset(
+                "plugin",
+                "a@m",
+                "src",
+                "h",
+                ".claude/settings.json,.github/copilot/settings.json",
+            ),
+        );
+        lock.assets.insert(
+            "plugin::src::b".into(),
+            plugin_asset("plugin", "b@m", "src", "h", ".claude/settings.json"),
+        );
+
+        let drift = find_plugin_drift(&lock, &root);
+        let got: Vec<(&str, PathBuf)> = drift
+            .iter()
+            .map(|d| (d.plugin.as_str(), PathBuf::from(&d.path)))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                ("a@m", root.join(".github/copilot/settings.json")),
+                ("b@m", root.join(".claude/settings.json")),
+            ]
+        );
+
+        fs::write(
+            root.join(".claude/settings.json"),
+            r#"{"enabledPlugins":{"a@m":true,"b@m":true}}"#,
+        )
+        .unwrap();
+        lock.assets.get_mut("plugin::src::a").unwrap().destination = ".claude/settings.json".into();
+        assert!(find_plugin_drift(&lock, &root).is_empty());
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn tools_without_plugins_names_tools_with_no_settings_target() {
+        use crate::model::{Agent, Scope};
+        let agents = [Agent::ClaudeCode, Agent::Cursor, Agent::GithubCopilot];
+        assert_eq!(
+            tools_without_plugins(&agents, Scope::Global),
+            vec!["cursor".to_string()]
+        );
+        assert_eq!(
+            tools_without_plugins(&agents, Scope::Project),
+            vec!["cursor".to_string()]
+        );
+        assert!(
+            tools_without_plugins(&[Agent::ClaudeCode, Agent::GithubCopilot], Scope::Global)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn hand_added_marketplace_with_another_source_warns_unless_owned() {
+        let root = temp_dir("kasetto-doctor-plugin-market");
+        let source = "https://github.com/acme/market";
+        let spec = PluginSourceSpec {
+            source: source.into(),
+            branch: None,
+            git_ref: Some("v1".into()),
+            sub_dir: None,
+            plugins: crate::model::PluginsField::List(vec!["p".into()]),
+        };
+        let ours = serde_json::json!({"source": "github", "repo": "acme/market", "ref": "v1"});
+        assert_eq!(marketplace_source(&spec, &root).unwrap(), ours);
+        let foreign = serde_json::json!({"source": "github", "repo": "someone/else"});
+        let old_ours = serde_json::json!({"source": "github", "repo": "acme/market", "ref": "v0"});
+
+        let declare = |rel: &str, src: &serde_json::Value| -> PluginTarget {
+            let path = root.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let body = serde_json::json!({"extraKnownMarketplaces": {"acme": {"source": src}}});
+            fs::write(&path, body.to_string()).unwrap();
+            PluginTarget { path }
+        };
+        let hand = declare("hand/settings.json", &foreign);
+        let same = declare("same/settings.json", &ours);
+        let owned = declare("owned/settings.json", &old_ours);
+        let missing = PluginTarget {
+            path: root.join("missing/settings.json"),
+        };
+        let targets = [hand.clone(), same, owned, missing];
+
+        // Only the plugin asset is locked: the name comes from `plugin@marketplace`
+        let mut lock = LockFile::default();
+        lock.assets.insert(
+            format!("plugin::{source}::p"),
+            plugin_asset("plugin", "p@acme", source, "h", "hand/settings.json"),
+        );
+        // A different source's lock entries must not lend it a name
+        lock.assets.insert(
+            "plugin-marketplace::https://github.com/x/y".into(),
+            plugin_asset(
+                "plugin-marketplace",
+                "acme",
+                "https://github.com/x/y",
+                &source_hash(&foreign),
+                "hand/settings.json",
+            ),
+        );
+        let warnings =
+            hand_added_marketplaces(std::slice::from_ref(&spec), &root, &lock, &targets, &root);
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+        assert!(warnings[0].contains("marketplace `acme`"));
+        assert!(warnings[0].contains("hand/settings.json"));
+        assert!(warnings[1].contains("owned/settings.json"));
+
+        // Once the lock records the stale entry in owned/ as Kasetto's, only the
+        // hand-added one is reported
+        lock.assets.insert(
+            format!("plugin-marketplace::{source}"),
+            plugin_asset(
+                "plugin-marketplace",
+                "acme",
+                source,
+                &source_hash(&old_ours),
+                "owned/settings.json",
+            ),
+        );
+        let warnings =
+            hand_added_marketplaces(std::slice::from_ref(&spec), &root, &lock, &targets, &root);
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains("hand/settings.json"));
+        assert!(warnings[0].contains("Kasetto leaves it alone"));
+
+        // A source with nothing in the lock has no known marketplace name
+        assert!(hand_added_marketplaces(
+            std::slice::from_ref(&spec),
+            &root,
+            &LockFile::default(),
+            &targets,
+            &root,
+        )
+        .is_empty());
+
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

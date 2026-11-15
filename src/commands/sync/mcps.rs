@@ -921,6 +921,8 @@ mod tests {
             })],
             commands: Vec::new(),
             instructions: Vec::new(),
+            subagents: Vec::new(),
+            plugins: Vec::new(),
             secrets: None,
             audit: None,
         }
@@ -1504,6 +1506,8 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            subagents: Vec::new(),
+            plugins: Vec::new(),
             secrets: None,
             audit: None,
         };
@@ -1561,6 +1565,8 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            subagents: Vec::new(),
+            plugins: Vec::new(),
             secrets: None,
             audit: None,
         };
@@ -1612,6 +1618,8 @@ mod tests {
             mcps: Vec::new(),
             commands: Vec::new(),
             instructions: Vec::new(),
+            subagents: Vec::new(),
+            plugins: Vec::new(),
             secrets: None,
             audit: None,
         };
