@@ -337,7 +337,11 @@ fn needs_fetch_instructions(
         else {
             return true;
         };
-        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
+        // An empty hash means `kst lock` repinned the ref without fetching, so what is
+        // installed is still the previous ref's content
+        if asset.hash.is_empty()
+            || (!asset.source_revision.is_empty() && asset.source_revision != expected_revision)
+        {
             return true;
         }
         let any_missing = targets.iter().any(|t| !dest_present(t, name, &src.source));

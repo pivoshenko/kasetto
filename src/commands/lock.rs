@@ -8,7 +8,8 @@
 //!
 //! Source-based MCP, command, instruction, agent, and plugin assets cannot be hashed without
 //! applying their merge / transform, so `lock` only refreshes their resolved
-//! revision pins; their content hash fills in on the next real `sync`. Inline
+//! revision pins. A moved pin clears the content hash, so the next real `sync`
+//! refetches and fills it in instead of trusting content it never saw. Inline
 //! MCP entries need no fetch, so `lock` pins them fully.
 //!
 //! With `--upgrade-package <name>...` the re-resolve is restricted to sources
@@ -240,7 +241,13 @@ fn refresh_asset_revisions(lock: &mut LockFile, cfg: &Config) {
     }
     for asset in lock.assets.values_mut() {
         if let Some(rev) = rev_by_source.get(&asset.source) {
-            asset.source_revision = rev.clone();
+            // A moved ref clears the content hash: these kinds are not refetched here,
+            // and the empty hash is what makes the next sync fetch the new ref instead
+            // of trusting a pin whose content it never saw
+            if asset.source_revision != *rev {
+                asset.source_revision = rev.clone();
+                asset.hash.clear();
+            }
         }
     }
 }
@@ -479,9 +486,19 @@ agents:
             },
         );
         refresh_asset_revisions(&mut lock, &cfg);
+        let entry = &lock.assets["agent::https://example.com/agents::reviewer"];
+        assert_eq!(entry.source_revision, "ref:v2");
+        // The content was never fetched at v2, so the next sync must refetch it
+        assert!(entry.hash.is_empty());
+
+        lock.assets
+            .get_mut("agent::https://example.com/agents::reviewer")
+            .unwrap()
+            .hash = "h2".into();
+        refresh_asset_revisions(&mut lock, &cfg);
         assert_eq!(
-            lock.assets["agent::https://example.com/agents::reviewer"].source_revision,
-            "ref:v2"
+            lock.assets["agent::https://example.com/agents::reviewer"].hash,
+            "h2"
         );
     }
 

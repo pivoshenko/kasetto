@@ -95,7 +95,8 @@ are relative to `$HOME`, project paths to the project root. Every source field n
 A few rules apply across the table:
 
 - `model` is kept as-is only for Augment and Junie. Cursor, Gemini CLI, and ZCode keep only `model: inherit`, and every other tool drops `model`, because a Claude alias such as `sonnet` means nothing there
-- A tool argument form such as `Bash(git *)` maps by its base name, `Bash`
+- A tool argument form such as `Bash(git *)` maps by its base name, `Bash`, and the warning says the
+  argument restriction is lost: the agent can then run any shell command, not only `git`
 - `mcp__server__tool` entries survive only for Trae and ZCode, the two tools that accept them
 - A slugified name is lowercase `a-z`, `0-9`, and `-` only, for the loaders that reject anything else
 
