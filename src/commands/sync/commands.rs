@@ -326,7 +326,11 @@ fn needs_fetch_commands(
             return true;
         };
         // Retargeted source (ref/branch changed since the lock was written)
-        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
+        // An empty hash means `kst lock` repinned the ref without fetching, so what is
+        // installed is still the previous ref's content
+        if asset.hash.is_empty()
+            || (!asset.source_revision.is_empty() && asset.source_revision != expected_revision)
+        {
             return true;
         }
         let any_missing = targets.iter().any(|t| !destination_path(t, name).exists());

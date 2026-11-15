@@ -552,7 +552,8 @@ fn tool_names(value: &Value) -> Vec<String> {
 }
 
 /// Map Claude tool names into the format's vocabulary. Returns (mapped, unmapped).
-/// An argument form such as `Bash(git *)` maps by its base name.
+/// An argument form such as `Bash(git *)` maps by its base name and is reported as
+/// lost too, since dropping the argument widens a scoped allowlist to the whole tool.
 fn map_tools(names: &[String], t: &Tools) -> (Vec<String>, Vec<String>) {
     let mut mapped: Vec<String> = Vec::new();
     let mut lost = Vec::new();
@@ -573,6 +574,11 @@ fn map_tools(names: &[String], t: &Tools) -> (Vec<String>, Vec<String>) {
         };
         match out {
             Some(name) => {
+                if base != raw.trim() {
+                    lost.push(format!(
+                        "{raw} (written as `{name}`, its argument restriction is lost)"
+                    ));
+                }
                 if seen.insert(name.clone()) {
                     mapped.push(name);
                 }
@@ -661,14 +667,7 @@ mod tests {
             AgentFormat::Copilot,
             RICH,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\ntools:\n- Read\n- Grep\n- Glob\n- Bash\n- WebSearch\n---\nYou review code.\n",
-            &[
-                "model",
-                "tools: mcp__github__get_pr",
-                "disallowedTools",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["model", "tools: Bash(git *) (written as `Bash`, its argument restriction is lost)", "tools: mcp__github__get_pr", "disallowedTools", "color", "background", "maxTurns"],
         );
     }
 
@@ -716,15 +715,7 @@ mod tests {
             AgentFormat::Gemini,
             RICH,
             "---\nname: code-reviewer\ndescription: Reviews diffs for bugs\ntools:\n- read_file\n- grep_search\n- glob\n- run_shell_command\n- google_web_search\n---\nYou review code.\n",
-            &[
-                "name (written as `code-reviewer`)",
-                "model",
-                "tools: mcp__github__get_pr",
-                "disallowedTools",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["name (written as `code-reviewer`)", "model", "tools: Bash(git *) (written as `run_shell_command`, its argument restriction is lost)", "tools: mcp__github__get_pr", "disallowedTools", "color", "background", "maxTurns"],
         );
     }
 
@@ -744,7 +735,7 @@ mod tests {
             AgentFormat::Augment,
             RICH,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\nmodel: sonnet\ncolor: blue\ntools:\n- read\n- grep\n- find\n- bash\ndisabled_tools:\n- write\n---\nYou review code.\n",
-            &["tools: WebSearch", "tools: mcp__github__get_pr", "background", "maxTurns"],
+            &["tools: Bash(git *) (written as `bash`, its argument restriction is lost)", "tools: WebSearch", "tools: mcp__github__get_pr", "background", "maxTurns"],
         );
     }
 
@@ -754,15 +745,7 @@ mod tests {
             AgentFormat::Cline,
             RICH,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\ntools:\n- read_files\n- search_codebase\n- run_commands\n---\nYou review code.\n",
-            &[
-                "model",
-                "tools: WebSearch",
-                "tools: mcp__github__get_pr",
-                "disallowedTools",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["model", "tools: Bash(git *) (written as `run_commands`, its argument restriction is lost)", "tools: WebSearch", "tools: mcp__github__get_pr", "disallowedTools", "color", "background", "maxTurns"],
         );
     }
 
@@ -782,12 +765,7 @@ mod tests {
             AgentFormat::Junie,
             RICH,
             "---\nname: code-reviewer\ndescription: Reviews diffs for bugs\nmodel: sonnet\ntools:\n- Read\n- Grep\n- Glob\n- Bash\n- WebSearch\ndisallowedTools:\n- Write\nmaxTurns: 5\n---\nYou review code.\n",
-            &[
-                "name (written as `code-reviewer`)",
-                "tools: mcp__github__get_pr",
-                "color",
-                "background",
-            ],
+            &["name (written as `code-reviewer`)", "tools: Bash(git *) (written as `Bash`, its argument restriction is lost)", "tools: mcp__github__get_pr", "color", "background"],
         );
     }
 
@@ -797,14 +775,7 @@ mod tests {
             AgentFormat::Kiro,
             RICH,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\ntools:\n- read\n- shell\n- web\n---\nYou review code.\n",
-            &[
-                "model",
-                "tools: mcp__github__get_pr",
-                "disallowedTools",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["model", "tools: Bash(git *) (written as `shell`, its argument restriction is lost)", "tools: mcp__github__get_pr", "disallowedTools", "color", "background", "maxTurns"],
         );
     }
 
@@ -814,17 +785,7 @@ mod tests {
             AgentFormat::OpenHands,
             RICH,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\ntools:\n- file_editor\n- terminal\n---\nYou review code.\n",
-            &[
-                "model",
-                "tools: Grep",
-                "tools: Glob",
-                "tools: WebSearch",
-                "tools: mcp__github__get_pr",
-                "disallowedTools",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["model", "tools: Grep", "tools: Glob", "tools: Bash(git *) (written as `terminal`, its argument restriction is lost)", "tools: WebSearch", "tools: mcp__github__get_pr", "disallowedTools", "color", "background", "maxTurns"],
         );
     }
 
@@ -834,13 +795,7 @@ mod tests {
             AgentFormat::Trae,
             RICH,
             "---\nname: code-reviewer\ndescription: Reviews diffs for bugs\ntools: Read, Grep, Glob, Bash, WebSearch, mcp__github__get_pr\ndisallowedTools: Write\n---\nYou review code.\n",
-            &[
-                "name (written as `code-reviewer`)",
-                "model",
-                "color",
-                "background",
-                "maxTurns",
-            ],
+            &["name (written as `code-reviewer`)", "model", "tools: Bash(git *) (written as `Bash`, its argument restriction is lost)", "color", "background", "maxTurns"],
         );
     }
 
@@ -851,7 +806,7 @@ mod tests {
             AgentFormat::ZCode,
             &src,
             "---\nname: Code_Reviewer\ndescription: Reviews diffs for bugs\nmodel: inherit\ntools:\n- Read\n- Grep\n- Glob\n- Bash\n- WebSearch\n- mcp__github__get_pr\ndisallowedTools:\n- Write\n---\nYou review code.\n",
-            &["color", "background", "maxTurns"],
+            &["tools: Bash(git *) (written as `Bash`, its argument restriction is lost)", "color", "background", "maxTurns"],
         );
     }
 

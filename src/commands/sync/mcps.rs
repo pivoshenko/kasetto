@@ -702,7 +702,11 @@ fn needs_fetch_mcps(
             return true;
         };
         // Retargeted source (ref/branch changed since the lock was written)
-        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
+        // An empty hash means `kst lock` repinned the ref without fetching, so what is
+        // installed is still the previous ref's content
+        if asset.hash.is_empty()
+            || (!asset.source_revision.is_empty() && asset.source_revision != expected_revision)
+        {
             return true;
         }
         let server_names: Vec<String> = asset

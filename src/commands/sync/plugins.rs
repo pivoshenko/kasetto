@@ -630,7 +630,11 @@ fn needs_fetch(src: &PluginSourceSpec, desired: &[String], lock: &LockFile) -> b
             .filter(|a| a.kind == PLUGIN)
         {
             None => true,
-            Some(a) => !a.source_revision.is_empty() && a.source_revision != expected,
+            // An empty hash means `kst lock` repinned the ref without fetching
+            Some(a) => {
+                a.hash.is_empty()
+                    || (!a.source_revision.is_empty() && a.source_revision != expected)
+            }
         }
     })
 }
@@ -1253,6 +1257,26 @@ mod tests {
             .contains_key(&plugin_asset_id(&src.to_string_lossy(), "pstack")));
         let _ = fs::remove_dir_all(&src);
         let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn an_empty_lock_hash_forces_a_fetch() {
+        let s = spec(Path::new("/m"), names(&["pstack"]));
+        let mut lock = LockFile::default();
+        let mut entry = AssetEntry {
+            kind: PLUGIN.into(),
+            name: "pstack@m".into(),
+            hash: "h".into(),
+            source: s.source.clone(),
+            destination: String::new(),
+            source_revision: String::new(),
+            has_secrets: false,
+        };
+        lock.save_tracked_asset(&plugin_asset_id(&s.source, "pstack"), entry.clone());
+        assert!(!needs_fetch(&s, &["pstack".into()], &lock));
+        entry.hash.clear();
+        lock.save_tracked_asset(&plugin_asset_id(&s.source, "pstack"), entry);
+        assert!(needs_fetch(&s, &["pstack".into()], &lock));
     }
 
     #[test]

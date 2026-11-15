@@ -202,6 +202,15 @@ from the config.
 
 ## Caveats
 
+- **A local marketplace is machine-specific.** For a `source:` that is a local directory, Kasetto
+  writes its absolute path into the settings file and hashes that path into the lock, because Claude
+  Code needs a resolvable `path`. Keep a local marketplace to personal or global scope; in a project
+  that commits `kasetto.lock` and `.claude/settings.json`, each machine rewrites both. Point shared
+  setups at a git source instead
+- **Settings keys come back sorted.** Kasetto rewrites the settings file with its keys in
+  alphabetical order, so the first plugin sync can reorder an existing `.claude/settings.json`.
+  Values are unchanged and later syncs leave the order alone, but review that first diff knowing why
+  it is larger than the two keys Kasetto added
 - **No commit SHA pins.** Kasetto writes the config's tag or branch as `ref` and never a resolved
   commit, because Claude Code before 2.1.324 passes `ref` to `git clone --branch`, so a commit SHA
   fails silently and the plugin disappears from the session. Kasetto still records the resolved

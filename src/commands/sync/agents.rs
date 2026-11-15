@@ -318,7 +318,11 @@ fn needs_fetch_agents(
         let Some(asset) = lock.assets.get(&asset_id).filter(|a| a.kind == "agent") else {
             return true;
         };
-        if !asset.source_revision.is_empty() && asset.source_revision != expected_revision {
+        // An empty hash means `kst lock` repinned the ref without fetching, so what is
+        // installed is still the previous ref's content
+        if asset.hash.is_empty()
+            || (!asset.source_revision.is_empty() && asset.source_revision != expected_revision)
+        {
             return true;
         }
         if targets.iter().any(|t| !destination_path(t, name).exists()) {
