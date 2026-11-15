@@ -483,7 +483,7 @@ def insights(skills, mcps, by_source, unmanaged, coverage, activity, idle, fresh
     """
     out = []
 
-    # Whole source repos with nothing in use: the cheapest large cleanup, since
+    # Whole source repositories with nothing in use: the cheapest large cleanup, since
     # each is a single `source:` block rather than N individual removals.
     dead_src = {s: v for s, v in by_source.items()
                 if v["used"] == 0 and v["fresh"] == 0 and (v["idle"] or 0) > 0}
@@ -491,7 +491,7 @@ def insights(skills, mcps, by_source, unmanaged, coverage, activity, idle, fresh
         n = sum(v["idle"] for v in dead_src.values())
         out.append({
             "severity": SEV_BAD,
-            "title": f"{len(dead_src)} source repos have no asset in use",
+            "title": f"{len(dead_src)} source repositories have no asset in use",
             "detail": f"They account for {n} idle assets. Each is one `source:` block, "
                       f"so removing them is {len(dead_src)} edits rather than {n}.",
             "items": [short_src(s) for s in sorted(
@@ -770,7 +770,7 @@ def main():
     for v in mcp_usage.values():
         merge_days(activity["mcps"], v["days"])
 
-    # Whole source repos often go idle together, and a dead source is one block
+    # Whole source repositories often go idle together, and a dead source is one block
     # to delete from kasetto.yaml rather than N rows to prune individually.
     by_source = {}
     for slug, v in skill_usage.items():

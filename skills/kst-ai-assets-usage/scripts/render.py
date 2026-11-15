@@ -25,11 +25,14 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-# == Palette (src/colors.rs is the source of truth) ==
+# == Palette ==
+# Surfaces and text greys mirror site/app/styles/tokens.css, so the dashboard sits on the same
+# ground as kasetto.dev; the status and brand hues are the CLI roles from src/colors.rs. A
+# standalone HTML file cannot read either, so a change to them lands here too
 C = {
-    "crust": "#151514", "base": "#1f1f1e", "mantle": "#1a1a19",
-    "s0": "#262625", "s1": "#2e2e2c", "s2": "#373634",
-    "text": "#e4e2de", "sub": "#b8b3a8", "secondary": "#a8a195", "infra": "#6e6759",
+    "crust": "#0d0d0d", "mantle": "#111111", "base": "#181818",
+    "s0": "#212121", "s1": "#2a2a2a", "s2": "#57534e",
+    "text": "#e7e5e4", "sub": "#d6d3d1", "secondary": "#a8a29e", "infra": "#78716c",
     "attention": "#e8a94d", "success": "#84c578", "error": "#e87e6c",
     "info": "#6cbfd3", "brand": "#b6a6ef",
 }
@@ -407,7 +410,7 @@ def render(d):
             f'<td class="num dim">{s["calls"]}</td></tr>')
     A(panel("By Source", table([("Source", ""), ("Composition", ""), ("Live", "num"),
                                 ("New", "num"), ("Idle", "num"), ("Calls", "num")], rows),
-            hint="A fully idle repo is one config block", cls="c6", body_cls="flush"))
+            hint="A fully idle repository is one config block", cls="c6", body_cls="flush"))
 
     # == By project ==
     proj = d.get("by_project") or {}
