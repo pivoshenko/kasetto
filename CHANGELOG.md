@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.13.0] - 2026-11-15
+
+### Bug fixes
+
+- **subagents**: Warn on lost tool arguments and refetch refs kst lock moved
+- **sync**: Keep plugin ownership safe across renames, bad input, and failed edits
+- **justfile**: Build the site before run-prod-server
+- **site**: Hide the ribbon's see-all link on narrow screens
+- **site**: Tidy the landing on phone widths
+
+### Build
+
+- **justfile**: Add an audit recipe for known dependency vulnerabilities
+- **justfile**: Build the whole cargo workspace
+- Standardize just recipes
+- **deps**: Update dependencies
+
+### Documentation
+
+- **skills**: Retheme kst-ai-assets-usage and document the excluded asset kinds
+- Say run-prod-server builds the site first
+- Describe the standardized recipes
+- Say commands rather than slash commands
+- **site**: Drop the site-wide meta description
+- **site**: Shorten the meta description
+
+### Features
+
+- **site**: Retheme on the pivoshenko palette with the README wordmark hero
+- **sync**: Add subagents and Claude Code plugins
+
+### Miscellaneous
+
+- **site**: Format the jump nav mask
+
+### Testing
+
+- **plugins**: Normalize the expected local marketplace path like the source
+- **plugins**: Compare the local marketplace path with the platform separator
+
 ## [3.12.0] - 2026-10-28
 
 ### Bug fixes
@@ -64,6 +104,10 @@ All notable changes to this project will be documented in this file.
 
 - **site**: Drop comments that restate the code
 - **site**: Share one github client, stream nav stats, use next/link
+
+### Release
+
+- V3.12.0
 
 ## [3.11.0] - 2026-10-15
 
