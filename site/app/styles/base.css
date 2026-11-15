@@ -17,9 +17,31 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* html paints the page colour, and body stays clear (fumadocs would paint it) so the grid below can
+   sit between the two */
 body {
-  background-color: var(--bg);
+  background-color: transparent;
   min-height: 100vh;
+}
+
+/* A surveyor's grid under every page, at the old site's 96px pitch and near-invisible ink, fixed so
+   it stays put while the content scrolls over it */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--fg) 3.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--fg) 3.5%, transparent) 1px, transparent 1px);
+  background-size: 96px 96px;
+  background-position: -1px -1px;
+}
+
+/* The docs are for reading, so they drop the grid */
+body:has(#nd-docs-layout)::before {
+  display: none;
 }
 
 a {

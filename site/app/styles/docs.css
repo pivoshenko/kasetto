@@ -220,7 +220,6 @@
 }
 
 #nd-page .docs-page-description {
-  max-width: 64ch;
   margin: 0;
   font-size: var(--fs-lg);
   line-height: 1.55;
@@ -285,8 +284,6 @@
 }
 
 #nd-page article > .prose h2 {
-  margin-top: var(--space-14);
-  margin-bottom: var(--space-4);
   font-family: var(--font-display);
   font-weight: var(--display-weight);
   letter-spacing: var(--display-tracking);
@@ -295,8 +292,6 @@
 }
 
 #nd-page article > .prose h3 {
-  margin-top: var(--space-10);
-  margin-bottom: var(--space-3);
   font-size: 19px;
   font-weight: 600;
   line-height: 1.35;
@@ -304,30 +299,12 @@
 }
 
 #nd-page article > .prose h4 {
-  margin-top: var(--space-8);
-  margin-bottom: var(--space-2);
   font-size: var(--fs-base);
   font-weight: 600;
 }
 
-#nd-page article > .prose :is(h2, h3, h4) + * {
-  margin-top: 0;
-}
-
 #nd-page article > .prose :is(h2, h3, h4) svg {
   color: var(--fg-subtle);
-}
-
-#nd-page article > .prose p,
-#nd-page article > .prose ul,
-#nd-page article > .prose ol {
-  margin-top: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-#nd-page article > .prose li {
-  margin-top: 6px;
-  margin-bottom: 6px;
 }
 
 #nd-page article > .prose ul {
@@ -380,7 +357,6 @@
 }
 
 #nd-page article > .prose hr {
-  margin-block: var(--space-12);
   border-color: var(--border);
 }
 
@@ -399,18 +375,9 @@
   white-space: nowrap;
 }
 
-#nd-page article > .prose > :first-child {
-  margin-top: 0;
-}
-
-#nd-page article > .prose > :last-child {
-  margin-bottom: 0;
-}
-
 /* == Tables == */
 /* The overflow wrapper carries the frame so wide tables scroll inside it instead of the page */
 #nd-page article > .prose div.relative.overflow-auto:has(> table) {
-  margin-block: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
@@ -461,7 +428,6 @@
 
 /* == Code Blocks == */
 #nd-docs-layout .fd-codeblock {
-  margin-block: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
@@ -513,7 +479,6 @@
 
 /* == Tabs == */
 #nd-page div:has(> [role="tablist"]) {
-  margin-block: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);

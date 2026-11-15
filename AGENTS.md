@@ -90,6 +90,9 @@ scripts/sync-config-example.mjs --check` exits non-zero on drift) and `just gene
 - `colors.rs` is the only file holding hex values; it defines the semantic roles and call sites use those
   names. There is deliberately no "foreground" constant - body text inherits from the terminal. Color is
   gated on `color_stdout_enabled()`; `NO_COLOR` and piping drop it
+- the site's colors live only in `site/app/styles/tokens.css` (the DOM) and `site/lib/palette.ts` (the
+  next/og renderers, which cannot read CSS variables). Every other stylesheet and component reads a token
+  and derives shades with `color-mix`, never a hex, `rgb()`, or a fallback literal
 - commits and branches follow `CONTRIBUTING.md`: Conventional Commits with a module/command scope
 - behavioral changes come with tests; interface changes update `site/content/docs/` alongside the code
 

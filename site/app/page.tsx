@@ -14,7 +14,6 @@ import { AgentIcon } from "./components/landing/agent-icon";
 import { AssetKinds } from "./components/landing/asset-kinds";
 import { AuditGate, AuditPolicy } from "./components/landing/audit-gate";
 import { ForgeWall } from "./components/landing/forge-wall";
-import { HeroCassette } from "./components/landing/hero-cassette";
 import { LockDiff, LockExample } from "./components/landing/lock-example";
 import { VaultList } from "./components/landing/secret-providers";
 import { SecretSources } from "./components/secret-sources";
@@ -143,15 +142,15 @@ export default async function Page() {
 
       <header className="lp-hero">
         <div className="lp-hero-copy">
-          <h1 className="lp-h1 display">
-            <span className="lp-h1-line">Your AI environment,</span>{" "}
-            <span className="lp-h1-line">
-              <em>under control</em>
-            </span>
+          <h1 className="lp-hero-title">
+            <img
+              src="/preview_social_dark.svg"
+              alt="Kasetto: a declarative AI agent environment manager, written in Rust"
+              width={1600}
+              height={558}
+              className="lp-hero-logo"
+            />
           </h1>
-          <p className="lp-lede lp-hero-lede">
-            Declarative AI agent environment manager, written in Rust.
-          </p>
           <div className="lp-actions">
             <Link href="/docs" className="lp-btn lp-btn--primary">
               Read the docs <GoArrowRight aria-hidden />
@@ -167,9 +166,6 @@ export default async function Page() {
             <code className="lp-cmd-text">{CURL}</code>
             <CopyButton text={CURL} label="Copy" />
           </div>
-        </div>
-        <div className="lp-hero-art">
-          <HeroCassette className="lp-cassette" />
         </div>
       </header>
 
@@ -213,10 +209,11 @@ export default async function Page() {
         }
         body={
           <>
-            <code>kasetto.yaml</code> lists every skill, command, MCP, and instruction you use, and
-            the repository each one comes from. <code>kst sync</code> fetches those repositories and
-            writes each asset where your agent looks for it. Run it again on another machine and you
-            get the same setup; run it after a change and only that change is touched.
+            <code>kasetto.yaml</code> lists every skill, command, subagent, MCP, instruction, and
+            plugin you use, and the repository each one comes from. <code>kst sync</code> fetches
+            those repositories and writes each asset where your agent looks for it. Run it again on
+            another machine and you get the same setup; run it after a change and only that change
+            is touched.
           </>
         }
         link={{ href: "/docs/configuration", label: "Configuration reference" }}
@@ -239,7 +236,7 @@ export default async function Page() {
         id="secrets"
         title={
           <>
-            Tokens <em>never touch git</em>
+            Secrets <em>stay out of your config</em>
           </>
         }
         body={
@@ -284,7 +281,7 @@ export default async function Page() {
         split="7-5"
         title={
           <>
-            Every install, <em>pinned in a lock file</em>
+            Every install, <em>recorded in a lock file</em>
           </>
         }
         body={
