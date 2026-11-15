@@ -406,7 +406,9 @@ mod tests {
     fn local_source_is_an_absolute_directory() {
         let s = marketplace_source(&spec("./mp", None, None), Path::new("/cfg")).unwrap();
         assert_eq!(s["source"], "directory");
-        assert_eq!(s["path"], "/cfg/mp");
+        // Built with the platform separator, which Windows writes as `\cfg\mp`
+        let want = Path::new("/cfg").join("mp");
+        assert_eq!(s["path"], want.to_string_lossy().as_ref());
     }
 
     #[test]
