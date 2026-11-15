@@ -7,25 +7,22 @@
 //! had already declared with the same source is used but never recorded, so
 //! pruning cannot delete it.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::error::Result;
 use crate::fsops::{now_unix, relativize_dest, resolve_dest, resolve_plugin_targets};
 use crate::lock::{AssetEntry, LockFile};
 use crate::model::{Action, PluginSourceSpec, PluginTarget, PluginsField, Summary};
 use crate::plugins::{
-    declared_source_hash, marketplace_source, plugin_enabled, plugin_id, read_marketplace,
-    remove_marketplace, remove_plugin, source_hash, write_plugins,
+    declared_source_hash, marketplace_source, plugin_enabled, plugin_id, plugin_value,
+    read_marketplace, remove_marketplace, remove_plugin, source_hash, write_plugins,
 };
 use crate::source::materialize_source;
 use crate::ui::with_spinner_transient;
 
-use super::{
-    remove_stale as remove_stale_shared, sync_label_with, update_active_for_source, StaleEntry,
-    SyncContext,
-};
+use super::{sync_label_with, update_active_for_source, SyncContext};
 
 const PLUGIN: &str = "plugin";
 const MARKETPLACE: &str = "plugin-marketplace";
@@ -72,9 +69,18 @@ pub(super) fn sync_plugins(
     for (i, src) in ctx.cfg.plugins.iter().enumerate() {
         let desired_names = desired_plugin_names(src, lock);
         desired_ids.insert(marketplace_asset_id(&src.source));
+        // A source that cannot be read this run keeps the plugins it already has:
+        // pruning them over a transient or unrelated upstream error would disable
+        // what the user has working
+        let protect = |ids: &mut HashSet<String>| {
+            for n in &desired_names {
+                ids.insert(plugin_asset_id(&src.source, n));
+            }
+        };
 
         if ctx.locked {
             if let Err(msg) = locked_satisfiable(src, &desired_names, lock) {
+                protect(&mut desired_ids);
                 fail(summary, actions, &src.source, "locked_error", msg);
                 continue;
             }
@@ -83,6 +89,7 @@ pub(super) fn sync_plugins(
         let update_active = update_active_for_source(ctx, &src.source, &desired_names);
         let fetch = update_active || needs_fetch(src, &desired_names, lock);
         if fetch && ctx.locked {
+            protect(&mut desired_ids);
             fail(
                 summary,
                 actions,
@@ -97,6 +104,7 @@ pub(super) fn sync_plugins(
         let source = match marketplace_source(src, ctx.cfg_dir) {
             Ok(s) => s,
             Err(e) => {
+                protect(&mut desired_ids);
                 broken(summary, actions, &src.source, "plugin", e.to_string());
                 continue;
             }
@@ -130,6 +138,7 @@ pub(super) fn sync_plugins(
         let materialized = match materialize_source(&src.as_source_spec(), ctx.cfg_dir, &stage) {
             Ok(m) => m,
             Err(e) => {
+                protect(&mut desired_ids);
                 fail(summary, actions, &src.source, "source_error", e.to_string());
                 continue;
             }
@@ -142,6 +151,7 @@ pub(super) fn sync_plugins(
         let marketplace = match read_marketplace(&root) {
             Ok(m) => m,
             Err(e) => {
+                protect(&mut desired_ids);
                 broken(summary, actions, &src.source, "plugin", e.to_string());
                 continue;
             }
@@ -150,6 +160,7 @@ pub(super) fn sync_plugins(
         let selected: Vec<&crate::plugins::MarketplacePlugin> = match &src.plugins {
             PluginsField::Wildcard(s) if s == "*" => marketplace.plugins.iter().collect(),
             PluginsField::Wildcard(s) => {
+                protect(&mut desired_ids);
                 broken(
                     summary,
                     actions,
@@ -165,21 +176,30 @@ pub(super) fn sync_plugins(
                     match marketplace.plugins.iter().find(|p| &p.name == name) {
                         Some(p) => out.push(p),
                         None => {
-                            let known: Vec<&str> = marketplace
-                                .plugins
-                                .iter()
-                                .map(|p| p.name.as_str())
-                                .collect();
+                            desired_ids.insert(plugin_asset_id(&src.source, name));
+                            let msg = if marketplace.invalid.contains(name) {
+                                format!(
+                                    "plugin name `{name}` in marketplace `{}` is not a valid plugin id",
+                                    marketplace.name
+                                )
+                            } else {
+                                let known: Vec<&str> = marketplace
+                                    .plugins
+                                    .iter()
+                                    .map(|p| p.name.as_str())
+                                    .collect();
+                                format!(
+                                    "plugin `{name}` is not in marketplace `{}` (it has: {})",
+                                    marketplace.name,
+                                    known.join(", ")
+                                )
+                            };
                             broken(
                                 summary,
                                 actions,
                                 &src.source,
                                 &format!("plugin:{name}"),
-                                format!(
-                                    "plugin `{name}` is not in marketplace `{}` (it has: {})",
-                                    marketplace.name,
-                                    known.join(", ")
-                                ),
+                                msg,
                             );
                         }
                     }
@@ -245,58 +265,111 @@ fn apply_plan(
     plan: &Plan,
 ) -> Result<()> {
     let new_hash = source_hash(&plan.source_value);
-    let owned = lock
-        .assets
-        .get(&marketplace_asset_id(&plan.source))
-        .filter(|a| a.kind == MARKETPLACE)
-        .map(|a| {
-            (
-                a.hash.clone(),
-                a.destination
-                    .split(',')
-                    .filter(|s| !s.is_empty())
-                    .map(|p| resolve_dest(p, &ctx.scope_root))
-                    .collect::<Vec<_>>(),
-            )
-        });
+    let rel = |p: &Path| relativize_dest(p, &ctx.scope_root);
 
-    // Decide per settings file whether Kasetto declares the marketplace there.
-    // An entry Kasetto wrote is updated; one the user wrote with the same source
-    // is used as is; one with a different source is never overwritten
-    let mut declare_in: Vec<&PluginTarget> = Vec::new();
+    // Every target is read before anything is written. An unreadable settings
+    // file marks this source broken rather than aborting the run, so the lock
+    // still saves what the other legs installed
+    let mut declared: Vec<Option<String>> = Vec::with_capacity(targets.len());
     for t in targets {
-        let declared = declared_source_hash(&t.path, &plan.marketplace)?;
-        let ours = owned
-            .as_ref()
-            .is_some_and(|(h, paths)| paths.contains(&t.path) && declared.as_ref() == Some(h));
-        match declared {
-            None => declare_in.push(t),
-            _ if ours => declare_in.push(t),
-            Some(h) if h == new_hash => {}
-            Some(_) => {
-                for (id, _) in &plan.plugins {
-                    broken(
-                        summary,
-                        actions,
-                        &plan.source,
-                        &format!("plugin:{id}"),
-                        format!(
-                            "marketplace `{}` is already declared in {} with a different source; Kasetto does not overwrite it",
-                            plan.marketplace,
-                            relativize_dest(&t.path, &ctx.scope_root)
-                        ),
-                    );
-                }
+        match declared_source_hash(&t.path, &plan.marketplace) {
+            Ok(h) => declared.push(h),
+            Err(e) => {
+                broken_all(
+                    summary,
+                    actions,
+                    plan,
+                    format!("cannot read {}: {e}", rel(&t.path)),
+                );
                 return Ok(());
             }
         }
     }
 
+    // Decide per settings file whether Kasetto declares the marketplace there.
+    // An entry Kasetto wrote is updated; one the user wrote with the same source
+    // is used as is; one with a different source is never overwritten. Ownership
+    // also covers an entry this marketplace name left under a source no longer
+    // configured, so a source move is not mistaken for a hand-declared entry in a
+    // dry run, before the old id has been pruned; another configured source's
+    // entry is still never taken over
+    let mut declare_in: Vec<&PluginTarget> = Vec::new();
+    for (t, declared) in targets.iter().zip(&declared) {
+        let ours = declared.as_ref().is_some_and(|h| {
+            lock.assets.values().any(|a| {
+                a.kind == MARKETPLACE
+                    && a.name == plan.marketplace
+                    && (a.source == plan.source
+                        || !ctx.cfg.plugins.iter().any(|p| p.source == a.source))
+                    && &a.hash == h
+                    && dests_of(a, &ctx.scope_root).contains(&t.path)
+            })
+        });
+        match declared {
+            None => declare_in.push(t),
+            _ if ours => declare_in.push(t),
+            Some(h) if *h == new_hash => {}
+            Some(_) => {
+                broken_all(
+                    summary,
+                    actions,
+                    plan,
+                    format!(
+                        "marketplace `{}` is already declared in {} with a different source; Kasetto does not overwrite it",
+                        plan.marketplace,
+                        rel(&t.path)
+                    ),
+                );
+                return Ok(());
+            }
+        }
+    }
+
+    // Per plugin, the settings files Kasetto writes its key into. A key the user
+    // set before Kasetto owned it is left alone, like a hand-declared marketplace:
+    // a `true` is used as is, and a `false` is never flipped
+    let mut writes: Vec<(&String, &Option<String>, Vec<&PluginTarget>)> = Vec::new();
     let mut first_in_run = true;
-    let mut changed: Vec<&str> = Vec::new();
-    for (id, hash) in &plan.plugins {
+    let mut changed = false;
+    'plugins: for (id, hash) in &plan.plugins {
         let asset_id = plugin_asset_id(&plan.source, plugin_of(id));
         let existing = lock.assets.get(&asset_id).filter(|a| a.kind == PLUGIN);
+        let owned_paths = existing
+            .filter(|a| &a.name == id)
+            .map(|a| dests_of(a, &ctx.scope_root))
+            .unwrap_or_default();
+        let mut write_to = Vec::new();
+        for t in targets {
+            match plugin_value(&t.path, id) {
+                Err(e) => {
+                    broken(
+                        summary,
+                        actions,
+                        &plan.source,
+                        &format!("plugin:{id}"),
+                        format!("cannot read {}: {e}", rel(&t.path)),
+                    );
+                    continue 'plugins;
+                }
+                Ok(Some(v)) if !owned_paths.contains(&t.path) => {
+                    if v != serde_json::Value::Bool(true) {
+                        broken(
+                            summary,
+                            actions,
+                            &plan.source,
+                            &format!("plugin:{id}"),
+                            format!(
+                                "`{id}` is turned off by hand in {}; Kasetto does not override it",
+                                rel(&t.path)
+                            ),
+                        );
+                        continue 'plugins;
+                    }
+                }
+                Ok(_) => write_to.push(t),
+            }
+        }
+
         let settings_ok = targets.iter().all(|t| plugin_enabled(&t.path, id))
             && declare_in.iter().all(|t| {
                 declared_source_hash(&t.path, &plan.marketplace)
@@ -309,7 +382,12 @@ fn apply_plan(
             Some(h) => existing.is_some_and(|a| &a.hash == h),
             None => true,
         };
-        let status = match (existing.is_some(), settings_ok && hash_ok, ctx.dry_run) {
+        let name_ok = existing.is_some_and(|a| &a.name == id);
+        let status = match (
+            existing.is_some(),
+            settings_ok && hash_ok && name_ok,
+            ctx.dry_run,
+        ) {
             (true, true, _) => "unchanged",
             (true, false, false) => "updated",
             (true, false, true) => "would_update",
@@ -332,35 +410,95 @@ fn apply_plan(
             });
             Ok(())
         })?;
-        if status != "unchanged" {
-            changed.push(id);
-        }
+        changed |= status != "unchanged";
+        writes.push((id, hash, write_to));
     }
 
-    if ctx.dry_run || changed.is_empty() {
+    if ctx.dry_run || !changed {
         return Ok(());
     }
 
-    let ids: Vec<String> = plan.plugins.iter().map(|(id, _)| id.clone()).collect();
+    // An upstream rename leaves keys under names this plan no longer writes.
+    // They are retired while the lock still records that Kasetto set them
+    let owned_marketplace = lock
+        .assets
+        .get(&marketplace_asset_id(&plan.source))
+        .filter(|a| a.kind == MARKETPLACE)
+        .cloned();
+    let mut retire: Vec<(PathBuf, String, Option<String>)> = Vec::new();
+    if let Some(m) = owned_marketplace
+        .as_ref()
+        .filter(|m| m.name != plan.marketplace)
+    {
+        for p in dests_of(m, &ctx.scope_root) {
+            retire.push((p, m.name.clone(), Some(m.hash.clone())));
+        }
+    }
+    for (id, _, _) in &writes {
+        let asset_id = plugin_asset_id(&plan.source, plugin_of(id));
+        if let Some(prev) = lock
+            .assets
+            .get(&asset_id)
+            .filter(|a| a.kind == PLUGIN && &&a.name != id)
+        {
+            for p in dests_of(prev, &ctx.scope_root) {
+                retire.push((p, prev.name.clone(), None));
+            }
+        }
+    }
+    for (path, name, marketplace_hash) in &retire {
+        let done = match marketplace_hash {
+            Some(h) => remove_marketplace(path, name, h).map(|_| ()),
+            None => remove_plugin(path, name),
+        };
+        if let Err(e) = done {
+            broken_all(
+                summary,
+                actions,
+                plan,
+                format!("cannot edit {}: {e}", rel(path)),
+            );
+            return Ok(());
+        }
+    }
+
     for t in targets {
         let declare = declare_in.iter().any(|d| d.path == t.path);
-        write_plugins(
+        let ids: Vec<String> = writes
+            .iter()
+            .filter(|(_, _, to)| to.iter().any(|w| w.path == t.path))
+            .map(|(id, _, _)| (*id).clone())
+            .collect();
+        if !declare && ids.is_empty() {
+            continue;
+        }
+        if let Err(e) = write_plugins(
             &t.path,
             &plan.marketplace,
             &plan.source_value,
             declare,
             &ids,
-        )?;
+        ) {
+            broken_all(
+                summary,
+                actions,
+                plan,
+                format!("cannot edit {}: {e}", rel(&t.path)),
+            );
+            return Ok(());
+        }
     }
-    let dests = |ts: &mut dyn Iterator<Item = &PluginTarget>| {
-        ts.map(|t| relativize_dest(&t.path, &ctx.scope_root))
+
+    let dests = |ts: &[&PluginTarget]| {
+        ts.iter()
+            .map(|t| rel(&t.path))
             .collect::<Vec<_>>()
             .join(",")
     };
-    for (id, hash) in &plan.plugins {
+    for (id, hash, write_to) in &writes {
         let asset_id = plugin_asset_id(&plan.source, plugin_of(id));
         let previous = lock.assets.get(&asset_id).cloned();
-        let hash = hash
+        let hash = (*hash)
             .clone()
             .or_else(|| previous.as_ref().map(|a| a.hash.clone()))
             .unwrap_or_default();
@@ -373,16 +511,27 @@ fn apply_plan(
             &asset_id,
             AssetEntry {
                 kind: PLUGIN.into(),
-                name: id.clone(),
+                name: (*id).clone(),
                 hash,
                 source: plan.source.clone(),
-                destination: dests(&mut targets.iter()),
+                destination: dests(write_to),
                 source_revision: revision,
                 has_secrets: false,
             },
         );
     }
-    if !declare_in.is_empty() {
+    if declare_in.is_empty() {
+        if owned_marketplace.is_some_and(|m| m.name != plan.marketplace) {
+            lock.remove_tracked_asset(&marketplace_asset_id(&plan.source));
+        }
+    } else {
+        let revision = if plan.revision.is_empty() {
+            owned_marketplace
+                .map(|m| m.source_revision)
+                .unwrap_or_default()
+        } else {
+            plan.revision.clone()
+        };
         lock.save_tracked_asset(
             &marketplace_asset_id(&plan.source),
             AssetEntry {
@@ -390,13 +539,35 @@ fn apply_plan(
                 name: plan.marketplace.clone(),
                 hash: new_hash,
                 source: plan.source.clone(),
-                destination: dests(&mut declare_in.into_iter()),
-                source_revision: plan.revision.clone(),
+                destination: dests(&declare_in),
+                source_revision: revision,
                 has_secrets: false,
             },
         );
     }
     Ok(())
+}
+
+/// The settings files a lock entry records, resolved against the scope root.
+fn dests_of(a: &AssetEntry, scope_root: &Path) -> Vec<PathBuf> {
+    a.destination
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(|p| resolve_dest(p, scope_root))
+        .collect()
+}
+
+/// Mark every plugin of a plan broken with one reason.
+fn broken_all(summary: &mut Summary, actions: &mut Vec<Action>, plan: &Plan, msg: String) {
+    for (id, _) in &plan.plugins {
+        broken(
+            summary,
+            actions,
+            &plan.source,
+            &format!("plugin:{id}"),
+            msg.clone(),
+        );
+    }
 }
 
 fn fail(summary: &mut Summary, actions: &mut Vec<Action>, source: &str, status: &str, msg: String) {
@@ -500,48 +671,60 @@ fn remove_stale(
     actions: &mut Vec<Action>,
     desired_ids: &HashSet<String>,
 ) {
-    let tracked: HashMap<String, AssetEntry> = lock
+    let mut stale: Vec<(String, AssetEntry)> = lock
         .assets
         .iter()
-        .filter(|(_, a)| a.kind == PLUGIN || a.kind == MARKETPLACE)
+        .filter(|(id, a)| (a.kind == PLUGIN || a.kind == MARKETPLACE) && !desired_ids.contains(*id))
         .map(|(id, a)| (id.clone(), a.clone()))
         .collect();
-    let mut candidates: Vec<StaleEntry> = tracked
-        .iter()
-        .map(|(id, a)| StaleEntry {
-            id: id.clone(),
-            action_source: None,
-            action_skill: if a.kind == PLUGIN {
-                format!("plugin:{}", a.name)
-            } else {
-                format!("marketplace:{}", a.name)
-            },
-        })
-        .collect();
     // Plugins first, so a marketplace is removed after the plugins that used it
-    candidates.sort_by_key(|c| (tracked[&c.id].kind == MARKETPLACE, c.id.clone()));
+    stale.sort_by_key(|(id, a)| (a.kind == MARKETPLACE, id.clone()));
 
-    let scope_root = ctx.scope_root.clone();
-    remove_stale_shared(
-        ctx.dry_run,
-        summary,
-        actions,
-        desired_ids,
-        candidates,
-        |id| {
-            if let Some(a) = tracked.get(id) {
-                for p in a.destination.split(',').filter(|s| !s.is_empty()) {
-                    let path = resolve_dest(p, &scope_root);
-                    let _ = if a.kind == PLUGIN {
-                        remove_plugin(&path, &a.name)
-                    } else {
-                        remove_marketplace(&path, &a.name, &a.hash).map(|_| ())
-                    };
-                }
+    for (id, a) in stale {
+        let skill = if a.kind == PLUGIN {
+            format!("plugin:{}", a.name)
+        } else {
+            format!("marketplace:{}", a.name)
+        };
+        if ctx.dry_run {
+            summary.removed += 1;
+            actions.push(Action {
+                source: None,
+                skill: Some(skill),
+                status: "would_remove".into(),
+                error: None,
+            });
+            continue;
+        }
+        // The lock entry is the only record that Kasetto wrote these keys, so it
+        // outlives a settings file that could not be edited, for the next run to retry
+        let failure = dests_of(&a, &ctx.scope_root).into_iter().find_map(|path| {
+            let done = if a.kind == PLUGIN {
+                remove_plugin(&path, &a.name)
+            } else {
+                remove_marketplace(&path, &a.name, &a.hash).map(|_| ())
+            };
+            done.err().map(|e| {
+                format!(
+                    "cannot edit {}: {e}",
+                    relativize_dest(&path, &ctx.scope_root)
+                )
+            })
+        });
+        match failure {
+            Some(msg) => broken(summary, actions, &a.source, &skill, msg),
+            None => {
+                lock.remove_tracked_asset(&id);
+                summary.removed += 1;
+                actions.push(Action {
+                    source: None,
+                    skill: Some(skill),
+                    status: "removed".into(),
+                    error: None,
+                });
             }
-            lock.remove_tracked_asset(id);
-        },
-    );
+        }
+    }
 }
 
 #[cfg(test)]
@@ -637,6 +820,22 @@ mod tests {
             &mut actions,
         )
         .unwrap();
+        (summary, actions)
+    }
+
+    /// Run with `--dry-run` and/or a forced refetch of local sources.
+    fn run_with(
+        cfg: &Config,
+        project: &Path,
+        lock: &mut LockFile,
+        dry_run: bool,
+        refetch: bool,
+    ) -> (Summary, Vec<Action>) {
+        let mut c = ctx(cfg, project, dry_run, false);
+        c.update_local = refetch;
+        let mut summary = Summary::default();
+        let mut actions = Vec::new();
+        sync_plugins(&c, lock, &mut summary, &mut actions).unwrap();
         (summary, actions)
     }
 
@@ -868,6 +1067,213 @@ mod tests {
         let (s, actions) = run(&cfg, &project, &mut lock);
         assert_eq!(s.installed, 0);
         assert!(actions.is_empty());
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn an_upstream_marketplace_rename_retires_the_old_keys() {
+        let src = market("kasetto-plugin-rename");
+        let project = temp_dir("kasetto-plugin-rename-proj");
+        let path = project.join(".claude/settings.json");
+        fs::create_dir_all(&project).unwrap();
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        run(&cfg, &project, &mut lock);
+
+        write(
+            &src.join(".claude-plugin/marketplace.json"),
+            &MARKET.replace("cursor-plugins", "renamed"),
+        );
+        let (s, _) = run_with(&cfg, &project, &mut lock, false, true);
+        assert_eq!(s.updated, 1);
+        let v = settings(&path);
+        assert_eq!(
+            v["enabledPlugins"],
+            serde_json::json!({"pstack@renamed": true})
+        );
+        assert!(v["extraKnownMarketplaces"].get("cursor-plugins").is_none());
+
+        let none = cfg_with(vec![Agent::ClaudeCode], Vec::new());
+        run(&none, &project, &mut lock);
+        assert_eq!(settings(&path), serde_json::json!({}));
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn an_unreadable_marketplace_keeps_the_plugins_it_already_enabled() {
+        let src = market("kasetto-plugin-unreadable");
+        let project = temp_dir("kasetto-plugin-unreadable-proj");
+        let path = project.join(".claude/settings.json");
+        fs::create_dir_all(&project).unwrap();
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        run(&cfg, &project, &mut lock);
+
+        write(&src.join(".claude-plugin/marketplace.json"), "{ not json");
+        let (s, _) = run_with(&cfg, &project, &mut lock, false, true);
+        assert_eq!((s.broken, s.removed), (1, 0));
+        assert_eq!(
+            settings(&path)["enabledPlugins"]["pstack@cursor-plugins"],
+            true
+        );
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn a_malformed_settings_file_is_broken_not_fatal() {
+        let src = market("kasetto-plugin-badjson");
+        let project = temp_dir("kasetto-plugin-badjson-proj");
+        let path = project.join(".claude/settings.json");
+        write(&path, r#"{"model": "sonnet",}"#);
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        let (s, actions) = run(&cfg, &project, &mut lock);
+        assert_eq!((s.broken, s.installed), (1, 0));
+        assert!(actions[0].error.as_deref().unwrap().contains("cannot read"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            r#"{"model": "sonnet",}"#
+        );
+        assert!(lock.assets.is_empty());
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn a_dry_run_source_move_is_not_reported_as_hand_declared() {
+        let src = market("kasetto-plugin-move-a");
+        let fork = market("kasetto-plugin-move-b");
+        let project = temp_dir("kasetto-plugin-move-proj");
+        fs::create_dir_all(&project).unwrap();
+        let mut lock = LockFile::default();
+        let first = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        run(&first, &project, &mut lock);
+
+        let moved = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&fork, names(&["pstack"]))],
+        );
+        let (s, _) = run_with(&moved, &project, &mut lock, true, false);
+        assert_eq!(s.broken, 0);
+        let (s, _) = run(&moved, &project, &mut lock);
+        assert_eq!((s.broken, s.installed), (0, 1));
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&fork);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn two_configured_sources_never_take_over_one_marketplace_name() {
+        let a = market("kasetto-plugin-twin-a");
+        let b = market("kasetto-plugin-twin-b");
+        let project = temp_dir("kasetto-plugin-twin-proj");
+        fs::create_dir_all(&project).unwrap();
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&a, names(&["pstack"])), spec(&b, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        let (s, _) = run(&cfg, &project, &mut lock);
+        assert_eq!((s.installed, s.broken), (1, 1));
+        let declared = &settings(&project.join(".claude/settings.json"))["extraKnownMarketplaces"]
+            ["cursor-plugins"]["source"]["path"];
+        assert!(declared.as_str().unwrap().contains("kasetto-plugin-twin-a"));
+        let (s, _) = run(&cfg, &project, &mut lock);
+        assert_eq!((s.unchanged, s.broken), (1, 1));
+        let _ = fs::remove_dir_all(&a);
+        let _ = fs::remove_dir_all(&b);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn a_plugin_key_the_user_set_is_never_flipped_or_deleted() {
+        let src = market("kasetto-plugin-handkey");
+        let project = temp_dir("kasetto-plugin-handkey-proj");
+        let path = project.join(".claude/settings.json");
+        write(
+            &path,
+            r#"{"enabledPlugins": {"pstack@cursor-plugins": false, "origin-apps@cursor-plugins": true}}"#,
+        );
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack", "origin-apps"]))],
+        );
+        let mut lock = LockFile::default();
+        let (s, _) = run(&cfg, &project, &mut lock);
+        assert_eq!((s.broken, s.installed), (1, 1));
+        assert_eq!(
+            settings(&path)["enabledPlugins"]["pstack@cursor-plugins"],
+            false
+        );
+
+        let none = cfg_with(vec![Agent::ClaudeCode], Vec::new());
+        run(&none, &project, &mut lock);
+        assert_eq!(
+            settings(&path)["enabledPlugins"],
+            serde_json::json!({"pstack@cursor-plugins": false, "origin-apps@cursor-plugins": true})
+        );
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn a_prune_that_cannot_edit_settings_keeps_the_lock_entry() {
+        let src = market("kasetto-plugin-prunefail");
+        let project = temp_dir("kasetto-plugin-prunefail-proj");
+        let path = project.join(".claude/settings.json");
+        fs::create_dir_all(&project).unwrap();
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        run(&cfg, &project, &mut lock);
+        fs::write(&path, "{ broken").unwrap();
+
+        let none = cfg_with(vec![Agent::ClaudeCode], Vec::new());
+        let (s, _) = run(&none, &project, &mut lock);
+        assert_eq!((s.removed, s.broken), (0, 2));
+        assert!(lock
+            .assets
+            .contains_key(&plugin_asset_id(&src.to_string_lossy(), "pstack")));
+        let _ = fs::remove_dir_all(&src);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn offline_repair_keeps_the_marketplace_revision() {
+        let src = market("kasetto-plugin-rev");
+        let project = temp_dir("kasetto-plugin-rev-proj");
+        let path = project.join(".claude/settings.json");
+        fs::create_dir_all(&project).unwrap();
+        let cfg = cfg_with(
+            vec![Agent::ClaudeCode],
+            vec![spec(&src, names(&["pstack"]))],
+        );
+        let mut lock = LockFile::default();
+        run(&cfg, &project, &mut lock);
+        let mp_id = marketplace_asset_id(&src.to_string_lossy());
+        lock.assets.get_mut(&mp_id).unwrap().source_revision = "abc123".into();
+
+        fs::write(&path, "{}").unwrap();
+        let (s, _) = run(&cfg, &project, &mut lock);
+        assert_eq!(s.updated, 1);
+        assert_eq!(lock.assets[&mp_id].source_revision, "abc123");
         let _ = fs::remove_dir_all(&src);
         let _ = fs::remove_dir_all(&project);
     }

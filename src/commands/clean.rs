@@ -62,9 +62,10 @@ pub(crate) fn run(
         .iter()
         .flat_map(|kind| {
             lock.assets
-                .values()
-                .filter(move |a| a.kind == *kind)
-                .map(|a| PluginAsset {
+                .iter()
+                .filter(move |(_, a)| a.kind == *kind)
+                .map(|(id, a)| PluginAsset {
+                    id: id.clone(),
                     marketplace: *kind == "plugin-marketplace",
                     name: a.name.clone(),
                     hash: a.hash.clone(),
@@ -106,7 +107,7 @@ pub(crate) fn run(
     }
 
     if !dry_run {
-        apply_removals(
+        let kept = apply_removals(
             &state,
             &mcp_assets,
             &command_assets,
@@ -117,6 +118,16 @@ pub(crate) fn run(
             &project_root,
         )?;
         lock.clear_all();
+        // A plugin whose settings file could not be edited keeps its lock entry,
+        // the only record that Kasetto wrote the key, so a later clean can retry
+        for (id, reason) in &kept {
+            if let Some(entry) = tracked_assets.get(id) {
+                lock.save_tracked_asset(id, entry.clone());
+            }
+            if !as_json {
+                crate::ui::eprint_warn(reason, plain);
+            }
+        }
         save_lock(&mut lock, scope, &project_root)?;
         clear_runtime_state(scope, &project_root)?;
         // Cached audit verdicts describe assets that no longer exist here;
@@ -153,6 +164,7 @@ pub(crate) fn run(
 
 /// A `plugin` or `plugin-marketplace` lock entry, snapshotted before the lock is cleared.
 struct PluginAsset {
+    id: String,
     marketplace: bool,
     name: String,
     hash: String,
@@ -169,7 +181,7 @@ fn apply_removals(
     instruction_assets: &[(String, String, String)],
     scope: Scope,
     project_root: &std::path::Path,
-) -> Result<()> {
+) -> Result<Vec<(String, String)>> {
     let root = scope_root(scope, project_root)?;
     for entry in state.skills.values() {
         for p in entry.destination.split(',').filter(|s| !s.is_empty()) {
@@ -197,14 +209,26 @@ fn apply_removals(
 
     // Only the keys Kasetto wrote come out of each settings file. Claude Code keeps its
     // own clone and cache under ~/.claude/plugins/, which clean leaves alone
+    let mut kept = Vec::new();
     for plugin in plugin_assets {
         for p in plugin.destination.split(',').filter(|s| !s.is_empty()) {
             let path = resolve_dest(p, &root);
-            let _ = if plugin.marketplace {
+            let done = if plugin.marketplace {
                 crate::plugins::remove_marketplace(&path, &plugin.name, &plugin.hash).map(|_| ())
             } else {
                 crate::plugins::remove_plugin(&path, &plugin.name)
             };
+            if let Err(e) = done {
+                kept.push((
+                    plugin.id.clone(),
+                    format!(
+                        "kept `{}` in the lock: cannot edit {}: {e}",
+                        plugin.name,
+                        path.display()
+                    ),
+                ));
+                break;
+            }
         }
     }
 
@@ -233,7 +257,7 @@ fn apply_removals(
             }
         }
     }
-    Ok(())
+    Ok(kept)
 }
 
 fn print_report(
@@ -543,12 +567,14 @@ mod tests {
 
         let assets = [
             PluginAsset {
+                id: "id-1".into(),
                 marketplace: true,
                 name: "market".into(),
                 hash,
                 destination: ".claude/settings.json".into(),
             },
             PluginAsset {
+                id: "id-2".into(),
                 marketplace: false,
                 name: "kit@market".into(),
                 hash: String::new(),
@@ -583,6 +609,35 @@ mod tests {
     }
 
     #[test]
+    fn apply_removals_reports_a_settings_file_it_cannot_edit() {
+        let root = temp_dir("kasetto-clean-plugins-broken");
+        let settings = root.join(".claude/settings.json");
+        fs::create_dir_all(settings.parent().unwrap()).unwrap();
+        fs::write(&settings, r#"{"enabledPlugins": {"kit@market": true},}"#).unwrap();
+        let assets = [PluginAsset {
+            id: "plugin::src::kit".into(),
+            marketplace: false,
+            name: "kit@market".into(),
+            hash: String::new(),
+            destination: ".claude/settings.json".into(),
+        }];
+        let kept = apply_removals(
+            &State::default(),
+            &[],
+            &[],
+            &[],
+            &assets,
+            &[],
+            Scope::Project,
+            &root,
+        )
+        .unwrap();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].0, "plugin::src::kit");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn apply_removals_keeps_a_marketplace_the_user_repointed() {
         let root = temp_dir("kasetto-clean-plugins-repointed");
         let settings = root.join(".claude/settings.json");
@@ -601,12 +656,14 @@ mod tests {
 
         let assets = [
             PluginAsset {
+                id: "id-3".into(),
                 marketplace: true,
                 name: "market".into(),
                 hash: crate::plugins::source_hash(&ours),
                 destination: ".claude/settings.json".into(),
             },
             PluginAsset {
+                id: "id-4".into(),
                 marketplace: false,
                 name: "kit@market".into(),
                 hash: String::new(),

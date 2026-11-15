@@ -571,20 +571,21 @@ fn hand_added_marketplaces(
         let Some(name) = name else {
             continue;
         };
-        let owned_paths: Vec<PathBuf> = owned
-            .map(|a| {
-                a.destination
-                    .split(',')
-                    .filter(|s| !s.is_empty())
-                    .map(|d| resolve_dest(d, root))
-                    .collect()
-            })
-            .unwrap_or_default();
         for t in targets {
             let Ok(Some(declared)) = declared_source_hash(&t.path, &name) else {
                 continue;
             };
-            let ours = owned.is_some_and(|a| a.hash == declared) && owned_paths.contains(&t.path);
+            // This source's entry counts, and so does one a source no longer configured
+            // left behind, so a source that just moved is not reported as hand-declared
+            let ours = lock.assets.values().any(|a| {
+                a.kind == "plugin-marketplace"
+                    && a.name == name
+                    && (a.source == spec.source || !specs.iter().any(|s| s.source == a.source))
+                    && a.hash == declared
+                    && a.destination
+                        .split(',')
+                        .any(|d| !d.is_empty() && resolve_dest(d, root) == t.path)
+            });
             if declared != want && !ours {
                 out.push(format!(
                     "marketplace `{name}` in {} was added by hand with a different source; Kasetto leaves it alone",
@@ -1298,7 +1299,7 @@ mod tests {
                 "plugin-marketplace",
                 "acme",
                 "https://github.com/x/y",
-                &source_hash(&foreign),
+                "unrelated",
                 "hand/settings.json",
             ),
         );
