@@ -35,10 +35,15 @@ jobs:
 
       - name: Resolve version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [[ -n "${{ github.event.inputs.version }}" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#v}"
+          if [[ -n "$INPUT_VERSION" ]]; then
+            VERSION="${INPUT_VERSION#v}"
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "version '${INPUT_VERSION}' is not MAJOR.MINOR.PATCH" >&2
+              exit 1
+            fi
           else
             VERSION=$(git-cliff --bumped-version)
             VERSION="${VERSION#v}"
@@ -70,6 +75,15 @@ jobs:
           fi
           git tag "v${VERSION}"
           git push origin main --tags
+
+      - name: Generate release notes
+        run: git-cliff --latest --strip header --output notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: notes
+          path: notes.md
 
   build:
     needs: tag
@@ -155,6 +169,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
+          pattern: kasetto-*
           path: dist
           merge-multiple: true
 
@@ -163,21 +178,20 @@ jobs:
           cd dist
           sha256sum *.tar.gz *.zip > checksums.txt
 
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@v4
-        id: changelog
+      - name: Download release notes
+        uses: actions/download-artifact@v8
         with:
-          args: --latest --strip header
+          name: notes
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
-          body: ${{ steps.changelog.outputs.content }}
+          body_path: notes.md
           files: |
             dist/*
 
-  publish-crate:
+  publish-crates:
     needs: [tag, release]
     runs-on: ubuntu-24.04-arm
     permissions:

@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -14,7 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  ci-rs:
+
+  ci-package:
     # Releases ship an x86_64-pc-windows-msvc binary, so the suite has to run
     # there too: a Unix-only matrix let #63 reach a release unseen
     runs-on: ${{ matrix.os }}
@@ -34,22 +35,30 @@ jobs:
         with:
           components: rustfmt,clippy
 
+      - name: Install cargo-audit
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@cargo-audit
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
-        run: just install-rs
+        run: just install-package
 
       - name: Run linters
-        run: just lint-rs
+        run: just lint-package
+
+      - name: Run audit
+        if: runner.os == 'Linux'
+        run: just audit-package
 
       - name: Run tests
-        run: just test-rs
+        run: just test-package
 
       - name: Build
-        run: just build-rs
+        run: just build-package
 
-  ci-next:
+  ci-site:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
@@ -75,6 +84,9 @@ jobs:
 
       - name: Run linters
         run: just lint-site
+
+      - name: Run audit
+        run: just audit-site
 
       - name: Run tests
         run: just test-site
