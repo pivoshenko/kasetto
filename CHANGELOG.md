@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.13.1] - 2026-11-20
+
+### Build
+
+- **justfile**: Rename rust recipes to package parts
+- **deps**: Upgrade dependencies and mermaid to v12
+
+### CI/CD
+
+- Always run every part and standardize the release
+
 ## [3.13.0] - 2026-11-15
 
 ### Bug fixes
@@ -41,6 +52,10 @@ All notable changes to this project will be documented in this file.
 
 - **plugins**: Normalize the expected local marketplace path like the source
 - **plugins**: Compare the local marketplace path with the platform separator
+
+### Release
+
+- V3.13.0
 
 ## [3.12.0] - 2026-10-28
 
