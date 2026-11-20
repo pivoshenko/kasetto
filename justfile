@@ -1,26 +1,26 @@
 default:
     @just --list
 
-install: install-rs install-site
+install: install-package install-site
 
-install-rs:
+install-package:
     cargo fetch
 
 install-site:
     cd site && pnpm install
 
-format: format-rs format-site
+format: format-package format-site
 
-format-rs:
+format-package:
     cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets
     cargo fmt --all
 
 format-site:
     cd site && pnpm format
 
-lint: lint-rs lint-site
+lint: lint-package lint-site
 
-lint-rs:
+lint-package:
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
 
@@ -28,17 +28,17 @@ lint-site:
     cd site && pnpm lint
     cd site && pnpm typecheck
 
-audit: audit-rs audit-site
+audit: audit-package audit-site
 
-audit-rs:
+audit-package:
     cargo audit
 
 audit-site:
     cd site && pnpm audit
 
-test: test-rs test-site
+test: test-package test-site
 
-test-rs:
+test-package:
     @[ -f .no-tests ] && echo "skipping (.no-tests sentinel)" || cargo test --workspace
 
 test-site:
@@ -46,17 +46,17 @@ test-site:
 
 check: lint test build
 
-update: update-rs update-site
+update: update-package update-site
 
-update-rs:
+update-package:
     cargo update
 
 update-site:
     cd site && pnpm update
 
-build: build-rs build-site
+build: build-package build-site
 
-build-rs:
+build-package:
     cargo build --release --workspace
 
 build-site:
@@ -67,9 +67,6 @@ run-dev-server:
 
 run-prod-server: build-site
     cd site && pnpm start
-
-generate-changelog:
-    git-cliff --output CHANGELOG.md
 
 generate-config-docs:
     node scripts/sync-config-example.mjs

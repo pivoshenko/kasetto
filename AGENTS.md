@@ -56,7 +56,7 @@ one Rust crate at the root shipping two binaries (`kasetto` and its short alias 
 
 ## Commands
 
-`just` is the task runner; every recipe is split `-rs` (crate) / `-site` (Next.js app), with the bare
+`just` is the task runner; every recipe is split `-package` (crate) / `-site` (Next.js app), with the bare
 name running both - `just --list`, or the recipe table in `CONTRIBUTING.md`, for the full set. `just
 check` is lint + test + build over both halves, and CI runs exactly those recipes, so a green `just
 check` locally means a green CI. The Rust suite is hermetic - no test issues a network request, so a
@@ -68,16 +68,15 @@ cargo test --lib commands::sync::skills        # by module path
 cargo test -- --nocapture                      # keep stdout
 ```
 
-Generation recipes, run after editing their inputs: `just generate-config-docs` (regenerates the example
+Generation recipe, run after editing its inputs: `just generate-config-docs` (regenerates the example
 config in `README.md`, the docs, and the site hero from `kasetto.example.yaml`; `node
-scripts/sync-config-example.mjs --check` exits non-zero on drift) and `just generate-changelog`
-(regenerates `CHANGELOG.md` with git-cliff and `cliff.toml`).
+scripts/sync-config-example.mjs --check` exits non-zero on drift).
 
 ## Conventions
 
 - every module starts with a `//!` doc comment beginning "Module that contains ..." or, for a
   directory module, "Package that contains ..."
-- `unsafe_code` is forbidden and `clippy::all` is denied at the crate level; `lint-rs` runs Clippy with
+- `unsafe_code` is forbidden and `clippy::all` is denied at the crate level; `lint-package` runs Clippy with
   `-D warnings`, so a warning is a build failure
 - tests are inline `#[cfg(test)] mod tests` blocks next to the code they cover - there is no `tests/`
   directory. `fsops::temp_dir` is the shared helper for filesystem tests

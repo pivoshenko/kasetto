@@ -64,28 +64,27 @@ This project uses [`just`](https://github.com/casey/just) as its task runner. Ru
 
 | Command | What it does |
 | --- | --- |
-| `install` | Runs `install-rs` and `install-site` |
-| `install-rs` | Fetches the crate dependencies into the cargo cache |
+| `install` | Runs `install-package` and `install-site` |
+| `install-package` | Fetches the crate dependencies into the cargo cache |
 | `install-site` | Installs the `site/` app's Node dependencies with pnpm |
-| `format` | Runs `format-rs` and `format-site` |
-| `format-rs` | Applies Clippy autofixes, then reformats the Rust sources in place |
+| `format` | Runs `format-package` and `format-site` |
+| `format-package` | Applies Clippy autofixes, then reformats the Rust sources in place |
 | `format-site` | Applies Biome fixes and reformats the `site/` sources in place |
-| `lint` | Runs `lint-rs` and `lint-site` |
-| `lint-rs` | Checks Rust formatting, then lints every target with Clippy, failing on any warning |
+| `lint` | Runs `lint-package` and `lint-site` |
+| `lint-package` | Checks Rust formatting, then lints every target with Clippy, failing on any warning |
 | `lint-site` | Checks the `site/` sources for formatting, lint, and import order then type-checks them with `tsc`, without writing |
-| `test` | Runs `test-rs` and `test-site` |
-| `test-rs` | Runs the Rust test suite across the workspace, skipped when the `.no-tests` sentinel is present |
+| `test` | Runs `test-package` and `test-site` |
+| `test-package` | Runs the Rust test suite across the workspace, skipped when the `.no-tests` sentinel is present |
 | `test-site` | Skips, since the site has no test suite and carries a `.no-tests` sentinel |
 | `check` | Runs `lint`, `test`, and `build` |
-| `update` | Runs `update-rs` and `update-site` |
-| `update-rs` | Upgrades the crate lockfile to the newest compatible versions |
+| `update` | Runs `update-package` and `update-site` |
+| `update-package` | Upgrades the crate lockfile to the newest compatible versions |
 | `update-site` | Upgrades the `site/` app's Node dependencies |
-| `build` | Runs `build-rs` and `build-site` |
-| `build-rs` | Builds the optimized release binaries |
+| `build` | Runs `build-package` and `build-site` |
+| `build-package` | Builds the optimized release binaries |
 | `build-site` | Builds the production bundle for the `site/` app |
 | `run-dev-server` | Serves the `site/` app locally in development mode |
 | `run-prod-server` | Builds the `site/` app, then serves the production build locally |
-| `generate-changelog` | Regenerates `CHANGELOG.md` from the commit history with git-cliff |
 | `generate-config-docs` | Regenerates the example config in the README and docs, then reformats the affected site file |
 | `generate-social-preview` | Rasterizes the social preview SVG into a 1280x640 PNG via `rsvg-convert` |
 | `benchmark-sync` | Runs the cold-sync benchmark script |
@@ -103,8 +102,8 @@ Workflows live in `.github/workflows`:
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| CI | Push to `main`, pull requests, `workflow_dispatch` | Two parallel jobs, both on `ubuntu-24.04-arm`: `ci-rs` sets up the stable Rust toolchain with rustfmt and Clippy over a cached cargo registry, then installs, lints, tests and builds the crate; `ci-next` sets up pnpm with Node 24, then installs, lints, tests and builds the `site/` app |
-| Release | `workflow_dispatch` (optional `version` input) | Six chained jobs: `tag` (`ubuntu-24.04-arm`) resolves the next version from the commit history with git-cliff or from the optional input, bumps the version in `Cargo.toml` and the lockfile, regenerates `CHANGELOG.md`, then commits and pushes `main` with the `v<version>` tag; `build` needs `tag` and cross-compiles release binaries for six targets (`x86_64` and `aarch64` for `unknown-linux-gnu` on `ubuntu-latest`, `apple-darwin` on `macos-latest`, `pc-windows-msvc` on `windows-latest`), packaging `kasetto` and `kst` into a per-target `.tar.gz` or `.zip`; `release` needs `tag` and `build` and publishes the GitHub Release with the generated notes, every archive and a `checksums.txt`; then `publish-crate`, `update-homebrew` and `update-scoop` (all `ubuntu-24.04-arm`, each needing `tag` and `release`) publish the crate to Crates.io, push a refreshed `Formula/kasetto.rb` to `pivoshenko/homebrew-tap`, and push a refreshed `kasetto.json` to `pivoshenko/scoop-bucket` |
+| CI | Push to `main`, pull requests, `workflow_dispatch` | Two parallel jobs run on every trigger, both on `ubuntu-24.04-arm`: `ci-package` sets up the stable Rust toolchain with rustfmt and Clippy over a cached cargo registry, then installs, lints, audits, tests and builds the crate; `ci-site` sets up pnpm with Node 24, then installs, lints, audits, tests and builds the `site/` app; there is no separate audit job: each part runs its audit recipe as a step right after linting (`just audit-package`, installing cargo-audit and run on the Linux leg only, and `just audit-site`) |
+| Release | `workflow_dispatch` (optional `version` input) | Six chained jobs: `tag` (`ubuntu-24.04-arm`) resolves the next version from the commit history with git-cliff or from the optional input, bumps the version in `Cargo.toml` and the lockfile, regenerates `CHANGELOG.md`, then commits and pushes `main` with the `v<version>` tag, and hands the generated release notes to the `release` job as an artifact; `build` needs `tag` and cross-compiles release binaries for six targets (`x86_64` and `aarch64` for `unknown-linux-gnu` on `ubuntu-latest`, `apple-darwin` on `macos-latest`, `pc-windows-msvc` on `windows-latest`), packaging `kasetto` and `kst` into a per-target `.tar.gz` or `.zip`; `release` needs `tag` and `build` and publishes the GitHub Release with those notes, every archive and a `checksums.txt`; then `publish-crates`, `update-homebrew` and `update-scoop` (all `ubuntu-24.04-arm`, each needing `tag` and `release`) publish the crate to Crates.io, push a refreshed `Formula/kasetto.rb` to `pivoshenko/homebrew-tap`, and push a refreshed `kasetto.json` to `pivoshenko/scoop-bucket` |
 | Site | `workflow_dispatch` | Single `deploy` job on `ubuntu-latest`; deploys the `site/` app to Vercel production using the `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_SITE_PROJECT_ID` secrets |
 
 CI must be green before a pull request is merged.
